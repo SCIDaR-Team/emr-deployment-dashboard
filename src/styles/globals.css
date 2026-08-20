@@ -1,0 +1,307 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens.
+ *
+ * Values are HSL channel triples (no hsl() wrapper) so Tailwind can apply
+ * opacity modifiers — see the <alpha-value> placeholders in tailwind.config.js.
+ *
+ * ---------------------------------------------------------------------------
+ * Two colour systems, kept apart. This is the load-bearing rule of the redesign.
+ *
+ *   1. READINESS BANDS (green / amber / red) are STATUS. They are the only
+ *      saturated hues in the product, so colour always means readiness and
+ *      never anything else. Each is paired with a texture and a label, because
+ *      red vs green measures ΔE 7.0 under deuteranopia — inside the warn band,
+ *      and not allowed to carry meaning by hue alone.
+ *
+ *   2. MAGNITUDE (a 1–5 score, a share, a maturity level) rides a single-hue
+ *      BLUE ORDINAL RAMP, --s1 → --s5. Blue also carries every interactive
+ *      affordance: links, active nav, focus, filled buttons.
+ *
+ * So the reader learns two rules and never needs a third: hue means band,
+ * darkness means score. The previous palette spent green on the brand, the
+ * sidebar, every heading, the primary button *and* the Ready band, which meant
+ * green had stopped meaning "ready" — the one job it cannot fail at.
+ *
+ * Neutrals carry a slight green bias. They read as chosen rather than
+ * inherited, and they keep a nod to the original identity now that green is no
+ * longer doing duty as furniture.
+ * ---------------------------------------------------------------------------
+ */
+
+@layer base {
+  :root {
+    --page: 100 9% 96%;
+    --surface: 80 20% 99%;
+    --surface-sunk: 90 8% 93%;
+    --foreground: 160 12% 8%;
+    --muted: 90 8% 93%;
+    --muted-foreground: 155 5% 36%;
+    --border: 100 8% 89%;
+    --input: 100 8% 82%;
+    --ring: 214 68% 50%;
+
+    /*
+     * The brand ramp is unchanged in *role* — the codebase reads it as
+     *   50 / 100  subtle washes behind content
+     *   500       primary accent — borders, active states, filled controls
+     *   600       stronger accent, hover
+     *   700       heading text
+     *   900       strongest text
+     * — but the roles now resolve to two different hues, which is the point.
+     * The accent half (50–600) is blue, so an active control never impersonates
+     * a Ready badge. The text half (700–900) is ink, because a heading is not
+     * an accent and colouring every one of them was most of why the old
+     * dashboard read as monotone green.
+     */
+    --brand-50: 214 100% 96%;
+    --brand-100: 214 88% 91%;
+    --brand-500: 214 68% 50%;
+    --brand-600: 214 72% 39%;
+    --brand-700: 160 12% 8%;
+    --brand-900: 160 14% 5%;
+
+    /*
+     * The navigation rail. Light now, in both schemes, and separated from the
+     * content by tone plus a hairline rather than by being a dark slab.
+     *
+     * `--sidebar-foreground` is ink rather than white, which keeps every
+     * existing `bg-sidebar-foreground/10` in Sidebar.tsx working: a 10% ink
+     * tint on a light rail is exactly the soft hover wash those rules wanted,
+     * the same way a 10% white tint was on the dark one.
+     */
+    --sidebar: 90 8% 93%;
+    --sidebar-foreground: 160 12% 8%;
+
+    --ready: 157 79% 26%;
+    --ready-wash: 152 40% 93%;
+    --moderate: 40 90% 44%;
+    --moderate-wash: 42 82% 92%;
+    --not-ready: 7 62% 47%;
+    --not-ready-wash: 8 65% 94%;
+    --no-data: 130 6% 74%;
+
+    /*
+     * The score ramp: one hue, light → dark, validated monotone with every
+     * adjacent step clearing ΔL 0.06 and the light end clearing 2:1 against
+     * --surface. Used for score magnitude, choropleth fills, and the five
+     * maturity levels.
+     */
+    --s1: 214 72% 73%;
+    --s2: 214 74% 62%;
+    --s3: 214 68% 50%;
+    --s4: 214 72% 39%;
+    --s5: 214 78% 28%;
+
+    /*
+     * The five-level maturity ramp — Nascent → Optimized.
+     *
+     * These *are* the score ramp, one step per level, and that is the fix. The
+     * previous ramp was a red→orange→yellow→green traffic light running beside
+     * the three-colour readiness scale, so the page carried two similar-looking
+     * scales meaning different things and taught neither. Maturity is an
+     * ordered scale of the same 1–5 score, so it belongs on the ordinal ramp;
+     * readiness keeps the traffic light to itself.
+     *
+     * The washes stay near-neutral: a maturity level is reported as a labelled
+     * meter, never as a coloured block of text.
+     */
+    --maturity-nascent: 214 72% 73%;
+    --maturity-nascent-wash: 214 60% 96%;
+    --maturity-emerging: 214 74% 62%;
+    --maturity-emerging-wash: 214 60% 95%;
+    --maturity-developing: 214 68% 50%;
+    --maturity-developing-wash: 214 62% 94%;
+    --maturity-institutionalized: 214 72% 39%;
+    --maturity-institutionalized-wash: 214 64% 93%;
+    --maturity-optimized: 214 78% 28%;
+    --maturity-optimized-wash: 214 66% 92%;
+
+    /*
+     * Administrative boundaries on the maps. Drawn in the surface colour rather
+     * than in ink: the fills now carry a sequential ramp, and a dark hairline
+     * between two adjacent dark steps reads as a third, darker step. A
+     * surface-coloured stroke separates polygons by cutting a gap, which stays
+     * legible at every step of the ramp and over satellite imagery alike.
+     */
+    --map-boundary: 80 20% 99%;
+
+    --radius: 0.25rem;
+    --radius-card: 0.25rem;
+  }
+
+  .dark {
+    --page: 150 10% 6%;
+    --surface: 156 8% 10%;
+    --surface-sunk: 156 8% 14%;
+    --foreground: 140 12% 94%;
+    --muted: 156 8% 14%;
+    --muted-foreground: 140 6% 68%;
+    --border: 156 7% 17%;
+    --input: 156 7% 22%;
+    --ring: 214 76% 64%;
+
+    --brand-50: 214 44% 14%;
+    --brand-100: 214 42% 20%;
+    --brand-500: 214 76% 64%;
+    --brand-600: 214 72% 73%;
+    --brand-700: 140 12% 94%;
+    --brand-900: 140 14% 97%;
+
+    --sidebar: 156 8% 14%;
+    --sidebar-foreground: 140 12% 94%;
+
+    --ready: 154 54% 40%;
+    --ready-wash: 158 30% 12%;
+    --moderate: 42 76% 52%;
+    --moderate-wash: 40 34% 13%;
+    --not-ready: 8 72% 59%;
+    --not-ready-wash: 8 34% 13%;
+    --no-data: 150 6% 28%;
+
+    /* The ramp, re-stepped for a dark ground rather than inverted: the dark end
+       has to come *up* or it disappears into the surface, so the scale runs
+       dark-blue → pale-blue with the same monotone lightness gaps. */
+    --s1: 214 72% 34%;
+    --s2: 214 70% 44%;
+    --s3: 214 74% 56%;
+    --s4: 214 76% 68%;
+    --s5: 214 80% 84%;
+
+    --maturity-nascent: 214 72% 34%;
+    --maturity-nascent-wash: 214 40% 15%;
+    --maturity-emerging: 214 70% 44%;
+    --maturity-emerging-wash: 214 40% 16%;
+    --maturity-developing: 214 74% 56%;
+    --maturity-developing-wash: 214 40% 17%;
+    --maturity-institutionalized: 214 76% 68%;
+    --maturity-institutionalized-wash: 214 40% 18%;
+    --maturity-optimized: 214 80% 84%;
+    --maturity-optimized-wash: 214 40% 19%;
+
+    --map-boundary: 156 8% 10%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-page text-foreground font-sans;
+  }
+
+  /*
+   * Anything the section tabs can scroll to.
+   *
+   * The page header is sticky, so a section scrolled to `block: start` would
+   * otherwise land *behind* it — the reader arrives at a panel whose heading is
+   * hidden under the title bar. The header measures itself into
+   * --page-header-h (PageHeader.tsx); the fallback is the title row alone,
+   * which is the shortest the header can be.
+   */
+  [data-section] {
+    scroll-margin-top: calc(var(--page-header-h, 52px) + 12px);
+  }
+
+  /* Respect the OS setting for anyone who has asked for reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Hierarchy comes from hairlines and vertical rhythm, not from shadow. The
+     one exception is `.sheet` in the report preview, which is standing in for a
+     printed page and is allowed to look like one. */
+  .card {
+    @apply bg-surface rounded-card border border-border;
+  }
+
+  /* Every label, tick, figure column and code fragment. Prose stays in the
+     sans; readings look like readings. */
+  .mono {
+    font-family: theme('fontFamily.mono');
+    font-variant-numeric: tabular-nums;
+  }
+
+  .eyebrow {
+    font-family: theme('fontFamily.mono');
+    @apply text-[10px] uppercase tracking-[0.13em] text-muted-foreground;
+  }
+
+  /* Table cells. All three pages are built around ranked tables of the same
+     shape, so the padding and the header treatment are defined once here
+     rather than restated as a class string on every `<th>`. */
+  .th {
+    font-family: theme('fontFamily.mono');
+    @apply px-3 py-2 text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground;
+  }
+
+  .td {
+    @apply px-3 py-2 align-middle text-muted-foreground;
+  }
+
+  /* Secondary-evidence fill for the 25 desk-review states on the choropleth.
+     Colour alone would imply the same evidential grade as an assessed state.
+     Note the 45° angle: it is the *evidence* axis, and the readiness stripes
+     below deliberately run the other way at 135° so the two never read as the
+     same mark. Lines mean evidence grade; dots mean readiness band. */
+  .hatch-secondary {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      hsl(var(--muted-foreground) / 0.25) 4px,
+      hsl(var(--muted-foreground) / 0.25) 6px
+    );
+  }
+
+  /*
+   * Readiness textures — the non-colour carrier for HTML area fills.
+   * `BAND_TEXTURE` in src/lib/bands.ts is the source of truth for which band
+   * gets which; `components/map/BandPattern.tsx` is the SVG counterpart, the
+   * way MapHatch is the SVG counterpart to .hatch-secondary above.
+   *
+   * Marks are a fixed dark ink rather than --foreground. The band colours do
+   * not follow the colour scheme — amber is the same amber in dark mode — so a
+   * mark taken from --foreground flips to near-white against a background that
+   * did not change, and a texture that reads in light mode all but disappears.
+   * Only the two mid-toned bands are textured (Ready is solid), so one ink
+   * works on both in both schemes.
+   *
+   * Scaled small enough to survive inside a 6px distribution bar, which is the
+   * tightest place any of these has to work.
+   */
+  .band-texture-ready {
+    /* Intentionally empty. Ready is the solid one — see bands.ts. */
+  }
+
+  .band-texture-moderate {
+    background-image: radial-gradient(rgb(0 0 0 / 0.36) 0.9px, transparent 1px);
+    background-size: 4px 4px;
+  }
+
+  .band-texture-notready {
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 2px,
+      rgb(0 0 0 / 0.3) 2px 3.5px
+    );
+  }
+}
