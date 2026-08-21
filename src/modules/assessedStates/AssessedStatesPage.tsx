@@ -14,10 +14,13 @@ import {
 import { stepFor } from '@/components/map/mapTypes';
 import { Combobox, LoadError, ScaleLegend, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
+import { useFilterStore } from '@/store/filterStore';
 import { useFilteredData } from '@/hooks/useFilteredData';
 import { formatCount } from '@/lib/format';
 import { dominantBand } from '@/lib/bands';
-import type { FacilitySummary } from '@/lib/types';
+import { facilityBandUnder } from '@/lib/archetype';
+import { THEME_BY_ID } from '@/lib/themes';
+import type { FacilitySummary, FacilityThemeId } from '@/lib/types';
 import { AssessmentPane, type PaneList } from './AssessmentPane';
 import {
   assessedStates,
@@ -68,6 +71,17 @@ export default function AssessedStatesPage() {
   const navigate = useNavigate();
   const { states, lgas } = useDataContext();
   const { facilities, allFacilities, isLoading, error, retry } = useFilteredData();
+
+  /**
+   * The Domain filter, which on this page is a lens rather than a sieve.
+   *
+   * It removes no facility — all 2,825 are scored in all four domains — but it
+   * changes what every band on the page *means*, through `facilityBandUnder`.
+   * Under it the pane counts a domain's split, the polygons take that domain's
+   * colours and a Readiness filter selects on it.
+   */
+  const domains = useFilterStore((s) => s.domains);
+  const lensed = domains.length > 0;
 
   const surveyed = useMemo(() => assessedStates(states.data), [states.data]);
 
@@ -142,24 +156,30 @@ export default function AssessedStatesPage() {
     const data: Record<string, GeoDatum> = {};
     for (const state of states.data) {
       const rows = byState.get(state.id) ?? [];
-      const dist = facilityDistribution(rows);
-      const share = state.evidenceGrade === 'primary' ? notReadyShare(dist) : null;
+      const dist = facilityDistribution(rows, domains);
+      const surveyed = state.evidenceGrade === 'primary';
+      const share = surveyed ? notReadyShare(dist) : null;
+      // Two encodings, and which one is right depends on the lens. With no
+      // domain ticked the twelve states all classify to the same band, so the
+      // map paints the share instead and ships a scale legend with it. Ticking
+      // a domain makes bands vary — the readings are the facilities' own, not
+      // the one state-level classification — so the map goes back to being what
+      // the rest of the app is, a band choropleth.
       data[state.id] = {
-        band: null,
+        band: lensed && surveyed ? dominantBand(dist) : null,
         n: rows.length,
         evidenceGrade: state.evidenceGrade,
         label: state.name,
-        step: stepFor(share, 0, 1),
-        valueLabel:
-          state.evidenceGrade !== 'primary'
-            ? 'Not surveyed'
-            : share == null
-              ? 'Nothing matches the filters'
-              : `${(share * 100).toFixed(0)}% of ${formatCount(rows.length)} not ready`,
+        step: lensed ? null : stepFor(share, 0, 1),
+        valueLabel: !surveyed
+          ? 'Not surveyed'
+          : share == null
+            ? 'Nothing matches the filters'
+            : `${(share * 100).toFixed(0)}% of ${formatCount(rows.length)} not ready`,
       };
     }
     return data;
-  }, [states.data, facilities]);
+  }, [states.data, facilities, domains, lensed]);
 
   const lgaMapData = useMemo(() => {
     const byLga = new Map<string, FacilitySummary[]>();
@@ -173,7 +193,7 @@ export default function AssessedStatesPage() {
     for (const l of stateLgas) {
       const id = bareLgaId(l.id);
       const rows = byLga.get(id) ?? [];
-      const dist = facilityDistribution(rows);
+      const dist = facilityDistribution(rows, domains);
       data[id] = {
         band: dominantBand(dist),
         n: rows.length,
@@ -185,7 +205,7 @@ export default function AssessedStatesPage() {
       };
     }
     return data;
-  }, [stateLgas, scoped]);
+  }, [stateLgas, scoped, domains]);
 
   /** The facility layer plots what the filter row left standing, not every
    *  facility in the LGA — a Readiness filter has to remove dots or it is
@@ -197,9 +217,9 @@ export default function AssessedStatesPage() {
         name: f.name,
         lat: f.lat,
         lon: f.lon,
-        band: f.archetype,
+        band: facilityBandUnder(f, domains),
       })),
-    [scoped],
+    [scoped, domains],
   );
 
   /** The list one level below wherever the reader is, counted off the same
@@ -214,7 +234,12 @@ export default function AssessedStatesPage() {
           return {
             id: s.id,
             name: s.name,
-            band: dominantBand(facilityDistribution(facilities.filter((f) => f.stateId === s.id))),
+            band: dominantBand(
+              facilityDistribution(
+                facilities.filter((f) => f.stateId === s.id),
+                domains,
+              ),
+            ),
             note: `${formatCount(datum?.n ?? 0)} facilities`,
           };
         }),
@@ -244,7 +269,7 @@ export default function AssessedStatesPage() {
       rows: scoped.map((f) => ({
         id: f.uuid,
         name: f.name,
-        band: f.archetype,
+        band: facilityBandUnder(f, domains),
         note: f.functionalityLevel,
       })),
     };
@@ -256,6 +281,7 @@ export default function AssessedStatesPage() {
     facilities,
     nationalMapData,
     lgaMapData,
+    domains,
     selectState,
     selectLga,
     selectFacility,
@@ -285,7 +311,7 @@ export default function AssessedStatesPage() {
     <div className="flex min-h-0 flex-col lg:h-full">
       <PageHeader
         title="Assessed States"
-        subtitle={subtitleFor(scope.level)}
+        subtitle={subtitleFor(scope.level, domains)}
         back={
           scope.level !== 'all' ? (
             <button
@@ -313,6 +339,16 @@ export default function AssessedStatesPage() {
           // register this page works in, and under a chosen Domain it asks it
           // of that domain rather than of the facility overall.
           show={['level', 'funding', 'domain', 'gap', 'search']}
+          // State and LGA are navigation here, so Reset has to clear the path
+          // as well as the store — the two pickers sit in this row and a reader
+          // does not owe them the distinction.
+          scopeReset={{
+            active: scope.level !== 'all',
+            // Bare path, no search: the store reset writes the querystring back
+            // out empty a beat later, and carrying the old one across would
+            // flash the filters the reader just cleared.
+            clear: () => navigate(assessmentPath()),
+          }}
           leading={
             <>
               <Field label="State">
@@ -381,8 +417,10 @@ export default function AssessedStatesPage() {
           )}
 
           <div className="pointer-events-none absolute bottom-3 left-3 rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-            {scope.state ? (
-              <MapLegend showNoData={false} />
+            {/* The legend follows the encoding, not the level: the national
+                map is a ramp only while no domain is ticked. */}
+            {scope.state || lensed ? (
+              <MapLegend showNoData={!scope.state} />
             ) : (
               <ScaleLegend
                 lo={0}
@@ -396,22 +434,32 @@ export default function AssessedStatesPage() {
         </div>
 
         <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[420px] lg:border-l lg:border-t-0">
-          <AssessmentPane scope={scope} facilities={scoped} list={list} />
+          <AssessmentPane scope={scope} facilities={scoped} domains={domains} list={list} />
         </aside>
       </div>
     </div>
   );
 }
 
-function subtitleFor(level: AssessmentLevel): string {
-  switch (level) {
-    case 'all':
-      return 'The 12 states visited, by share of facilities not ready';
-    case 'state':
-      return 'Local government areas, by readiness band';
-    case 'lga':
-      return 'Every facility surveyed in this LGA';
-    case 'facility':
-      return 'One facility';
-  }
+function subtitleFor(level: AssessmentLevel, domains: FacilityThemeId[]): string {
+  const scope =
+    level === 'all'
+      ? domains.length
+        ? 'The 12 states visited, by readiness band'
+        : 'The 12 states visited, by share of facilities not ready'
+      : level === 'state'
+        ? 'Local government areas, by readiness band'
+        : level === 'lga'
+          ? 'Every facility surveyed in this LGA'
+          : 'One facility';
+
+  // Naming the lens here rather than only in the pane: the map is the page, and
+  // a reader looking at a red Kano needs to know whether that is Kano overall
+  // or Kano's workforce.
+  if (!domains.length) return scope;
+  const lens =
+    domains.length === 1
+      ? THEME_BY_ID[domains[0]!].label
+      : `the weakest of ${domains.length} domains`;
+  return `${scope} · ${lens}`;
 }

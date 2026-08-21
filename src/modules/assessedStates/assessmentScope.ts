@@ -19,7 +19,14 @@
  * under it, and a page of zeroes would read as a finding rather than an absence.
  */
 
-import type { AreaProfile, Band, BandDistribution, FacilitySummary } from '@/lib/types';
+import { facilityBandUnder } from '@/lib/archetype';
+import type {
+  AreaProfile,
+  Band,
+  BandDistribution,
+  FacilitySummary,
+  FacilityThemeId,
+} from '@/lib/types';
 
 export type AssessmentLevel = 'all' | 'state' | 'lga' | 'facility';
 
@@ -88,21 +95,36 @@ export function distributionTotal(d: BandDistribution): number {
 /**
  * Share of an area's facilities that are not ready, 0–1.
  *
- * The measure the top-level map paints. It has to be a share rather than a
- * band: all 12 assessed states classify to the same state-level band, so a band
- * choropleth over them is twelve identical polygons carrying one value between
- * them — see the note on `GeoDatum.step`. Null where nothing was surveyed, so
- * the caller can tell "none not ready" from "nothing to say".
+ * What the top-level map paints with no domain ticked. It has to be a share
+ * there rather than a band: all 12 assessed states classify to the same
+ * state-level band, so a band choropleth over them is twelve identical polygons
+ * carrying one value between them — see the note on `GeoDatum.step`. Under a
+ * domain the map switches to bands, because those genuinely differ state to
+ * state. Null where nothing was surveyed, so the caller can tell "none not
+ * ready" from "nothing to say".
  */
 export function notReadyShare(d: BandDistribution): number | null {
   const total = distributionTotal(d);
   return total ? d.not_ready / total : null;
 }
 
-/** Count a facility list into the three bands. */
-export function facilityDistribution(facilities: FacilitySummary[]): BandDistribution {
+/**
+ * Count a facility list into the three bands, under the Domain filter.
+ *
+ * Every count on this page comes through here, and every one of them reads the
+ * band the same way — `facilityBandUnder`. Pass the ticked domains and the
+ * whole page moves onto that reading at once: the pane's split, the polygon
+ * fills, the badge on each list row.
+ */
+export function facilityDistribution(
+  facilities: FacilitySummary[],
+  domains: readonly FacilityThemeId[] = [],
+): BandDistribution {
   const dist: BandDistribution = { not_ready: 0, moderately_ready: 0, ready: 0 };
-  for (const f of facilities) if (f.archetype) dist[f.archetype] += 1;
+  for (const f of facilities) {
+    const band = facilityBandUnder(f, domains);
+    if (band) dist[band] += 1;
+  }
   return dist;
 }
 

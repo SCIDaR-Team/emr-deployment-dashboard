@@ -25,13 +25,10 @@ interface FilterActions {
   setFunctionalityLevels: (levels: FunctionalityLevel[]) => void;
   setArchetypes: (bands: Band[]) => void;
   setBandForTheme: (theme: ThemeId, bands: Band[]) => void;
-  /** Move the Gap question to another domain, carrying the chosen bands with
-   *  it — the reader asked "which facilities have this gap", and changing the
-   *  domain re-asks that question rather than starting over. */
-  setDomain: (domain: FacilityThemeId | 'overall') => void;
-  /** The bands Gap is currently selecting, whichever domain it is pointed at. */
-  gapBands: () => Band[];
-  setGapBands: (bands: Band[]) => void;
+  /** Point every readiness reading at another set of domains. The chosen bands
+   *  stay put: the reader asked "which facilities are not ready", and changing
+   *  the domains re-asks that question rather than starting over. */
+  setDomains: (domains: FacilityThemeId[]) => void;
   setSearch: (search: string) => void;
   /** Apply a partial state wholesale — used once, by useFilterUrlSync. */
   hydrate: (patch: Partial<FilterState>) => void;
@@ -39,6 +36,9 @@ interface FilterActions {
   /** True when anything is narrowing the population — drives the "filters
    *  active" badge, without which a filtered figure reads as a national one. */
   isActive: () => boolean;
+  /** True when anything is off its default, narrowing or not. Reset's
+   *  question; see the implementation for why it is not `isActive`'s. */
+  isDirty: () => boolean;
 }
 
 const initialState: FilterState = {
@@ -50,7 +50,7 @@ const initialState: FilterState = {
   functionalityLevels: [],
   archetypes: [],
   bandByTheme: {},
-  domain: 'overall',
+  domains: [],
   search: '',
 };
 
@@ -68,27 +68,10 @@ export const useFilterStore = create<FilterState & FilterActions>()(
       setArchetypes: (archetypes) => set({ archetypes }),
       setBandForTheme: (theme, bands) =>
         set((s) => ({ bandByTheme: { ...s.bandByTheme, [theme]: bands } })),
-      setDomain: (domain) =>
-        set((s) => {
-          const carried = s.domain === 'overall' ? s.archetypes : (s.bandByTheme[s.domain] ?? []);
-          return {
-            domain,
-            archetypes: domain === 'overall' ? carried : [],
-            bandByTheme: domain === 'overall' ? {} : { [domain]: carried },
-          };
-        }),
-
-      gapBands: () => {
-        const s = get();
-        return s.domain === 'overall' ? s.archetypes : (s.bandByTheme[s.domain] ?? []);
-      },
-
-      setGapBands: (bands) =>
-        set((s) =>
-          s.domain === 'overall'
-            ? { archetypes: bands, bandByTheme: {} }
-            : { archetypes: [], bandByTheme: { [s.domain]: bands } },
-        ),
+      // Nothing to move: `archetypes` holds the band selection whatever the
+      // domains are, because `facilityBandUnder` reads the band *through* them.
+      // Domain and Readiness are one filter with two controls.
+      setDomains: (domains) => set({ domains }),
 
       setSearch: (search) => set({ search }),
 
@@ -98,6 +81,27 @@ export const useFilterStore = create<FilterState & FilterActions>()(
       hydrate: (patch) => set({ ...initialState, ...patch }),
 
       reset: () => set(initialState),
+
+      /**
+       * Reset's question: has the reader moved anything at all?
+       *
+       * Wider than `isActive`, and deliberately a second predicate rather than
+       * a clause added to it. Domain narrows nothing on its own — with no Gap
+       * bands chosen, Workforce Capacity counts the same facilities Overall
+       * does — so folding it into `isActive` would put "Filtered — 2,825 of
+       * 2,825" over a page that is filtering nothing, which is the one thing
+       * the scope note exists to prevent.
+       *
+       * But the reader still moved a control, and Reset is the way back. With
+       * it hidden the only route to `overall` is finding the dropdown again and
+       * remembering which entry was the default — and a URL carrying
+       * `?domain=workforce_capacity` hands someone that state with no way out
+       * of it on screen.
+       */
+      isDirty: () => {
+        const s = get();
+        return s.isActive() || s.domains.length > 0;
+      },
 
       isActive: () => {
         const s = get();
@@ -114,6 +118,16 @@ export const useFilterStore = create<FilterState & FilterActions>()(
         );
       },
     }),
-    { name: 'emr-filters', version: 1 },
+    {
+      name: 'emr-filters',
+      version: 2,
+      // v2 replaced the single `domain` with the `domains` array, and moved the
+      // Gap bands out of `bandByTheme` into `archetypes`. A v1 payload is not
+      // convertible into that — its per-theme bands were written under a rule
+      // that no longer exists — so the migration is to drop it. Spelled out
+      // rather than left to the default, which logs the discard as an error in
+      // the console of every reader who had used a filter before today.
+      migrate: () => initialState,
+    },
   ),
 );

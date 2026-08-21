@@ -6,7 +6,14 @@ import { formatCount } from '@/lib/format';
 import { COVERAGE_THEMES, subDomainsFor } from '@/lib/themes';
 import { BandBadge, BandCards } from '@/components/ui';
 import type { AreaProfile, Band, CoverageMeasures, CoverageThemeId } from '@/lib/types';
-import { bandUnderLens, countByBand, totalOf, type DomainLens, type Scope } from './coverageScope';
+import {
+  bandUnderLens,
+  countByBand,
+  countByDomain,
+  totalOf,
+  type DomainLens,
+  type Scope,
+} from './coverageScope';
 
 /**
  * The pane — everything the reader is told about whatever the map has selected.
@@ -52,7 +59,8 @@ export function CoveragePane({
   if (!area) return null;
 
   const measures = area.coverage.measures;
-  const themes = lens === 'overall' ? COVERAGE_THEMES : COVERAGE_THEMES.filter((t) => t.id === lens);
+  // Nothing ticked shows all of them; ticking narrows to what was ticked.
+  const themes = lens.length ? COVERAGE_THEMES.filter((t) => lens.includes(t.id)) : COVERAGE_THEMES;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -63,13 +71,19 @@ export function CoveragePane({
           gives a reader on a laptop two scroll regions in 370px and neither one
           enough room. */}
       <div className="pane-scroll min-h-0 flex-1 overflow-y-auto">
-        {/* Overall belongs to no domain, so a domain lens removes it. */}
-        {lens === 'overall' && (
-          <Block title="Overall readiness">
+        {/* The combined reading — what the map is painted from.
+            
+            With nothing ticked that is overall readiness, which belongs to no
+            domain. With two ticked it is the weaker of them, which belongs to
+            neither on its own and so has nowhere else to go. With exactly one
+            ticked it would repeat the block immediately below it word for word,
+            so it stands down. */}
+        {lens.length !== 1 && (
+          <Block title={lens.length ? `The weakest of ${lens.length} domains` : 'Overall readiness'}>
             {isNational ? (
-              <CountRows counts={countByBand(states, 'overall')} unit="states" />
+              <CountRows counts={countByBand(states, lens)} unit="states" />
             ) : (
-              <Reading band={area.coverage.band} />
+              <Reading band={bandUnderLens(area, lens)} />
             )}
           </Block>
         )}
@@ -77,7 +91,7 @@ export function CoveragePane({
         {themes.map((theme) => (
           <Block key={theme.id} title={theme.label}>
             {isNational ? (
-              <CountRows counts={countByBand(states, theme.id)} unit="states" />
+              <CountRows counts={countByDomain(states, theme.id)} unit="states" />
             ) : (
               <Reading band={area.coverage.themeBands[theme.id] ?? null} />
             )}

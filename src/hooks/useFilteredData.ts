@@ -13,7 +13,7 @@
 import { useMemo } from 'react';
 import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
-import { archetypeDistribution } from '@/lib/archetype';
+import { archetypeDistribution, facilityBandUnder } from '@/lib/archetype';
 import { dominantBand } from '@/lib/bands';
 import { FACILITY_THEMES } from '@/lib/themes';
 import type {
@@ -37,8 +37,13 @@ export function filterFacilities(
     if (f.functionalityLevels.length && !f.functionalityLevels.includes(fac.functionalityLevel)) {
       return false;
     }
-    if (f.archetypes.length && (!fac.archetype || !f.archetypes.includes(fac.archetype))) {
-      return false;
+    // Readiness is read through the Domain filter — one rule, in
+    // `facilityBandUnder`. With no domain ticked this is the facility's own
+    // archetype, which is what it has always been; with domains ticked it is
+    // the weakest of its readings in them, and so is every figure on the page.
+    if (f.archetypes.length) {
+      const band = facilityBandUnder(fac, f.domains);
+      if (!band || !f.archetypes.includes(band)) return false;
     }
 
     if (f.funding.length) {
@@ -46,6 +51,11 @@ export function filterFacilities(
       if (!f.funding.includes(label)) return false;
     }
 
+    // Per-theme bands are a link-only escape hatch (`band.<theme>` in the
+    // querystring), not something a control on the page writes any more. They
+    // stay an AND across themes: a link that names two of them is asking for
+    // facilities matching both, and there is no reader in front of it to mean
+    // anything looser.
     for (const [themeId, bands] of Object.entries(f.bandByTheme)) {
       if (!bands?.length) continue;
       const band = fac.themeBands[themeId as FacilityThemeId];

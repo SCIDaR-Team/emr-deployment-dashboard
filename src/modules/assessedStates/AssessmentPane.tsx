@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { BAND_LABEL } from '@/lib/bands';
+import { BAND_LABEL, dominantBand } from '@/lib/bands';
+import { facilityBandUnder } from '@/lib/archetype';
 import { cn } from '@/lib/cn';
 import { formatCount } from '@/lib/format';
-import { FACILITY_THEMES } from '@/lib/themes';
+import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
 import { BandBadge, BandCards, EmptyState } from '@/components/ui';
 import type { Band, BandDistribution, FacilitySummary, FacilityThemeId } from '@/lib/types';
 import {
@@ -40,6 +41,8 @@ interface AssessmentPaneProps {
   scope: AssessmentScope;
   /** Facilities inside the current path scope, after the filter row. */
   facilities: FacilitySummary[];
+  /** The domains the Domain filter has ticked. Empty is the overall reading. */
+  domains: FacilityThemeId[];
   /** The rows for the list at the bottom, and what one click does. */
   list: PaneList;
 }
@@ -68,13 +71,28 @@ export interface PaneList {
   onSelect: (id: string) => void;
 }
 
-export function AssessmentPane({ scope, facilities, list }: AssessmentPaneProps) {
-  const distribution = useMemo(() => facilityDistribution(facilities), [facilities]);
+export function AssessmentPane({ scope, facilities, domains, list }: AssessmentPaneProps) {
+  const distribution = useMemo(
+    () => facilityDistribution(facilities, domains),
+    [facilities, domains],
+  );
   const scored = distributionTotal(distribution);
+  const lens = lensLabel(domains);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PaneHeader scope={scope} />
+      <PaneHeader
+        scope={scope}
+        // The badge is the same reading as everything under it: the facilities
+        // actually on screen, banded through the Domain filter. Taking it off
+        // the area profile instead would put a whole-state, all-domain band
+        // beside a filtered, single-domain count.
+        band={
+          scope.level === 'facility'
+            ? facilityBandUnder(scope.facility, domains)
+            : dominantBand(distribution)
+        }
+      />
 
       {/* The header stays put; everything under it scrolls as one column — the
           same arrangement as the coverage pane, and for the same reason: two
@@ -84,7 +102,7 @@ export function AssessmentPane({ scope, facilities, list }: AssessmentPaneProps)
           <FacilityBlocks facility={scope.facility} />
         ) : (
           <>
-            <Block title="Assessed facilities">
+            <Block title="Assessed facilities" note={lens && `Banded by ${lens}`}>
               <BandCounts distribution={distribution} total={facilities.length} />
             </Block>
 
@@ -92,7 +110,11 @@ export function AssessmentPane({ scope, facilities, list }: AssessmentPaneProps)
               title="The four facility domains"
               note="Counted, not averaged — the split is what an intervention is planned against"
             >
-              {scored ? <DomainCards facilities={facilities} /> : <Nothing>Nothing to split.</Nothing>}
+              {scored ? (
+                <DomainCards facilities={facilities} domains={domains} />
+              ) : (
+                <Nothing>Nothing to split.</Nothing>
+              )}
             </Block>
           </>
         )}
@@ -104,22 +126,20 @@ export function AssessmentPane({ scope, facilities, list }: AssessmentPaneProps)
 }
 
 /** Scope identity: what you are looking at, and at what level. */
-function PaneHeader({ scope }: { scope: AssessmentScope }) {
-  const { name, level, band } =
+function PaneHeader({ scope, band }: { scope: AssessmentScope; band: Band | null }) {
+  const { name, level } =
     scope.level === 'all'
-      ? { name: 'All assessed states', level: '12 states surveyed', band: null }
+      ? { name: 'All assessed states', level: '12 states surveyed' }
       : scope.level === 'state'
         ? {
             name: scope.state.name,
             level: `State · ${formatCount(scope.state.lgaCount ?? 0)} LGAs`,
-            band: scope.state.band,
           }
         : scope.level === 'lga'
-          ? { name: scope.lga.name, level: `LGA · ${scope.state.name}`, band: scope.lga.band }
+          ? { name: scope.lga.name, level: `LGA · ${scope.state.name}` }
           : {
               name: scope.facility.name,
               level: `Facility · ${scope.facility.lga}, ${scope.facility.state}`,
-              band: scope.facility.archetype,
             };
 
   return (
@@ -220,12 +240,29 @@ function BandCounts({ distribution, total }: { distribution: BandDistribution; t
  * NOT READY column answers "where is the foundational gap", which is the
  * question this page exists for; reading across a row is one domain's split.
  */
-function DomainCards({ facilities }: { facilities: FacilitySummary[] }) {
+function DomainCards({
+  facilities,
+  domains,
+}: {
+  facilities: FacilitySummary[];
+  domains: FacilityThemeId[];
+}) {
   return (
     <div className="space-y-3">
       {FACILITY_THEMES.map((theme) => (
         <div key={theme.id}>
-          <h4 className="mono mb-1.5 text-[9px] font-medium uppercase leading-none tracking-[0.07em] text-muted-foreground">
+          {/* All four stay, whatever the filter is pointed at — this block is
+              what answers "which domain is the gap", and hiding three of them
+              answers it by assertion. The ticked ones are set in full ink so
+              the reader can see which rows the headline above was built from. */}
+          <h4
+            className={cn(
+              'mono mb-1.5 text-[9px] uppercase leading-none tracking-[0.07em]',
+              domains.includes(theme.id as FacilityThemeId)
+                ? 'font-bold text-foreground'
+                : 'font-medium text-muted-foreground',
+            )}
+          >
             {theme.label}
           </h4>
           <BandCards
@@ -332,6 +369,13 @@ function Block({
       <div className="mt-2.5">{children}</div>
     </section>
   );
+}
+
+/** "Workforce Capacity", "the weakest of 2 domains", or nothing at all. */
+function lensLabel(domains: FacilityThemeId[]): string | undefined {
+  if (!domains.length) return undefined;
+  if (domains.length === 1) return THEME_BY_ID[domains[0]!].label;
+  return `the weakest of ${domains.length} domains`;
 }
 
 function Nothing({ children }: { children: React.ReactNode }) {

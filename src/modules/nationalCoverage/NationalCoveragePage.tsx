@@ -5,13 +5,14 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { MapLegend, NigeriaChoropleth, StateLGAMap } from '@/components/map';
 import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
+import { useFilterStore } from '@/store/filterStore';
 import { formatCount } from '@/lib/format';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
 import { CoverageFilters } from './CoverageFilters';
 import { CoveragePane } from './CoveragePane';
-import { bandUnderLens, parseLens, resolveScope, type DomainLens } from './coverageScope';
+import { bandUnderLens, coverageLens, resolveScope, type DomainLens } from './coverageScope';
 
 /**
  * National Coverage — the map *is* the page.
@@ -37,15 +38,28 @@ import { bandUnderLens, parseLens, resolveScope, type DomainLens } from './cover
  * The filter row and the map both write the URL, and the URL is the only place
  * scope lives. That is what stops the two disagreeing, and it makes every view
  * a link — `/states/kano/dala?domain=workforce_capacity` is a whole sentence.
+ *
+ * The lens is the exception: it lives in the filter store, which mirrors itself
+ * into `?domain=` for exactly the same link. It has to, because Assessed States
+ * has a Domain control writing that same parameter through the store — and with
+ * two owners the mirror won every time, so picking a lens here wrote the
+ * querystring and the store overwrote it a tick later. Reading the lens back
+ * out of the store is what makes the two pages one selection; the sentence in
+ * the URL is unchanged.
  */
 
 export default function NationalCoveragePage() {
   const { stateId, lgaId } = useParams();
-  const [search, setSearch] = useSearchParams();
+  const [search] = useSearchParams();
   const navigate = useNavigate();
   const { states, lgas, national } = useDataContext();
 
-  const lens = parseLens(search.get('domain'));
+  // The Domain control is shared with Assessed States, which offers four
+  // domains against the facility survey; this page has readings for two. The
+  // rest drop out in `coverageLens` — see the note there.
+  const domains = useFilterStore((s) => s.domains);
+  const setDomains = useFilterStore((s) => s.setDomains);
+  const lens = useMemo(() => coverageLens(domains), [domains]);
   const scope = useMemo(
     () => resolveScope(states.data, lgas.data, stateId, lgaId),
     [states.data, lgas.data, stateId, lgaId],
@@ -61,15 +75,7 @@ export default function NationalCoveragePage() {
     [navigate, search],
   );
 
-  const setLens = useCallback(
-    (next: DomainLens) => {
-      const params = new URLSearchParams(search);
-      if (next === 'overall') params.delete('domain');
-      else params.set('domain', next);
-      setSearch(params, { replace: true });
-    },
-    [search, setSearch],
-  );
+  const setLens = useCallback((next: DomainLens) => setDomains(next), [setDomains]);
 
   const stateLgas = useMemo(
     () => (scope.state ? lgas.data.filter((l) => l.parentId === scope.state!.id) : []),
@@ -164,7 +170,12 @@ export default function NationalCoveragePage() {
             go(id ? `/states/${scope.state!.id}/${id}` : `/states/${scope.state!.id}`)
           }
           onLensChange={setLens}
-          onReset={() => navigate('/states')}
+          onReset={() => {
+            // Scope is in the path and the lens is in the store, so clearing
+            // the path is only half of it.
+            setDomains([]);
+            navigate('/states');
+          }}
         />
       </PageHeader>
 
@@ -229,8 +240,11 @@ export default function NationalCoveragePage() {
   );
 }
 
+/** What the fills mean right now — the lens named, or the absence of one. */
 function lensLabel(lens: DomainLens): string {
-  return lens === 'overall' ? 'Overall readiness' : THEME_BY_ID[lens].label;
+  if (!lens.length) return 'Overall readiness';
+  if (lens.length === 1) return THEME_BY_ID[lens[0]!].label;
+  return `The weakest of ${lens.length} domains`;
 }
 
 function subtitleFor(level: 'national' | 'state' | 'lga', lens: DomainLens): string {
@@ -240,5 +254,5 @@ function subtitleFor(level: 'national' | 'state' | 'lga', lens: DomainLens): str
       : level === 'state'
         ? 'Local government areas, by readiness band'
         : 'One local government area';
-  return lens === 'overall' ? scope : `${scope} · ${lensLabel(lens)}`;
+  return lens.length ? `${scope} · ${lensLabel(lens)}` : scope;
 }
