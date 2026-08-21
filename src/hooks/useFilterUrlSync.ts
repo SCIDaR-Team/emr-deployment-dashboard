@@ -16,8 +16,15 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFilterStore } from '@/store/filterStore';
-import { THEMES } from '@/lib/themes';
-import type { Band, FilterState, FunctionalityLevel, ThemeId } from '@/lib/types';
+import { THEMES, FACILITY_THEMES } from '@/lib/themes';
+import { GAP_BY_ID } from '@/lib/gapCatalogue';
+import type {
+  Band,
+  FacilityThemeId,
+  FilterState,
+  FunctionalityLevel,
+  ThemeId,
+} from '@/lib/types';
 
 /**
  * Short URL keys. Singular and lower-case — the querystring is read aloud in
@@ -31,6 +38,8 @@ const KEYS = {
   funding: 'funding',
   functionalityLevels: 'level',
   archetypes: 'archetype',
+  domains: 'domain',
+  gaps: 'gap',
   search: 'q',
 } as const;
 
@@ -41,6 +50,7 @@ const ARRAY_KEYS = Object.keys(KEYS).filter((k) => k !== 'search') as ArrayKey[]
 /** Per-theme band filters ride as `band.<themeId>`. */
 const BAND_PREFIX = 'band.';
 const THEME_IDS = THEMES.map((t) => t.id);
+const FACILITY_THEME_IDS = FACILITY_THEMES.map((t) => t.id) as FacilityThemeId[];
 
 function serialise(f: FilterState): URLSearchParams {
   const p = new URLSearchParams();
@@ -80,6 +90,9 @@ function parse(params: URLSearchParams): Partial<FilterState> {
     patch.functionalityLevels = list(KEYS.functionalityLevels) as FunctionalityLevel[];
   }
   if (params.has(KEYS.archetypes)) patch.archetypes = list(KEYS.archetypes) as Band[];
+  // Filtered against the catalogue: a stale gap id in an old link would
+  // otherwise sit in the store selecting nothing, with no control showing it.
+  if (params.has(KEYS.gaps)) patch.gaps = list(KEYS.gaps).filter((id) => id in GAP_BY_ID);
   if (params.has(KEYS.search)) patch.search = params.get(KEYS.search) ?? '';
 
   const bandByTheme: Partial<Record<ThemeId, Band[]>> = {};
@@ -88,6 +101,15 @@ function parse(params: URLSearchParams): Partial<FilterState> {
     if (params.has(key)) bandByTheme[themeId] = list(key) as Band[];
   }
   if (Object.keys(bandByTheme).length) patch.bandByTheme = bandByTheme;
+
+  // Filtered rather than cast, because this one is also read raw by National
+  // Coverage as its map lens — anything that is not a facility domain has to
+  // fall out here rather than reach the Gap control as a theme id.
+  if (params.has(KEYS.domains)) {
+    patch.domains = list(KEYS.domains).filter((v): v is FacilityThemeId =>
+      FACILITY_THEME_IDS.includes(v as FacilityThemeId),
+    );
+  }
 
   return patch;
 }
@@ -129,6 +151,8 @@ export function useFilterUrlSync(): void {
   const functionalityLevels = useFilterStore((s) => s.functionalityLevels);
   const archetypes = useFilterStore((s) => s.archetypes);
   const bandByTheme = useFilterStore((s) => s.bandByTheme);
+  const domains = useFilterStore((s) => s.domains);
+  const gaps = useFilterStore((s) => s.gaps);
   const search = useFilterStore((s) => s.search);
 
   const serialised = serialise({
@@ -138,6 +162,8 @@ export function useFilterUrlSync(): void {
     geography,
     funding,
     functionalityLevels,
+    domains,
+    gaps,
     archetypes,
     bandByTheme,
     search,

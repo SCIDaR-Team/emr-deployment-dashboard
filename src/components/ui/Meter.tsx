@@ -19,6 +19,8 @@
  */
 
 import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
+import { formatCount, percentOf } from '@/lib/format';
+import { BandIcon } from './BandBadge';
 import { cn } from '@/lib/cn';
 import type { Band } from '@/lib/types';
 
@@ -181,6 +183,81 @@ export function BandLegend({
 }
 
 // ---------------------------------------------------------------------------
+// Band cards
+// ---------------------------------------------------------------------------
+
+/**
+ * The three bands as three cards, side by side.
+ *
+ * The one way a band breakdown is stated across the app. Three peers set in a
+ * row rather than a list of three rows, because they *are* peers: a stacked
+ * list reads as a ranking, and "6 states ready" is not a step above "18 not
+ * ready", it is one third of the same sentence.
+ *
+ * Icon, figure, label — in that order and all three present. `BAND_CLASSES` has
+ * the rule: the scale is red/amber/green, the worst possible combination for
+ * deuteranopia and protanopia and indistinguishable in greyscale, so colour
+ * never travels alone. Here it travels with both of the other two carriers.
+ *
+ * `unit` is for counts of things the reader needs named — "6 states". Omit it
+ * where the surrounding block has already said what is being counted, and pass
+ * `showPercent` where the share matters as much as the count.
+ */
+export function BandCards({
+  counts,
+  unit,
+  showPercent = false,
+  className,
+}: {
+  counts: Record<Band, number>;
+  unit?: string;
+  showPercent?: boolean;
+  className?: string;
+}) {
+  const order: Band[] = ['ready', 'moderately_ready', 'not_ready'];
+  const total = order.reduce((sum, band) => sum + (counts[band] ?? 0), 0);
+
+  return (
+    <div className={cn('grid grid-cols-3 gap-px border border-border bg-border', className)}>
+      {order.map((band) => (
+        <div key={band} className="bg-surface px-2 py-2">
+          {/* Figure, then its qualifiers on the same baseline. The unit is the
+              number's own noun so it stays against it ("6 states"); the share
+              is a second reading of the same count, so it goes to the card's
+              right edge instead — beside the figure it read as more digits,
+              and out there the three shares stack into a column of their own.
+              The band label has the line under it to itself. */}
+          <div className="flex flex-wrap items-baseline gap-x-1.5">
+            <BandIcon
+              band={band}
+              className={cn('h-3.5 w-3.5 shrink-0 translate-y-[2px]', BAND_CLASSES[band].text)}
+            />
+            <span className="mono text-[18px] font-semibold leading-none tracking-tight text-foreground">
+              {formatCount(counts[band] ?? 0)}
+            </span>
+            {unit && <span className="text-[11px] leading-none text-muted-foreground">{unit}</span>}
+            {showPercent && (
+              <span className="mono ml-auto text-[11px] font-semibold leading-none text-muted-foreground">
+                {total ? percentOf(counts[band] ?? 0, total, 1) : '—'}
+              </span>
+            )}
+          </div>
+
+          <p
+            className={cn(
+              'mono mt-2 text-[9px] font-bold uppercase leading-tight tracking-[0.07em]',
+              BAND_CLASSES[band].text,
+            )}
+          >
+            {BAND_LABEL[band]}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Stat tiles
 // ---------------------------------------------------------------------------
 
@@ -254,10 +331,24 @@ const RAMP_CLASS = ['bg-score-1', 'bg-score-2', 'bg-score-3', 'bg-score-4', 'bg-
 /**
  * The key for a sequential choropleth.
  *
- * Mandatory wherever `GeoDatum.step` is used: a ramp with no scale is a
- * picture of nothing. Bounds are printed rather than described because the
- * domains are fitted to the data on screen, so "dark = worse" is not enough —
- * the reader needs to know worse *than what*.
+ * Mandatory wherever `GeoDatum.step` is used: a ramp with no scale is a picture
+ * of nothing. Bounds are printed rather than described because the domains are
+ * fitted to the data on screen, so "dark = worse" is not enough — the reader
+ * needs to know worse *than what*.
+ *
+ * ## Two numbers, not six
+ *
+ * Only the ends are labelled. A label under every step needs about 48px to set
+ * "₦215.2m" and gets about 34px, so the five run into each other and the legend
+ * becomes less readable than no legend at all — which is what happened the
+ * first time this carried money instead of percentages.
+ *
+ * Losing the interior bounds costs nothing a reader was using. The ramp is
+ * linear and the buckets are equal, so the middle values are exactly where the
+ * eye already assumes they are; what cannot be guessed from the picture is
+ * where it starts and where it stops. Those two survive at any width, in any
+ * currency, however long the formatted string turns out to be — and the exact
+ * bucket is still on the swatch's own tooltip for anyone who wants it.
  */
 export function ScaleLegend({
   lo,
@@ -281,20 +372,31 @@ export function ScaleLegend({
       <p className="mono mb-1.5 text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
         {caption}
       </p>
-      <div className="flex items-start gap-0.5">
-        {RAMP_CLASS.map((bg, i) => {
-          const from = lo + ((hi - lo) * i) / 5;
-          const to = lo + ((hi - lo) * (i + 1)) / 5;
-          return (
-            <div key={bg} className="min-w-0 flex-1" title={`${format(from)} – ${format(to)}`}>
-              <div className={cn('h-[9px] rounded-[1px]', bg)} />
-              <div className="mono mt-1 text-[9px] text-muted-foreground">{format(from)}</div>
-            </div>
-          );
-        })}
-        <div className="shrink-0 pl-2.5">
+      <div className="flex items-start gap-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex gap-0.5">
+            {RAMP_CLASS.map((bg, i) => (
+              <div
+                key={bg}
+                className={cn('h-[9px] min-w-0 flex-1 rounded-[1px]', bg)}
+                title={`${format(lo + ((hi - lo) * i) / 5)} – ${format(
+                  lo + ((hi - lo) * (i + 1)) / 5,
+                )}`}
+              />
+            ))}
+          </div>
+          {/* The ends only, pushed apart. `tabular-nums` so the right-hand
+              figure does not shuffle sideways as the scope changes under it. */}
+          <div className="mono mt-1 flex justify-between gap-2 text-[9px] tabular-nums text-muted-foreground">
+            <span>{format(lo)}</span>
+            <span>{format(hi)}</span>
+          </div>
+        </div>
+        <div className="shrink-0">
           <div className="hatch-secondary h-[9px] w-7 rounded-[1px] bg-surface-sunk" />
-          <div className="mono mt-1 text-[9px] text-muted-foreground">{noDataLabel}</div>
+          <div className="mono mt-1 text-[9px] leading-tight text-muted-foreground">
+            {noDataLabel}
+          </div>
         </div>
       </div>
       {note && <p className="mono mt-2 text-[10.5px] leading-relaxed text-muted-foreground">{note}</p>}

@@ -8,7 +8,7 @@
  * where it does), and how a set of bands rolls up into one.
  */
 
-import type { Band, FacilityThemeId } from './types';
+import type { Band, FacilitySummary, FacilityThemeId } from './types';
 import { BAND_RANK } from './bands';
 
 /**
@@ -61,4 +61,44 @@ export function stateDeploymentLevel(
   if (worst === 1) return best === 3 ? 'moderately_ready' : 'not_ready';
   if (worst === 3) return 'ready';
   return 'moderately_ready';
+}
+
+/**
+ * The weakest band in a set — how several domain readings roll up into one.
+ *
+ * A straight minimum, unlike `stateDeploymentLevel`'s floor, and for the
+ * assessment's own reason: strong performance in one domain cannot compensate
+ * for a gap in another. A facility that cannot keep the lights on is not ready,
+ * however well its staff are trained. The floor above exists because a *state*
+ * strong on one side of a two-sided reading has something real to build on;
+ * four readings of the same facility are not two sides of anything.
+ *
+ * Nulls are skipped rather than dominating — an unscored domain is unknown, not
+ * a gap. Null comes back only when nothing in the set was scored at all.
+ */
+export function worstBand(bands: (Band | null)[]): Band | null {
+  let worst: Band | null = null;
+  for (const band of bands) {
+    if (band && (!worst || BAND_RANK[band] < BAND_RANK[worst])) worst = band;
+  }
+  return worst;
+}
+
+/**
+ * A facility's readiness under the Domain filter. **The rule.**
+ *
+ * Everything the Domain control touches goes through here: the pane's counts,
+ * the map's fills, the Gap filter, the badge on a list row. That is the point —
+ * a count, a polygon's colour and a filtered list cannot disagree about what
+ * "not ready" meant, because there is one function that decides it.
+ *
+ * Nothing ticked is not a fifth domain: it is the facility's own overall band,
+ * which is what every figure on these pages meant before the control existed.
+ */
+export function facilityBandUnder(
+  facility: FacilitySummary,
+  domains: readonly FacilityThemeId[],
+): Band | null {
+  if (!domains.length) return facility.archetype;
+  return worstBand(domains.map((d) => facility.themeBands[d] ?? null));
 }

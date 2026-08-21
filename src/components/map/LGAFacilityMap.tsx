@@ -15,7 +15,7 @@ import {
   SVG_H,
   type GeoCollection,
 } from '@/lib/mapProjection';
-import { BOUNDARY_STROKE, bandMarkerPath, useHatchPatternId } from './mapTypes';
+import { BOUNDARY_STROKE, UNIT_FOCUS_CLASS, bandMarkerPath, useHatchPatternId } from './mapTypes';
 import { TileLayer, MapAttribution, MapClip } from './TileLayer';
 import { MapZoomControls } from './MapZoomControls';
 import { useRenderSize } from '@/hooks/useRenderSize';
@@ -221,7 +221,7 @@ export function LGAFacilityMap({
             <path
               key={p.uuid}
               d={bandMarkerPath(p.band, p.x, p.y, r)}
-              className={fillClass}
+              className={cn(fillClass, UNIT_FOCUS_CLASS)}
               strokeLinejoin="round"
               stroke={isSelected ? 'hsl(var(--brand-500))' : 'hsl(var(--surface))'}
               strokeWidth={isSelected ? dotRadius / 1.8 : dotRadius / 4}

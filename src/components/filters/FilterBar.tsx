@@ -1,11 +1,22 @@
 import { useMemo } from 'react';
 import { RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { BAND_LABEL } from '@/lib/bands';
+import { BAND_CSS_COLOR, BAND_LABEL } from '@/lib/bands';
+import {
+  GAPS,
+  GAP_DOMAINS,
+  GAP_BY_ID,
+  GAP_DOMAIN_LABEL,
+  SEVERITY_BAND,
+  gapsForDomains,
+} from '@/lib/gapCatalogue';
+import { facilityBandUnder } from '@/lib/archetype';
+import { THEME_BY_ID } from '@/lib/themes';
 import { buildFilterOptions } from '@/hooks/useFilteredData';
 import { useFilterStore } from '@/store/filterStore';
-import { MultiSelectDropdown } from '@/components/ui';
-import type { Band, FacilitySummary, FunctionalityLevel } from '@/lib/types';
+import { MultiSelectDropdown, type DropdownGroup } from '@/components/ui';
+import type { Band, FacilitySummary, FacilityThemeId, FunctionalityLevel } from '@/lib/types';
+
 
 /** Which controls a page shows. Every page uses a subset. */
 export type FilterKey =
@@ -16,6 +27,8 @@ export type FilterKey =
   | 'funding'
   | 'level'
   | 'archetype'
+  | 'domain'
+  | 'gap'
   | 'search';
 
 const DEFAULT_KEYS: FilterKey[] = ['state', 'lga', 'archetype', 'level', 'search'];
@@ -31,6 +44,26 @@ export interface FilterBarProps {
    * facilities) passes it here rather than starting a second row.
    */
   children?: React.ReactNode;
+  /**
+   * The same, but ahead of the shared controls.
+   *
+   * For controls that set *scope* rather than narrow it. On Assessed States the
+   * State and LGA pickers navigate — they write the path, exactly as clicking
+   * the map does — and a control that decides what the row is filtering has to
+   * come before the row, not after it.
+   */
+  leading?: React.ReactNode;
+  /**
+   * The rest of Reset's job, for a page whose scope lives outside the filter
+   * store.
+   *
+   * Assessed States keeps State and LGA in the path, because there they are
+   * navigation — so `filters.reset()` alone leaves the row reading "Kano" and
+   * the reader looking at a page that just told them it was reset. `active`
+   * says that scope is off its default, which is enough on its own to show the
+   * button; `clear` runs alongside the store reset.
+   */
+  scopeReset?: { active: boolean; clear: () => void };
   className?: string;
 }
 
@@ -45,15 +78,24 @@ const GEOGRAPHY_LABELS: Record<string, string> = { rural: 'Rural', urban: 'Urban
  *
  * Every control is labelled above the trigger and carries its option counts, so
  * a user can see that "Rivers + Functional L2" is 14 facilities before applying
- * it rather than after wondering where the chart went. The reset button appears
- * only when something is active, and states the count it will restore.
+ * it rather than after wondering where the chart went. Reset appears as soon as
+ * any control is off its default and returns every one of them at once —
+ * including the ones this page does not show, and, via `scopeReset`, the ones
+ * that are not in the filter store at all.
  *
  * Each control keeps its designed width from `sm` up. Below that it grows to
  * share the row instead: at 375px a fixed 12rem trigger sits in a column with
  * 150px of dead space beside it and every filter takes a whole row, which is
  * five rows before the reader reaches the page.
  */
-export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className }: FilterBarProps) {
+export function FilterBar({
+  facilities,
+  show = DEFAULT_KEYS,
+  children,
+  leading,
+  scopeReset,
+  className,
+}: FilterBarProps) {
   const filters = useFilterStore();
   const visible = new Set(show);
 
@@ -62,14 +104,67 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
     [facilities, filters.states],
   );
 
-  const active = filters.isActive();
+  // Reset asks whether anything moved, not whether the population narrowed —
+  // Domain does the first without the second, and so does a page whose scope
+  // is in the path.
+  const active = filters.isDirty() || Boolean(scopeReset?.active);
+
+  // Gap and Readiness are the same selection — `archetypes` — read through
+  // whichever domains are ticked. The heading says which, because "Foundational
+  // gap" means something different under Workforce Capacity than it does over
+  // the facility as a whole.
+  const bandGroupLabel =
+    filters.domains.length === 0
+      ? 'Overall readiness'
+      : filters.domains.length === 1
+        ? `Gap in ${THEME_BY_ID[filters.domains[0]!].label}`
+        : `Gap in the weakest of ${filters.domains.length} domains`;
+
+  /** Counted the way the page filters: one rule, in `facilityBandUnder`. */
+  const bandCount = (band: Band) =>
+    facilities.filter((f) => facilityBandUnder(f, filters.domains) === band).length;
+
+  /**
+   * The Gap control's options — the leaves of whatever branch Domain selected.
+   *
+   * Grouped by sub-domain rather than listed flat, because the catalogue has
+   * four levels and a flat list of 23 throws away two of them: "No national
+   * grid connection" and "No functioning backup power" belong together under
+   * Power infrastructure, and a reader looking for a power problem should find
+   * them in one place. With no domain ticked the list is every facility-level
+   * gap; leadership's only appear when its domain is asked for, because they
+   * are a state's and select no facility.
+   */
+  const gapGroups = useMemo<DropdownGroup[]>(() => {
+    const offered = gapsForDomains(filters.domains);
+    const bySub = new Map<string, typeof offered>();
+    for (const gap of offered) {
+      const key = `${GAP_DOMAIN_LABEL[gap.domain]} · ${gap.subDomain}`;
+      bySub.set(key, [...(bySub.get(key) ?? []), gap]);
+    }
+    return [...bySub.entries()].map(([label, gaps]) => ({
+      label,
+      items: gaps.map((gap) => ({
+        key: gap.id,
+        label: gap.label,
+        // How many facilities carry it — the count that says whether ticking it
+        // is worth doing. Leadership gaps carry none: they are not a facility's.
+        count: facilities.filter((f) => f.gaps?.includes(gap.id)).length,
+        // Colour by what the gap does to its domain, not by how common it is:
+        // red for a gap that puts the domain in Not ready on its own.
+        color: BAND_CSS_COLOR[SEVERITY_BAND[gap.severity]],
+      })),
+    }));
+  }, [filters.domains, facilities]);
 
   return (
     <div className={cn('flex w-full flex-wrap items-end gap-3', className)}>
+      {leading}
+
       {visible.has('state') && (
         <MultiSelectDropdown
-          label="State"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
+            label="State"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[{ label: 'States assessed', items: options.states }]}
           selected={filters.states}
           onChange={filters.setStates}
@@ -80,8 +175,8 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
 
       {visible.has('lga') && (
         <MultiSelectDropdown
-          label="LGA"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
+            label="LGA"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[{ label: 'LGAs', items: options.lgas }]}
           selected={filters.lgas}
           onChange={filters.setLGAs}
@@ -96,8 +191,8 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
 
       {visible.has('zone') && (
         <MultiSelectDropdown
-          label="Zone"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-44"
+            label="Zone"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[{ label: 'Geopolitical zones', items: options.zones }]}
           selected={filters.zones}
           onChange={filters.setZones}
@@ -107,7 +202,7 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
 
       {visible.has('geography') && (
         <MultiSelectDropdown
-          label="Setting"
+            label="Setting"
           className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-36"
           groups={[
             {
@@ -124,9 +219,23 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
         />
       )}
 
+
+
+
+      {visible.has('level') && (
+        <MultiSelectDropdown
+            label="Functionality"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          groups={[{ label: 'Functionality level', items: options.functionalityLevels }]}
+          selected={filters.functionalityLevels}
+          onChange={(next) => filters.setFunctionalityLevels(next as FunctionalityLevel[])}
+          placeholder="All levels"
+        />
+      )}
+
       {visible.has('funding') && (
         <MultiSelectDropdown
-          label="Funding"
+            label="Funding"
           className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-40"
           groups={[{ label: 'Funding', items: options.funding }]}
           selected={filters.funding}
@@ -135,28 +244,60 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
         />
       )}
 
-      {visible.has('level') && (
+      {visible.has('domain') && (
         <MultiSelectDropdown
-          label="Functionality"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
-          groups={[{ label: 'Functionality level', items: options.functionalityLevels }]}
-          selected={filters.functionalityLevels}
-          onChange={(next) => filters.setFunctionalityLevels(next as FunctionalityLevel[])}
-          placeholder="All levels"
+          label="Domain"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[156px]"
+          groups={[
+            {
+              label: 'Assessment domains',
+              // Counts are gap counts, not facility counts. A domain selects no
+              // facility — every one of them is scored in all of these — so the
+              // useful number beside a domain is how many distinct things can
+              // be wrong inside it.
+              items: GAP_DOMAINS.map((d) => ({
+                key: d.id,
+                label: d.costed ? d.label : `${d.label} · no cost`,
+                count: GAPS.filter((g) => g.domain === d.id).length,
+              })),
+            },
+          ]}
+          selected={filters.domains}
+          onChange={(next) => filters.setDomains(next as FacilityThemeId[])}
+          placeholder="All domains"
+          panelWidth="w-72"
+        />
+      )}
+
+      {visible.has('gap') && (
+        <MultiSelectDropdown
+          label="Gap"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[180px]"
+          groups={gapGroups}
+          selected={filters.gaps}
+          onChange={filters.setGaps}
+          placeholder={
+            filters.domains.length ? `Any gap in ${filters.domains.length} domain(s)` : 'Any gap'
+          }
+          panelWidth="w-[22rem]"
+          searchable
         />
       )}
 
       {visible.has('archetype') && (
         <MultiSelectDropdown
-          label="Readiness"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
+            label="Readiness"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[
             {
-              label: 'Facility archetype',
+              // Named for the domains in force, the same as Gap — this control
+              // and that one are two ways into `archetypes`, and both are read
+              // through `facilityBandUnder`.
+              label: filters.domains.length ? bandGroupLabel : 'Facility archetype',
               items: (['ready', 'moderately_ready', 'not_ready'] as Band[]).map((band) => ({
                 key: band,
                 label: BAND_LABEL[band],
-                count: facilities.filter((f) => f.archetype === band).length,
+                count: bandCount(band),
               })),
             },
           ]}
@@ -167,10 +308,10 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
       )}
 
       {visible.has('search') && (
-        <div className="min-w-[13rem] flex-1">
+        <div className="min-w-[7.5rem] flex-1">
           <label
             htmlFor="facility-search"
-            className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+            className="mono mb-1 block text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground"
           >
             Search
           </label>
@@ -197,7 +338,10 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
       {active && (
         <button
           type="button"
-          onClick={filters.reset}
+          onClick={() => {
+            filters.reset();
+            scopeReset?.clear();
+          }}
           className="flex h-10 items-center gap-1.5 rounded-lg border border-input px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-brand-500/50 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <RotateCcw size={14} aria-hidden />
@@ -219,6 +363,20 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
  * click. These chips name each such filter and let it be cleared individually,
  * rather than leaving Reset as the only escape.
  */
+/**
+ * Is this filter already answerable on the page?
+ *
+ * Not the same question as "is its own control shown", because Gap and
+ * Readiness are two controls over one field: a page showing Gap is showing the
+ * reader everything they need to change `archetypes`, and a chip reading
+ * "Readiness: Not ready" beside it is the row reporting a filter that is
+ * visibly on screen.
+ */
+function covered(key: FilterKey, show: Set<FilterKey>): boolean {
+  if (key === 'archetype') return show.has('archetype') || show.has('gap');
+  return show.has(key);
+}
+
 function HiddenFilterChips({ show }: { show: Set<FilterKey> }) {
   const filters = useFilterStore();
 
@@ -252,7 +410,22 @@ function HiddenFilterChips({ show }: { show: Set<FilterKey> }) {
       values: filters.archetypes.map((b) => BAND_LABEL[b]),
       clear: () => filters.setArchetypes([]),
     },
-  ] satisfies Chip[]).filter((f) => !show.has(f.key) && f.values.length > 0);
+    {
+      key: 'gap',
+      label: 'Gap',
+      values: filters.gaps.map((id) => GAP_BY_ID[id]?.label ?? id),
+      clear: () => filters.setGaps([]),
+    },
+    {
+      // Not narrowing anything by itself, but changing what every band on the
+      // page means — a Readiness filter reading through Workforce Capacity on a
+      // page with no Domain control is the sort of thing this row exists for.
+      key: 'domain',
+      label: 'Domain',
+      values: filters.domains.map((d) => THEME_BY_ID[d].label),
+      clear: () => filters.setDomains([]),
+    },
+  ] satisfies Chip[]).filter((f) => !covered(f.key, show) && f.values.length > 0);
 
   if (!hidden.length) return null;
 

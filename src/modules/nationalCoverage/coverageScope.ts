@@ -1,33 +1,46 @@
 /**
  * Scope and lens for National Coverage.
  *
- * Both live in the URL and nowhere else — the path carries where you are
- * (`/states/kano/dala`) and one query parameter carries what you are looking at
- * (`?domain=workforce_capacity`). Nothing is held in a store.
+ * Scope lives in the URL and nowhere else — the path carries where you are
+ * (`/states/kano/dala`). That is a deliberate constraint rather than a
+ * shortcut. This page has two controls that set the same scope — the filter row
+ * and the map itself — and a store would let them disagree. With the URL as the
+ * single source, clicking Kano on the map and picking Kano from the dropdown
+ * are the same act, and every view a reader reaches is a link they can send to
+ * someone else.
  *
- * That is a deliberate constraint rather than a shortcut. This page has two
- * controls that set the same scope — the filter row and the map itself — and a
- * store would let them disagree. With the URL as the single source, clicking
- * Kano on the map and picking Kano from the dropdown are the same act, and
- * every view a reader reaches is a link they can send to someone else.
+ * The lens is the one thing held in the filter store, which mirrors it into
+ * `?domain=workforce_capacity` — so it is still in the link, and it is still
+ * one value with one owner. See the note in `NationalCoveragePage` for why it
+ * cannot be written here directly.
  */
 
 import { BANDS } from '@/lib/bands';
+import { worstBand } from '@/lib/archetype';
 import type { AreaProfile, Band, CoverageThemeId } from '@/lib/types';
 
 /**
- * The domain lens.
+ * The domain lens: the domains ticked, in the order the page understands them.
  *
- * `overall` is not a domain — it is the absence of one, and it is what the page
- * opens on. Under it the map paints each area's overall band and the pane shows
- * every block; under a domain, both narrow to that domain.
+ * Empty is not a domain of its own — it is the absence of one, and it is what
+ * the page opens on. Under it the map paints each area's overall band and the
+ * pane shows every block; under one or more domains, both narrow to those.
  */
-export type DomainLens = 'overall' | CoverageThemeId;
+export type DomainLens = CoverageThemeId[];
 
-const LENSES: DomainLens[] = ['overall', 'technical_infrastructure', 'workforce_capacity'];
+const COVERAGE_IDS: CoverageThemeId[] = ['technical_infrastructure', 'workforce_capacity'];
 
-export function parseLens(raw: string | null): DomainLens {
-  return LENSES.includes(raw as DomainLens) ? (raw as DomainLens) : 'overall';
+/**
+ * The filter store's domains, narrowed to the ones this page has a reading for.
+ *
+ * The Domain control is shared with Assessed States, which offers four domains
+ * against the facility survey. This page reads `AreaProfile.coverage`, and a
+ * state profile carries bands for two — Workflow & Transition is a question the
+ * facility instrument asks and the coverage model does not. Anything it cannot
+ * paint drops out here rather than arriving at a map as an unknown key.
+ */
+export function coverageLens(domains: readonly string[]): DomainLens {
+  return COVERAGE_IDS.filter((id) => domains.includes(id));
 }
 
 export type Scope =
@@ -69,9 +82,15 @@ export function scopedArea(scope: Scope): AreaProfile | null {
  * The one place the lens is applied to a band. Everything that paints — map
  * fills, list rows, the pane's own badge — goes through here, so the colour on
  * a polygon and the colour on its row in the list cannot disagree.
+ *
+ * Two domains roll up to the weaker of them, the same rule the facility page
+ * uses: a state that cannot power a clinic is not ready to deploy into it,
+ * however well staffed it is. That is what lets one polygon keep one fill while
+ * the control behind it takes more than one answer.
  */
 export function bandUnderLens(area: AreaProfile, lens: DomainLens): Band | null {
-  return lens === 'overall' ? area.coverage.band : (area.coverage.themeBands[lens] ?? null);
+  if (!lens.length) return area.coverage.band;
+  return worstBand(lens.map((id) => area.coverage.themeBands[id] ?? null));
 }
 
 /** Count areas by the band they show under the lens. */
@@ -84,13 +103,13 @@ export function countByBand(areas: AreaProfile[], lens: DomainLens): Record<Band
   return counts;
 }
 
-/** Counts by a specific domain, regardless of the active lens — the national
- *  pane shows a block per domain when no lens is set. */
+/** Counts by a specific domain, regardless of the active lens — the pane shows
+ *  a block per domain, and each one reads only itself. */
 export function countByDomain(
   areas: AreaProfile[],
   themeId: CoverageThemeId,
 ): Record<Band, number> {
-  return countByBand(areas, themeId);
+  return countByBand(areas, [themeId]);
 }
 
 export function totalOf(counts: Record<Band, number>): number {

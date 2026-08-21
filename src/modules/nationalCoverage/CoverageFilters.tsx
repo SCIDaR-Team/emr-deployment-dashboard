@@ -1,6 +1,6 @@
 import { RotateCcw } from 'lucide-react';
 import { Field } from '@/components/layout/PageHeader';
-import { Combobox } from '@/components/ui';
+import { Combobox, MultiSelectDropdown } from '@/components/ui';
 import { COVERAGE_THEMES } from '@/lib/themes';
 import type { AreaProfile } from '@/lib/types';
 import type { DomainLens } from './coverageScope';
@@ -14,9 +14,11 @@ import type { DomainLens } from './coverageScope';
  * state they want should not have to find it on a map, and one who does not
  * should not have to type.
  *
- * Domain is the lens. It is deliberately not a multi-select: two domains at
- * once would need two colours on one polygon, and the page's whole grammar is
- * that a fill is a band.
+ * Domain is the lens, and it takes more than one: two domains roll up to the
+ * weaker of them (`bandUnderLens`), so a polygon still carries one fill and the
+ * page's grammar — a fill is a band — survives intact. It is the same control,
+ * over the same store, as the Domain filter on Assessed States; that page has
+ * four domains to offer and this one has two.
  */
 
 interface CoverageFiltersProps {
@@ -50,7 +52,7 @@ export function CoverageFilters({
   // last filter rather than pushed to the far edge — a control that undoes the
   // three controls beside it belongs with them, not across the page from them —
   // and appears only when there is something to undo.
-  const active = Boolean(stateId || lgaId || lens !== 'overall');
+  const active = Boolean(stateId || lgaId || lens.length);
   const stateOptions = [
     { value: ALL, label: 'All 37 states' },
     ...[...states]
@@ -91,17 +93,20 @@ export function CoverageFilters({
         />
       </Field>
 
-      <Field label="Domain">
-        <Combobox
-          value={lens}
-          onChange={(value) => onLensChange(value as DomainLens)}
-          options={[
-            { value: 'overall', label: 'Overall readiness' },
-            ...COVERAGE_THEMES.map((t) => ({ value: t.id, label: t.label })),
-          ]}
-          className="w-[210px]"
-        />
-      </Field>
+      <MultiSelectDropdown
+        label="Domain"
+        className="w-[210px]"
+        groups={[
+          {
+            label: 'Coverage domains',
+            // No counts: a domain selects no state, it re-reads all 37.
+            items: COVERAGE_THEMES.map((t) => ({ key: t.id, label: t.label })),
+          },
+        ]}
+        selected={lens}
+        onChange={(next) => onLensChange(next as DomainLens)}
+        placeholder="All domains"
+      />
 
       {active && (
         <button

@@ -59,6 +59,12 @@ export default function App() {
                 path="/assessment/:stateId/:lgaId"
                 element={page(<AssessedStatesPage />)}
               />
+              {/* One level deeper than National Coverage: this page rests on a
+                  facility survey, so the facility is a place you can be. */}
+              <Route
+                path="/assessment/:stateId/:lgaId/:facilityId"
+                element={page(<AssessedStatesPage />)}
+              />
               <Route path="/investment" element={page(<InvestmentPlanPage />)} />
               {/* The sibling dashboard's routes, so a shared link from it lands
                   somewhere rather than nowhere. */}
