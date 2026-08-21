@@ -1,0 +1,339 @@
+import { useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
+import { BAND_LABEL } from '@/lib/bands';
+import { cn } from '@/lib/cn';
+import { formatCount } from '@/lib/format';
+import { FACILITY_THEMES } from '@/lib/themes';
+import { BandBadge, BandCards, EmptyState } from '@/components/ui';
+import type { Band, BandDistribution, FacilitySummary, FacilityThemeId } from '@/lib/types';
+import {
+  distributionTotal,
+  facilityDistribution,
+  facilityDomainDistribution,
+  type AssessmentScope,
+} from './assessmentScope';
+
+/**
+ * The pane — everything the reader is told about whatever the map has selected.
+ *
+ * One component across all four levels, because until the last one the question
+ * does not change: how many facilities are in scope, and how do they split. A
+ * state, an LGA and the whole survey are the same reading over a different
+ * population, so they get the same blocks over a different `facilities` array —
+ * which also means the numbers cannot drift apart, since there is one code path
+ * producing them.
+ *
+ * The facility level is the exception and reads differently on purpose. A
+ * single facility has no distribution to show — it *is* one row in everyone
+ * else's — so its blocks are its own four domain bands and the things that
+ * identify it.
+ *
+ * Everything counts the facilities actually on screen: the path scope and the
+ * filter row together. Reading a band off `AreaProfile` instead would print a
+ * whole-state figure beside a filtered count.
+ *
+ * NOTE: the blocks below are a working first cut. The editorial direction for
+ * this page is still open and the client will set the content.
+ */
+
+interface AssessmentPaneProps {
+  scope: AssessmentScope;
+  /** Facilities inside the current path scope, after the filter row. */
+  facilities: FacilitySummary[];
+  /** The rows for the list at the bottom, and what one click does. */
+  list: PaneList;
+}
+
+/**
+ * One row of the list at the bottom of the pane.
+ *
+ * Flat, and built by the page rather than derived here from an `AreaProfile`.
+ * Every figure on this page counts the facilities the filter row left standing,
+ * and a profile carries the unfiltered ones — a list reading "281 facilities"
+ * beside a header reading "120 in scope" is the page contradicting itself. The
+ * band is computed the same way, so a row's badge and its polygon's fill cannot
+ * disagree either.
+ */
+export interface PaneRow {
+  id: string;
+  name: string;
+  band: Band | null;
+  note: string;
+}
+
+export interface PaneList {
+  /** Plural noun for the heading and the search placeholder. */
+  label: string;
+  rows: PaneRow[];
+  onSelect: (id: string) => void;
+}
+
+export function AssessmentPane({ scope, facilities, list }: AssessmentPaneProps) {
+  const distribution = useMemo(() => facilityDistribution(facilities), [facilities]);
+  const scored = distributionTotal(distribution);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <PaneHeader scope={scope} />
+
+      {/* The header stays put; everything under it scrolls as one column — the
+          same arrangement as the coverage pane, and for the same reason: two
+          scroll regions inside 420px leaves neither one enough room. */}
+      <div className="pane-scroll min-h-0 flex-1 overflow-y-auto">
+        {scope.level === 'facility' ? (
+          <FacilityBlocks facility={scope.facility} />
+        ) : (
+          <>
+            <Block title="Assessed facilities">
+              <BandCounts distribution={distribution} total={facilities.length} />
+            </Block>
+
+            <Block
+              title="The four facility domains"
+              note="Counted, not averaged — the split is what an intervention is planned against"
+            >
+              {scored ? <DomainCards facilities={facilities} /> : <Nothing>Nothing to split.</Nothing>}
+            </Block>
+          </>
+        )}
+
+        <PaneListBlock list={list} />
+      </div>
+    </div>
+  );
+}
+
+/** Scope identity: what you are looking at, and at what level. */
+function PaneHeader({ scope }: { scope: AssessmentScope }) {
+  const { name, level, band } =
+    scope.level === 'all'
+      ? { name: 'All assessed states', level: '12 states surveyed', band: null }
+      : scope.level === 'state'
+        ? {
+            name: scope.state.name,
+            level: `State · ${formatCount(scope.state.lgaCount ?? 0)} LGAs`,
+            band: scope.state.band,
+          }
+        : scope.level === 'lga'
+          ? { name: scope.lga.name, level: `LGA · ${scope.state.name}`, band: scope.lga.band }
+          : {
+              name: scope.facility.name,
+              level: `Facility · ${scope.facility.lga}, ${scope.facility.state}`,
+              band: scope.facility.archetype,
+            };
+
+  return (
+    <div className="shrink-0 border-b border-border px-4 py-3">
+      <p className="mono text-[10px] uppercase tracking-[0.09em] text-muted-foreground">{level}</p>
+      <div className="mt-1 flex items-start justify-between gap-3">
+        <h2 className="text-lg font-semibold leading-tight text-foreground">{name}</h2>
+        {band && <BandBadge band={band} size="sm" />}
+      </div>
+    </div>
+  );
+}
+
+/** The single-facility reading. No distribution — it is one row, not a set. */
+function FacilityBlocks({ facility }: { facility: FacilitySummary }) {
+  return (
+    <>
+      <Block title="Readiness by domain">
+        <div className="space-y-2">
+          {FACILITY_THEMES.map((theme) => (
+            <div key={theme.id} className="flex items-center justify-between gap-3">
+              <span className="text-[13px] text-foreground">{theme.label}</span>
+              <BandBadge band={facility.themeBands[theme.id as FacilityThemeId] ?? null} size="sm" />
+            </div>
+          ))}
+        </div>
+      </Block>
+
+      <Block title="This facility">
+        <dl className="space-y-1.5 text-[13px]">
+          <Detail term="Functionality" value={facility.functionalityLevel} />
+          <Detail term="Setting" value={facility.geography === 'urban' ? 'Urban' : 'Rural'} />
+          <Detail term="BHCPF" value={facility.isBHCPF ? 'Enrolled' : 'Not enrolled'} />
+          <Detail term="Zone" value={facility.zone} />
+          <Detail
+            term="Coordinates"
+            value={`${facility.lat.toFixed(4)}, ${facility.lon.toFixed(4)}`}
+            mono
+          />
+        </dl>
+      </Block>
+    </>
+  );
+}
+
+function Detail({ term, value, mono }: { term: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-muted-foreground">{term}</dt>
+      <dd className={cn('text-right text-foreground', mono && 'mono text-xs')}>{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * The headline: how many facilities were assessed, and how they split.
+ *
+ * Figures rather than a stacked bar, which is where the coverage pane landed
+ * for the same reason — the bar encoded exactly the three numbers printed under
+ * it, and in a 420px column the height it cost was better spent on the numbers.
+ * Count and share are both set bold because both are asked for: the count is
+ * what a budget is built from, the share is what makes two states comparable.
+ */
+function BandCounts({ distribution, total }: { distribution: BandDistribution; total: number }) {
+  const scored = distributionTotal(distribution);
+
+  return (
+    <div>
+      <p className="mono text-[30px] font-semibold leading-none tracking-tight text-foreground">
+        {formatCount(total)}
+      </p>
+      <p className="mono mt-1 text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
+        {total === 1 ? 'facility in scope' : 'facilities in scope'}
+      </p>
+
+      {scored === 0 ? (
+        <p className="mt-3 text-[13px] italic text-muted-foreground">
+          None of them carries a readiness band.
+        </p>
+      ) : (
+        <BandCards counts={distribution} showPercent className="mt-3.5" />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The four domains, a card row each.
+ *
+ * The same cards as the block above it, four more times. The overall block
+ * splits the whole population three ways; this splits each domain the same
+ * three ways, so the two blocks are one reading at two grains rather than two
+ * unrelated charts — the reader learns the card once and it holds all the way
+ * down the pane.
+ *
+ * Every facility is scored in all four domains, so the four rows share a
+ * denominator and the columns line up beneath each other. Reading down the
+ * NOT READY column answers "where is the foundational gap", which is the
+ * question this page exists for; reading across a row is one domain's split.
+ */
+function DomainCards({ facilities }: { facilities: FacilitySummary[] }) {
+  return (
+    <div className="space-y-3">
+      {FACILITY_THEMES.map((theme) => (
+        <div key={theme.id}>
+          <h4 className="mono mb-1.5 text-[9px] font-medium uppercase leading-none tracking-[0.07em] text-muted-foreground">
+            {theme.label}
+          </h4>
+          <BandCards
+            counts={facilityDomainDistribution(facilities, theme.id as FacilityThemeId)}
+            showPercent
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The list at the bottom — one level down from wherever the reader is.
+ *
+ * It is the other way into the map: a reader who knows the name of the place
+ * they want should not have to find it on a polygon, and at the facility level
+ * there is no polygon to find. Searchable from about a dozen rows up, which is
+ * where scanning stops being faster than typing.
+ */
+function PaneListBlock({ list }: { list: PaneList }) {
+  const [query, setQuery] = useState('');
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? list.rows.filter((r) => r.name.toLowerCase().includes(q)) : list.rows;
+  }, [list.rows, query]);
+
+  const { label } = list;
+  const total = list.rows.length;
+
+  return (
+    <div className="border-t border-border">
+      <div className="flex items-center justify-between gap-3 px-4 pt-3">
+        <h3 className="mono text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
+          {label}
+        </h3>
+        <span className="mono text-[10px] text-muted-foreground">{formatCount(total)}</span>
+      </div>
+
+      {total > 12 && (
+        <div className="relative px-4 pt-2">
+          <Search
+            className="pointer-events-none absolute left-6 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${label.toLowerCase()}…`}
+            aria-label={`Search ${label.toLowerCase()}`}
+            className="w-full rounded border border-input bg-surface py-1.5 pl-7 pr-2 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          />
+        </div>
+      )}
+
+      {rows.length === 0 ? (
+        <EmptyState title="Nothing here" message="No row matches the current filters." />
+      ) : (
+        <ul className="mt-1 pb-2">
+          {rows.map((row) => (
+            <li key={row.id}>
+              <button
+                type="button"
+                onClick={() => list.onSelect(row.id)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-sunk focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-medium text-foreground">
+                    {row.name}
+                  </span>
+                  <span className="mono block text-[10px] text-muted-foreground">{row.note}</span>
+                </span>
+                <span
+                  className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground"
+                  aria-label={row.band ? BAND_LABEL[row.band] : 'No band'}
+                >
+                  <BandBadge band={row.band} size="sm" />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Block({
+  title,
+  note,
+  children,
+}: {
+  title: string;
+  note?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-b border-border px-4 py-3">
+      <h3 className="mono text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
+        {title}
+      </h3>
+      {note && <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{note}</p>}
+      <div className="mt-2.5">{children}</div>
+    </section>
+  );
+}
+
+function Nothing({ children }: { children: React.ReactNode }) {
+  return <p className="text-[13px] italic text-muted-foreground">{children}</p>;
+}

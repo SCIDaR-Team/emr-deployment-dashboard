@@ -277,6 +277,17 @@ export interface FilterState {
   functionalityLevels: FunctionalityLevel[];
   archetypes: Band[];
   bandByTheme: Partial<Record<ThemeId, Band[]>>;
+  /**
+   * Which domain the Gap filter is asking about.
+   *
+   * `overall` is not a domain — it is the absence of one, and under it Gap
+   * reads the facility's overall band (`archetypes`). Under a domain, Gap reads
+   * that domain's band instead (`bandByTheme`). One domain at a time, because
+   * two would be two questions: "facilities weak in infrastructure" and
+   * "facilities weak in workforce" are different lists, and their intersection
+   * is a third thing nobody asked for.
+   */
+  domain: FacilityThemeId | 'overall';
   search: string;
 }
 

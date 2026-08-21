@@ -4,7 +4,7 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { formatCount } from '@/lib/format';
 import { COVERAGE_THEMES, subDomainsFor } from '@/lib/themes';
-import { BandBadge } from '@/components/ui';
+import { BandBadge, BandCards } from '@/components/ui';
 import type { AreaProfile, Band, CoverageMeasures, CoverageThemeId } from '@/lib/types';
 import { bandUnderLens, countByBand, totalOf, type DomainLens, type Scope } from './coverageScope';
 
@@ -153,41 +153,10 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
  */
 function CountRows({ counts, unit }: { counts: Record<Band, number>; unit: string }) {
   const total = totalOf(counts);
-  const order: Band[] = ['ready', 'moderately_ready', 'not_ready'];
 
   return (
     <div>
-      {/* No stacked bar above these rows any more. It encoded the same three
-          numbers the rows underneath state exactly, and in a 370px pane the
-          vertical space it cost was better spent on the figures themselves. */}
-      <ul className="space-y-2.5">
-        {order.map((band) => (
-          <li key={band} className="flex items-center gap-2.5">
-            <span
-              aria-hidden
-              className={cn(
-                'block h-3 w-4 shrink-0 rounded-[1px]',
-                BAND_CLASSES[band].bg,
-                BAND_CLASSES[band].texture,
-              )}
-            />
-            <span className="flex shrink-0 items-baseline gap-1">
-              <span className="mono text-[19px] font-semibold leading-none tracking-tight text-foreground">
-                {counts[band]}
-              </span>
-              <span className="text-[12px] text-muted-foreground">{unit}</span>
-            </span>
-            <span
-              className={cn(
-                'mono ml-auto text-right text-[10.5px] font-bold uppercase tracking-[0.09em]',
-                BAND_CLASSES[band].text,
-              )}
-            >
-              {BAND_LABEL[band]}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <BandCards counts={counts} unit={unit} />
       <p className="mono mt-2.5 text-[10px] text-muted-foreground">
         {formatCount(total)} {unit} classified
       </p>

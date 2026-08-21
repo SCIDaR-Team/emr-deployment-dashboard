@@ -17,6 +17,7 @@ import {
   scoreStepFill,
   textureUnit,
   BOUNDARY_STROKE,
+  UNIT_FOCUS_CLASS,
   fillOpacityFor,
   type GeoDatum,
 } from './mapTypes';
@@ -211,7 +212,7 @@ export function NigeriaChoropleth({
                 data-unit-id={shape.stateId}
                 fill={bandFill}
                 fillOpacity={fillOpacity}
-                className={cn(fillClass, 'transition-opacity duration-150')}
+                className={cn(fillClass, UNIT_FOCUS_CLASS, 'transition-opacity duration-150')}
                 stroke={outlined ? 'hsl(var(--brand-500))' : BOUNDARY_STROKE}
                 // Divided by the zoom: stroke width is in viewBox units, so
                 // without this every boundary thickens as the reader zooms in,

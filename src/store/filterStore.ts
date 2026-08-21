@@ -8,7 +8,13 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Band, FilterState, FunctionalityLevel, ThemeId } from '@/lib/types';
+import type {
+  Band,
+  FacilityThemeId,
+  FilterState,
+  FunctionalityLevel,
+  ThemeId,
+} from '@/lib/types';
 
 interface FilterActions {
   setStates: (states: string[]) => void;
@@ -19,6 +25,13 @@ interface FilterActions {
   setFunctionalityLevels: (levels: FunctionalityLevel[]) => void;
   setArchetypes: (bands: Band[]) => void;
   setBandForTheme: (theme: ThemeId, bands: Band[]) => void;
+  /** Move the Gap question to another domain, carrying the chosen bands with
+   *  it — the reader asked "which facilities have this gap", and changing the
+   *  domain re-asks that question rather than starting over. */
+  setDomain: (domain: FacilityThemeId | 'overall') => void;
+  /** The bands Gap is currently selecting, whichever domain it is pointed at. */
+  gapBands: () => Band[];
+  setGapBands: (bands: Band[]) => void;
   setSearch: (search: string) => void;
   /** Apply a partial state wholesale — used once, by useFilterUrlSync. */
   hydrate: (patch: Partial<FilterState>) => void;
@@ -37,6 +50,7 @@ const initialState: FilterState = {
   functionalityLevels: [],
   archetypes: [],
   bandByTheme: {},
+  domain: 'overall',
   search: '',
 };
 
@@ -54,6 +68,28 @@ export const useFilterStore = create<FilterState & FilterActions>()(
       setArchetypes: (archetypes) => set({ archetypes }),
       setBandForTheme: (theme, bands) =>
         set((s) => ({ bandByTheme: { ...s.bandByTheme, [theme]: bands } })),
+      setDomain: (domain) =>
+        set((s) => {
+          const carried = s.domain === 'overall' ? s.archetypes : (s.bandByTheme[s.domain] ?? []);
+          return {
+            domain,
+            archetypes: domain === 'overall' ? carried : [],
+            bandByTheme: domain === 'overall' ? {} : { [domain]: carried },
+          };
+        }),
+
+      gapBands: () => {
+        const s = get();
+        return s.domain === 'overall' ? s.archetypes : (s.bandByTheme[s.domain] ?? []);
+      },
+
+      setGapBands: (bands) =>
+        set((s) =>
+          s.domain === 'overall'
+            ? { archetypes: bands, bandByTheme: {} }
+            : { archetypes: [], bandByTheme: { [s.domain]: bands } },
+        ),
+
       setSearch: (search) => set({ search }),
 
       // A shared link must land the recipient on the sender's view, so the URL

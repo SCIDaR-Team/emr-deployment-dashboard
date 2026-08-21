@@ -2,10 +2,23 @@ import { useMemo } from 'react';
 import { RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { BAND_LABEL } from '@/lib/bands';
+import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
 import { buildFilterOptions } from '@/hooks/useFilteredData';
 import { useFilterStore } from '@/store/filterStore';
 import { MultiSelectDropdown } from '@/components/ui';
-import type { Band, FacilitySummary, FunctionalityLevel } from '@/lib/types';
+import type { Band, FacilitySummary, FacilityThemeId, FunctionalityLevel } from '@/lib/types';
+
+/**
+ * How a band reads when the question is what to fix rather than what is there.
+ *
+ * Same three bands, named as deficiencies, because that is what the Gap control
+ * is asking: a plan is built out of what is missing.
+ */
+const GAP_LABEL: Record<Band, string> = {
+  not_ready: 'Foundational gap',
+  moderately_ready: 'Targeted gap',
+  ready: 'No gap',
+};
 
 /** Which controls a page shows. Every page uses a subset. */
 export type FilterKey =
@@ -16,6 +29,8 @@ export type FilterKey =
   | 'funding'
   | 'level'
   | 'archetype'
+  | 'domain'
+  | 'gap'
   | 'search';
 
 const DEFAULT_KEYS: FilterKey[] = ['state', 'lga', 'archetype', 'level', 'search'];
@@ -31,6 +46,15 @@ export interface FilterBarProps {
    * facilities) passes it here rather than starting a second row.
    */
   children?: React.ReactNode;
+  /**
+   * The same, but ahead of the shared controls.
+   *
+   * For controls that set *scope* rather than narrow it. On Assessed States the
+   * State and LGA pickers navigate — they write the path, exactly as clicking
+   * the map does — and a control that decides what the row is filtering has to
+   * come before the row, not after it.
+   */
+  leading?: React.ReactNode;
   className?: string;
 }
 
@@ -53,7 +77,13 @@ const GEOGRAPHY_LABELS: Record<string, string> = { rural: 'Rural', urban: 'Urban
  * 150px of dead space beside it and every filter takes a whole row, which is
  * five rows before the reader reaches the page.
  */
-export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className }: FilterBarProps) {
+export function FilterBar({
+  facilities,
+  show = DEFAULT_KEYS,
+  children,
+  leading,
+  className,
+}: FilterBarProps) {
   const filters = useFilterStore();
   const visible = new Set(show);
 
@@ -64,12 +94,25 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
 
   const active = filters.isActive();
 
+  // Gap reads whichever domain the Domain control is pointed at — the overall
+  // band under `overall`, that domain's band otherwise.
+  const gapSelected =
+    filters.domain === 'overall'
+      ? filters.archetypes
+      : (filters.bandByTheme[filters.domain] ?? []);
+  const gapGroupLabel =
+    filters.domain === 'overall'
+      ? 'Overall readiness'
+      : `Gap in ${THEME_BY_ID[filters.domain].label}`;
+
   return (
     <div className={cn('flex w-full flex-wrap items-end gap-3', className)}>
+      {leading}
+
       {visible.has('state') && (
         <MultiSelectDropdown
-          label="State"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
+            label="State"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[{ label: 'States assessed', items: options.states }]}
           selected={filters.states}
           onChange={filters.setStates}
@@ -80,8 +123,8 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
 
       {visible.has('lga') && (
         <MultiSelectDropdown
-          label="LGA"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
+            label="LGA"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[{ label: 'LGAs', items: options.lgas }]}
           selected={filters.lgas}
           onChange={filters.setLGAs}
@@ -96,8 +139,8 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
 
       {visible.has('zone') && (
         <MultiSelectDropdown
-          label="Zone"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-44"
+            label="Zone"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[{ label: 'Geopolitical zones', items: options.zones }]}
           selected={filters.zones}
           onChange={filters.setZones}
@@ -107,7 +150,7 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
 
       {visible.has('geography') && (
         <MultiSelectDropdown
-          label="Setting"
+            label="Setting"
           className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-36"
           groups={[
             {
@@ -124,9 +167,23 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
         />
       )}
 
+
+
+
+      {visible.has('level') && (
+        <MultiSelectDropdown
+            label="Functionality"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          groups={[{ label: 'Functionality level', items: options.functionalityLevels }]}
+          selected={filters.functionalityLevels}
+          onChange={(next) => filters.setFunctionalityLevels(next as FunctionalityLevel[])}
+          placeholder="All levels"
+        />
+      )}
+
       {visible.has('funding') && (
         <MultiSelectDropdown
-          label="Funding"
+            label="Funding"
           className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-40"
           groups={[{ label: 'Funding', items: options.funding }]}
           selected={filters.funding}
@@ -135,21 +192,63 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
         />
       )}
 
-      {visible.has('level') && (
+      {visible.has('domain') && (
+        <div className="min-w-[8rem] flex-1 sm:flex-none sm:w-[156px]">
+          <label
+            className="mono mb-1 block text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground"
+            htmlFor="domain-filter"
+          >
+            Domain
+          </label>
+          <select
+            id="domain-filter"
+            value={filters.domain}
+            onChange={(e) => filters.setDomain(e.target.value as FacilityThemeId | 'overall')}
+            className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-foreground focus:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <option value="overall">Overall readiness</option>
+            {FACILITY_THEMES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {visible.has('gap') && (
         <MultiSelectDropdown
-          label="Functionality"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
-          groups={[{ label: 'Functionality level', items: options.functionalityLevels }]}
-          selected={filters.functionalityLevels}
-          onChange={(next) => filters.setFunctionalityLevels(next as FunctionalityLevel[])}
-          placeholder="All levels"
+          label="Gap"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          groups={[
+            {
+              // The band read as a deficiency, which is what a deployment plan
+              // is built from: Not ready is a foundational gap, Moderately
+              // ready a targeted one, Ready none. Counted under whichever
+              // domain the control beside this one is pointed at, so the
+              // numbers move when the domain does.
+              label: gapGroupLabel,
+              items: (['not_ready', 'moderately_ready', 'ready'] as Band[]).map((band) => ({
+                key: band,
+                label: GAP_LABEL[band],
+                count: facilities.filter((f) =>
+                  filters.domain === 'overall'
+                    ? f.archetype === band
+                    : f.themeBands[filters.domain as FacilityThemeId] === band,
+                ).length,
+              })),
+            },
+          ]}
+          selected={gapSelected}
+          onChange={(next) => filters.setGapBands(next as Band[])}
+          placeholder="Any gap"
         />
       )}
 
       {visible.has('archetype') && (
         <MultiSelectDropdown
-          label="Readiness"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-48"
+            label="Readiness"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
           groups={[
             {
               label: 'Facility archetype',
@@ -167,10 +266,10 @@ export function FilterBar({ facilities, show = DEFAULT_KEYS, children, className
       )}
 
       {visible.has('search') && (
-        <div className="min-w-[13rem] flex-1">
+        <div className="min-w-[7.5rem] flex-1">
           <label
             htmlFor="facility-search"
-            className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+            className="mono mb-1 block text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground"
           >
             Search
           </label>

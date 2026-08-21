@@ -16,8 +16,14 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFilterStore } from '@/store/filterStore';
-import { THEMES } from '@/lib/themes';
-import type { Band, FilterState, FunctionalityLevel, ThemeId } from '@/lib/types';
+import { THEMES, FACILITY_THEMES } from '@/lib/themes';
+import type {
+  Band,
+  FacilityThemeId,
+  FilterState,
+  FunctionalityLevel,
+  ThemeId,
+} from '@/lib/types';
 
 /**
  * Short URL keys. Singular and lower-case — the querystring is read aloud in
@@ -38,9 +44,21 @@ type ArrayKey = Exclude<keyof typeof KEYS, 'search'>;
 
 const ARRAY_KEYS = Object.keys(KEYS).filter((k) => k !== 'search') as ArrayKey[];
 
+/**
+ * Keys this hook owns that are not in `KEYS`, because `KEYS` is also the list of
+ * comma-joined *array* filters and these are single-valued.
+ *
+ * They still have to be listed somewhere: the write below clears the params it
+ * owns before rewriting, and anything missing from that list is treated as
+ * another feature's parameter and preserved — which left a `domain` in the URL
+ * after Reset had already cleared it from the store.
+ */
+const SCALAR_KEYS = ['domain'];
+
 /** Per-theme band filters ride as `band.<themeId>`. */
 const BAND_PREFIX = 'band.';
 const THEME_IDS = THEMES.map((t) => t.id);
+const FACILITY_THEME_IDS = FACILITY_THEMES.map((t) => t.id) as FacilityThemeId[];
 
 function serialise(f: FilterState): URLSearchParams {
   const p = new URLSearchParams();
@@ -49,6 +67,9 @@ function serialise(f: FilterState): URLSearchParams {
     if (values.length) p.set(KEYS[key], values.join(','));
   }
   if (f.search.trim()) p.set(KEYS.search, f.search.trim());
+  // `overall` is the absence of a domain, so it stays out of the URL — a link
+  // should carry what was chosen, not what was left alone.
+  if (f.domain !== 'overall') p.set(SCALAR_KEYS[0]!, f.domain);
   for (const [themeId, bands] of Object.entries(f.bandByTheme)) {
     if (bands?.length) p.set(`${BAND_PREFIX}${themeId}`, bands.join(','));
   }
@@ -88,6 +109,11 @@ function parse(params: URLSearchParams): Partial<FilterState> {
     if (params.has(key)) bandByTheme[themeId] = list(key) as Band[];
   }
   if (Object.keys(bandByTheme).length) patch.bandByTheme = bandByTheme;
+
+  const domain = params.get('domain');
+  if (domain && FACILITY_THEME_IDS.includes(domain as FacilityThemeId)) {
+    patch.domain = domain as FacilityThemeId;
+  }
 
   return patch;
 }
@@ -129,6 +155,7 @@ export function useFilterUrlSync(): void {
   const functionalityLevels = useFilterStore((s) => s.functionalityLevels);
   const archetypes = useFilterStore((s) => s.archetypes);
   const bandByTheme = useFilterStore((s) => s.bandByTheme);
+  const domain = useFilterStore((s) => s.domain);
   const search = useFilterStore((s) => s.search);
 
   const serialised = serialise({
@@ -138,6 +165,7 @@ export function useFilterUrlSync(): void {
     geography,
     funding,
     functionalityLevels,
+    domain,
     archetypes,
     bandByTheme,
     search,
@@ -149,7 +177,11 @@ export function useFilterUrlSync(): void {
     // and thematic selection in the same querystring.
     const next = new URLSearchParams(window.location.search);
     for (const key of [...next.keys()]) {
-      if (Object.values(KEYS).includes(key as never) || key.startsWith(BAND_PREFIX)) {
+      if (
+        Object.values(KEYS).includes(key as never) ||
+        SCALAR_KEYS.includes(key) ||
+        key.startsWith(BAND_PREFIX)
+      ) {
         next.delete(key);
       }
     }

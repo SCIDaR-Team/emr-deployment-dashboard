@@ -13,6 +13,23 @@ import type { BaseMapId } from '@/store/basemapStore';
 export const BOUNDARY_STROKE = 'hsl(var(--map-boundary) / 0.9)';
 
 /**
+ * Every clickable shape on every layer carries this.
+ *
+ * A focusable SVG element gets the browser's default focus ring, and an SVG
+ * outline is drawn around the element's **bounding box** — so selecting an LGA
+ * dropped a rounded rectangle over it and across its neighbours, which reads as
+ * a rendering fault rather than as a selection.
+ *
+ * Suppressed rather than restyled, because the affordance is already there in a
+ * better form: each layer sets `focused` from the shape's own `onFocus`, and
+ * draws a brand-coloured stroke along the actual boundary for it. A keyboard
+ * user tabbing across the map sees the same indicator a clicking one does, in
+ * the shape of the thing they are on. Do not remove this without putting a
+ * shape-following focus style in its place.
+ */
+export const UNIT_FOCUS_CLASS = 'outline-none';
+
+/**
  * How opaque a readiness fill is over the current base map.
  *
  * Over tiles the fill has to let the imagery through or the base map is

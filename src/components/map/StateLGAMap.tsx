@@ -15,6 +15,7 @@ import {
 } from '@/lib/mapProjection';
 import {
   BOUNDARY_STROKE,
+  UNIT_FOCUS_CLASS,
   fillOpacityFor,
   useHatchPatternId,
   useBandPatternId,
@@ -249,7 +250,11 @@ export function StateLGAMap({
                 data-unit-id={shape.lgaId}
                 fill={bandFill}
                 fillOpacity={fillOpacity}
-                className={cn(bandFill ? undefined : 'fill-nodata', 'transition-opacity duration-150')}
+                className={cn(
+                  bandFill ? undefined : 'fill-nodata',
+                  UNIT_FOCUS_CLASS,
+                  'transition-opacity duration-150',
+                )}
                 stroke={outlined ? 'hsl(var(--brand-500))' : BOUNDARY_STROKE}
                 strokeWidth={outlined ? outlineWidth : hairline}
                 strokeLinejoin="round"

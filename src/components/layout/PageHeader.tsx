@@ -123,7 +123,16 @@ export function PageHeader({
   );
 }
 
-/** The label + control pairing used inside the filter row. */
+/**
+ * The label + control pairing used inside the filter row.
+ *
+ * The label sits *above* its control, which is also where `FilterBar` puts its
+ * own. That agreement is the point: National Coverage builds its row out of
+ * these and Assessed States builds most of its row out of FilterBar, and when
+ * the two idioms disagreed the second page's header came out 20px taller than
+ * the first — two pages a reader flips between in the rail, whose maps then
+ * started at different heights.
+ */
 export function Field({
   label,
   children,
@@ -134,7 +143,7 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex flex-col gap-1', className)}>
       <span className="mono shrink-0 text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
         {label}
       </span>

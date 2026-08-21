@@ -100,7 +100,7 @@ export function MultiSelectDropdown({
   return (
     <div className={cn('relative', className)} ref={ref}>
       <label
-        className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        className="mono mb-1 block text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground"
         id={`${label}-label`}
       >
         {label}
