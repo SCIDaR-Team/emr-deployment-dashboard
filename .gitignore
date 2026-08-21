@@ -27,3 +27,4 @@ coverage
 
 # Per-machine Claude Code settings.
 .claude/settings.local.json
+Costing model_ERA_Archive.xlsx
