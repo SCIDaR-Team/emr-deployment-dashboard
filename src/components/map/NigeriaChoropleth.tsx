@@ -42,7 +42,10 @@ import { LoadError, Skeleton } from '@/components/ui';
  *  of being flattened into the blocky look a coarser simplification gives. */
 const NATIONAL_EPS = 0.01;
 
-const STATE_LABEL_SIZE = 9.5;
+/** One size for every state name. Larger than it was, because the labels no
+ *  longer shrink to fit — a state that cannot hold its name at this size goes
+ *  unlabelled and is named on hover instead. */
+const STATE_LABEL_SIZE = 12;
 
 interface NigeriaChoroplethProps {
   /** See the note on MapFit. */
@@ -263,15 +266,8 @@ export function NigeriaChoropleth({
             x={shape.label.x}
             y={shape.label.y}
             text={shape.name}
-            // The band under the name, where the state is big enough to hold
-            // it. Every state carries its band in its fill regardless; this is
-            // the redundant text channel for readers who cannot separate the
-            // three hues, and for anyone reading a printout.
-            subtext={data[shape.stateId]?.band ? BAND_LABEL[data[shape.stateId]!.band!] : undefined}
-            subtextMinSize={5.6 / view.scale}
             fontSize={STATE_LABEL_SIZE / view.scale}
             maxWidth={shape.label.r * 1.9}
-            minFontSize={(STATE_LABEL_SIZE * 0.62) / view.scale}
           />
         ))}
       </svg>

@@ -2,36 +2,37 @@ interface MapLabelProps {
   x: number;
   y: number;
   text: string;
+  /** The one size this label wants to be. It is not a starting point for
+   *  shrink-to-fit — see the note on the component. */
   fontSize?: number;
   fontWeight?: number;
   className?: string;
   /** Room the label has, in viewBox units — normally the inscribed diameter
-   *  reported by `geomLabelPoint`. Given this, the label wraps and shrinks to
-   *  stay inside its own shape instead of spilling across the boundary. */
+   *  reported by `geomLabelPoint`. */
   maxWidth?: number;
-  /** Floor for that shrinking. Below it a label is unreadable anyway, so it is
-   *  better to render at the floor than to keep scaling into noise. */
-  minFontSize?: number;
-  /**
-   * A second line under the name, set smaller — the readiness band on the
-   * coverage map.
-   *
-   * Dropped rather than crammed when the shape cannot hold it: at national
-   * zoom Lagos is a few dozen viewBox units across, and a second line inside it
-   * would either overflow its own border or shrink past legibility. The band is
-   * on the fill and in the hover for those, which is enough. `subtextMinSize`
-   * is the threshold.
-   */
-  subtext?: string;
-  subtextMinSize?: number;
+  /** How far below `fontSize` a label may shrink before it is dropped instead.
+   *  As a fraction: 0.82 means "no smaller than 82% of the intended size". */
+  minScale?: number;
 }
 
-/** Mean glyph advance for Inter at semibold, as a fraction of font size. Close
+/** Mean glyph advance for Inter at bold, as a fraction of font size. Close
  *  enough to fit text without measuring it in the DOM (which would mean a
  *  layout pass per label, ~800 of them at the LGA level). */
-const CHAR_W = 0.56;
+const CHAR_W = 0.58;
 
-const LINE_HEIGHT = 1.02;
+const LINE_HEIGHT = 1.05;
+
+/**
+ * How far a label may spill past its shape's inscribed circle before it counts
+ * as not fitting.
+ *
+ * The inscribed circle is a conservative measure of a polygon — an LGA is
+ * almost never a disc, and there is usually real estate either side of the
+ * widest circle you can draw inside it. A little overflow lands on the shape
+ * anyway, so insisting on the circle alone would hide labels that read
+ * perfectly well.
+ */
+const OVERFLOW_TOLERANCE = 1.45;
 
 function width(text: string, fontSize: number): number {
   return text.length * CHAR_W * fontSize;
@@ -56,32 +57,71 @@ function balancedSplit(text: string): string[] | null {
   return best;
 }
 
-function fit(text: string, fontSize: number, maxWidth?: number, minFontSize?: number) {
-  if (!maxWidth || maxWidth <= 0 || width(text, fontSize) <= maxWidth) {
-    return { lines: [text], size: fontSize };
-  }
+/**
+ * Lay the name out, or refuse to.
+ *
+ * Four attempts in order of preference — one line at full size, two lines at
+ * full size, one or two lines shrunk as far as `minScale` allows — and `null`
+ * if none of them fit. Refusing is the important part: the previous version had
+ * no way to say no, so a long name in a narrow LGA was drawn at whatever size
+ * the arithmetic produced and spilled across two neighbours, where the parts
+ * over other fills read as fragments of a word. A name you cannot read is worse
+ * than no name, because it looks like a rendering fault rather than a decision.
+ */
+function fit(
+  text: string,
+  fontSize: number,
+  maxWidth: number | undefined,
+  minScale: number,
+): { lines: string[]; size: number } | null {
+  // No constraint given: draw it and trust the caller.
+  if (!maxWidth || maxWidth <= 0) return { lines: [text], size: fontSize };
 
-  const floor = minFontSize ?? fontSize * 0.6;
+  const room = maxWidth * OVERFLOW_TOLERANCE;
+  const floor = fontSize * minScale;
   const wrapped = balancedSplit(text);
-  if (wrapped) {
-    const longest = Math.max(...wrapped.map((l) => l.length));
-    const size = maxWidth / (longest * CHAR_W);
-    // Two lines are only an improvement while they still fit vertically —
-    // a tall stack in a wide flat LGA spills across the boundary the same way.
-    if (size >= floor && size * 2 * LINE_HEIGHT <= maxWidth) {
-      return { lines: wrapped, size: Math.min(fontSize, size) };
-    }
+
+  const longest = (lines: string[]) => Math.max(...lines.map((l) => l.length));
+
+  // 1 & 2 — full size, one line then two.
+  if (width(text, fontSize) <= room) return { lines: [text], size: fontSize };
+  if (wrapped && longest(wrapped) * CHAR_W * fontSize <= room) {
+    return { lines: wrapped, size: fontSize };
   }
 
-  return { lines: [text], size: Math.max(floor, maxWidth / (text.length * CHAR_W)) };
+  // 3 & 4 — the largest size that fits, if that is still legible.
+  const twoLineSize = wrapped ? room / (longest(wrapped) * CHAR_W) : 0;
+  if (wrapped && twoLineSize >= floor) {
+    return { lines: wrapped, size: Math.min(fontSize, twoLineSize) };
+  }
+
+  const oneLineSize = room / (text.length * CHAR_W);
+  if (oneLineSize >= floor) return { lines: [text], size: Math.min(fontSize, oneLineSize) };
+
+  return null;
 }
 
 /**
- * Permanent map label — a halo behind the glyphs (via `paint-order: stroke`)
- * so a name stays legible over any of the three readiness fills, the
- * secondary-evidence hatch, or satellite imagery, in either theme, without
- * needing to know what's underneath it. Same technique
- * `NPHCDA_dashboard_int`'s map uses.
+ * Permanent map label.
+ *
+ * Flat black at a bold weight, no halo. The white outline this used to carry
+ * (via `paint-order: stroke`) was meant to keep a name legible over any fill
+ * without knowing what was underneath — sound in principle, and at 9px on
+ * saturated fills it read as a smear around every letter rather than a backing.
+ *
+ * Black rather than white because it is the better of the two across all three
+ * bands: white on the amber fill lands around 2.6:1, which is unreadable, while
+ * black is comfortable on amber and red and merely tight on the darkest green.
+ * A photographic base map would defeat it — this page ships the plain wash and
+ * no base-map switcher, so that case does not arise; restore the halo before
+ * adding one.
+ *
+ * **One size, or nothing.** Every label on a layer is drawn at the size that
+ * layer chose, and a shape too small to hold its name at that size gets no
+ * label rather than a shrunken one. The hover tooltip and the pane's list both
+ * still name it. This is the opposite of the previous behaviour, which scaled
+ * each name to whatever its shape could take and produced a map with six
+ * legible names and thirty smears.
  *
  * `x`/`y` should be a `geomLabelPoint`, not a centroid — see the note there.
  */
@@ -90,28 +130,16 @@ export function MapLabel({
   y,
   text,
   fontSize = 10,
-  fontWeight = 600,
+  fontWeight = 700,
   className,
   maxWidth,
-  minFontSize,
-  subtext,
-  subtextMinSize,
+  minScale = 0.7,
 }: MapLabelProps) {
-  const { lines, size } = fit(text, fontSize, maxWidth, minFontSize);
+  const laid = fit(text, fontSize, maxWidth, minScale);
+  if (!laid) return null;
 
-  // The sub-line is set at 78% of whatever size the name settled at, and only
-  // survives if that lands above the threshold *and* the shape is wide enough
-  // to hold the text at it.
-  const subSize = size * 0.78;
-  const sub =
-    subtext &&
-    subSize >= (subtextMinSize ?? 0) &&
-    (!maxWidth || width(subtext, subSize) <= maxWidth * 1.05)
-      ? subtext
-      : null;
-
-  const all = sub ? [...lines, sub] : lines;
-  const offset = -((all.length - 1) / 2) * size * LINE_HEIGHT;
+  const { lines, size } = laid;
+  const offset = -((lines.length - 1) / 2) * size * LINE_HEIGHT;
 
   return (
     <text
@@ -121,32 +149,14 @@ export function MapLabel({
       dominantBaseline="middle"
       fontSize={size}
       fontWeight={fontWeight}
-      className={className ?? 'fill-foreground'}
+      className={className ?? 'fill-black'}
       pointerEvents="none"
-      style={{
-        paintOrder: 'stroke',
-        stroke: 'hsl(var(--surface) / 0.85)',
-        strokeWidth: size / 4,
-        strokeLinejoin: 'round',
-      }}
     >
       {lines.map((line, i) => (
         <tspan key={line} x={x} dy={i === 0 ? offset : size * LINE_HEIGHT}>
           {line}
         </tspan>
       ))}
-      {sub && (
-        <tspan
-          x={x}
-          dy={size * LINE_HEIGHT}
-          fontSize={subSize}
-          fontWeight={500}
-          className="fill-muted-foreground"
-          style={{ textTransform: 'uppercase', letterSpacing: subSize * 0.06 }}
-        >
-          {sub}
-        </tspan>
-      )}
     </text>
   );
 }

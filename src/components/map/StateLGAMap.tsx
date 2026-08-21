@@ -166,7 +166,10 @@ export function StateLGAMap({
   // doesn't progressively fatten every LGA border.
   const hairline = Math.min(0.6, Math.max(0.12, vbW / 900)) / view.scale;
   const outlineWidth = hairline * 3;
-  const labelSize = Math.min(7, Math.max(3, vbW / 70)) / view.scale;
+  // One size for every LGA name in this state, derived from the state's own
+  // viewBox so a big state and a small one print at the same size on screen.
+  // Names that will not fit at it are dropped by MapLabel rather than shrunk.
+  const labelSize = Math.min(11, Math.max(5, vbW / 46)) / view.scale;
   const fillOpacity = fillOpacityFor(baseMap);
   const hoverDatum = hover ? data[hover.lgaId] : null;
   const hoverShape = hover ? shapes.find((s) => s.lgaId === hover.lgaId) : null;
@@ -261,11 +264,8 @@ export function StateLGAMap({
             x={shape.label.x}
             y={shape.label.y}
             text={shape.name}
-            subtext={data[shape.lgaId]?.band ? BAND_LABEL[data[shape.lgaId]!.band!] : undefined}
-            subtextMinSize={labelSize * 0.62}
             fontSize={labelSize}
             maxWidth={shape.label.r * 1.9}
-            minFontSize={labelSize * 0.55}
           />
         ))}
       </svg>
