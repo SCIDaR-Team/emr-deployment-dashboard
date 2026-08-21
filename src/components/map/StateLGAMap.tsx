@@ -27,7 +27,7 @@ import { BandPatternDefs } from './BandPattern';
 import { MapLabel } from './MapLabel';
 import { TileLayer, MapAttribution, MapClip } from './TileLayer';
 import { MapZoomControls } from './MapZoomControls';
-import { useRenderWidth } from '@/hooks/useRenderWidth';
+import { useRenderSize } from '@/hooks/useRenderSize';
 import { useMapViewport, unitAtPoint } from '@/hooks/useMapViewport';
 import { useBaseMapStore } from '@/store/basemapStore';
 import type { MapFit } from './mapTypes';
@@ -61,6 +61,17 @@ interface StateLGAMapProps {
 /** A state's LGAs are already small on screen; past this the facility layer is
  *  the one with anything left to add. */
 const STATE_MAX_SCALE = 4;
+
+/**
+ * How large an LGA name is drawn, in CSS pixels — see where it is converted.
+ *
+ * `LGA_LABEL_MIN_PX` is where shrinking stops rather than a size anything is
+ * routinely drawn at: below roughly this, a haloed name on a saturated fill is
+ * not a word any more. A name that will not fit at the floor is dropped by
+ * MapLabel instead of being drawn smaller.
+ */
+const LGA_LABEL_PX = 10;
+const LGA_LABEL_MIN_PX = 6.5;
 
 interface HoverInfo {
   lgaId: string;
@@ -99,7 +110,7 @@ export function StateLGAMap({
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
-  const [frameRef, renderPx] = useRenderWidth<HTMLDivElement>();
+  const [frameRef, renderPx, renderPxH] = useRenderSize<HTMLDivElement>();
   const clipId = `${useHatchPatternId()}-clip`;
   const bandId = useBandPatternId();
 
@@ -154,7 +165,7 @@ export function StateLGAMap({
     );
   }
 
-  const [, , vbW = 1000] = baseViewBox.split(' ').map(Number);
+  const [, , vbW = 1000, vbH = 813] = baseViewBox.split(' ').map(Number);
   const outlinePath = shapes.map((s) => s.path).join(' ');
   // Absolute stroke widths look right at the national 1000-wide viewBox but
   // balloon once the SVG scales a much smaller state-sized viewBox up to fill
@@ -166,10 +177,25 @@ export function StateLGAMap({
   // doesn't progressively fatten every LGA border.
   const hairline = Math.min(0.6, Math.max(0.12, vbW / 900)) / view.scale;
   const outlineWidth = hairline * 3;
-  // One size for every LGA name in this state, derived from the state's own
-  // viewBox so a big state and a small one print at the same size on screen.
-  // Names that will not fit at it are dropped by MapLabel rather than shrunk.
-  const labelSize = Math.min(11, Math.max(5, vbW / 46)) / view.scale;
+  // One *rendered* size for every LGA name, in every state.
+  //
+  // The size has to be handed over in viewBox units, but the quantity worth
+  // holding constant is pixels on screen, and the two are not proportional: a
+  // state's viewBox is its own extent, so Anambra's is a fifth of Niger's at
+  // the same card width. Clamping in viewBox units — which `max(3, vbW / 70)`
+  // did — therefore inflates every small state, and measured on one 628px card
+  // it ran Niger's labels at 9px and Anambra's at 27px.
+  //
+  // Both axes, because `preserveAspectRatio` letterboxes: a tall narrow state
+  // in a wide frame is drawn at the height ratio and a wide one at the width
+  // ratio, so taking the width alone would leave the size state-dependent all
+  // over again, just less so. `unitPerPx` is the inverse of whichever ratio
+  // won, which is what the SVG is actually scaled by.
+  // ...and multiplied by the live zoom for the same reason the hairline is
+  // divided by it.
+  const unitPerPx = Math.max(vbW / renderPx, vbH / renderPxH);
+  const labelSize = (LGA_LABEL_PX * unitPerPx) / view.scale;
+  const labelFloor = (LGA_LABEL_MIN_PX * unitPerPx) / view.scale;
   const fillOpacity = fillOpacityFor(baseMap);
   const hoverDatum = hover ? data[hover.lgaId] : null;
   const hoverShape = hover ? shapes.find((s) => s.lgaId === hover.lgaId) : null;
@@ -257,15 +283,22 @@ export function StateLGAMap({
         {/* Anchored at each LGA's pole of inaccessibility, and bounded by its
             inscribed circle — LGA shapes are far more concave than states, so a
             centroid label routinely landed in a neighbouring LGA or on the
-            shared border. Long names wrap and shrink to stay inside. */}
+            shared border. Long names wrap and shrink to stay inside, and the
+            handful that cannot are dropped rather than spilled. */}
         {shapes.map((shape) => (
           <MapLabel
             key={`label-${shape.lgaId}`}
             x={shape.label.x}
             y={shape.label.y}
             text={shape.name}
+            // `shrink` with a halo — see the note on MapLabel for why this
+            // layer is labelled differently from the national one.
+            mode="shrink"
+            halo
+            fontWeight={600}
             fontSize={labelSize}
             maxWidth={shape.label.r * 1.9}
+            minFontSize={labelFloor}
           />
         ))}
       </svg>

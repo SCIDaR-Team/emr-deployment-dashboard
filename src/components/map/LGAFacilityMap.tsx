@@ -18,7 +18,7 @@ import {
 import { BOUNDARY_STROKE, bandMarkerPath, useHatchPatternId } from './mapTypes';
 import { TileLayer, MapAttribution, MapClip } from './TileLayer';
 import { MapZoomControls } from './MapZoomControls';
-import { useRenderWidth } from '@/hooks/useRenderWidth';
+import { useRenderSize } from '@/hooks/useRenderSize';
 import { useMapViewport } from '@/hooks/useMapViewport';
 import { useBaseMapStore } from '@/store/basemapStore';
 import type { MapFit } from './mapTypes';
@@ -105,7 +105,7 @@ export function LGAFacilityMap({
   });
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
-  const [frameRef, renderPx] = useRenderWidth<HTMLDivElement>();
+  const [frameRef, renderPx] = useRenderSize<HTMLDivElement>();
   const clipId = `${useHatchPatternId()}-clip`;
 
   const outline = useMemo(() => {

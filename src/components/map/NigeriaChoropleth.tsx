@@ -8,7 +8,7 @@ import { MapHatchDefs } from './MapHatch';
 import { BandPatternDefs } from './BandPattern';
 import { MapLabel } from './MapLabel';
 import { TileLayer, MapAttribution, MapClip } from './TileLayer';
-import { useRenderWidth } from '@/hooks/useRenderWidth';
+import { useRenderSize } from '@/hooks/useRenderSize';
 import {
   hatchFill,
   useHatchPatternId,
@@ -89,7 +89,7 @@ export function NigeriaChoropleth({
   const bandId = useBandPatternId();
   const clipId = `${hatchId}-clip`;
   const baseMap = useBaseMapStore((s) => s.baseMap);
-  const [frameRef, renderPx] = useRenderWidth<HTMLDivElement>();
+  const [frameRef, renderPx] = useRenderSize<HTMLDivElement>();
 
   const shapes = useMemo(() => {
     if (!geo.data) return [];
