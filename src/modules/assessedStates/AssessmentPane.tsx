@@ -1,16 +1,22 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { BAND_LABEL, dominantBand } from '@/lib/bands';
+import { BAND_LABEL } from '@/lib/bands';
+import {
+  GAP_BY_ID,
+  GAP_DOMAINS,
+  GAP_DOMAIN_LABEL,
+  gapCostNGN,
+  gapsForDomains,
+} from '@/lib/gapCatalogue';
 import { facilityBandUnder } from '@/lib/archetype';
 import { cn } from '@/lib/cn';
-import { formatCount } from '@/lib/format';
+import { formatCount, formatNaira } from '@/lib/format';
 import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
-import { BandBadge, BandCards, EmptyState } from '@/components/ui';
+import { BandBadge, BandCards, EmptyState, Tile, TileRow } from '@/components/ui';
 import type { Band, BandDistribution, FacilitySummary, FacilityThemeId } from '@/lib/types';
 import {
   distributionTotal,
   facilityDistribution,
-  facilityDomainDistribution,
   type AssessmentScope,
 } from './assessmentScope';
 
@@ -60,14 +66,28 @@ interface AssessmentPaneProps {
 export interface PaneRow {
   id: string;
   name: string;
+  /** A readiness band, for a row that *is* one thing — a facility. Null for an
+   *  area, which is a population and gets `need` instead. */
   band: Band | null;
   note: string;
+  /**
+   * What the area needs, for a row that stands for many facilities.
+   *
+   * A state's band was the same word twelve times over — every one of them
+   * Moderately ready — which is a column of ink telling the reader nothing and
+   * offering nothing to rank on. Cost and gap count differ between every state
+   * in the country, and they are what the programme allocates against.
+   */
+  need?: { gaps: number; costNGN: number };
 }
 
 export interface PaneList {
   /** Plural noun for the heading and the search placeholder. */
   label: string;
   rows: PaneRow[];
+  /** False where the scope's gaps carry no money — the rows fall back to gap
+   *  counts rather than printing a column of zeroes. */
+  costed?: boolean;
   onSelect: (id: string) => void;
 }
 
@@ -76,21 +96,25 @@ export function AssessmentPane({ scope, facilities, domains, list }: AssessmentP
     () => facilityDistribution(facilities, domains),
     [facilities, domains],
   );
-  const scored = distributionTotal(distribution);
   const lens = lensLabel(domains);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PaneHeader
         scope={scope}
-        // The badge is the same reading as everything under it: the facilities
-        // actually on screen, banded through the Domain filter. Taking it off
-        // the area profile instead would put a whole-state, all-domain band
-        // beside a filtered, single-domain count.
+        /**
+         * A band only where a band is the subject.
+         *
+         * A facility has a readiness level and the map paints it, so its pill
+         * stays. A state or an LGA no longer does: the polygons carry
+         * investment need now, and a pill reading "Moderately ready" beside a
+         * map coloured by naira invites the reader to think the two are the
+         * same encoding. The facilities inside it still have bands, and the
+         * split below still counts them — that is a different claim, about a
+         * population rather than about the area.
+         */
         band={
-          scope.level === 'facility'
-            ? facilityBandUnder(scope.facility, domains)
-            : dominantBand(distribution)
+          scope.level === 'facility' ? facilityBandUnder(scope.facility, domains) : null
         }
       />
 
@@ -107,15 +131,12 @@ export function AssessmentPane({ scope, facilities, domains, list }: AssessmentP
             </Block>
 
             <Block
-              title="The four facility domains"
-              note="Counted, not averaged — the split is what an intervention is planned against"
+              title="Gaps in scope"
+              note="What is actually wrong, and what closing it costs"
             >
-              {scored ? (
-                <DomainCards facilities={facilities} domains={domains} />
-              ) : (
-                <Nothing>Nothing to split.</Nothing>
-              )}
+              <GapBlocks facilities={facilities} domains={domains} />
             </Block>
+
           </>
         )}
 
@@ -168,12 +189,18 @@ function FacilityBlocks({ facility }: { facility: FacilitySummary }) {
         </div>
       </Block>
 
+      <Block title="Gaps at this facility" note={`${formatNaira(facility.costNGN)} to close`}>
+        <FacilityGaps facility={facility} />
+      </Block>
+
       <Block title="This facility">
         <dl className="space-y-1.5 text-[13px]">
           <Detail term="Functionality" value={facility.functionalityLevel} />
           <Detail term="Setting" value={facility.geography === 'urban' ? 'Urban' : 'Rural'} />
           <Detail term="BHCPF" value={facility.isBHCPF ? 'Enrolled' : 'Not enrolled'} />
           <Detail term="Zone" value={facility.zone} />
+          <Detail term="Service points" value={formatCount(facility.servicePoints)} />
+          <Detail term="Permanent staff" value={formatCount(facility.staffCount)} />
           <Detail
             term="Coordinates"
             value={`${facility.lat.toFixed(4)}, ${facility.lon.toFixed(4)}`}
@@ -206,6 +233,7 @@ function Detail({ term, value, mono }: { term: string; value: string; mono?: boo
 function BandCounts({ distribution, total }: { distribution: BandDistribution; total: number }) {
   const scored = distributionTotal(distribution);
 
+
   return (
     <div>
       <p className="mono text-[30px] font-semibold leading-none tracking-tight text-foreground">
@@ -227,54 +255,187 @@ function BandCounts({ distribution, total }: { distribution: BandDistribution; t
 }
 
 /**
- * The four domains, a card row each.
+ * The gap reading: how many, spread over how many facilities, and what it costs.
  *
- * The same cards as the block above it, four more times. The overall block
- * splits the whole population three ways; this splits each domain the same
- * three ways, so the two blocks are one reading at two grains rather than two
- * unrelated charts — the reader learns the card once and it holds all the way
- * down the pane.
+ * Three figures at the top because they are three different questions and a
+ * programme asks all of them. *Gaps* is instances, not distinct problems — one
+ * facility with four gaps is four, because four things have to be bought or
+ * done. *Facilities affected* is how wide it goes. *Cost* is what the first two
+ * come to, and it is smaller than the gap count implies, because two of the
+ * five domains are closed by attention rather than procurement.
  *
- * Every facility is scored in all four domains, so the four rows share a
- * denominator and the columns line up beneath each other. Reading down the
- * NOT READY column answers "where is the foundational gap", which is the
- * question this page exists for; reading across a row is one domain's split.
+ * Then the gaps themselves, commonest first. Commonest rather than costliest:
+ * this pane answers "what is wrong here", and the money question has a page of
+ * its own that can phase and rank it properly.
  */
-function DomainCards({
+function GapBlocks({
   facilities,
   domains,
 }: {
   facilities: FacilitySummary[];
   domains: FacilityThemeId[];
 }) {
+  const { rows, instances, affected, cost, byDomain, total } = useMemo(() => {
+    const offered = new Set(gapsForDomains(domains).map((g) => g.id));
+    const counts = new Map<string, number>();
+    let instances = 0;
+    let cost = 0;
+    const affected = new Set<string>();
+
+    for (const f of facilities) {
+      let hit = false;
+      for (const id of f.gaps) {
+        if (!offered.has(id)) continue;
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+        instances += 1;
+        cost += gapCostNGN(GAP_BY_ID[id]!, f);
+        hit = true;
+      }
+      if (hit) affected.add(f.uuid);
+    }
+
+    const rows = [...counts.entries()]
+      .map(([id, n]) => ({ gap: GAP_BY_ID[id]!, n }))
+      .sort((a, b) => b.n - a.n);
+
+    // Only the domains actually in play. A row of zeroes for a domain the
+    // filter has excluded is noise, and one for leadership would be wrong
+    // rather than empty — its gaps belong to a state and no facility carries
+    // them, so counting facilities against it would be counting the wrong noun.
+    const perDomain = new Map<string, { gaps: number; cost: number }>();
+    for (const { gap, n } of rows) {
+      const acc = perDomain.get(gap.domain) ?? { gaps: 0, cost: 0 };
+      acc.gaps += n;
+      perDomain.set(gap.domain, acc);
+    }
+    for (const f of facilities) {
+      for (const id of f.gaps) {
+        const gap = GAP_BY_ID[id];
+        if (!gap || !offered.has(id)) continue;
+        const acc = perDomain.get(gap.domain);
+        if (acc) acc.cost += gapCostNGN(gap, f);
+      }
+    }
+
+    const byDomain = GAP_DOMAINS.filter((d) => perDomain.has(d.id)).map((d) => ({
+      id: d.id,
+      label: d.label,
+      ...perDomain.get(d.id)!,
+    }));
+
+    return {
+      rows,
+      instances,
+      affected: affected.size,
+      cost,
+      byDomain,
+      total: byDomain.reduce((sum, d) => sum + d.cost, 0),
+    };
+  }, [facilities, domains]);
+
+  if (!rows.length) return <Nothing>No gaps in scope.</Nothing>;
+
   return (
-    <div className="space-y-3">
-      {FACILITY_THEMES.map((theme) => (
-        <div key={theme.id}>
-          {/* All four stay, whatever the filter is pointed at — this block is
-              what answers "which domain is the gap", and hiding three of them
-              answers it by assertion. The ticked ones are set in full ink so
-              the reader can see which rows the headline above was built from. */}
-          <h4
-            className={cn(
-              'mono mb-1.5 text-[9px] uppercase leading-none tracking-[0.07em]',
-              domains.includes(theme.id as FacilityThemeId)
-                ? 'font-bold text-foreground'
-                : 'font-medium text-muted-foreground',
-            )}
-          >
-            {theme.label}
-          </h4>
-          <BandCards
-            counts={facilityDomainDistribution(facilities, theme.id as FacilityThemeId)}
-            showPercent
-          />
-        </div>
-      ))}
+    <div>
+      <TileRow className="grid-cols-3">
+        <Tile label="Gaps" value={formatCount(instances)} note="to close" />
+        <Tile label="Facilities" value={formatCount(affected)} note="with a gap" />
+        <Tile label="Cost" value={formatNaira(cost, true)} note="to close them" />
+      </TileRow>
+
+      {/* Where the money is, by domain.
+          
+          What is left of the old "four facility domains" block, and deliberately
+          not a rebuild of it. That block gave each domain a readiness split,
+          which under a Domain filter was the headline card above repeated word
+          for word — and a band is a summary of gaps anyway, shown at finer
+          grain in the list below. This says the thing a band cannot: how much of
+          the problem each domain holds, and what its share of the bill is.
+          
+          The bar is the share of cost, not of gaps, and the two diverge sharply:
+          data use is the commonest gap in the country and costs nothing at all,
+          because what closes it is a habit rather than a purchase. A domain
+          reading 0% here is not a domain to ignore — it is a domain to act on
+          without a budget. */}
+      <ul className="mt-3 space-y-1.5 border-b border-border pb-3">
+        {byDomain.map(({ id, label, gaps, cost }) => (
+          <li key={id} className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1 truncate text-[12px] text-foreground">{label}</span>
+            <span className="mono shrink-0 text-[11px] tabular-nums text-muted-foreground">
+              {formatCount(gaps)}
+            </span>
+            <span className="h-1.5 w-10 shrink-0 rounded-[1px] bg-surface-sunk" aria-hidden>
+              <span
+                className="block h-full rounded-[1px] bg-foreground/55"
+                style={{ width: `${cost && total ? Math.max(4, (cost / total) * 100) : 0}%` }}
+              />
+            </span>
+            <span className="mono w-[52px] shrink-0 text-right text-[11px] font-semibold tabular-nums text-foreground">
+              {formatNaira(cost, true)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* A header, because the column was a bare number against a sentence and
+          a bare number is a guess. Each row is one gap out of the catalogue —
+          a specific, named thing that is wrong — and the figure is how many
+          facilities in scope carry it. */}
+      <div className="mono mt-3.5 flex items-baseline gap-2 border-b border-border pb-1 text-[9px] uppercase tracking-[0.07em] text-muted-foreground">
+        <span className="min-w-0 flex-1">Gap</span>
+        <span className="shrink-0">Facilities</span>
+      </div>
+
+      <ul className="mt-2 space-y-1.5">
+        {rows.map(({ gap, n }) => (
+          <li key={gap.id} className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12.5px] leading-snug text-foreground">{gap.label}</span>
+              <span className="mono text-[9.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                {gap.subDomain}
+              </span>
+            </span>
+            <span className="mono shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground">
+              {formatCount(n)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
     </div>
   );
 }
 
+/** One facility's own gaps — the list, not a count of it. */
+function FacilityGaps({ facility }: { facility: FacilitySummary }) {
+  if (!facility.gaps.length) {
+    return <Nothing>Nothing outstanding — this facility is ready.</Nothing>;
+  }
+  return (
+    <ul className="space-y-2">
+      {facility.gaps.map((id) => {
+        const gap = GAP_BY_ID[id];
+        if (!gap) return null;
+        const cost = gapCostNGN(gap, facility);
+        return (
+          <li key={id} className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12.5px] leading-snug text-foreground">{gap.label}</span>
+              <span className="mono text-[9.5px] uppercase tracking-[0.06em] text-muted-foreground">
+                {GAP_DOMAIN_LABEL[gap.domain]}
+              </span>
+            </span>
+            {/* Zero is printed, not blanked. A gap that costs nothing still has
+                to be closed, and an empty cell would read as missing data. */}
+            <span className="mono shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+              {formatNaira(cost, true)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 /**
  * The list at the bottom — one level down from wherever the reader is.
  *
@@ -334,14 +495,25 @@ function PaneListBlock({ list }: { list: PaneList }) {
                   <span className="block truncate text-[13px] font-medium text-foreground">
                     {row.name}
                   </span>
-                  <span className="mono block text-[10px] text-muted-foreground">{row.note}</span>
+                  <span className="mono block text-[10px] text-muted-foreground">
+                    {row.note}
+                    {row.need ? ` · ${formatCount(row.need.gaps)} gaps` : ''}
+                  </span>
                 </span>
-                <span
-                  className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground"
-                  aria-label={row.band ? BAND_LABEL[row.band] : 'No band'}
-                >
-                  <BandBadge band={row.band} size="sm" />
-                </span>
+                {row.need ? (
+                  <span className="mono shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground">
+                    {list.costed === false
+                      ? formatCount(row.need.gaps)
+                      : formatNaira(row.need.costNGN, true)}
+                  </span>
+                ) : (
+                  <span
+                    className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground"
+                    aria-label={row.band ? BAND_LABEL[row.band] : 'No band'}
+                  >
+                    <BandBadge band={row.band} size="sm" />
+                  </span>
+                )}
               </button>
             </li>
           ))}

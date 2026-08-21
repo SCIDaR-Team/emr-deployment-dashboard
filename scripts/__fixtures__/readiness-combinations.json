@@ -1,0 +1,544 @@
+{
+  "source": "Costing model_ERA_Archive.xlsx, sheet \"Readiness_Intervention mapping\"",
+  "sha256": "dd62c568ef11bc12f3e90fa55ac0f95cbcd446eeffdda4f16486c27693c15712",
+  "facilities": 2695,
+  "note": "Every distinct combination of the four domain bands that occurs in the assessment, with the overall band the source model assigned it. Deterministic: no combination carries two different overall values.",
+  "combinations": [
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 27
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 182
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 18
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 19
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 70
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 4
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 6
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 19
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 17
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 131
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "ready",
+      "overall": "not_ready",
+      "facilities": 4
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 10
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 83
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "ready",
+      "overall": "not_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 1
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 10
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 150
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 516
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 91
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 49
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 135
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 16
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 36
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 66
+    },
+    {
+      "technical_infrastructure": "moderately_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 35
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 2
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 44
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "ready",
+      "overall": "not_ready",
+      "facilities": 1
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 21
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 87
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 6
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 66
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 2
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 11
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 59
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "ready",
+      "overall": "not_ready",
+      "facilities": 1
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 24
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "ready",
+      "overall": "not_ready",
+      "facilities": 1
+    },
+    {
+      "technical_infrastructure": "not_ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 9
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 13
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 39
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 4
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 4
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 11
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 1
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 2
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 2
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "moderately_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 2
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 12
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "not_ready",
+      "facilities": 3
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "not_ready",
+      "facilities": 6
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "not_ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "ready",
+      "overall": "not_ready",
+      "facilities": 1
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "ready",
+      "facilities": 115
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 177
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "moderately_ready",
+      "data_use_reporting": "ready",
+      "overall": "ready",
+      "facilities": 94
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "moderately_ready",
+      "facilities": 15
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 20
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "not_ready",
+      "data_use_reporting": "ready",
+      "overall": "moderately_ready",
+      "facilities": 9
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "moderately_ready",
+      "overall": "ready",
+      "facilities": 23
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "not_ready",
+      "overall": "moderately_ready",
+      "facilities": 26
+    },
+    {
+      "technical_infrastructure": "ready",
+      "workforce_capacity": "ready",
+      "workflow_transition": "ready",
+      "data_use_reporting": "ready",
+      "overall": "ready",
+      "facilities": 66
+    }
+  ]
+}

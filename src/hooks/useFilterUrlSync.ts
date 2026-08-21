@@ -17,6 +17,7 @@ import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFilterStore } from '@/store/filterStore';
 import { THEMES, FACILITY_THEMES } from '@/lib/themes';
+import { GAP_BY_ID } from '@/lib/gapCatalogue';
 import type {
   Band,
   FacilityThemeId,
@@ -38,6 +39,7 @@ const KEYS = {
   functionalityLevels: 'level',
   archetypes: 'archetype',
   domains: 'domain',
+  gaps: 'gap',
   search: 'q',
 } as const;
 
@@ -88,6 +90,9 @@ function parse(params: URLSearchParams): Partial<FilterState> {
     patch.functionalityLevels = list(KEYS.functionalityLevels) as FunctionalityLevel[];
   }
   if (params.has(KEYS.archetypes)) patch.archetypes = list(KEYS.archetypes) as Band[];
+  // Filtered against the catalogue: a stale gap id in an old link would
+  // otherwise sit in the store selecting nothing, with no control showing it.
+  if (params.has(KEYS.gaps)) patch.gaps = list(KEYS.gaps).filter((id) => id in GAP_BY_ID);
   if (params.has(KEYS.search)) patch.search = params.get(KEYS.search) ?? '';
 
   const bandByTheme: Partial<Record<ThemeId, Band[]>> = {};
@@ -147,6 +152,7 @@ export function useFilterUrlSync(): void {
   const archetypes = useFilterStore((s) => s.archetypes);
   const bandByTheme = useFilterStore((s) => s.bandByTheme);
   const domains = useFilterStore((s) => s.domains);
+  const gaps = useFilterStore((s) => s.gaps);
   const search = useFilterStore((s) => s.search);
 
   const serialised = serialise({
@@ -157,6 +163,7 @@ export function useFilterUrlSync(): void {
     funding,
     functionalityLevels,
     domains,
+    gaps,
     archetypes,
     bandByTheme,
     search,

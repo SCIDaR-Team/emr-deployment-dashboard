@@ -41,6 +41,13 @@ export function filterFacilities(
     // `facilityBandUnder`. With no domain ticked this is the facility's own
     // archetype, which is what it has always been; with domains ticked it is
     // the weakest of its readings in them, and so is every figure on the page.
+    // A ticked gap is asking "show me the facilities carrying this", so the
+    // control is an OR across its own selection and an AND against the rest of
+    // the row — the same grammar as every other multi-select here. `every`
+    // would ask for facilities carrying all of them at once, which shrinks to
+    // nothing by the third tick.
+    if (f.gaps.length && !f.gaps.some((id) => fac.gaps?.includes(id))) return false;
+
     if (f.archetypes.length) {
       const band = facilityBandUnder(fac, f.domains);
       if (!band || !f.archetypes.includes(band)) return false;

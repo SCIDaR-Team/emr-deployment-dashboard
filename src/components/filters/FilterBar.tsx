@@ -1,25 +1,22 @@
 import { useMemo } from 'react';
 import { RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { BAND_LABEL } from '@/lib/bands';
+import { BAND_CSS_COLOR, BAND_LABEL } from '@/lib/bands';
+import {
+  GAPS,
+  GAP_DOMAINS,
+  GAP_BY_ID,
+  GAP_DOMAIN_LABEL,
+  SEVERITY_BAND,
+  gapsForDomains,
+} from '@/lib/gapCatalogue';
 import { facilityBandUnder } from '@/lib/archetype';
-import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
+import { THEME_BY_ID } from '@/lib/themes';
 import { buildFilterOptions } from '@/hooks/useFilteredData';
 import { useFilterStore } from '@/store/filterStore';
-import { MultiSelectDropdown } from '@/components/ui';
+import { MultiSelectDropdown, type DropdownGroup } from '@/components/ui';
 import type { Band, FacilitySummary, FacilityThemeId, FunctionalityLevel } from '@/lib/types';
 
-/**
- * How a band reads when the question is what to fix rather than what is there.
- *
- * Same three bands, named as deficiencies, because that is what the Gap control
- * is asking: a plan is built out of what is missing.
- */
-const GAP_LABEL: Record<Band, string> = {
-  not_ready: 'Foundational gap',
-  moderately_ready: 'Targeted gap',
-  ready: 'No gap',
-};
 
 /** Which controls a page shows. Every page uses a subset. */
 export type FilterKey =
@@ -127,6 +124,39 @@ export function FilterBar({
   const bandCount = (band: Band) =>
     facilities.filter((f) => facilityBandUnder(f, filters.domains) === band).length;
 
+  /**
+   * The Gap control's options — the leaves of whatever branch Domain selected.
+   *
+   * Grouped by sub-domain rather than listed flat, because the catalogue has
+   * four levels and a flat list of 23 throws away two of them: "No national
+   * grid connection" and "No functioning backup power" belong together under
+   * Power infrastructure, and a reader looking for a power problem should find
+   * them in one place. With no domain ticked the list is every facility-level
+   * gap; leadership's only appear when its domain is asked for, because they
+   * are a state's and select no facility.
+   */
+  const gapGroups = useMemo<DropdownGroup[]>(() => {
+    const offered = gapsForDomains(filters.domains);
+    const bySub = new Map<string, typeof offered>();
+    for (const gap of offered) {
+      const key = `${GAP_DOMAIN_LABEL[gap.domain]} · ${gap.subDomain}`;
+      bySub.set(key, [...(bySub.get(key) ?? []), gap]);
+    }
+    return [...bySub.entries()].map(([label, gaps]) => ({
+      label,
+      items: gaps.map((gap) => ({
+        key: gap.id,
+        label: gap.label,
+        // How many facilities carry it — the count that says whether ticking it
+        // is worth doing. Leadership gaps carry none: they are not a facility's.
+        count: facilities.filter((f) => f.gaps?.includes(gap.id)).length,
+        // Colour by what the gap does to its domain, not by how common it is:
+        // red for a gap that puts the domain in Not ready on its own.
+        color: BAND_CSS_COLOR[SEVERITY_BAND[gap.severity]],
+      })),
+    }));
+  }, [filters.domains, facilities]);
+
   return (
     <div className={cn('flex w-full flex-wrap items-end gap-3', className)}>
       {leading}
@@ -220,12 +250,16 @@ export function FilterBar({
           className="min-w-[8rem] flex-1 sm:flex-none sm:w-[156px]"
           groups={[
             {
-              label: 'Facility domains',
-              // No counts here, unlike every other control in this row. A
-              // domain does not select facilities — all 2,825 are scored in all
-              // four — so a count beside each entry would be the same number
-              // four times over, which reads as a broken tally.
-              items: FACILITY_THEMES.map((t) => ({ key: t.id, label: t.label })),
+              label: 'Assessment domains',
+              // Counts are gap counts, not facility counts. A domain selects no
+              // facility — every one of them is scored in all of these — so the
+              // useful number beside a domain is how many distinct things can
+              // be wrong inside it.
+              items: GAP_DOMAINS.map((d) => ({
+                key: d.id,
+                label: d.costed ? d.label : `${d.label} · no cost`,
+                count: GAPS.filter((g) => g.domain === d.id).length,
+              })),
             },
           ]}
           selected={filters.domains}
@@ -238,25 +272,15 @@ export function FilterBar({
       {visible.has('gap') && (
         <MultiSelectDropdown
           label="Gap"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
-          groups={[
-            {
-              // The band read as a deficiency, which is what a deployment plan
-              // is built from: Not ready is a foundational gap, Moderately
-              // ready a targeted one, Ready none. Counted under whichever
-              // domains the control beside this one is pointed at, so the
-              // numbers move when the domains do.
-              label: bandGroupLabel,
-              items: (['not_ready', 'moderately_ready', 'ready'] as Band[]).map((band) => ({
-                key: band,
-                label: GAP_LABEL[band],
-                count: bandCount(band),
-              })),
-            },
-          ]}
-          selected={filters.archetypes}
-          onChange={(next) => filters.setArchetypes(next as Band[])}
-          placeholder="Any gap"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[180px]"
+          groups={gapGroups}
+          selected={filters.gaps}
+          onChange={filters.setGaps}
+          placeholder={
+            filters.domains.length ? `Any gap in ${filters.domains.length} domain(s)` : 'Any gap'
+          }
+          panelWidth="w-[22rem]"
+          searchable
         />
       )}
 
@@ -385,6 +409,12 @@ function HiddenFilterChips({ show }: { show: Set<FilterKey> }) {
       label: 'Readiness',
       values: filters.archetypes.map((b) => BAND_LABEL[b]),
       clear: () => filters.setArchetypes([]),
+    },
+    {
+      key: 'gap',
+      label: 'Gap',
+      values: filters.gaps.map((id) => GAP_BY_ID[id]?.label ?? id),
+      clear: () => filters.setGaps([]),
     },
     {
       // Not narrowing anything by itself, but changing what every band on the

@@ -331,10 +331,24 @@ const RAMP_CLASS = ['bg-score-1', 'bg-score-2', 'bg-score-3', 'bg-score-4', 'bg-
 /**
  * The key for a sequential choropleth.
  *
- * Mandatory wherever `GeoDatum.step` is used: a ramp with no scale is a
- * picture of nothing. Bounds are printed rather than described because the
- * domains are fitted to the data on screen, so "dark = worse" is not enough —
- * the reader needs to know worse *than what*.
+ * Mandatory wherever `GeoDatum.step` is used: a ramp with no scale is a picture
+ * of nothing. Bounds are printed rather than described because the domains are
+ * fitted to the data on screen, so "dark = worse" is not enough — the reader
+ * needs to know worse *than what*.
+ *
+ * ## Two numbers, not six
+ *
+ * Only the ends are labelled. A label under every step needs about 48px to set
+ * "₦215.2m" and gets about 34px, so the five run into each other and the legend
+ * becomes less readable than no legend at all — which is what happened the
+ * first time this carried money instead of percentages.
+ *
+ * Losing the interior bounds costs nothing a reader was using. The ramp is
+ * linear and the buckets are equal, so the middle values are exactly where the
+ * eye already assumes they are; what cannot be guessed from the picture is
+ * where it starts and where it stops. Those two survive at any width, in any
+ * currency, however long the formatted string turns out to be — and the exact
+ * bucket is still on the swatch's own tooltip for anyone who wants it.
  */
 export function ScaleLegend({
   lo,
@@ -358,20 +372,31 @@ export function ScaleLegend({
       <p className="mono mb-1.5 text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
         {caption}
       </p>
-      <div className="flex items-start gap-0.5">
-        {RAMP_CLASS.map((bg, i) => {
-          const from = lo + ((hi - lo) * i) / 5;
-          const to = lo + ((hi - lo) * (i + 1)) / 5;
-          return (
-            <div key={bg} className="min-w-0 flex-1" title={`${format(from)} – ${format(to)}`}>
-              <div className={cn('h-[9px] rounded-[1px]', bg)} />
-              <div className="mono mt-1 text-[9px] text-muted-foreground">{format(from)}</div>
-            </div>
-          );
-        })}
-        <div className="shrink-0 pl-2.5">
+      <div className="flex items-start gap-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex gap-0.5">
+            {RAMP_CLASS.map((bg, i) => (
+              <div
+                key={bg}
+                className={cn('h-[9px] min-w-0 flex-1 rounded-[1px]', bg)}
+                title={`${format(lo + ((hi - lo) * i) / 5)} – ${format(
+                  lo + ((hi - lo) * (i + 1)) / 5,
+                )}`}
+              />
+            ))}
+          </div>
+          {/* The ends only, pushed apart. `tabular-nums` so the right-hand
+              figure does not shuffle sideways as the scope changes under it. */}
+          <div className="mono mt-1 flex justify-between gap-2 text-[9px] tabular-nums text-muted-foreground">
+            <span>{format(lo)}</span>
+            <span>{format(hi)}</span>
+          </div>
+        </div>
+        <div className="shrink-0">
           <div className="hatch-secondary h-[9px] w-7 rounded-[1px] bg-surface-sunk" />
-          <div className="mono mt-1 text-[9px] text-muted-foreground">{noDataLabel}</div>
+          <div className="mono mt-1 text-[9px] leading-tight text-muted-foreground">
+            {noDataLabel}
+          </div>
         </div>
       </div>
       {note && <p className="mono mt-2 text-[10.5px] leading-relaxed text-muted-foreground">{note}</p>}

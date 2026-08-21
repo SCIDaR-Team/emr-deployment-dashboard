@@ -7,6 +7,7 @@
  */
 
 import { create } from 'zustand';
+import { GAP_BY_ID } from '@/lib/gapCatalogue';
 import { persist } from 'zustand/middleware';
 import type {
   Band,
@@ -29,6 +30,7 @@ interface FilterActions {
    *  stay put: the reader asked "which facilities are not ready", and changing
    *  the domains re-asks that question rather than starting over. */
   setDomains: (domains: FacilityThemeId[]) => void;
+  setGaps: (gaps: string[]) => void;
   setSearch: (search: string) => void;
   /** Apply a partial state wholesale — used once, by useFilterUrlSync. */
   hydrate: (patch: Partial<FilterState>) => void;
@@ -51,6 +53,7 @@ const initialState: FilterState = {
   archetypes: [],
   bandByTheme: {},
   domains: [],
+  gaps: [],
   search: '',
 };
 
@@ -71,7 +74,18 @@ export const useFilterStore = create<FilterState & FilterActions>()(
       // Nothing to move: `archetypes` holds the band selection whatever the
       // domains are, because `facilityBandUnder` reads the band *through* them.
       // Domain and Readiness are one filter with two controls.
-      setDomains: (domains) => set({ domains }),
+      // Ticked gaps that the new domain selection no longer offers are dropped
+      // rather than kept invisibly: a filter the reader cannot see, cannot
+      // clear, and did not knowingly set is the worst kind.
+      setDomains: (domains) =>
+        set((s) => ({
+          domains,
+          gaps: domains.length
+            ? s.gaps.filter((id) => domains.includes(GAP_BY_ID[id]?.domain as FacilityThemeId))
+            : s.gaps,
+        })),
+
+      setGaps: (gaps) => set({ gaps }),
 
       setSearch: (search) => set({ search }),
 
@@ -113,6 +127,7 @@ export const useFilterStore = create<FilterState & FilterActions>()(
           s.funding.length > 0 ||
           s.functionalityLevels.length > 0 ||
           s.archetypes.length > 0 ||
+          s.gaps.length > 0 ||
           Object.values(s.bandByTheme).some((b) => b && b.length > 0) ||
           s.search.trim() !== ''
         );

@@ -76,6 +76,13 @@ export interface GeoDatum {
   step?: number | null;
   /** Pre-formatted measure for the tooltip, e.g. "54.1% not ready". */
   valueLabel?: string;
+  /**
+   * The number `step` was bucketed from, kept so a caller can print the scale
+   * it actually fitted. `step` is lossy by design — five buckets — and a legend
+   * reconstructed from buckets prints bounds the polygons were never coloured
+   * against.
+   */
+  rawValue?: number | null;
 }
 
 /** Fill for a sequential step, or undefined when the datum has no step. */

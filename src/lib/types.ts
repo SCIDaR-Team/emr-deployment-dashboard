@@ -39,6 +39,82 @@ export type ThemeId =
 /** Domains carrying a band at facility level (E is excluded). */
 export type FacilityThemeId = Exclude<ThemeId, 'leadership_governance'>;
 
+// ---------------------------------------------------------------------------
+// Gaps
+// ---------------------------------------------------------------------------
+
+/**
+ * A domain that gaps are counted under.
+ *
+ * All five, unlike `FacilityThemeId` — leadership & governance has no facility
+ * instrument and so no band, but it has gaps, and they are the state's.
+ */
+export type GapDomainId = ThemeId;
+
+/**
+ * What a gap does to its domain's band.
+ *
+ * `blocking` puts the domain in Not ready on its own; `partial` only pulls it
+ * to Moderately ready. Between them they are why "close every gap and the
+ * domain is Ready" is arithmetic rather than a slogan.
+ */
+export type GapSeverity = 'blocking' | 'partial';
+
+/** When an intervention is meant to happen. The Deployment Plan phases on it. */
+export type Horizon = 'immediate' | 'near_term' | 'long_term';
+
+/** One priced action against one gap. */
+export interface GapIntervention {
+  id: string;
+  label: string;
+  horizon: Horizon;
+  /** `per_facility`, `per_service_point`, `per_staff`, `per_device`. The reason
+   *  a quantity is not always 1. */
+  unitBasis: string;
+  /** Zero is a real answer for data use and leadership — the gap is tracked and
+   *  closing it costs nothing but attention. */
+  unitCostNGN: number;
+}
+
+/** One line of a rolled-up plan: an intervention, its quantity and its cost. */
+export interface DeploymentLine {
+  id: string;
+  label: string;
+  domain: GapDomainId;
+  horizon: Horizon;
+  unitBasis: string;
+  unitCostNGN: number;
+  quantity: number;
+  facilityCount: number;
+  totalCostNGN: number;
+}
+
+/** One gap, and how much of the population carries it. */
+export interface GapTally {
+  id: string;
+  domain: GapDomainId;
+  subDomain: string;
+  indicator: string;
+  label: string;
+  severity: GapSeverity;
+  facilityCount: number;
+}
+
+/**
+ * What it takes to deploy into a population — the whole job, not only the
+ * priced part of it. See the note on uncosted domains in `gapCatalogue.ts`.
+ */
+export interface DeploymentPlan {
+  facilityCount: number;
+  /** Gap *instances*, not distinct gaps: one facility with four gaps is four. */
+  gapCount: number;
+  costNGN: number;
+  byHorizon: Record<Horizon, number>;
+  byDomain: Record<GapDomainId, number>;
+  gaps: GapTally[];
+  lines: DeploymentLine[];
+}
+
 /**
  * The two domains National Coverage reports on.
  *
@@ -167,8 +243,31 @@ export interface FacilitySummary {
   isBHCPF: boolean;
   /** Overall readiness band for the facility. */
   archetype: Band | null;
-  /** Band per facility-level domain. */
+  /** Band per facility-level domain. Read off `gaps` — see `gapCatalogue`. */
   themeBands: Record<FacilityThemeId, Band | null>;
+
+  /**
+   * The gap ids this facility carries. **The reason the band above is what it
+   * is** — not a separate finding beside it.
+   *
+   * Empty means Ready, necessarily: there is nothing left to fix. That is the
+   * claim the whole programme rests on, and it holds here by construction
+   * rather than by assertion.
+   */
+  gaps: string[];
+  gapCount: number;
+  /** What closing them costs. Zero is a real answer — a facility can have gaps
+   *  that cost nothing but attention. */
+  costNGN: number;
+
+  /** Documenting points: registration, triage, consultation, laboratory,
+   *  pharmacy. Furniture, sockets and devices are all bought per point, so this
+   *  is what turns a gap into a quantity. */
+  servicePoints: number;
+  staffCount: number;
+  deviceCount: number;
+  /** Service points with no device to document on. */
+  deviceShortfall: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -202,12 +301,27 @@ export interface InvestmentItem {
  *  first. */
 export type WaveId = 1 | 2 | 3;
 
-export interface DeploymentPhase {
+export interface DeploymentPhase extends DeploymentPlan {
   wave: WaveId;
   /** Programme quarter this wave opens in, e.g. "Q1 2026". */
   startQuarter: string;
-  facilityCount: number;
-  costNGN: number | null;
+  /**
+   * Leadership & governance, held apart from `gaps` rather than merged in.
+   *
+   * Merged, the column beside it would mean two different things at once: a
+   * facility count of 281 against "no digital health strategy" counts
+   * facilities for a fact that is true of the state exactly once. It has no LGA
+   * or facility reading, so nothing below a state inherits it.
+   */
+  stateGaps: {
+    id: string;
+    domain: GapDomainId;
+    subDomain: string;
+    indicator: string;
+    label: string;
+    severity: GapSeverity;
+    interventions: { id: string; label: string; horizon: Horizon; totalCostNGN: number }[];
+  }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -261,7 +375,12 @@ export interface AreaProfile {
   coverage: CoverageProfile;
 
   investments: InvestmentItem[];
-  deployment: DeploymentPhase | null;
+  /**
+   * What deploying into this area takes. Present at every level now — an LGA
+   * and the nation carry a plan the same way a state does; only a state adds a
+   * wave, a start quarter and its own governance gaps.
+   */
+  deployment: (DeploymentPlan & Partial<DeploymentPhase>) | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -288,6 +407,15 @@ export interface FilterState {
    * which is where that grouping is applied.
    */
   domains: FacilityThemeId[];
+  /**
+   * Gap ids the Gap control has ticked.
+   *
+   * OR within the control, like every other multi-select here: a facility
+   * matches if it carries any of them. Which gaps are on *offer* is decided by
+   * `domains` — that is what makes Domain and Gap one instrument rather than
+   * two, the first selecting a branch of the catalogue and the second a leaf.
+   */
+  gaps: string[];
   search: string;
 }
 

@@ -59,6 +59,17 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  FACILITY_GAPS,
+  GAPS,
+  GAP_DOMAINS,
+  HORIZONS,
+  HORIZON_LABEL,
+  STATE_GAPS,
+  bandFromGaps,
+  classifyFacility,
+  quantityFor,
+} from './gap-catalogue.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'public/data');
@@ -211,18 +222,105 @@ function bounds(geometry) {
 // ---------------------------------------------------------------------------
 
 /**
- * Per-domain band weights at a state of average strength.
+ * Gaps come first and the band is read off them — not the other way round.
  *
- * Read down the columns: technical infrastructure is not_ready roughly three
- * times as often as workforce capacity is. This table is the entire national
- * finding — everything else in the output follows from it.
+ * The generator used to draw a band per domain and then invent interventions to
+ * match it. That made the program's central claim — close these gaps and the
+ * facility turns Ready — an assertion nobody could check, and one the data
+ * could contradict: a facility could sit at Not ready with an empty gap list.
+ *
+ * Now `gap-catalogue.mjs` holds the prevalence of each gap, a facility draws
+ * its gaps, and `bandFromGaps` reads the band off what it drew. The claim
+ * becomes true by construction — an empty gap list *is* Ready, because Ready is
+ * defined as nothing left to fix — and the national finding still lands where
+ * the real assessment put it, because the prevalences were fitted to it.
+ *
+ * @see gap-catalogue.mjs for the weights and how they were fitted.
  */
-const DOMAIN_WEIGHTS = {
-  technical_infrastructure: { not_ready: 45, moderately_ready: 38, ready: 17 },
-  workforce_capacity: { not_ready: 12, moderately_ready: 46, ready: 42 },
-  workflow_transition: { not_ready: 34, moderately_ready: 46, ready: 20 },
-  data_use_reporting: { not_ready: 28, moderately_ready: 45, ready: 27 },
+
+/**
+ * Gaps that cannot be true at the same time as another gap.
+ *
+ * Every entry is a blocking gap suppressing a partial one, and that direction
+ * matters: a facility with no working backup at all cannot also have a
+ * *partially* working generator, and one with no internet cannot also have slow
+ * internet. Left in, the dataset would sell two solar systems to a facility
+ * that needs one and print gap counts nobody could reconcile.
+ *
+ * Because every suppression runs blocking -> partial, it cannot change any
+ * band: a facility holding the blocking gap is Not ready either way, and a
+ * facility holding none of them keeps its full partial list. The fitted
+ * distribution survives intact.
+ */
+const GAP_EXCLUSIONS = {
+  backup_none: ['backup_partial_solar', 'backup_partial_generator', 'backup_partial_inverter'],
+  no_internet: ['internet_personal_device', 'internet_slow'],
+  devices_none: ['devices_below_service_points'],
 };
+
+/**
+ * Draw one facility's gaps.
+ *
+ * `strength` runs -1 (this facility's state does badly) to +1. It scales every
+ * prevalence by `1 - strength/2`, so a strong state carries about half the gaps
+ * a weak one does and the mean across the country stays on the fitted figure.
+ */
+function drawGaps(strength, level) {
+  const scale = 1 - strength / 2;
+  const pool = level === 'state' ? STATE_GAPS : FACILITY_GAPS;
+  const present = new Set();
+  for (const gap of pool) {
+    if (rand() < Math.max(0, Math.min(0.97, gap.weight * scale))) present.add(gap.id);
+  }
+  for (const [blocking, suppressed] of Object.entries(GAP_EXCLUSIONS)) {
+    if (present.has(blocking)) for (const id of suppressed) present.delete(id);
+  }
+  return pool.filter((g) => present.has(g.id));
+}
+
+/** The four facility domains, banded from the gaps drawn in each. */
+function bandsFromGaps(gaps) {
+  return Object.fromEntries(
+    THEMES.map((t) => [t, bandFromGaps(gaps.filter((g) => g.domain === t))]),
+  );
+}
+
+/**
+ * Cost a facility's gaps into intervention lines.
+ *
+ * Interventions are keyed rather than concatenated because two gaps can call
+ * for the same one — a facility that is both off-grid and short of backup wants
+ * one solar system, not two. Where they disagree on quantity the larger wins,
+ * which is the only reading that leaves the facility actually fixed.
+ */
+function interventionsFor(gaps, facility) {
+  const byId = new Map();
+  for (const gap of gaps) {
+    for (const iv of gap.interventions) {
+      const quantity = quantityFor(iv.unitBasis, facility);
+      const seen = byId.get(iv.id);
+      if (seen) {
+        seen.quantity = Math.max(seen.quantity, quantity);
+        seen.gapIds.push(gap.id);
+      } else {
+        byId.set(iv.id, {
+          id: iv.id,
+          label: iv.label,
+          domain: gap.domain,
+          horizon: iv.horizon,
+          unitBasis: iv.unitBasis,
+          unitCostNGN: iv.unitCostNGN,
+          quantity,
+          gapIds: [gap.id],
+        });
+      }
+    }
+  }
+  return [...byId.values()].map((iv) => ({
+    ...iv,
+    totalCostNGN: iv.quantity * iv.unitCostNGN,
+  }));
+}
 
 /**
  * Tilt a weight table toward or away from readiness.
@@ -240,27 +338,6 @@ function tilt(weights, strength) {
   ];
 }
 
-/**
- * A facility's overall band from its four domain bands.
- *
- * The band-only restatement of the assessment's archetype rule: a gap in either
- * core domain (infrastructure, workforce) cannot be bought off with strength in
- * the supporting two.
- */
-function classify(themeBands) {
-  const rank = { not_ready: 1, moderately_ready: 2, ready: 3 };
-  const core = Math.min(
-    rank[themeBands.technical_infrastructure],
-    rank[themeBands.workforce_capacity],
-  );
-  const supporting = Math.min(
-    rank[themeBands.workflow_transition],
-    rank[themeBands.data_use_reporting],
-  );
-  if (core === 1) return 'not_ready';
-  if (core === 3 && supporting >= 2) return 'ready';
-  return 'moderately_ready';
-}
 
 // ---------------------------------------------------------------------------
 // Precomputed readiness — built bottom-up so it holds together
@@ -589,6 +666,70 @@ const INVESTMENT_CATALOGUE = [
   },
 ];
 
+/**
+ * Roll a facility population up into a deployment plan.
+ *
+ * Two halves, and the second is why the page is not called an investment plan.
+ * `gaps` counts *what is wrong* — every gap in the population, by how many
+ * facilities carry it, whether or not closing it costs anything. `lines` counts
+ * *what to do about it*, priced, phased and summed. Data use gaps appear in the
+ * first with a facility count and in the second at ₦0, which is the whole point
+ * of tracking them: they are work with a quantity and no invoice.
+ *
+ * Cost is broken out by horizon here rather than at the point of use, because
+ * both pages need it and neither should be re-deriving it: Assessed States adds
+ * the three together and shows one number, the Deployment Plan pulls them apart
+ * and phases the programme against them.
+ */
+function deploymentFor(facilities) {
+  const gapCounts = new Map();
+  const lines = new Map();
+  const byHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
+  const byDomain = Object.fromEntries(GAP_DOMAINS.map((d) => [d.id, 0]));
+
+  for (const f of facilities) {
+    for (const id of f.gaps) gapCounts.set(id, (gapCounts.get(id) ?? 0) + 1);
+    for (const iv of f.interventions ?? []) {
+      const line = lines.get(iv.id) ?? {
+        id: iv.id,
+        label: iv.label,
+        domain: iv.domain,
+        horizon: iv.horizon,
+        unitBasis: iv.unitBasis,
+        unitCostNGN: iv.unitCostNGN,
+        quantity: 0,
+        facilityCount: 0,
+        totalCostNGN: 0,
+      };
+      line.quantity += iv.quantity;
+      line.facilityCount += 1;
+      line.totalCostNGN += iv.totalCostNGN;
+      lines.set(iv.id, line);
+      byHorizon[iv.horizon] += iv.totalCostNGN;
+      byDomain[iv.domain] += iv.totalCostNGN;
+    }
+  }
+
+  const rows = [...lines.values()].sort((a, b) => b.totalCostNGN - a.totalCostNGN);
+  return {
+    facilityCount: facilities.length,
+    gapCount: facilities.reduce((sum, f) => sum + f.gapCount, 0),
+    costNGN: rows.reduce((sum, r) => sum + r.totalCostNGN, 0),
+    byHorizon,
+    byDomain,
+    gaps: FACILITY_GAPS.filter((g) => gapCounts.has(g.id)).map((g) => ({
+      id: g.id,
+      domain: g.domain,
+      subDomain: g.subDomain,
+      indicator: g.indicator,
+      label: g.label,
+      severity: g.severity,
+      facilityCount: gapCounts.get(g.id),
+    })),
+    lines: rows,
+  };
+}
+
 /** Roll a facility population up into the investment lines it triggers. */
 function investmentsFor(facilities) {
   const items = [];
@@ -725,10 +866,45 @@ for (const [stateSlug, meta] of [...stateMeta.entries()].sort()) {
 
     for (let n = 0; n < counts[i]; n += 1) {
       const geography = rand() < 0.28 ? 'urban' : 'rural';
-      const localStrength = strength + (geography === 'urban' ? 0.22 : -0.08);
-      const themeBands = Object.fromEntries(
-        THEMES.map((t) => [t, weighted(tilt(DOMAIN_WEIGHTS[t], localStrength))]),
-      );
+      /**
+       * The facility's own quality, on top of its state's and its setting's.
+       *
+       * Drawn once and applied to all four domains together, which is the whole
+       * point of it: without it every domain is an independent coin flip and a
+       * facility that is Ready on infrastructure is no likelier than any other
+       * to be Ready on workforce. The real assessment is not like that — a
+       * well-run facility tends to be well-run in every direction — and the
+       * difference is not cosmetic. Independent domains put only 12% of
+       * facilities in Ready overall against the real 19%, because overall Ready
+       * needs three domains to come good at once.
+       */
+      const localStrength =
+        strength + (geography === 'urban' ? 0.22 : -0.08) + between(-0.5, 0.5);
+
+      /**
+       * How big the facility is, drawn before its gaps because the gaps are
+       * counted against it.
+       *
+       * `servicePoints` is the one that matters most: registration, triage,
+       * consultation, laboratory, pharmacy are the points a facility documents
+       * at, and furniture, sockets and devices are all bought per point. A plan
+       * that assumed one per facility would understate the workflow bill four
+       * times over. `deviceShortfall` is the same arithmetic the workbook does
+       * — points that have no device to document on.
+       */
+      const servicePoints = intBetween(2, 6);
+      const staffCount = intBetween(3, 17);
+      const deviceCount = Math.max(0, servicePoints - intBetween(0, 3));
+      const size = {
+        servicePoints,
+        staffCount,
+        deviceCount,
+        deviceShortfall: Math.max(0, servicePoints - deviceCount),
+      };
+
+      const gaps = drawGaps(localStrength, 'facility');
+      const themeBands = bandsFromGaps(gaps);
+      const interventions = interventionsFor(gaps, size);
 
       // Inset from the bbox edge so a point does not land in the sea off a
       // coastal LGA. Not a point-in-polygon test — close enough at the zoom
@@ -749,9 +925,19 @@ for (const [stateSlug, meta] of [...stateMeta.entries()].sort()) {
         lon: Number(inset(minLon, maxLon).toFixed(5)),
         functionalityLevel: weighted(FUNCTIONALITY),
         isBHCPF: rand() < 0.42,
-        archetype: classify(themeBands),
+        archetype: classifyFacility(themeBands),
         themeBands,
+        ...size,
+        /** Gap ids, in catalogue order. The band above is read off exactly
+         *  these — see `bandFromGaps`. */
+        gaps: gaps.map((g) => g.id),
+        gapCount: gaps.length,
+        /** What closing them costs. Zero is a real answer here, not a missing
+         *  one: data use gaps are tracked and cost nothing to close. */
+        costNGN: interventions.reduce((sum, iv) => sum + iv.totalCostNGN, 0),
       };
+
+      facility.interventions = interventions;
 
       facilities.push(facility);
       stateFacilities.push(facility);
@@ -781,7 +967,7 @@ for (const [stateSlug, meta] of [...stateMeta.entries()].sort()) {
       band: dominantBand(dist),
       coverage,
       investments: investmentsFor(lgaFacilities),
-      deployment: null,
+      deployment: deploymentFor(lgaFacilities),
     };
 
     lgaProfiles.push(profile);
@@ -836,8 +1022,34 @@ for (const [stateSlug, meta] of [...stateMeta.entries()].sort()) {
       ? {
           wave,
           startQuarter: ['Q1 2026', 'Q3 2026', 'Q1 2027'][wave - 1],
-          facilityCount: stateFacilities.length,
-          costNGN: investmentsFor(stateFacilities).reduce((sum, i) => sum + i.totalCostNGN, 0),
+          ...deploymentFor(stateFacilities),
+          /**
+           * Leadership & governance, which belongs to the state and stops here.
+           *
+           * Held apart from `gaps` rather than merged into it, because merging
+           * would make the two columns beside each other mean different things:
+           * a facility count of 281 against "no digital health strategy" would
+           * be counting facilities for a fact that is true of the state once.
+           * It has no LGA reading and no facility reading — there is no
+           * instrument behind it at those levels — so nothing below this line
+           * inherits it.
+           */
+          stateGaps: drawGaps(strength, 'state').map((g) => ({
+            id: g.id,
+            domain: g.domain,
+            subDomain: g.subDomain,
+            indicator: g.indicator,
+            label: g.label,
+            severity: g.severity,
+            interventions: g.interventions.map((iv) => ({
+              id: iv.id,
+              label: iv.label,
+              horizon: iv.horizon,
+              // Zero, always, and stated rather than omitted. See the note on
+              // uncosted domains in `gap-catalogue.mjs`.
+              totalCostNGN: 0,
+            })),
+          })),
         }
       : null,
   });
@@ -890,7 +1102,7 @@ const national = {
     stateProfiles.map((s) => s.coverage.band),
   ),
   investments: investmentsFor(facilities),
-  deployment: null,
+  deployment: deploymentFor(facilities),
 };
 
 const snapshot = {
@@ -1006,6 +1218,94 @@ write('snapshot.json', snapshot);
  * these three numbers at build time. Generating the constant rather than
  * hand-copying it is the only way the page and the dataset cannot drift apart.
  */
+writeFileSync(
+  resolve(ROOT, 'src/lib/gapCatalogue.ts'),
+  `/**
+ * GENERATED by scripts/generate-dummy-data.mjs — do not edit.
+ *
+ * The gap dictionary, as the app sees it. The build-time source of truth is
+ * \`scripts/gap-catalogue.mjs\`; this is the same table with the generator's
+ * private fields — prevalence weights, exclusions — left behind, because a
+ * running dashboard has no business knowing how often a gap was *drawn*.
+ *
+ * Emitted rather than fetched: every control that offers a gap needs the whole
+ * list before it can render one, so a network round-trip would only buy a
+ * spinner on a filter dropdown.
+ */
+
+import type { Band, FacilityThemeId, GapDomainId, GapSeverity, Horizon } from './types';
+
+export const HORIZONS: Horizon[] = ${JSON.stringify(HORIZONS)};
+
+export const HORIZON_LABEL: Record<Horizon, string> = ${JSON.stringify(HORIZON_LABEL, null, 2)};
+
+/** The five domains. Two of them carry gaps that cost nothing to close, and one
+ *  of those attaches to a state rather than a facility. */
+export const GAP_DOMAINS = ${JSON.stringify(GAP_DOMAINS, null, 2)} as const;
+
+export const GAP_DOMAIN_LABEL: Record<GapDomainId, string> = ${JSON.stringify(Object.fromEntries(GAP_DOMAINS.map((d) => [d.id, d.label])), null, 2)};
+
+export interface GapDef {
+  id: string;
+  domain: GapDomainId;
+  subDomain: string;
+  indicator: string;
+  label: string;
+  severity: GapSeverity;
+  interventions: {
+    id: string;
+    label: string;
+    horizon: Horizon;
+    unitBasis: string;
+    unitCostNGN: number;
+  }[];
+}
+
+export const GAPS: GapDef[] = ${JSON.stringify(GAPS.map(({ weight, ...rest }) => rest), null, 2)};
+
+export const GAP_BY_ID: Record<string, GapDef> = Object.fromEntries(
+  GAPS.map((g) => [g.id, g]),
+);
+
+/** Gaps for a domain selection. No domains ticked means every facility-level
+ *  gap, which is what the Gap control offers when Domain is left alone. */
+export function gapsForDomains(domains: readonly string[]): GapDef[] {
+  const facilityLevel = GAPS.filter(
+    (g) => g.domain !== 'leadership_governance' || domains.includes(g.domain),
+  );
+  if (!domains.length) return facilityLevel.filter((g) => g.domain !== 'leadership_governance');
+  return GAPS.filter((g) => domains.includes(g.domain));
+}
+
+/** A gap's cost for one facility-shaped thing, at the quantities it implies. */
+export function gapCostNGN(
+  gap: GapDef,
+  size: { servicePoints: number; staffCount: number; deviceShortfall: number },
+): number {
+  return gap.interventions.reduce((sum, iv) => {
+    const q =
+      iv.unitBasis === 'per_service_point'
+        ? size.servicePoints
+        : iv.unitBasis === 'per_staff'
+          ? size.staffCount
+          : iv.unitBasis === 'per_device'
+            ? Math.max(1, size.deviceShortfall)
+            : 1;
+    return sum + q * iv.unitCostNGN;
+  }, 0);
+}
+
+/** Band ranks, so a caller can order gap severity beside a readiness band. */
+export const SEVERITY_BAND: Record<GapSeverity, Band> = {
+  blocking: 'not_ready',
+  partial: 'moderately_ready',
+};
+
+/** The four domains a facility is banded on. Leadership is a state's. */
+export const FACILITY_DOMAIN_IDS: FacilityThemeId[] = ${JSON.stringify(THEMES)};
+`,
+);
+
 writeFileSync(
   resolve(ROOT, 'src/lib/nationalSplit.ts'),
   `/**

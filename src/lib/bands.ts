@@ -67,6 +67,18 @@ export const BAND_TIMELINE: Record<Band, string> = {
  * `texture` is the carrier for the places where a label will not fit: a map
  * polygon, a 6px distribution segment, a donut arc. See `BAND_TEXTURE` below.
  */
+/**
+ * The band colours as raw CSS, for the few places that need a value rather than
+ * a class — an inline `style`, a canvas, an SVG attribute a class cannot reach.
+ * Same custom properties the Tailwind tokens are built on, so they stay in step
+ * with the theme and follow it into dark mode.
+ */
+export const BAND_CSS_COLOR: Record<Band, string> = {
+  not_ready: 'hsl(var(--notready))',
+  moderately_ready: 'hsl(var(--moderate))',
+  ready: 'hsl(var(--ready))',
+};
+
 export const BAND_CLASSES: Record<
   Band,
   { text: string; bg: string; wash: string; border: string; fill: string; texture: string }

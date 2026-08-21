@@ -86,11 +86,15 @@ export default function InvestmentPlanPage() {
   const waves = useMemo(() => {
     const byWave = new Map<WaveId, AreaProfile[]>();
     for (const s of states.data) {
-      if (!s.deployment) continue;
+      // A wave is a state's alone. Every area now carries a deployment plan —
+      // LGAs and the nation included — so the plan being present no longer
+      // implies a wave to file it under.
+      const wave = s.deployment?.wave;
+      if (!wave) continue;
       if (selectedStates.length && !selectedStates.includes(s.name)) continue;
-      const list = byWave.get(s.deployment.wave) ?? [];
+      const list = byWave.get(wave) ?? [];
       list.push(s);
-      byWave.set(s.deployment.wave, list);
+      byWave.set(wave, list);
     }
     return [1, 2, 3]
       .map((w) => ({ wave: w as WaveId, states: byWave.get(w as WaveId) ?? [] }))
