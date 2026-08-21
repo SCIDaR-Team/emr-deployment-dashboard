@@ -12,6 +12,18 @@ interface MapLabelProps {
   /** Floor for that shrinking. Below it a label is unreadable anyway, so it is
    *  better to render at the floor than to keep scaling into noise. */
   minFontSize?: number;
+  /**
+   * A second line under the name, set smaller — the readiness band on the
+   * coverage map.
+   *
+   * Dropped rather than crammed when the shape cannot hold it: at national
+   * zoom Lagos is a few dozen viewBox units across, and a second line inside it
+   * would either overflow its own border or shrink past legibility. The band is
+   * on the fill and in the hover for those, which is enough. `subtextMinSize`
+   * is the threshold.
+   */
+  subtext?: string;
+  subtextMinSize?: number;
 }
 
 /** Mean glyph advance for Inter at semibold, as a fraction of font size. Close
@@ -82,9 +94,24 @@ export function MapLabel({
   className,
   maxWidth,
   minFontSize,
+  subtext,
+  subtextMinSize,
 }: MapLabelProps) {
   const { lines, size } = fit(text, fontSize, maxWidth, minFontSize);
-  const offset = -((lines.length - 1) / 2) * size * LINE_HEIGHT;
+
+  // The sub-line is set at 78% of whatever size the name settled at, and only
+  // survives if that lands above the threshold *and* the shape is wide enough
+  // to hold the text at it.
+  const subSize = size * 0.78;
+  const sub =
+    subtext &&
+    subSize >= (subtextMinSize ?? 0) &&
+    (!maxWidth || width(subtext, subSize) <= maxWidth * 1.05)
+      ? subtext
+      : null;
+
+  const all = sub ? [...lines, sub] : lines;
+  const offset = -((all.length - 1) / 2) * size * LINE_HEIGHT;
 
   return (
     <text
@@ -108,6 +135,18 @@ export function MapLabel({
           {line}
         </tspan>
       ))}
+      {sub && (
+        <tspan
+          x={x}
+          dy={size * LINE_HEIGHT}
+          fontSize={subSize}
+          fontWeight={500}
+          className="fill-muted-foreground"
+          style={{ textTransform: 'uppercase', letterSpacing: subSize * 0.06 }}
+        >
+          {sub}
+        </tspan>
+      )}
     </text>
   );
 }

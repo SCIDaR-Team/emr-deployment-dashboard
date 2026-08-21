@@ -6,8 +6,16 @@ workbook and no ETL exist in this repository.
 ## Generating it
 
 ```bash
-npm run data:generate
+npm run geo:build      # boundaries — only after changing the source or the simplifier
+npm run data:generate  # the dataset itself
 ```
+
+`geo:build` reads OCHA's COD-AB ADM2 layer (774 LGAs, 5.8 MB) and writes
+`public/geo/lgas/<stateId>.json` — 37 files, 927 kB in total, largest state
+50 kB — plus `public/geo/lga-index.json`. Nothing ever draws more than one
+state's LGAs at a time, so splitting by the unit the UI actually asks for is
+what keeps the drill-down instant. `data:generate` then reads that index, which
+is the source of truth for which LGAs exist.
 
 Writes five files to `public/data/` and one generated module to
 `src/lib/nationalSplit.ts`. All six are committed — the Vercel build does not
@@ -52,6 +60,32 @@ rank. Urban facilities do better than rural ones.
 
 Current output: **3.2% ready, 39.4% moderately ready, 57.4% not ready** across
 2,825 facilities.
+
+## The coverage layer holds together
+
+`AreaProfile.coverage` — what National Coverage reads — is built bottom-up and
+obeys three rules, enforced by a validator that fails the generator rather than
+letting an incoherent dataset reach the page:
+
+1. **An area is no readier than its weakest core domain, or than its parts.**
+   Overall = min(technical infrastructure, workforce, majority of children). No
+   state reads Ready above a Moderately ready domain, and none reads Moderately
+   ready while two-thirds of its LGAs are Not ready.
+2. **A parent's domain band is its children's majority.** More than half must
+   agree, or the parent lands Moderately ready — an even split is not a strong
+   result.
+3. **The figures match the band above them.** An LGA's network and grid
+   percentages come from ranges belonging to its infrastructure band, its staff
+   count from ranges belonging to its workforce band. The ranges overlap at the
+   edges, so a reader cannot simply read the band off the number.
+
+Rule 3 is where the synthetic data is *tidier* than reality: sub-domain figures
+do not determine bands in the real source model, and a genuinely Ready state
+might have mediocre coverage. But a demo whose numbers contradict its colours
+teaches people to distrust the page, so the demo is coherent even where reality
+may not be.
+
+Current spread: **6 states ready, 13 moderately ready, 18 not ready.**
 
 ## There are no scores
 

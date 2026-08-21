@@ -30,6 +30,7 @@ import { MapZoomControls } from './MapZoomControls';
 import { useRenderWidth } from '@/hooks/useRenderWidth';
 import { useMapViewport, unitAtPoint } from '@/hooks/useMapViewport';
 import { useBaseMapStore } from '@/store/basemapStore';
+import type { MapFit } from './mapTypes';
 import { Skeleton, EmptyState, LoadError } from '@/components/ui';
 
 /** Small relative to a zoomed-in state viewBox, so real boundary detail
@@ -44,6 +45,8 @@ interface LgaFeatureProps {
 }
 
 interface StateLGAMapProps {
+  /** See the note on MapFit. */
+  fit?: MapFit;
   stateId: string;
   stateName: string;
   /** Keyed by bare LGA slug (`dala`, `orumba_south`, ...). */
@@ -66,15 +69,15 @@ interface HoverInfo {
 }
 
 /**
- * LGA choropleth within one state — new, not ported from either reference
- * dashboard (both are state-level only, guide §6.4). Reuses the same
- * projection as `NigeriaChoropleth` and `LGAFacilityMap`, but fits its
- * viewBox to the state's own bounds so zooming in is a viewBox change, never
- * a reprojection (guide §14).
+ * LGA choropleth within one state.
  *
- * Only the 12 primary states have LGA polygons (§14 — "only the 12 primary
- * states need LGA polygons at launch"), so a secondary state renders an
- * explanatory empty state instead of an silently blank map.
+ * Reuses the same projection as `NigeriaChoropleth`, but fits its viewBox to
+ * the state's own bounds, so drilling in is a viewBox change and never a
+ * reprojection — the two layers agree on where a coordinate lands.
+ *
+ * All 37 states have LGA polygons: the boundary set is COD-AB ADM2, all 774 of
+ * them, split one file per state. The empty state below is a real failure
+ * (a missing or malformed file), not the routine case it used to be.
  */
 export function StateLGAMap({
   stateId,
@@ -83,9 +86,16 @@ export function StateLGAMap({
   selectedLgaId,
   onSelect,
   onZoomOut,
+  fit = 'aspect',
   className,
 }: StateLGAMapProps) {
-  const geo = useFetchJSON<GeoCollection<LgaFeatureProps> | null>({ path: DATA_PATHS.lgasGeo, fallback: null });
+  // One file per state — see scripts/build-boundaries.mjs. Switching states
+  // switches the request, so drilling into Kano fetches ~50 kB rather than the
+  // 927 kB every state's polygons would come to.
+  const geo = useFetchJSON<GeoCollection<LgaFeatureProps> | null>({
+    path: DATA_PATHS.lgaGeo(stateId),
+    fallback: null,
+  });
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
@@ -95,16 +105,14 @@ export function StateLGAMap({
 
   const shapes = useMemo(() => {
     if (!geo.data) return [];
-    return geo.data.features
-      .filter((f) => f.properties.stateId === stateId)
-      .map((f) => ({
-        lgaId: f.properties.lgaId,
-        name: f.properties.name,
-        path: geomToPath(f.geometry, LGA_EPS),
-        label: geomLabelPoint(f.geometry),
-        bounds: geomBounds(f.geometry),
-      }));
-  }, [geo.data, stateId]);
+    return geo.data.features.map((f) => ({
+      lgaId: f.properties.lgaId,
+      name: f.properties.name,
+      path: geomToPath(f.geometry, LGA_EPS),
+      label: geomLabelPoint(f.geometry),
+      bounds: geomBounds(f.geometry),
+    }));
+  }, [geo.data]);
 
   const baseViewBox = useMemo(
     () => (shapes.length ? fitViewBox(unionBounds(shapes.map((s) => s.bounds))) : '0 0 1000 813'),
@@ -141,7 +149,7 @@ export function StateLGAMap({
     return (
       <EmptyState
         title={`No LGA boundaries for ${stateName}`}
-        message="LGA polygons are only available for the 12 physically-assessed states. Only those states can be drilled into below the state level."
+        message="The boundary file for this state is missing or empty. Re-run `npm run geo:build`."
       />
     );
   }
@@ -164,11 +172,14 @@ export function StateLGAMap({
   const hoverShape = hover ? shapes.find((s) => s.lgaId === hover.lgaId) : null;
 
   return (
-    <div ref={frameRef} className={cn('relative w-full', className)}>
+    <div
+      ref={frameRef}
+      className={cn('relative w-full', fit === 'fill' && 'h-full', className)}
+    >
       <svg
         ref={view.svgRef}
         viewBox={view.viewBox}
-        className="h-auto w-full select-none"
+        className={cn('w-full select-none', fit === 'fill' ? 'h-full' : 'h-auto')}
         style={{
           // Only claim the finger once the reader has deliberately zoomed in.
           // At base scale a one-finger drag is far more likely to be someone
@@ -250,6 +261,8 @@ export function StateLGAMap({
             x={shape.label.x}
             y={shape.label.y}
             text={shape.name}
+            subtext={data[shape.lgaId]?.band ? BAND_LABEL[data[shape.lgaId]!.band!] : undefined}
+            subtextMinSize={labelSize * 0.62}
             fontSize={labelSize}
             maxWidth={shape.label.r * 1.9}
             minFontSize={labelSize * 0.55}

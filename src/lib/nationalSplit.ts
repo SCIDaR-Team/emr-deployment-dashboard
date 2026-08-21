@@ -8,9 +8,9 @@
 import type { Band } from './types';
 
 export const NATIONAL_SPLIT: Record<Band, number> = {
-  "not_ready": 1621,
-  "moderately_ready": 1114,
-  "ready": 90
+  "not_ready": 1441,
+  "moderately_ready": 1269,
+  "ready": 115
 };
 
 /** Facilities carrying a band — the denominator every share on the landing

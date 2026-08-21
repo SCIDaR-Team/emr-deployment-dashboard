@@ -245,6 +245,35 @@
     @apply text-[10px] uppercase tracking-[0.13em] text-muted-foreground;
   }
 
+  /* A scroll region that says so.
+     macOS hides overlay scrollbars until something moves, so a pane that
+     scrolls perfectly well reads as content cut off at the edge. This gives it
+     a permanent thin track, and the padding underneath keeps the last row from
+     sitting flush against the bottom, which is the other half of the signal. */
+  .pane-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+    @apply pb-10;
+  }
+
+  .pane-scroll::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .pane-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .pane-scroll::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border: 3px solid hsl(var(--surface));
+    border-radius: 999px;
+  }
+
+  .pane-scroll:hover::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+
   /* Table cells. All three pages are built around ranked tables of the same
      shape, so the padding and the header treatment are defined once here
      rather than restated as a class string on every `<th>`. */

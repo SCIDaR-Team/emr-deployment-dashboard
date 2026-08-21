@@ -146,5 +146,16 @@ export const DATA_PATHS = {
   lgas: '/data/lgas.json',
   national: '/data/national.json',
   statesGeo: '/geo/nigeria-states.geojson',
-  lgasGeo: '/geo/nigeria-lgas.geojson',
+  /**
+   * LGA boundaries, one file per state — all 774 LGAs across all 37 states,
+   * built by `npm run geo:build`.
+   *
+   * Split rather than served as one layer because nothing ever draws more than
+   * one state's LGAs at a time: the national map draws states, and the
+   * drill-down draws the state you clicked. One national LGA layer would be
+   * 927 kB to render 50 kB of it.
+   */
+  lgaGeo: (stateId: string) => `/geo/lgas/${stateId}.json`,
+  /** stateId → [{ lgaId, name }], for the LGA filter's options. */
+  lgaIndex: '/geo/lga-index.json',
 } as const;

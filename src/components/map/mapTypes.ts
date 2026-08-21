@@ -23,8 +23,20 @@ export function fillOpacityFor(baseMap: BaseMapId): number {
   return baseMap === 'plain' ? 1 : 0.55;
 }
 
+/**
+ * Sizing.
+ *
+ * `aspect` (the default) boxes the map to the projection's own ratio and lets
+ * its height follow its width — right for a map sitting in a card among other
+ * cards. `fill` takes both dimensions from the parent instead, for the
+ * map-first layout where the map *is* the page and the parent is what is left
+ * after the header and the pane. The projection is unchanged either way; only
+ * the letterboxing moves.
+ */
+export type MapFit = 'aspect' | 'fill';
+
 /** What a map layer needs to know about one geographic unit to colour and
- *  label it. Shared by all three layers so ExplorerMap builds one shape. */
+ *  label it. Shared by all three layers so it is one shape everywhere. */
 export interface GeoDatum {
   band: Band | null;
   n: number;

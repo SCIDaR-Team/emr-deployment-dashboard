@@ -7,7 +7,7 @@
  * a level of detail the band cannot support.
  */
 
-import type { ThemeId } from './types';
+import type { CoverageThemeId, ThemeId } from './types';
 
 export interface ThemeDef {
   id: ThemeId;
@@ -86,3 +86,71 @@ export const FACILITY_THEMES = THEMES.filter((t) => t.facilityLevel);
 export const THEME_BY_ID: Record<ThemeId, ThemeDef> = Object.fromEntries(
   THEMES.map((t) => [t.id, t]),
 ) as Record<ThemeId, ThemeDef>;
+
+// ---------------------------------------------------------------------------
+// Sub-domains
+// ---------------------------------------------------------------------------
+
+/**
+ * What sits beneath the two coverage domains.
+ *
+ * Declared rather than hard-coded into the pane so the National Coverage panel
+ * renders whatever is defined here: filter by `themeId` when a domain lens is
+ * active, render everything when it is not. Adding a sub-domain is a table
+ * entry, not a component change.
+ *
+ * Note there is no `band` anywhere in this shape, by design — see
+ * `CoverageMeasures` in types.ts. A sub-domain has figures and nothing else.
+ */
+export interface MeasureDef {
+  /** Key on `AreaProfile.measures`. */
+  key: keyof import('./types').CoverageMeasures;
+  label: string;
+  format: 'percent' | 'count';
+}
+
+export interface SubDomainDef {
+  id: string;
+  themeId: CoverageThemeId;
+  label: string;
+  /** One line saying what the figures beneath actually measure. */
+  note: string;
+  measures: MeasureDef[];
+}
+
+export const SUB_DOMAINS: readonly SubDomainDef[] = [
+  {
+    id: 'network_coverage',
+    themeId: 'technical_infrastructure',
+    label: 'Network Coverage',
+    note: 'Share of the area with mobile network coverage, by operator.',
+    measures: [
+      { key: 'networkMtnPct', label: 'MTN', format: 'percent' },
+      { key: 'networkAirtelPct', label: 'Airtel', format: 'percent' },
+    ],
+  },
+  {
+    id: 'power',
+    themeId: 'technical_infrastructure',
+    label: 'Power',
+    note: 'Share of the area connected to the national grid.',
+    measures: [{ key: 'gridConnectionPct', label: 'Grid connection', format: 'percent' }],
+  },
+  {
+    id: 'staff',
+    themeId: 'workforce_capacity',
+    label: 'Staff',
+    note: 'Health workforce headcount.',
+    measures: [{ key: 'staffCount', label: 'Staff', format: 'count' }],
+  },
+];
+
+/** The two domains National Coverage reports, in rail order. */
+export const COVERAGE_THEMES = THEMES.filter(
+  (t): t is ThemeDef & { id: CoverageThemeId } =>
+    t.id === 'technical_infrastructure' || t.id === 'workforce_capacity',
+);
+
+export function subDomainsFor(themeId: CoverageThemeId): SubDomainDef[] {
+  return SUB_DOMAINS.filter((s) => s.themeId === themeId);
+}

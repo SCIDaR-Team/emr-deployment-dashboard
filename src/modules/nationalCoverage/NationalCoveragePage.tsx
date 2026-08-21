@@ -1,278 +1,242 @@
-import { useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { FilterBar } from '@/components/filters/FilterBar';
-import { MapLegend, NigeriaChoropleth } from '@/components/map';
-import {
-  BandBadge,
-  BandLegend,
-  BandRow,
-  DistributionBar,
-  LoadError,
-  SectionCard,
-  Tile,
-  TileRow,
-} from '@/components/ui';
+import { MapLegend, NigeriaChoropleth, StateLGAMap } from '@/components/map';
+import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
-import { useFilterStore } from '@/store/filterStore';
-import { buildBandMap } from '@/lib/scale';
-import { BAND_LABEL, bandShare } from '@/lib/bands';
-import { COVERAGE } from '@/lib/constants';
 import { formatCount } from '@/lib/format';
-import { THEMES } from '@/lib/themes';
+import { THEME_BY_ID } from '@/lib/themes';
+import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
+import { CoverageFilters } from './CoverageFilters';
+import { CoveragePane } from './CoveragePane';
+import { bandUnderLens, parseLens, resolveScope, type DomainLens } from './coverageScope';
 
 /**
- * National Coverage — all 37 states, and how each one was evidenced.
+ * National Coverage — the map *is* the page.
  *
- * The page's whole argument is the evidence split. Twelve states were visited
- * and carry facility counts; the other 25 were desk-reviewed and carry a
- * state-level reading with nothing underneath it. Those are two different kinds
- * of claim, and every surface here keeps them apart — the map hatches the
- * desk-reviewed polygons, and the table gives them a dash where a facility
- * count would go rather than a zero, which would read as "we looked and found
- * none".
+ * One screen, not a stack of panels: filters across the top, a full-bleed map,
+ * and a pane down the side that always says something about whatever is
+ * selected. Clicking a state drills the map into its LGAs and re-scopes the
+ * pane; clicking an LGA goes one level further. The pane is never empty — with
+ * nothing selected it holds the national picture — so there is no "choose
+ * something to begin" state to get past.
  *
- * NOTE: the editorial direction for this page is still open — the client has
- * the structure and will set the content. What is here is the coverage frame
- * everything else will hang off, wired to the synthetic dataset.
+ * ## The unit here is the state, not the facility
+ *
+ * Nothing on this page counts facilities. That is not an omission: this page
+ * answers "where does the country stand", and the answer is 37 state-level
+ * readings, each already classified by a model outside this dashboard. The
+ * facility survey is a different claim about a different population and it
+ * lives on Assessed States. Everything here reads `AreaProfile.coverage` and
+ * nothing else — see the note on `CoverageProfile`.
+ *
+ * ## Two ways to select, one selection
+ *
+ * The filter row and the map both write the URL, and the URL is the only place
+ * scope lives. That is what stops the two disagreeing, and it makes every view
+ * a link — `/states/kano/dala?domain=workforce_capacity` is a whole sentence.
  */
 
-const SECTIONS = [
-  { id: 'map', label: 'Map' },
-  { id: 'states', label: 'All states' },
-  { id: 'domains', label: 'Domains' },
-];
-
 export default function NationalCoveragePage() {
-  const { stateId } = useParams();
+  const { stateId, lgaId } = useParams();
+  const [search, setSearch] = useSearchParams();
   const navigate = useNavigate();
-  const { states, facilities, national } = useDataContext();
-  const zones = useFilterStore((s) => s.zones);
+  const { states, lgas, national } = useDataContext();
 
-  const inScope = useMemo(
-    () => (zones.length ? states.data.filter((s) => zones.includes(s.zone ?? '')) : states.data),
-    [states.data, zones],
+  const lens = parseLens(search.get('domain'));
+  const scope = useMemo(
+    () => resolveScope(states.data, lgas.data, stateId, lgaId),
+    [states.data, lgas.data, stateId, lgaId],
   );
 
-  const selected = useMemo(
-    () => inScope.find((s) => s.id === stateId) ?? null,
-    [inScope, stateId],
+  /** Navigation that carries the lens with it — changing scope must never
+   *  silently reset what the reader is looking at. */
+  const go = useCallback(
+    (path: string) => {
+      const query = search.toString();
+      navigate(query ? `${path}?${query}` : path);
+    },
+    [navigate, search],
   );
 
-  const mapData = useMemo(() => buildBandMap(inScope), [inScope]);
+  const setLens = useCallback(
+    (next: DomainLens) => {
+      const params = new URLSearchParams(search);
+      if (next === 'overall') params.delete('domain');
+      else params.set('domain', next);
+      setSearch(params, { replace: true });
+    },
+    [search, setSearch],
+  );
 
-  const primary = inScope.filter((s) => s.evidenceGrade === 'primary');
-  const secondary = inScope.filter((s) => s.evidenceGrade === 'secondary');
-  const facilityTotal = primary.reduce((sum, s) => sum + s.facilityCount, 0);
-  const lgaTotal = primary.reduce((sum, s) => sum + (s.lgaCount ?? 0), 0);
+  const stateLgas = useMemo(
+    () => (scope.state ? lgas.data.filter((l) => l.parentId === scope.state!.id) : []),
+    [lgas.data, scope.state],
+  );
 
-  const ranked = useMemo(
-    () =>
-      [...inScope].sort((a, b) => {
-        // Assessed states first, then by the count that matters — how many of
-        // their facilities are not ready. Sorting by band would put twelve
-        // states in three buckets and leave the order inside them arbitrary.
-        if (a.evidenceGrade !== b.evidenceGrade) return a.evidenceGrade === 'primary' ? -1 : 1;
-        return b.archetypeDistribution.not_ready - a.archetypeDistribution.not_ready;
-      }),
-    [inScope],
+  /**
+   * The national map's data.
+   *
+   * Every state is `primary` here, which switches off the desk-review hatch and
+   * makes all 37 clickable. On this page that is correct rather than a fudge:
+   * the evidence-grade distinction exists because 12 states got a facility
+   * survey, and no reading on this page comes from that survey. Network
+   * coverage and grid connection are known for Sokoto exactly as they are for
+   * Kano.
+   */
+  const nationalMapData = useMemo(() => {
+    const data: Record<string, GeoDatum> = {};
+    for (const state of states.data) {
+      data[state.id] = {
+        band: bandUnderLens(state, lens),
+        n: state.lgaCount ?? 0,
+        evidenceGrade: 'primary',
+        label: state.name,
+        valueLabel: `${formatCount(state.lgaCount ?? 0)} LGAs`,
+      };
+    }
+    return data;
+  }, [states.data, lens]);
+
+  const lgaMapData = useMemo(() => {
+    const data: Record<string, GeoDatum> = {};
+    for (const lga of stateLgas) {
+      data[lga.id.split('.')[1] ?? lga.id] = {
+        band: bandUnderLens(lga, lens),
+        n: 0,
+        evidenceGrade: 'primary',
+        label: lga.name,
+        valueLabel: lensLabel(lens),
+      };
+    }
+    return data;
+  }, [stateLgas, lens]);
+
+  const selectState = useCallback(
+    (id: string) => go(id === scope.state?.id ? '/states' : `/states/${id}`),
+    [go, scope.state],
+  );
+
+  const selectLga = useCallback(
+    (id: string) => {
+      if (!scope.state) return;
+      go(id === scope.lga?.id.split('.')[1] ? `/states/${scope.state.id}` : `/states/${scope.state.id}/${id}`);
+    },
+    [go, scope.state, scope.lga],
   );
 
   if (states.error) {
-    return <LoadError what="the state profiles" error={states.error} onRetry={states.refetch} />;
+    return <LoadError what="the coverage data" error={states.error} onRetry={states.refetch} />;
   }
 
+  const loading = states.isLoading && !states.data.length;
+
   return (
-    <>
+    <div className="flex min-h-0 flex-col lg:h-full">
       <PageHeader
         title="National Coverage"
-        subtitle="All 37 states and how each was evidenced"
-        sections={SECTIONS}
+        subtitle={subtitleFor(scope.level, lens)}
+        back={
+          scope.level !== 'national' ? (
+            <button
+              type="button"
+              onClick={() =>
+                go(scope.level === 'lga' ? `/states/${scope.state!.id}` : '/states')
+              }
+              aria-label="Up one level"
+              className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </button>
+          ) : undefined
+        }
       >
-        <FilterBar facilities={facilities.data} show={['zone']} />
+        <CoverageFilters
+          states={states.data}
+          lgas={lgas.data}
+          stateId={scope.state?.id ?? null}
+          lgaId={scope.lga?.id.split('.')[1] ?? null}
+          lens={lens}
+          onStateChange={(id) => go(id ? `/states/${id}` : '/states')}
+          onLgaChange={(id) =>
+            go(id ? `/states/${scope.state!.id}/${id}` : `/states/${scope.state!.id}`)
+          }
+          onLensChange={setLens}
+          onReset={() => navigate('/states')}
+        />
       </PageHeader>
 
-      <div className="space-y-4 p-4 sm:p-5">
-        <TileRow className="sm:grid-cols-2 lg:grid-cols-5">
-          <Tile label="States & FCT" value={formatCount(inScope.length)} />
-          <Tile
-            label="Assessed by survey"
-            value={formatCount(primary.length)}
-            note="Facility instrument"
-          />
-          <Tile
-            label="Desk review only"
-            value={formatCount(secondary.length)}
-            note="State-level findings"
-          />
-          <Tile label="LGAs covered" value={formatCount(lgaTotal || COVERAGE.lgas)} />
-          <Tile label="Facilities assessed" value={formatCount(facilityTotal)} />
-        </TileRow>
-
-        <SectionCard
-          id="map"
-          title="Readiness by state"
-          subtitle="Hatched states were desk-reviewed — no facility survey stands behind them"
-        >
-          <NigeriaChoropleth
-            data={mapData}
-            selectedId={stateId ?? null}
-            onSelect={(id) => navigate(id === stateId ? '/states' : `/states/${id}`)}
-          />
-          <MapLegend showSecondary className="mt-3" />
-        </SectionCard>
-
-        {selected && <StatePanel profile={selected} />}
-
-        <SectionCard
-          id="states"
-          title="All states"
-          subtitle="Assessed states first, ordered by how many facilities are not ready"
-          bodyClassName="p-0"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="th">State</th>
-                  <th className="th">Zone</th>
-                  <th className="th">Evidence</th>
-                  <th className="th text-right">Facilities</th>
-                  <th className="th">Readiness</th>
-                  <th className="th w-[220px]">Split</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranked.map((s) => (
-                  <tr
-                    key={s.id}
-                    onClick={() => navigate(`/states/${s.id}`)}
-                    className="cursor-pointer border-b border-border last:border-0 hover:bg-surface-sunk"
-                  >
-                    <td className="td font-medium text-foreground">{s.name}</td>
-                    <td className="td text-muted-foreground">{s.zone ?? '—'}</td>
-                    <td className="mono td text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
-                      {s.evidenceGrade === 'primary' ? 'Survey' : 'Desk review'}
-                    </td>
-                    <td className="mono td text-right">
-                      {s.evidenceGrade === 'primary' ? formatCount(s.facilityCount) : '—'}
-                    </td>
-                    <td className="td">
-                      <BandBadge band={s.band} size="sm" />
-                    </td>
-                    <td className="td">
-                      {s.evidenceGrade === 'primary' ? (
-                        <DistributionBar
-                          distribution={s.archetypeDistribution}
-                          scored={s.facilityCount}
-                          size="sm"
-                          showLegend={false}
-                        />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          No facility survey
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="border-t border-border px-4 py-2.5">
-            <BandLegend />
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          id="domains"
-          title="The five domains, nationally"
-          subtitle="Leadership & Governance is a state-level reading — it has no facility instrument behind it"
-        >
-          <DomainSplits profile={national.data} />
-        </SectionCard>
-      </div>
-    </>
-  );
-}
-
-/**
- * The five domains, each as a split rather than a single band.
- *
- * The dominant band on its own is not usable here: nationally all four facility
- * domains resolve to Moderately ready, and five identical rows would say
- * nothing about infrastructure failing three times as often as workforce does.
- * The bar carries the finding; the band label stays as the summary beside it.
- */
-function DomainSplits({ profile }: { profile: AreaProfile | null }) {
-  if (!profile) return null;
-  return (
-    <div className="space-y-3.5">
-      {THEMES.map((t) => {
-        const dist = profile.themeDistribution?.[t.id];
-        const scored = dist
-          ? dist.not_ready + dist.moderately_ready + dist.ready
-          : 0;
-        const share = dist ? bandShare(dist, 'not_ready') : null;
-        return (
-          <div key={t.id}>
-            <BandRow
-              label={t.label}
-              band={profile.themeBands[t.id] ?? null}
-              note={
-                share != null
-                  ? `${share.toFixed(0)}% not ready`
-                  : t.facilityLevel
-                    ? undefined
-                    : 'state-level reading'
-              }
+      {/* Map and pane side by side on a desktop, stacked on a phone — where the
+          map takes a fixed slice of the viewport and the pane scrolls under it,
+          rather than being hidden behind a control the way the reference
+          dashboard does it. */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="relative h-[52vh] shrink-0 bg-page lg:h-auto lg:min-h-0 lg:flex-1">
+          {loading ? (
+            <Skeleton className="h-full w-full" />
+          ) : scope.state ? (
+            <StateLGAMap
+              key={scope.state.id}
+              fit="fill"
+              stateId={scope.state.id}
+              stateName={scope.state.name}
+              data={lgaMapData}
+              selectedLgaId={scope.lga?.id.split('.')[1] ?? null}
+              onSelect={selectLga}
+              onZoomOut={() => go('/states')}
+              className="h-full"
             />
-            {scored > 0 && dist && (
-              <DistributionBar
-                distribution={dist}
-                scored={scored}
-                size="sm"
-                showLegend={false}
-                className="mt-1.5"
-              />
-            )}
+          ) : (
+            <NigeriaChoropleth
+              fit="fill"
+              data={nationalMapData}
+              selectedId={null}
+              onSelect={selectState}
+              className="h-full"
+            />
+          )}
+
+          {/* The key sits on the map rather than under it: the map is the whole
+              height of the page here, and a legend below the fold explains
+              nothing. */}
+          <div className="pointer-events-none absolute bottom-3 left-3 rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+            <MapLegend showNoData={false} />
           </div>
-        );
-      })}
-      <BandLegend className="pt-1" />
+        </div>
+
+        <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[370px] lg:border-l lg:border-t-0">
+          <CoveragePane
+            scope={scope}
+            lens={lens}
+            national={national.data}
+            states={states.data}
+            listAreas={scope.state ? stateLgas : states.data}
+            listLabel={scope.state ? 'LGAs' : 'States'}
+            selectedListId={scope.lga?.id ?? scope.state?.id ?? null}
+            onSelectListItem={(area: AreaProfile) =>
+              area.level === 'state'
+                ? selectState(area.id)
+                : selectLga(area.id.split('.')[1] ?? area.id)
+            }
+          />
+        </aside>
+      </div>
     </div>
   );
 }
 
-/** The selected state, opened under the map rather than in a drawer — a reader
- *  comparing two states wants the map still on screen. */
-function StatePanel({ profile }: { profile: AreaProfile }) {
-  return (
-    <SectionCard
-      title={profile.name}
-      subtitle={
-        profile.evidenceGrade === 'primary'
-          ? `${formatCount(profile.facilityCount)} facilities across ${formatCount(
-              profile.lgaCount ?? 0,
-            )} LGAs`
-          : 'Desk review — state-level findings only'
-      }
-      action={<BandBadge band={profile.band} size="sm" />}
-    >
-      {profile.evidenceGrade === 'primary' && (
-        <DistributionBar
-          distribution={profile.archetypeDistribution}
-          scored={profile.facilityCount}
-          className="mb-4"
-        />
-      )}
-      <DomainSplits profile={profile} />
-      <p className="mt-3 text-xs text-muted-foreground">
-        {profile.band
-          ? `${profile.name} sits at ${BAND_LABEL[profile.band].toLowerCase()}.`
-          : 'No reading for this state.'}
-      </p>
-    </SectionCard>
-  );
+function lensLabel(lens: DomainLens): string {
+  return lens === 'overall' ? 'Overall readiness' : THEME_BY_ID[lens].label;
+}
+
+function subtitleFor(level: 'national' | 'state' | 'lga', lens: DomainLens): string {
+  const scope =
+    level === 'national'
+      ? 'All 37 states, by readiness band'
+      : level === 'state'
+        ? 'Local government areas, by readiness band'
+        : 'One local government area';
+  return lens === 'overall' ? scope : `${scope} · ${lensLabel(lens)}`;
 }

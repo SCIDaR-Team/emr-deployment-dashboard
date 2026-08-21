@@ -43,6 +43,7 @@ npm run dev
 |---|---|
 | `npm run dev` | Vite dev server |
 | `npm run build` | Typecheck and production build |
+| `npm run geo:build` | Rebuild the per-state LGA boundary files |
 | `npm run data:generate` | Regenerate the synthetic dataset |
 | `npm run typecheck` | `tsc -b --noEmit` |
 | `npm run lint` | ESLint |
@@ -59,6 +60,24 @@ npm run dev
 
 Filters are shared across modules and live in the URL, so any scoped view is a
 link: `/assessment?state=Kano&archetype=not_ready`.
+
+## National Coverage
+
+The map is the page: filters across the top, a full-bleed choropleth, and a pane
+that always describes whatever is selected. Clicking a state drills into its
+LGAs and re-scopes the pane; clicking an LGA goes one level further. Scope lives
+in the URL and nowhere else, so the filter row and the map cannot disagree and
+every view is a link — `/states/kano/dala?domain=workforce_capacity` is a whole
+sentence.
+
+Nothing on that page counts facilities. It answers "where does the country
+stand", and the answer is 37 state-level readings from `AreaProfile.coverage` —
+a different claim from the facility survey, which lives on Assessed States. The
+two are held apart in the type system for that reason.
+
+Beneath the two domains sit sub-domains — Network Coverage (MTN, Airtel), Power,
+Staff — and **these carry no readiness band, by design**. They are measurements,
+not judgements, so band colour never touches them.
 
 ## Bands, not scores
 

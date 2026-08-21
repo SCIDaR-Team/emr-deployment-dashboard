@@ -21,6 +21,7 @@ import {
   type GeoDatum,
 } from './mapTypes';
 import { useBaseMapStore } from '@/store/basemapStore';
+import type { MapFit } from './mapTypes';
 import { MapZoomControls } from './MapZoomControls';
 import { useMapViewport, unitAtPoint } from '@/hooks/useMapViewport';
 import {
@@ -44,6 +45,8 @@ const NATIONAL_EPS = 0.01;
 const STATE_LABEL_SIZE = 9.5;
 
 interface NigeriaChoroplethProps {
+  /** See the note on MapFit. */
+  fit?: MapFit;
   /** Keyed by state slug id (`akwa_ibom`, `fct`, ...). */
   data: Record<string, GeoDatum>;
   selectedId?: string | null;
@@ -64,14 +67,18 @@ interface HoverInfo {
 /**
  * National choropleth — all 37 states.
  *
- * Adapted from `NPHCDA_dashboard_int/src/components/map/NigeriaMap.tsx`, but
- * projects the same GRID3/COD-AB GeoJSON `srh-dashboard` already ships
- * (`nigeria-states.geojson`) through the shared Web Mercator projection in
- * `src/lib/mapProjection.ts`, rather than NPHCDA's hand-tuned inline SVG paths
- * — that keeps this layer on the exact same lon/lat → viewBox math as the LGA
- * and facility layers (guide §14).
+ * Projects the GRID3/COD-AB ADM1 GeoJSON in `public/geo` through the shared Web
+ * Mercator projection in `src/lib/mapProjection.ts`, which is the same math the
+ * LGA layer uses — so drilling from a state into its LGAs moves the viewBox and
+ * never reprojects, and the two layers agree on where a coordinate lands.
  */
-export function NigeriaChoropleth({ data, selectedId, onSelect, className }: NigeriaChoroplethProps) {
+export function NigeriaChoropleth({
+  data,
+  selectedId,
+  onSelect,
+  fit = 'aspect',
+  className,
+}: NigeriaChoroplethProps) {
   const geo = useFetchJSON<GeoCollection | null>({ path: DATA_PATHS.statesGeo, fallback: null });
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
@@ -136,11 +143,14 @@ export function NigeriaChoropleth({ data, selectedId, onSelect, className }: Nig
   const fillOpacity = fillOpacityFor(baseMap);
 
   return (
-    <div ref={frameRef} className={cn('relative w-full', className)}>
+    <div
+      ref={frameRef}
+      className={cn('relative w-full', fit === 'fill' && 'h-full', className)}
+    >
       <svg
         ref={view.svgRef}
         viewBox={view.viewBox}
-        className="h-auto w-full select-none"
+        className={cn('w-full select-none', fit === 'fill' ? 'h-full' : 'h-auto')}
         style={{
           // Only claim the finger once the reader has deliberately zoomed in.
           // At base scale a one-finger drag is far more likely to be someone
@@ -253,6 +263,12 @@ export function NigeriaChoropleth({ data, selectedId, onSelect, className }: Nig
             x={shape.label.x}
             y={shape.label.y}
             text={shape.name}
+            // The band under the name, where the state is big enough to hold
+            // it. Every state carries its band in its fill regardless; this is
+            // the redundant text channel for readers who cannot separate the
+            // three hues, and for anyone reading a printout.
+            subtext={data[shape.stateId]?.band ? BAND_LABEL[data[shape.stateId]!.band!] : undefined}
+            subtextMinSize={5.6 / view.scale}
             fontSize={STATE_LABEL_SIZE / view.scale}
             maxWidth={shape.label.r * 1.9}
             minFontSize={(STATE_LABEL_SIZE * 0.62) / view.scale}
@@ -285,7 +301,12 @@ export function NigeriaChoropleth({ data, selectedId, onSelect, className }: Nig
                 </p>
               ) : hoverDatum?.band ? (
                 <p className="mt-0.5 text-muted-foreground">
-                  {BAND_LABEL[hoverDatum.band]} · {formatCount(hoverDatum.n)} facilities
+                  {BAND_LABEL[hoverDatum.band]} ·{' '}
+                  {/* The caller names its own unit: this layer carries
+                      facilities on one page and LGAs on another, and a tooltip
+                      that says "facilities" on a page with no facilities on it
+                      is worse than one that says nothing. */}
+                  {hoverDatum.valueLabel ?? `${formatCount(hoverDatum.n)} facilities`}
                 </p>
               ) : (
                 <p className="mt-0.5 italic text-muted-foreground">No data for this selection</p>

@@ -21,6 +21,7 @@ import { MapZoomControls } from './MapZoomControls';
 import { useRenderWidth } from '@/hooks/useRenderWidth';
 import { useMapViewport } from '@/hooks/useMapViewport';
 import { useBaseMapStore } from '@/store/basemapStore';
+import type { MapFit } from './mapTypes';
 import type { Band } from '@/lib/types';
 import { LoadError, Skeleton } from '@/components/ui';
 
@@ -54,6 +55,8 @@ export interface FacilityPoint {
 }
 
 interface LGAFacilityMapProps {
+  /** See the note on MapFit. */
+  fit?: MapFit;
   stateId: string;
   lgaId: string;
   lgaName: string;
@@ -91,9 +94,15 @@ export function LGAFacilityMap({
   selectedFacilityId,
   onSelect,
   onZoomOut,
+  fit = 'aspect',
   className,
 }: LGAFacilityMapProps) {
-  const geo = useFetchJSON<GeoCollection<LgaFeatureProps> | null>({ path: DATA_PATHS.lgasGeo, fallback: null });
+  // The state's own boundary file — see the note on DATA_PATHS.lgaGeo. The one
+  // LGA this layer outlines is picked out of it below.
+  const geo = useFetchJSON<GeoCollection<LgaFeatureProps> | null>({
+    path: DATA_PATHS.lgaGeo(stateId),
+    fallback: null,
+  });
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
   const [frameRef, renderPx] = useRenderWidth<HTMLDivElement>();
@@ -101,9 +110,9 @@ export function LGAFacilityMap({
 
   const outline = useMemo(() => {
     if (!geo.data) return null;
-    const feature = geo.data.features.find((f) => f.properties.stateId === stateId && f.properties.lgaId === lgaId);
+    const feature = geo.data.features.find((f) => f.properties.lgaId === lgaId);
     return feature ? { path: geomToPath(feature.geometry), bounds: geomBounds(feature.geometry) } : null;
-  }, [geo.data, stateId, lgaId]);
+  }, [geo.data, lgaId]);
 
   const points = useMemo(
     () =>
@@ -159,11 +168,14 @@ export function LGAFacilityMap({
   const hoverPoint = hover ? points.find((p) => p.uuid === hover.uuid) : null;
 
   return (
-    <div ref={frameRef} className={cn('relative w-full', className)}>
+    <div
+      ref={frameRef}
+      className={cn('relative w-full', fit === 'fill' && 'h-full', className)}
+    >
       <svg
         ref={view.svgRef}
         viewBox={view.viewBox}
-        className="h-auto w-full select-none"
+        className={cn('w-full select-none', fit === 'fill' ? 'h-full' : 'h-auto')}
         style={{
           // Only claim the finger once the reader has deliberately zoomed in.
           // At base scale a one-finger drag is far more likely to be someone

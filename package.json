@@ -11,6 +11,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run --passWithNoTests",
+    "geo:build": "node scripts/build-boundaries.mjs",
     "data:generate": "node scripts/generate-dummy-data.mjs"
   },
   "dependencies": {

@@ -44,8 +44,15 @@ export default function App() {
             */}
             <Route path="/" element={page(<LandingPage />)} />
             <Route element={<AppShell />}>
+              {/* Three levels, one page: national → state → LGA. The path is
+                  the scope, so a link to any level is a link to what the reader
+                  was looking at. */}
               <Route path="/states" element={page(<NationalCoveragePage />)} />
               <Route path="/states/:stateId" element={page(<NationalCoveragePage />)} />
+              <Route
+                path="/states/:stateId/:lgaId"
+                element={page(<NationalCoveragePage />)}
+              />
               <Route path="/assessment" element={page(<AssessedStatesPage />)} />
               <Route path="/assessment/:stateId" element={page(<AssessedStatesPage />)} />
               <Route
