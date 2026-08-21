@@ -4,7 +4,7 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { formatCount } from '@/lib/format';
 import { COVERAGE_THEMES, subDomainsFor } from '@/lib/themes';
-import { BandBadge, BandStack } from '@/components/ui';
+import { BandBadge } from '@/components/ui';
 import type { AreaProfile, Band, CoverageMeasures, CoverageThemeId } from '@/lib/types';
 import { bandUnderLens, countByBand, totalOf, type DomainLens, type Scope } from './coverageScope';
 
@@ -134,7 +134,7 @@ function PaneHeader({
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="border-b border-border px-4 py-3.5">
-      <h3 className="mono mb-2.5 text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+      <h3 className="mono mb-2.5 text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
         {title}
       </h3>
       {children}
@@ -157,8 +157,10 @@ function CountRows({ counts, unit }: { counts: Record<Band, number>; unit: strin
 
   return (
     <div>
-      <BandStack distribution={counts} className="mb-3 h-2.5" />
-      <ul className="space-y-2">
+      {/* No stacked bar above these rows any more. It encoded the same three
+          numbers the rows underneath state exactly, and in a 370px pane the
+          vertical space it cost was better spent on the figures themselves. */}
+      <ul className="space-y-2.5">
         {order.map((band) => (
           <li key={band} className="flex items-center gap-2.5">
             <span
@@ -177,7 +179,7 @@ function CountRows({ counts, unit }: { counts: Record<Band, number>; unit: strin
             </span>
             <span
               className={cn(
-                'mono ml-auto text-right text-[10px] uppercase tracking-[0.09em]',
+                'mono ml-auto text-right text-[10.5px] font-bold uppercase tracking-[0.09em]',
                 BAND_CLASSES[band].text,
               )}
             >
@@ -208,7 +210,7 @@ function Reading({ band }: { band: Band | null }) {
           BAND_CLASSES[band].texture,
         )}
       />
-      <span className={cn('text-[17px] font-semibold tracking-tight', BAND_CLASSES[band].text)}>
+      <span className={cn('text-[17px] font-bold tracking-tight', BAND_CLASSES[band].text)}>
         {BAND_LABEL[band]}
       </span>
     </div>
@@ -325,7 +327,7 @@ function AreaList({
   return (
     <section className="px-4 py-3.5">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="mono text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+        <h3 className="mono text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
           {label}
         </h3>
         <span className="mono text-[10px] text-muted-foreground">{formatCount(rows.length)}</span>
@@ -370,7 +372,12 @@ function AreaList({
                 <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">
                   {area.name}
                 </span>
-                <span className="mono shrink-0 text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                <span
+                  className={cn(
+                    'mono shrink-0 text-[9.5px] font-semibold uppercase tracking-[0.08em]',
+                    band ? BAND_CLASSES[band].text : 'text-muted-foreground',
+                  )}
+                >
                   {band ? BAND_LABEL[band] : '—'}
                 </span>
               </button>
