@@ -1,14 +1,29 @@
 /**
  * Which raster base map sits under the choropleth.
  *
- * Persisted, and shared by all three map layers: drilling National → State →
- * LGA must not silently drop the reader back to a different base map halfway
- * down. Not part of themeStore — this is a map setting, not a colour scheme,
- * and it is orthogonal to light/dark.
+ * Shared by all three map layers: drilling National → State → LGA must not
+ * silently drop the reader back to a different base map halfway down. Not part
+ * of themeStore — this is a map setting, not a colour scheme, and it is
+ * orthogonal to light/dark.
+ *
+ * **Not persisted, because it is not reachable.** `BaseMapControl` is the only
+ * caller of `setBaseMap` and nothing in this dashboard mounts it — the sibling
+ * put it on the report explorer, and this one has no explorer. `plain` is
+ * therefore the only value a reader can arrive at.
+ *
+ * It used to persist to `emr-basemap`, which turned that into a trap rather
+ * than a preference: a `satellite` stored by an earlier build came back on
+ * every visit, put raster tiles under all three layers and dropped the band
+ * fills to 0.55 opacity, with no control anywhere to undo it. A setting nobody
+ * can set is not worth remembering.
+ *
+ * Restoring persistence is part of mounting the control, not a step before it —
+ * see the note on `BaseMapControl` for what else that takes. Use a fresh key
+ * when the time comes: an `emr-basemap` written before this change may still be
+ * sitting in a reader's browser holding a value they never chose.
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 export type BaseMapId = 'plain' | 'osm' | 'satellite';
 
@@ -64,14 +79,10 @@ interface BaseMapStore {
   setBaseMap: (baseMap: BaseMapId) => void;
 }
 
-export const useBaseMapStore = create<BaseMapStore>()(
-  persist(
-    (set) => ({
-      // Plain by default: the readiness band is the message, and an
-      // unrequested aerial photo behind it is noise until the reader asks.
-      baseMap: 'plain',
-      setBaseMap: (baseMap) => set({ baseMap }),
-    }),
-    { name: 'emr-basemap' },
-  ),
-);
+export const useBaseMapStore = create<BaseMapStore>((set) => ({
+  // Plain by default: the readiness band is the message, and an unrequested
+  // aerial photo behind it is noise until the reader asks. Today it is also
+  // plain by *arrival*, since nothing gives the reader a way to ask.
+  baseMap: 'plain',
+  setBaseMap: (baseMap) => set({ baseMap }),
+}));
