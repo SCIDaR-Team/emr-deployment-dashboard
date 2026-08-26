@@ -93,6 +93,26 @@ export function distributionTotal(d: BandDistribution): number {
 }
 
 /**
+ * How a population splits under one of the two overall readings.
+ *
+ * Separate from `facilityDistribution`, which answers to the Domain filter and
+ * so returns whichever band that filter has put in play. This one is asked for
+ * by name — `useBand` or `deploymentBand` — because the pane shows both at once
+ * and neither may stand in for the other.
+ */
+export function overallDistribution(
+  facilities: FacilitySummary[],
+  key: 'useBand' | 'deploymentBand',
+): BandDistribution {
+  const dist: BandDistribution = { not_ready: 0, moderately_ready: 0, ready: 0 };
+  for (const f of facilities) {
+    const band = f[key];
+    if (band) dist[band] += 1;
+  }
+  return dist;
+}
+
+/**
  * Share of an area's facilities that are not ready, 0–1.
  *
  * What the top-level map paints with no domain ticked. It has to be a share

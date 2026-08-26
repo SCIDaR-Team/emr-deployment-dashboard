@@ -33,13 +33,12 @@ export function filterFacilities(
     if (f.states.length && !f.states.includes(fac.state)) return false;
     if (f.lgas.length && !f.lgas.includes(fac.lga)) return false;
     if (f.zones.length && !f.zones.includes(fac.zone)) return false;
-    if (f.geography.length && !f.geography.includes(fac.geography)) return false;
     if (f.functionalityLevels.length && !f.functionalityLevels.includes(fac.functionalityLevel)) {
       return false;
     }
     // Readiness is read through the Domain filter — one rule, in
     // `facilityBandUnder`. With no domain ticked this is the facility's own
-    // archetype, which is what it has always been; with domains ticked it is
+    // EMR-use band; with domains ticked it is
     // the weakest of its readings in them, and so is every figure on the page.
     // A ticked gap is asking "show me the facilities carrying this", so the
     // control is an OR across its own selection and an AND against the rest of
@@ -114,7 +113,6 @@ export function buildFilterOptions(facilities: FacilitySummary[], selectedStates
     states: tally(facilities, (f) => f.state),
     lgas: tally(inScope, (f) => f.lga),
     zones: tally(facilities, (f) => f.zone),
-    geography: tally(facilities, (f) => f.geography),
     functionalityLevels: tally(facilities, (f) => f.functionalityLevel),
     funding: tally(facilities, (f) => (f.isBHCPF ? 'BHCPF' : 'non-BHCPF')),
   };
@@ -156,7 +154,7 @@ export function useFilteredData() {
       ]),
     ) as Record<FacilityThemeId, Band | null>;
 
-    const distribution = archetypeDistribution(filtered.map((f) => f.archetype));
+    const distribution = archetypeDistribution(filtered.map((f) => f.useBand));
 
     return {
       total: filtered.length,

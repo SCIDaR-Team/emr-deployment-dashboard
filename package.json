@@ -12,6 +12,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run --passWithNoTests",
     "geo:build": "node scripts/build-boundaries.mjs",
+    "data:ingest": "node scripts/ingest-assessment.mjs",
     "data:generate": "node scripts/generate-dummy-data.mjs"
   },
   "dependencies": {

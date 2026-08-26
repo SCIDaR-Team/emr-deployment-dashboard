@@ -54,15 +54,20 @@ import {
  *
  * ## What each level paints
  *
- * The top level cannot paint bands. All 12 assessed states classify to the same
- * state-level band, so a band choropleth over them is twelve identical polygons
- * carrying one value between them — see the note on `GeoDatum.step`. It paints
- * the share of facilities not ready instead, on the sequential ramp, with the
- * scale legend that a sequential encoding cannot be read without. Below that,
- * LGAs and facilities differ in band, so band is what they carry.
+ * **States and LGAs carry money, facilities carry a band.** An area is a
+ * population rather than a thing with a readiness level, and what a programme
+ * allocates against it is investment need — so both area levels fill from total
+ * intervention cost on the sequential ramp, fitted to the features actually
+ * drawn rather than anchored at zero. A facility *is* one thing with a reading,
+ * so it takes a band.
  *
- * NOTE: the editorial direction for this page is still open — the client has
- * the structure and will set the content of the pane.
+ * A band choropleth over the states would say nothing in any case: they
+ * classify to one or two values between the twelve — see the note on
+ * `GeoDatum.step`.
+ *
+ * Every domain in the dataset carries money, including data use at ₦36.8m, so
+ * the map never has to fall back to counting gaps. It did once, when two
+ * domains in the synthetic model had gaps and no cost.
  */
 
 const ALL = '__all__';
@@ -76,30 +81,16 @@ export default function AssessedStatesPage() {
   /**
    * The Domain filter, which on this page is a lens rather than a sieve.
    *
-   * It removes no facility — all 2,825 are scored in all four domains — but it
+   * It removes no facility — all 2,806 are scored in all four domains — but it
    * changes what every band on the page *means*, through `facilityBandUnder`.
-   * Under it the pane counts a domain's split, the polygons take that domain's
-   * colours and a Readiness filter selects on it.
+   *
+   * Nothing ticked, a facility shows both overall readings: how ready it is to
+   * *use* an EMR and whether anything blocks *deploying* one. Tick a domain and
+   * both collapse to that domain's band — which is always a use band, since the
+   * source has no per-domain deployment reading. So the page has two modes, and
+   * which one it is in is decided here.
    */
   const domains = useFilterStore((s) => s.domains);
-
-  /**
-   * Does the current selection cost anything?
-   *
-   * Data use & reporting and leadership & governance carry gaps and no money,
-   * so a reader who narrows to them would otherwise get a map painted entirely
-   * in the value zero — twelve identical polygons saying nothing. The map falls
-   * back to counting gaps there, which is the same question in the only
-   * currency that selection has: the need is still real, it just has no
-   * invoice. The legend says which one is on screen.
-   */
-  const costed = useMemo(
-    () =>
-      gapsForDomains(domains).some((g) =>
-        g.interventions.some((iv) => iv.unitCostNGN > 0),
-      ),
-    [domains],
-  );
 
   const surveyed = useMemo(() => assessedStates(states.data), [states.data]);
 
@@ -122,7 +113,7 @@ export default function AssessedStatesPage() {
       scope.state
         ? lgas.data
             .filter((l) => l.parentId === scope.state!.id)
-            .sort((a, b) => b.archetypeDistribution.not_ready - a.archetypeDistribution.not_ready)
+            .sort((a, b) => b.useDistribution.not_ready - a.useDistribution.not_ready)
         : [],
     [lgas.data, scope.state],
   );
@@ -174,7 +165,7 @@ export default function AssessedStatesPage() {
         for (const id of f.gaps) {
           if (!offered.has(id)) continue;
           gaps += 1;
-          costNGN += gapCostNGN(GAP_BY_ID[id]!, f);
+          costNGN += gapCostNGN(GAP_BY_ID[id]!).costNGN;
           hit = true;
         }
         if (hit) affected += 1;
@@ -212,7 +203,7 @@ export default function AssessedStatesPage() {
     // need spans roughly a threefold range across the twelve, and a scale
     // anchored at zero would drop all of them into the darkest two steps and
     // stop discriminating between the ones a budget has to choose between.
-    const values = [...need.values()].map((v) => (costed ? v.costNGN : v.gaps));
+    const values = [...need.values()].map((v) => v.costNGN);
     const lo = values.length ? Math.min(...values) : 0;
     const hi = values.length ? Math.max(...values) : 0;
 
@@ -221,7 +212,7 @@ export default function AssessedStatesPage() {
       const rows = byState.get(state.id) ?? [];
       const surveyed = state.evidenceGrade === 'primary';
       const n = need.get(state.id);
-      const value = n ? (costed ? n.costNGN : n.gaps) : null;
+      const value = n ? n.costNGN : null;
       data[state.id] = {
         band: null,
         n: rows.length,
@@ -229,11 +220,11 @@ export default function AssessedStatesPage() {
         label: state.name,
         step: stepFor(value, lo, hi),
         rawValue: value,
-        valueLabel: !surveyed ? 'Not surveyed' : needLabel(n, n?.affected ?? 0, costed),
+        valueLabel: !surveyed ? 'Not surveyed' : needLabel(n, n?.affected ?? 0),
       };
     }
     return data;
-  }, [states.data, facilities, needOf, costed]);
+  }, [states.data, facilities, needOf]);
 
   const lgaMapData = useMemo(() => {
     const byLga = new Map<string, FacilitySummary[]>();
@@ -248,7 +239,7 @@ export default function AssessedStatesPage() {
       const id = bareLgaId(l.id);
       need.set(id, needOf(byLga.get(id) ?? []));
     }
-    const values = [...need.values()].map((v) => (costed ? v.costNGN : v.gaps));
+    const values = [...need.values()].map((v) => v.costNGN);
     const lo = values.length ? Math.min(...values) : 0;
     const hi = values.length ? Math.max(...values) : 0;
 
@@ -262,13 +253,13 @@ export default function AssessedStatesPage() {
         n: rows.length,
         evidenceGrade: 'primary',
         label: l.name,
-        step: stepFor(n ? (costed ? n.costNGN : n.gaps) : null, lo, hi),
-        rawValue: n ? (costed ? n.costNGN : n.gaps) : null,
-        valueLabel: needLabel(n, n?.affected ?? 0, costed),
+        step: stepFor(n ? n.costNGN : null, lo, hi),
+        rawValue: n ? n.costNGN : null,
+        valueLabel: needLabel(n, n?.affected ?? 0),
       };
     }
     return data;
-  }, [stateLgas, scoped, needOf, costed]);
+  }, [stateLgas, scoped, needOf]);
 
   /** The bounds the ramp was fitted to, so the legend prints the same numbers
    *  the polygons were coloured from. */
@@ -399,14 +390,11 @@ export default function AssessedStatesPage() {
     // half of the map, and the map is a prioritisation instrument now. Ranked
     // alphabetically it would bury the most expensive state under Adamawa.
     const byNeed = (a: PaneRow, b: PaneRow) =>
-      costed
-        ? (b.need?.costNGN ?? 0) - (a.need?.costNGN ?? 0)
-        : (b.need?.gaps ?? 0) - (a.need?.gaps ?? 0);
+      (b.need?.costNGN ?? 0) - (a.need?.costNGN ?? 0);
 
     if (scope.level === 'all') {
       return {
         label: 'States',
-        costed,
         onSelect: selectState,
         rows: surveyed
           .map((s) => {
@@ -426,7 +414,6 @@ export default function AssessedStatesPage() {
     if (scope.level === 'state') {
       return {
         label: 'LGAs',
-        costed,
         onSelect: selectLga,
         rows: stateLgas
           .map((l) => {
@@ -461,7 +448,6 @@ export default function AssessedStatesPage() {
     scoped,
     facilities,
     needOf,
-    costed,
     domains,
     selectState,
     selectLga,
@@ -503,12 +489,12 @@ export default function AssessedStatesPage() {
    * pane beside it.
    */
   const scaleLegend = (
-    <div className="pointer-events-none absolute bottom-3 right-3 w-[210px] rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+    <div className="w-[210px] rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
       <ScaleLegend
         lo={mapScale.lo}
         hi={mapScale.hi}
-        format={(v) => (costed ? formatNaira(v, true) : formatCount(Math.round(v)))}
-        caption={costed ? 'Investment need' : 'Gaps to close'}
+        format={(v) => formatNaira(v, true)}
+        caption="Investment need"
         noDataLabel={scope.state ? 'no facilities' : 'not surveyed'}
       />
     </div>
@@ -518,7 +504,7 @@ export default function AssessedStatesPage() {
    *  silhouette, which is a different vocabulary from the ramp above — so it
    *  gets the legend that teaches the one actually on screen. */
   const facilityLegend = (
-    <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+    <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
       <MapLegend marks="point" showNoData />
     </div>
   );
@@ -632,7 +618,7 @@ export default function AssessedStatesPage() {
               onZoomOut={() => go(assessmentPath())}
               crumbs={crumbs}
               overlay={scaleLegend}
-              exportScope={costed ? 'Investment need' : 'Gaps to close'}
+              exportScope="Investment need"
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -644,7 +630,7 @@ export default function AssessedStatesPage() {
               onSelect={selectState}
               crumbs={crumbs}
               overlay={scaleLegend}
-              exportScope={costed ? 'Investment need' : 'Gaps to close'}
+              exportScope="Investment need"
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -672,12 +658,13 @@ export default function AssessedStatesPage() {
 function needLabel(
   need: { gaps: number; costNGN: number } | undefined,
   affected: number,
-  costed: boolean,
 ): string {
   if (!need) return 'Nothing matches the filters';
   if (!need.gaps) return 'No gaps in scope';
-  const base = `${formatCount(need.gaps)} gaps · ${formatCount(affected)} facilities`;
-  return costed ? `${base} · ${formatNaira(need.costNGN, true)}` : base;
+  return (
+    `${formatCount(need.gaps)} gaps · ${formatCount(affected)} facilities · ` +
+    formatNaira(need.costNGN, true)
+  );
 }
 
 function subtitleFor(level: AssessmentLevel, domains: FacilityThemeId[]): string {

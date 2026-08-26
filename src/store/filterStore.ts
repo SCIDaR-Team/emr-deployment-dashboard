@@ -21,7 +21,6 @@ interface FilterActions {
   setStates: (states: string[]) => void;
   setLGAs: (lgas: string[]) => void;
   setZones: (zones: string[]) => void;
-  setGeography: (values: ('rural' | 'urban')[]) => void;
   setFunding: (values: ('BHCPF' | 'non-BHCPF')[]) => void;
   setFunctionalityLevels: (levels: FunctionalityLevel[]) => void;
   setArchetypes: (bands: Band[]) => void;
@@ -47,7 +46,6 @@ const initialState: FilterState = {
   states: [],
   lgas: [],
   zones: [],
-  geography: [],
   funding: [],
   functionalityLevels: [],
   archetypes: [],
@@ -65,7 +63,6 @@ export const useFilterStore = create<FilterState & FilterActions>()(
       setStates: (states) => set({ states, lgas: [] }), // LGA choices depend on state
       setLGAs: (lgas) => set({ lgas }),
       setZones: (zones) => set({ zones }),
-      setGeography: (geography) => set({ geography }),
       setFunding: (funding) => set({ funding }),
       setFunctionalityLevels: (functionalityLevels) => set({ functionalityLevels }),
       setArchetypes: (archetypes) => set({ archetypes }),
@@ -123,7 +120,6 @@ export const useFilterStore = create<FilterState & FilterActions>()(
           s.states.length > 0 ||
           s.lgas.length > 0 ||
           s.zones.length > 0 ||
-          s.geography.length > 0 ||
           s.funding.length > 0 ||
           s.functionalityLevels.length > 0 ||
           s.archetypes.length > 0 ||

@@ -27,19 +27,24 @@ import type { AreaProfile } from './types';
  *
  * Ships **no** `step`, so each polygon fills from its band. Pair with
  * `BandLegend`, never `ScaleLegend`: there is no domain to print.
+ *
+ * The **use** band, matching `facilityBandUnder` — one swatch of colour has to
+ * mean one thing across the whole app, and the use band is the scale the domain
+ * readings are on. The deployment band is reported in the pane, where there is
+ * room to show both.
  */
 export function buildBandMap(states: AreaProfile[]): Record<string, GeoDatum> {
   const data: Record<string, GeoDatum> = {};
   for (const s of states) {
     data[s.id] = {
-      band: s.band,
+      band: s.useBand,
       n: s.facilityCount,
       evidenceGrade: s.evidenceGrade,
       label: s.name,
-      valueLabel: s.band
+      valueLabel: s.useBand
         ? s.facilityCount
-          ? `${BAND_LABEL[s.band]} — ${formatCount(s.facilityCount)} facilities assessed`
-          : `${BAND_LABEL[s.band]} — desk review, no facility survey`
+          ? `${BAND_LABEL[s.useBand]} — ${formatCount(s.facilityCount)} facilities assessed`
+          : `${BAND_LABEL[s.useBand]} — desk review, no facility survey`
         : undefined,
     };
   }
@@ -58,7 +63,7 @@ export function buildShareMap(states: AreaProfile[]) {
   const shares = new Map<string, number>();
   for (const s of states) {
     if (s.evidenceGrade !== 'primary' || !s.facilityCount) continue;
-    shares.set(s.id, ((s.archetypeDistribution.not_ready ?? 0) / s.facilityCount) * 100);
+    shares.set(s.id, ((s.useDistribution.not_ready ?? 0) / s.facilityCount) * 100);
   }
   const values = [...shares.values()];
   const lo = values.length ? Math.floor(Math.min(...values)) : 0;
@@ -68,7 +73,7 @@ export function buildShareMap(states: AreaProfile[]) {
   for (const s of states) {
     const share = shares.get(s.id) ?? null;
     data[s.id] = {
-      band: s.band,
+      band: s.useBand,
       n: s.facilityCount,
       evidenceGrade: s.evidenceGrade,
       label: s.name,
@@ -76,7 +81,7 @@ export function buildShareMap(states: AreaProfile[]) {
       valueLabel:
         share != null
           ? `${share.toFixed(1)}% not ready (${formatCount(
-              s.archetypeDistribution.not_ready,
+              s.useDistribution.not_ready,
             )} of ${formatCount(s.facilityCount)})`
           : undefined,
     };

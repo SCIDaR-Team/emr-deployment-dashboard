@@ -61,7 +61,7 @@ export default function InvestmentPlanPage() {
       return {
         name: 'All 12 assessed states',
         facilityCount: national.data?.facilityCount ?? 0,
-        distribution: national.data?.archetypeDistribution ?? {
+        distribution: national.data?.useDistribution ?? {
           not_ready: 0,
           moderately_ready: 0,
           ready: 0,
@@ -74,7 +74,7 @@ export default function InvestmentPlanPage() {
     return {
       name: picked.map((s) => s.name).join(', '),
       facilityCount: agg.facilityCount,
-      distribution: agg.archetypeDistribution,
+      distribution: agg.useDistribution,
       investments: agg.investments,
     };
   }, [selectedStates, states.data, national.data]);
