@@ -266,9 +266,17 @@ Three modules, from the national picture to a costed plan
             {COVERAGE.statesPrimary} states assessed by primary facility survey;{' '}
             {COVERAGE.statesSecondary} states and the FCT by secondary desk review, which
             yields state-level findings only. Readiness is reported as a band —
-            ready, moderately ready or not ready — and never as a score.{' '}
+            ready, moderately ready or not ready — and never as a score, and every
+            facility carries two: readiness to <em>use</em> an EMR and readiness to{' '}
+            <em>deploy</em> one.{' '}
+            {/* What replaced the blanket "everything here is synthetic" notice.
+                The figures are sourced now, so a global disclaimer would be
+                false — but the two things the dataset does not carry are worth
+                stating once, in the same place, rather than leaving a reader to
+                infer them from an absence. */}
             <strong className="font-semibold text-foreground">
-              Every figure in this dashboard is synthetic demonstration data.
+              Costs are the assessment&rsquo;s own indicative pricing and exclude a small
+              number of critical actions it does not price.
             </strong>
           </p>
         </div>

@@ -26,7 +26,7 @@ import type { AreaProfile, InvestmentItem, WaveId } from '@/lib/types';
  * to keep — a costed plan whose quantities are not traceable to a finding is a
  * budget, not a plan.
  *
- * Costs are synthetic, like everything else in this dashboard. They are plain
+ * Costs come from the assessment's own indicative pricing. They are plain
  * naira rather than the sibling dashboard's deliberate blanks, because a page
  * about money with no money on it demonstrates nothing.
  *

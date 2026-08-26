@@ -5,11 +5,11 @@
  *     npm run data:ingest -- --fetch   # re-download from the published sheet first
  *     npm run data:ingest -- --local <path>
  *
- * Replaces `generate-dummy-data.mjs`, which invented every figure it wrote. The
- * output contract is unchanged in shape — five JSON files plus two generated
- * modules — so the app keeps reading through `DataSource` exactly as before.
- * What changes is that the numbers are now sourced, and this script is where
- * that sourcing is checked.
+ * Replaced `generate-dummy-data.mjs`, which invented every figure it wrote and
+ * has been retired — see git history if the synthetic population is ever wanted
+ * again. The output contract is unchanged in shape, so the app keeps reading
+ * through `DataSource` exactly as before. What changed is that the numbers are
+ * now sourced, and this script is where that sourcing is checked.
  *
  * See `docs/ASSESSMENT_DATA.md` for the dataset itself. `assessment-source.mjs`
  * holds the parsing and the catalogue extraction; this file is the build.
@@ -567,6 +567,20 @@ function profileFor({ id, level, name, parentId, zone, facilities, catalogueById
 
 const readJSON = (p) => JSON.parse(readFileSync(resolve(ROOT, p), 'utf8'));
 
+/** The existing snapshot's `builtAt`, if it was built from this same source. */
+function previousBuiltAt(contentHash) {
+  const path = resolve(OUT, 'snapshot.json');
+  if (!existsSync(path)) return null;
+  try {
+    const prev = JSON.parse(readFileSync(path, 'utf8'));
+    return prev.contentHash === contentHash ? (prev.builtAt ?? null) : null;
+  } catch {
+    // A malformed or half-written snapshot is not worth failing a build over —
+    // the worst case is a fresh timestamp, which is what it would have been.
+    return null;
+  }
+}
+
 /** The boundary layer's `geozone` code → the zone name the app filters on. */
 const ZONE_BY_CODE = {
   NCZ: 'North Central',
@@ -703,7 +717,17 @@ async function main() {
   });
 
   const snapshot = {
-    builtAt: new Date().toISOString(),
+    /**
+     * When the *data* was built, not when the script last ran.
+     *
+     * Carried forward from the previous snapshot whenever the source hash is
+     * unchanged, so re-running the ingest without a sheet change produces a
+     * genuinely empty diff. `public/data/` is committed (the Vercel build does
+     * not run this script), and a 11 MB directory that reports a spurious
+     * change on every run is one nobody can review — the timestamp would be the
+     * only thing that moved, and no diff would tell you that.
+     */
+    builtAt: previousBuiltAt(contentHash) ?? new Date().toISOString(),
     source: 'assessment — List of gaps and interventions per facility',
     sourceUrl: sourceUrl(),
     contentHash,

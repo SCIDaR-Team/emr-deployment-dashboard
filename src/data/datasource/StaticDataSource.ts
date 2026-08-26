@@ -17,7 +17,7 @@ async function getJSON<T>(path: string, fallback: T): Promise<T> {
 }
 
 export class StaticDataSource implements DataSource {
-  readonly meta = { mode: 'static' as const, label: 'Synthetic dataset' };
+  readonly meta = { mode: 'static' as const, label: 'Facility assessment' };
 
   getFacilitySummaries() {
     return getJSON<FacilitySummary[]>(DATA_PATHS.facilitiesSummary, []);

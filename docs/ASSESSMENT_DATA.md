@@ -4,9 +4,9 @@
 across 12 states, every gap they carry, the intervention each gap calls for,
 when it is needed and what it costs.
 
-This is the real dataset. It replaces everything described in
-[`DUMMY_DATA.md`](DUMMY_DATA.md), which documents the synthetic stand-in that
-`public/data/` currently holds.
+This is the dataset behind `public/data/`. It replaced a synthetic stand-in,
+whose generator and documentation were retired once the ingest landed — both are
+in git history if the invented population is ever wanted again.
 
 **Source of truth:** the published Google Sheet in `.env`
 (`facility gaps and intervention`). The local CSV is a byte-identical export of

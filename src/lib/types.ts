@@ -169,10 +169,10 @@ export type BandDistribution = Record<Band, number>;
 /**
  * The figures reported beneath the two coverage domains.
  *
- * **These carry no readiness band, and never will** — not in this synthetic
- * dataset and not in the real one. They are measurements: what share of a state
- * has MTN signal, what share is on the grid, how many staff there are. A band
- * is a judgement about readiness and it is made one level up, at the domain.
+ * **These carry no readiness band, and never will.** They are measurements:
+ * what share of a state's facilities the network reaches, what share is on the
+ * grid. A band is a judgement about readiness and it is made one level up, at
+ * the domain.
  *
  * That distinction is load-bearing for the UI. Band colour — the three
  * readiness hues — must never touch a number from this object, or the page
@@ -184,7 +184,10 @@ export type BandDistribution = Record<Band, number>;
  * unremarkable coverage and that is a fact about the source data, not a bug
  * here. Nothing in this codebase may recompute a band from a measure.
  *
- * `null` means not measured at this level — distinct from zero.
+ * The assessment dataset supplies only `networkMtnPct`. Airtel serviceability
+ * is blank in every row of the source and grid connection is not collected at
+ * all, so both stay null — and null means *not measured*, which must render
+ * differently from zero.
  */
 export interface CoverageMeasures {
   /** Share of the area with MTN network coverage, 0–100. */
@@ -491,9 +494,20 @@ export interface FilterState {
 export interface SnapshotMeta {
   /** ISO timestamp of the run that produced public/data. */
   builtAt: string;
-  /** Always "synthetic" here — see scripts/generate-dummy-data.mjs. */
+  /** The dataset behind the figures — see scripts/ingest-assessment.mjs. */
   source: string;
+  /** The published sheet the ingest read, where it read one. */
+  sourceUrl?: string | null;
+  /**
+   * Hash of the source CSV the figures were built from.
+   *
+   * What makes a screenshot checkable a year later: two dashboards showing
+   * different numbers are either different data or a different build, and this
+   * says which.
+   */
+  contentHash?: string;
   facilityCount: number;
+  /** LGAs the survey reached — not the number that exist. */
   lgaCount: number;
   statesPrimary: number;
   statesSecondary: number;

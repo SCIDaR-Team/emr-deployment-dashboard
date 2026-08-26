@@ -222,19 +222,34 @@ function FacilityBlocks({
   // first, and what that subset costs. `facility.costNGN` is the whole-facility
   // figure and would contradict the list under it the moment a domain is
   // ticked.
-  const { gaps, cost, unpriced } = useMemo(() => {
+  const { gaps, cost, unpriced, byDomain } = useMemo(() => {
     const offered = new Set(gapsForDomains(domains).map((g) => g.id));
     const gaps = facility.gaps
       .filter((id) => offered.has(id))
       .sort((a, b) => gapUrgency(a) - gapUrgency(b));
+
     let cost = 0;
     let unpriced = 0;
+    // Split from the same `gaps` array the list below renders, rather than
+    // from `facility.costByDomain`. The stored figure is the whole facility's
+    // and would contradict the list the moment a domain is ticked — the two
+    // sitting one block apart is exactly where a reader would notice.
+    const per = new Map<string, number>();
     for (const id of gaps) {
-      const c = gapCostNGN(GAP_BY_ID[id]!);
+      const gap = GAP_BY_ID[id]!;
+      const c = gapCostNGN(gap);
       cost += c.costNGN;
       unpriced += c.unpriced;
+      per.set(gap.domain, (per.get(gap.domain) ?? 0) + c.costNGN);
     }
-    return { gaps, cost, unpriced };
+
+    const byDomain = GAP_DOMAINS.filter((d) => per.has(d.id)).map((d) => ({
+      id: d.id,
+      label: d.label,
+      cost: per.get(d.id)!,
+    }));
+
+    return { gaps, cost, unpriced, byDomain };
   }, [facility, domains]);
 
   return (
@@ -282,6 +297,31 @@ function FacilityBlocks({
       >
         <FacilityGaps gaps={gaps} scoped={picked.length > 0} />
       </Block>
+
+      {byDomain.length > 1 && (
+        <Block title="What it costs" note="Where this facility's money goes">
+          <dl className="space-y-1.5 text-[13px]">
+            {byDomain.map((d) => (
+              <Detail key={d.id} term={d.label} value={formatNaira(d.cost, true)} mono />
+            ))}
+            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2 text-[13px]">
+              <dt className="font-medium text-foreground">Total</dt>
+              <dd className="mono text-right font-semibold tabular-nums text-foreground">
+                {formatNaira(cost, true)}
+              </dd>
+            </div>
+          </dl>
+          {/* A total that is silent about a critical item is worse than no
+              total. See docs/data-queries, Query B. */}
+          {unpriced > 0 && (
+            <p className="mt-2 text-[11.5px] italic leading-snug text-muted-foreground">
+              Excludes {formatCount(unpriced)}{' '}
+              {unpriced === 1 ? 'intervention' : 'interventions'} the assessment does not
+              price.
+            </p>
+          )}
+        </Block>
+      )}
 
       <Block title="This facility">
         <dl className="space-y-1.5 text-[13px]">
@@ -542,11 +582,12 @@ function GapBlocks({
   facilities: FacilitySummary[];
   domains: FacilityThemeId[];
 }) {
-  const { rows, instances, affected, cost, byDomain, total } = useMemo(() => {
+  const { rows, instances, affected, cost, unpriced, byDomain, total } = useMemo(() => {
     const offered = new Set(gapsForDomains(domains).map((g) => g.id));
     const counts = new Map<string, number>();
     let instances = 0;
     let cost = 0;
+    let unpriced = 0;
     const affected = new Set<string>();
 
     for (const f of facilities) {
@@ -555,7 +596,9 @@ function GapBlocks({
         if (!offered.has(id)) continue;
         counts.set(id, (counts.get(id) ?? 0) + 1);
         instances += 1;
-        cost += gapCostNGN(GAP_BY_ID[id]!).costNGN;
+        const c = gapCostNGN(GAP_BY_ID[id]!);
+        cost += c.costNGN;
+        unpriced += c.unpriced;
         hit = true;
       }
       if (hit) affected.add(f.uuid);
@@ -595,6 +638,7 @@ function GapBlocks({
       instances,
       affected: affected.size,
       cost,
+      unpriced,
       byDomain,
       total: byDomain.reduce((sum, d) => sum + d.cost, 0),
     };
@@ -607,8 +651,24 @@ function GapBlocks({
       <TileRow className="grid-cols-3">
         <Tile label="Gaps" value={formatCount(instances)} note="to close" />
         <Tile label="Facilities" value={formatCount(affected)} note="with a gap" />
-        <Tile label="Cost" value={formatNaira(cost, true)} note="to close them" />
+        <Tile
+          label="Cost"
+          value={formatNaira(cost, true)}
+          note={unpriced ? 'excludes unpriced' : 'to close them'}
+        />
       </TileRow>
+
+      {/* Said under the total rather than folded into it. A figure presented as
+          sourced must not quietly absorb work the source declined to price —
+          332 facilities carry a critical connectivity blocker with no cost
+          against it. See docs/data-queries, Query B. */}
+      {unpriced > 0 && (
+        <p className="mt-2 text-[11.5px] italic leading-snug text-muted-foreground">
+          {formatCount(unpriced)} critical{' '}
+          {unpriced === 1 ? 'intervention is' : 'interventions are'} not priced by the
+          assessment and {unpriced === 1 ? 'is' : 'are'} excluded from this total.
+        </p>
+      )}
 
       {/* Where the money is, by domain.
           
