@@ -2,7 +2,14 @@ import { useCallback, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { MapLegend, NigeriaChoropleth, StateLGAMap } from '@/components/map';
+import {
+  MapLegend,
+  NigeriaChoropleth,
+  StateLGAMap,
+  rankByName,
+  type Crumb,
+  type MapSearchResult,
+} from '@/components/map';
 import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
@@ -133,6 +140,81 @@ export default function NationalCoveragePage() {
     [go, scope.state, scope.lga],
   );
 
+  /**
+   * The geographic hierarchy, as the map's own breadcrumb.
+   *
+   * Built from the same `scope` the map and the pane read, so the three cannot
+   * disagree about where the reader is, and every crumb navigates through the
+   * same `go` — which means the breadcrumb is a URL change like every other
+   * selection on this page, and a link to any level is a link to what the
+   * reader was looking at.
+   */
+  const crumbs = useMemo<Crumb[]>(() => {
+    const out: Crumb[] = [
+      { id: 'ng', label: 'Nigeria', kind: 'Country', onSelect: () => go('/states') },
+    ];
+    if (scope.state) {
+      out.push({
+        id: scope.state.id,
+        label: scope.state.name,
+        kind: 'State',
+        onSelect: () => go(`/states/${scope.state!.id}`),
+      });
+    }
+    if (scope.lga) out.push({ id: scope.lga.id, label: scope.lga.name, kind: 'LGA' });
+    return out;
+  }, [scope.state, scope.lga, go]);
+
+  /**
+   * The map's locator: a name in, a place out.
+   *
+   * Stops at the LGA, because that is where this page's claims stop — it
+   * classifies areas from a desk model and has nothing to say about an
+   * individual facility. Assessed States can resolve one level deeper, and its
+   * locator does.
+   */
+  const searchPlaces = useCallback(
+    (query: string): MapSearchResult[] => {
+      const stateName = new Map(states.data.map((st) => [st.id, st.name]));
+
+      const stateHits = rankByName(states.data, query, (st) => st.name).map((st) => ({
+        id: `state:${st.id}`,
+        label: st.name,
+        kind: 'State' as const,
+        hint: st.zone ?? undefined,
+        onSelect: () => go(`/states/${st.id}`),
+      }));
+
+      const lgaHits = rankByName(lgas.data, query, (l) => l.name).map((l) => ({
+        id: `lga:${l.id}`,
+        label: l.name,
+        kind: 'LGA' as const,
+        hint: l.parentId ? stateName.get(l.parentId) : undefined,
+        onSelect: () => go(`/states/${l.parentId}/${l.id.split('.')[1] ?? l.id}`),
+      }));
+
+      // Broadest first: a reader typing "kano" almost always wants the state,
+      // not one of its LGAs whose name contains it.
+      return [...stateHits, ...lgaHits];
+    },
+    [states.data, lgas.data, go],
+  );
+
+  /**
+   * The key, drawn *inside* the map frame rather than beside it.
+   *
+   * The map is the whole height of the page here, so a legend below the fold
+   * explains nothing — and now that the map can take the full display, a legend
+   * rendered as the map's sibling is on a part of the document the reader can
+   * no longer see. Handed to the layer instead, which draws it within the
+   * element that goes full screen.
+   */
+  const legend = (
+    <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+      <MapLegend showNoData={false} />
+    </div>
+  );
+
   if (states.error) {
     return <LoadError what="the coverage data" error={states.error} onRetry={states.refetch} />;
   }
@@ -197,6 +279,10 @@ export default function NationalCoveragePage() {
               selectedLgaId={scope.lga?.id.split('.')[1] ?? null}
               onSelect={selectLga}
               onZoomOut={() => go('/states')}
+              crumbs={crumbs}
+              overlay={legend}
+              exportScope={lensLabel(lens)}
+              onSearch={searchPlaces}
               className="h-full"
             />
           ) : (
@@ -205,16 +291,13 @@ export default function NationalCoveragePage() {
               data={nationalMapData}
               selectedId={null}
               onSelect={selectState}
+              crumbs={crumbs}
+              overlay={legend}
+              exportScope={lensLabel(lens)}
+              onSearch={searchPlaces}
               className="h-full"
             />
           )}
-
-          {/* The key sits on the map rather than under it: the map is the whole
-              height of the page here, and a legend below the fold explains
-              nothing. */}
-          <div className="pointer-events-none absolute bottom-3 left-3 rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-            <MapLegend showNoData={false} />
-          </div>
         </div>
 
         {/* Fixed width, wide enough for a full LGA name and a band label on one

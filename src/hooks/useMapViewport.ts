@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { handoffFrom, recordView } from '@/components/map/viewHandoff';
+import { VIEWPORT_PARAM, decodeViewport } from '@/components/map/viewportUrl';
+import { useViewportUrl } from './useViewportUrl';
+import { fitViewBox, type Box } from '@/lib/mapProjection';
 
 /**
  * Pan/zoom state for a map layer, plus the gesture that carries the reader
@@ -48,10 +52,84 @@ const DRILL_COOLDOWN_MS = 700;
 /** Drag further than this and the gesture was a pan, not a click on a unit. */
 const CLICK_SLOP_PX = 4;
 
+/**
+ * How long a camera move takes.
+ *
+ * Long enough that the eye can follow a state growing into the frame, short
+ * enough that a reader clicking through four levels is not waiting on it. The
+ * cross-level flight gets the longer figure because it also has to cover a
+ * layer swap: the geometry underneath changes at the start of it, and a fast
+ * animation reads as a flicker rather than as a move.
+ */
+const FLY_MS = 520;
+const STEP_MS = 260;
+
+/** Cubic ease in and out — the standard camera curve. A linear fly starts and
+ *  stops abruptly enough that it reads as a jump with frames in the middle. */
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+/**
+ * Whether to move the camera at all.
+ *
+ * Every flight in this hook is decorative in the strict sense — the reader ends
+ * up at exactly the same viewport either way — so an OS-level request for
+ * reduced motion is honoured by jumping straight to the destination. Read at
+ * call time rather than cached, because the setting can change mid-session.
+ */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+/**
+ * Interpolate between two viewports.
+ *
+ * Position lerps linearly but **size lerps geometrically** — the midpoint of a
+ * flight from a 700-unit view to a 20-unit one is 118 units, not 360. That is
+ * what makes a long zoom feel like constant motion instead of a slow crawl
+ * followed by a lurch: the eye reads zoom as a ratio, so equal steps have to be
+ * equal *multiples*. Nigeria to one LGA is a 40x change, which is exactly the
+ * range where a linear size lerp falls apart.
+ */
+function lerpRect(a: ViewportRect, b: ViewportRect, t: number): ViewportRect {
+  const w = a.w * Math.pow(b.w / a.w, t);
+  const h = a.h * Math.pow(b.h / a.h, t);
+  // Centres, not corners: interpolating x/y directly lets the subject drift
+  // out of frame and back in when the two rects differ a lot in size.
+  const cx = (a.x + a.w / 2) + ((b.x + b.w / 2) - (a.x + a.w / 2)) * t;
+  const cy = (a.y + a.h / 2) + ((b.y + b.h / 2) - (a.y + a.h / 2)) * t;
+  return { x: cx - w / 2, y: cy - h / 2, w, h };
+}
+
 interface Options {
-  /** The layer's fully-zoomed-out viewBox. Changing it resets the viewport,
+  /** The layer's fully-zoomed-out viewBox. Changing it re-frames the viewport,
    *  which is what makes a drill land framed on the new unit. */
   base: string;
+  /**
+   * Which layer this is — `'national'`, `'state'`, `'lga'`.
+   *
+   * Only ever used to arrange the flight between levels: the outgoing layer
+   * leaves its viewport under this key and the incoming one, seeing a different
+   * key, flies in from it. See `viewHandoff`. Omit it and the layer simply
+   * starts at its own extent, which is the old behaviour.
+   */
+  layerKey?: string;
+  /**
+   * Whether `base` is the layer's real extent yet.
+   *
+   * Every layer computes its extent from boundaries it fetches, and renders a
+   * placeholder `base` until they land. That placeholder must not be treated as
+   * a destination: a viewport restored from the URL would be adopted against
+   * the wrong rectangle and then thrown away a moment later when the real
+   * extent arrived and re-framed the map. Leave it unset for a layer whose
+   * extent is known from the first render.
+   */
+  ready?: boolean;
   /** How far in this layer can usefully go before the next one takes over. */
   maxScale?: number;
   /** Called with the centre of the view and the live `<svg>`, so the layer can
@@ -61,21 +139,142 @@ interface Options {
   onDrillOut?: () => void;
 }
 
-export function useMapViewport({ base, maxScale = 6, onDrillIn, onDrillOut }: Options) {
+export function useMapViewport({
+  base,
+  maxScale = 6,
+  layerKey,
+  ready = true,
+  onDrillIn,
+  onDrillOut,
+}: Options) {
   const svgRef = useRef<SVGSVGElement>(null);
   const baseRect = useMemo(() => parseRect(base), [base]);
 
-  const [rect, setRect] = useState<ViewportRect>(baseRect);
+  /**
+   * Where this layer's first frame is drawn.
+   *
+   * Not `baseRect`, when the reader arrived by drilling: the previous level
+   * left its viewport in the handoff slot, and starting there is what lets the
+   * flight below read as one continuous zoom across the layer swap. Computed in
+   * a state initialiser so it is settled before the first paint — an effect
+   * would show one frame at full extent first, which is the cut this exists to
+   * remove.
+   */
+  const [rect, setRect] = useState<ViewportRect>(
+    () => (layerKey ? handoffFrom(layerKey) : null) ?? baseRect,
+  );
   const rectRef = useRef(rect);
-  const setViewport = useCallback((next: ViewportRect) => {
-    rectRef.current = next;
-    setRect(next);
+
+  /** The rAF handle for a flight in progress, so the next one — or any reader
+   *  gesture — can cut it short rather than fight it. */
+  const anim = useRef<number | null>(null);
+
+  const stopFlight = useCallback(() => {
+    if (anim.current !== null) {
+      cancelAnimationFrame(anim.current);
+      anim.current = null;
+    }
   }, []);
 
+  const setViewport = useCallback(
+    (next: ViewportRect) => {
+      rectRef.current = next;
+      setRect(next);
+      // Every layer publishes its live viewport, so whichever layer replaces
+      // this one knows where the camera was left. Cheap — a single object
+      // assignment — and it has to be here rather than on unmount, since a
+      // component that has already unmounted cannot report anything.
+      if (layerKey) recordView(layerKey, next);
+    },
+    [layerKey],
+  );
+
+  /**
+   * Move the camera to `target` over `ms`, easing.
+   *
+   * The one path every programmatic viewport change goes through — the zoom
+   * buttons, reset, fit-to-selection, and the cross-level flight. Reader
+   * gestures deliberately do *not*: a wheel or a pinch is already a continuous
+   * stream of positions, and easing each one would put the map a few hundred
+   * milliseconds behind the fingers driving it.
+   */
+  const flyTo = useCallback(
+    (target: ViewportRect, ms = FLY_MS) => {
+      stopFlight();
+      const from = rectRef.current;
+      const same =
+        Math.abs(from.x - target.x) < 1e-3 &&
+        Math.abs(from.y - target.y) < 1e-3 &&
+        Math.abs(from.w - target.w) < 1e-3;
+      if (same) return;
+      if (ms <= 0 || prefersReducedMotion()) {
+        setViewport(target);
+        return;
+      }
+      const t0 = performance.now();
+      const frame = (now: number) => {
+        const t = Math.min(1, (now - t0) / ms);
+        setViewport(t >= 1 ? target : lerpRect(from, target, easeInOutCubic(t)));
+        anim.current = t >= 1 ? null : requestAnimationFrame(frame);
+      };
+      anim.current = requestAnimationFrame(frame);
+    },
+    [setViewport, stopFlight],
+  );
+
+  /**
+   * Settle the camera whenever the layer's own extent becomes known or changes.
+   *
+   * Three cases.
+   *
+   * A **shared link** wins outright: `?v=` names an exact viewport the sender
+   * chose, so it is adopted rather than flown away from — flying to the base
+   * extent first would show the recipient the default framing and then move,
+   * which is the opposite of arriving where you were sent. It is clamped to
+   * this layer's extent, and `decodeViewport` refuses anything written by a
+   * different layer, so a stale parameter can only ever be ignored.
+   *
+   * Otherwise, on the **first** settled extent there may be a flight owed —
+   * from the previous level's framing down onto this one, if the reader arrived
+   * by drilling (see `viewHandoff`).
+   *
+   * On a **later** change the reader is still on this layer and its subject
+   * moved under them (a different state picked in the filter row), which is a
+   * camera move for the same reason.
+   */
+  const first = useRef(true);
   useEffect(() => {
-    rectRef.current = baseRect;
-    setRect(baseRect);
-  }, [baseRect]);
+    if (!ready) return;
+
+    if (first.current) {
+      first.current = false;
+      const shared = layerKey
+        ? decodeViewport(
+            new URLSearchParams(window.location.search).get(VIEWPORT_PARAM),
+            layerKey,
+            baseRect.h / baseRect.w,
+          )
+        : null;
+      if (shared) {
+        setViewport(clamp(shared));
+        return;
+      }
+      flyTo(baseRect, FLY_MS);
+      return;
+    }
+
+    flyTo(baseRect, STEP_MS);
+    // `flyTo`, `clamp` and `setViewport` are stable; re-running on a new
+    // `baseRect` (or on the extent becoming known) is the point of the effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseRect, ready]);
+
+  // Publish the camera to `?v=`, so a link carries the framing and not just the
+  // scope — see `useViewportUrl` for why this is a `replaceState` and not a
+  // navigation.
+  useViewportUrl(layerKey, rect, baseRect);
+
+  useEffect(() => stopFlight, [stopFlight]);
 
   const overshoot = useRef({ amount: 0, at: 0, direction: 0 });
   /**
@@ -196,6 +395,9 @@ export function useMapViewport({ base, maxScale = 6, onDrillIn, onDrillOut }: Op
     const svg = svgRef.current;
     if (!svg) return;
     const onWheel = (e: WheelEvent) => {
+      // The reader is driving now — a flight still in progress would fight
+      // them for the viewport for the rest of its duration.
+      stopFlight();
       // Zoom needs a modifier. The map lives partway down a scrolling page, and
       // a bare wheel that zooms instead of scrolling traps anyone whose pointer
       // happens to be over it. Trackpad pinch already arrives as ctrl+wheel, so
@@ -229,7 +431,7 @@ export function useMapViewport({ base, maxScale = 6, onDrillIn, onDrillOut }: Op
     };
     svg.addEventListener('wheel', onWheel, { passive: false });
     return () => svg.removeEventListener('wheel', onWheel);
-  }, [zoomAbout, toViewport, registerOvershoot, clamp, setViewport, baseRect]);
+  }, [zoomAbout, toViewport, registerOvershoot, clamp, setViewport, baseRect, stopFlight]);
 
   /**
    * Take pointer capture, tolerating failure.
@@ -260,6 +462,7 @@ export function useMapViewport({ base, maxScale = 6, onDrillIn, onDrillOut }: Op
   const bind = {
     onPointerDown: (e: React.PointerEvent<SVGSVGElement>) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      stopFlight();
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       dragDistance.current = 0;
       if (pointers.current.size === 2) {
@@ -336,11 +539,65 @@ export function useMapViewport({ base, maxScale = 6, onDrillIn, onDrillOut }: Op
     isZoomed: scale > 1.001,
     panning,
     bind,
+    /**
+     * Client coordinates → viewBox units.
+     *
+     * Exposed so a layer can turn a pointer position into a coordinate for the
+     * live lat/lon readout, without a second copy of the box arithmetic that
+     * could drift out of step with the one the gestures use.
+     */
+    toViewport,
+    /** The live viewport, for anything that has to measure the view rather
+     *  than just render it — the scale bar's ground distance, the readout's
+     *  centre latitude. */
+    rect,
+    flyTo,
+    /**
+     * Frame a bounding box — "zoom to selection", in GIS terms.
+     *
+     * Takes the same padded fit every layer's base extent goes through, so
+     * fitting one state on the national map frames it exactly the way the state
+     * layer will when the reader drills into it — but with `fitViewBox`'s
+     * absolute padding floor switched off and the layer's own `maxScale` used
+     * as the lower bound on width instead.
+     *
+     * Both halves of that matter. The floor is four viewBox units, which is a
+     * good margin around a country and *larger than the subject* when the
+     * subject is two facilities thirty metres apart, so leaving it on capped a
+     * cluster expansion at about 2.5x when it needed nine. And with the floor
+     * gone there is nothing left to stop a fit on a near-degenerate box from
+     * zooming to an absurd scale — past what the tile layer will serve, and
+     * past the point where the drill-out gesture still makes sense — which is
+     * what `maxScale` is already the answer to everywhere else in this hook.
+     */
+    fitTo: (box: Box, padFrac?: number) => {
+      const wanted = parseRect(fitViewBox(box, padFrac, 0));
+      const minW = baseRect.w / maxScale;
+      if (wanted.w >= minW) {
+        flyTo(clamp(wanted));
+        return;
+      }
+      // Too tight for this layer: keep the centre, open out to the limit.
+      const h = minW * (wanted.h / wanted.w);
+      flyTo(
+        clamp({
+          w: minW,
+          h,
+          x: wanted.x + wanted.w / 2 - minW / 2,
+          y: wanted.y + wanted.h / 2 - h / 2,
+        }),
+      );
+    },
     zoomBy: (factor: number) => {
       const r = rectRef.current;
-      zoomAbout(factor, { x: r.x + r.w / 2, y: r.y + r.h / 2 }, false);
+      const minW = baseRect.w / maxScale;
+      const w = Math.min(Math.max(r.w / factor, minW), baseRect.w);
+      const h = w * (r.h / r.w);
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      flyTo(clamp({ w, h, x: cx - w / 2, y: cy - h / 2 }), STEP_MS);
     },
-    reset: () => setViewport(baseRect),
+    reset: () => flyTo(baseRect),
   };
 }
 

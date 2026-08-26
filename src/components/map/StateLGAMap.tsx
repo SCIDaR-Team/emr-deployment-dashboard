@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useFetchJSON } from '@/hooks/useFetchJSON';
 import { DATA_PATHS } from '@/lib/constants';
 import { formatCount } from '@/lib/format';
@@ -10,6 +10,8 @@ import {
   geomBounds,
   unionBounds,
   fitViewBox,
+  latAtY,
+  lonAtX,
   MAP_ASPECT_CLASS,
   type GeoCollection,
 } from '@/lib/mapProjection';
@@ -18,19 +20,23 @@ import {
   UNIT_FOCUS_CLASS,
   fillOpacityFor,
   useHatchPatternId,
-  useBandPatternId,
-  bandPatternFill,
+  bandFlatFill,
   scoreStepFill,
-  textureUnit,
   type GeoDatum,
 } from './mapTypes';
-import { BandPatternDefs } from './BandPattern';
 import { MapLabel } from './MapLabel';
 import { TileLayer, MapAttribution, MapClip } from './TileLayer';
-import { MapZoomControls } from './MapZoomControls';
+import { MapToolbar } from './MapToolbar';
+import type { MapSearchResult } from './MapSearch';
+import { MapScaleBar } from './MapScaleBar';
+import { MapBreadcrumb, type Crumb } from './MapBreadcrumb';
+import { PointerCoordinates } from './MapCoordinates';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import { useMapViewport, unitAtPoint } from '@/hooks/useMapViewport';
+import { useFullscreen } from '@/hooks/useFullscreen';
+import { useMapExport } from '@/hooks/useMapExport';
 import { useBaseMapStore } from '@/store/basemapStore';
+import { useMapLayers } from '@/store/mapLayerStore';
 import type { MapFit } from './mapTypes';
 import { Skeleton, EmptyState, LoadError } from '@/components/ui';
 
@@ -56,6 +62,16 @@ interface StateLGAMapProps {
   onSelect?: (lgaId: string) => void;
   /** Zooming back out past the whole state returns to the national map. */
   onZoomOut?: () => void;
+  /** The geographic hierarchy above this view — see `MapBreadcrumb`. */
+  crumbs?: Crumb[];
+  /** Page-supplied furniture drawn inside the map frame, so it survives full
+   *  screen — the legend, normally. */
+  overlay?: ReactNode;
+  /** What the fills encode, named — stamped under an exported image, where the
+   *  legend is pixels and the reader cannot hover anything to find out. */
+  exportScope?: string;
+  /** Resolve a name to a place the map can go to — see `MapSearch`. */
+  onSearch?: (query: string) => MapSearchResult[];
   className?: string;
 }
 
@@ -98,6 +114,10 @@ export function StateLGAMap({
   selectedLgaId,
   onSelect,
   onZoomOut,
+  crumbs,
+  overlay,
+  exportScope,
+  onSearch,
   fit = 'aspect',
   className,
 }: StateLGAMapProps) {
@@ -110,10 +130,19 @@ export function StateLGAMap({
   });
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  /** Live position under the pointer, for the coordinate readout. */
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
+  const layers = useMapLayers();
+  const fullscreen = useFullscreen<HTMLDivElement>();
   const [frameRef, renderPx, renderPxH] = useRenderSize<HTMLDivElement>();
+  const mapExport = useMapExport(fullscreen.ref, {
+    name: ['lgas', stateId, exportScope],
+    scope: crumbs?.map((c) => c.label).join(' / ') ?? stateName,
+    encoding: exportScope,
+    baseMap,
+  });
   const clipId = `${useHatchPatternId()}-clip`;
-  const bandId = useBandPatternId();
 
   const shapes = useMemo(() => {
     if (!geo.data) return [];
@@ -134,6 +163,10 @@ export function StateLGAMap({
   const view = useMapViewport({
     base: baseViewBox,
     maxScale: STATE_MAX_SCALE,
+    layerKey: 'state',
+    // The extent is the union of this state's LGAs, which is not known until
+    // the boundary file lands — see the note on `ready`.
+    ready: shapes.length > 0,
     onDrillIn: useCallback(
       (point: { x: number; y: number }, svg: SVGSVGElement | null) => {
         const lgaId = unitAtPoint(svg, point);
@@ -201,15 +234,30 @@ export function StateLGAMap({
   const hoverDatum = hover ? data[hover.lgaId] : null;
   const hoverShape = hover ? shapes.find((s) => s.lgaId === hover.lgaId) : null;
 
+  const selectedShape = selectedLgaId ? shapes.find((sh) => sh.lgaId === selectedLgaId) : null;
+
   return (
     <div
-      ref={frameRef}
-      className={cn('relative w-full', fit === 'fill' && 'h-full', className)}
+      ref={(el) => {
+        frameRef(el);
+        // Two refs on one element: the size observer that picks the tile zoom,
+        // and the element the full-screen request is made against.
+        (fullscreen.ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      }}
+      className={cn(
+        'relative w-full',
+        fit === 'fill' && 'h-full',
+        fullscreen.isFullscreen && 'h-full w-full bg-page',
+        className,
+      )}
     >
       <svg
         ref={view.svgRef}
         viewBox={view.viewBox}
-        className={cn('w-full select-none', fit === 'fill' ? 'h-full' : 'h-auto')}
+        className={cn(
+          'w-full select-none',
+          fit === 'fill' || fullscreen.isFullscreen ? 'h-full' : 'h-auto',
+        )}
         style={{
           // Only claim the finger once the reader has deliberately zoomed in.
           // At base scale a one-finger drag is far more likely to be someone
@@ -220,9 +268,14 @@ export function StateLGAMap({
         role="img"
         aria-label={`${stateName} LGA readiness map`}
         {...view.bind}
+        onPointerMove={(e) => {
+          view.bind.onPointerMove(e);
+          const pt = view.toViewport(e.clientX, e.clientY);
+          setCursor({ lat: latAtY(pt.y), lon: lonAtX(pt.x) });
+        }}
+        onPointerLeave={() => setCursor(null)}
       >
         <MapClip id={clipId} d={outlinePath} />
-        <BandPatternDefs id={bandId} unit={textureUnit(view.viewBox)} />
         {baseMap === 'plain' ? (
           <path d={outlinePath} className="fill-brand-50" />
         ) : (
@@ -236,12 +289,18 @@ export function StateLGAMap({
             const isFocused = focused === shape.lgaId;
             const interactive = !!onSelect;
             const outlined = isSelected || isFocused;
-            // Colour plus texture — see BandPattern. The Tailwind fill class
-            // must stay off a patterned path or CSS overrides the attribute.
             // A sequential step wins over the band when the caller supplied
-            // one — see the note on GeoDatum.step.
-            const bandFill =
-              scoreStepFill(datum?.step) ?? bandPatternFill(bandId, datum?.band);
+            // one — see the note on GeoDatum.step. Otherwise the band's flat
+            // colour; the textures these fills used to carry were dropped at
+            // the client's direction — see `bandFlatFill`.
+            //
+            // With the thematic layer switched off the polygons stay — they
+            // are the geography, not the finding — but they stop carrying a
+            // value and go transparent, so whatever base map is underneath
+            // reads at full strength. This is the toggle's whole purpose.
+            const bandFill = layers.indicator
+              ? (scoreStepFill(datum?.step) ?? bandFlatFill(datum?.band))
+              : undefined;
 
             return (
               <path
@@ -249,13 +308,19 @@ export function StateLGAMap({
                 d={shape.path}
                 data-unit-id={shape.lgaId}
                 fill={bandFill}
-                fillOpacity={fillOpacity}
+                fillOpacity={layers.indicator ? fillOpacity : 0}
                 className={cn(
-                  bandFill ? undefined : 'fill-nodata',
+                  layers.indicator && !bandFill ? 'fill-nodata' : undefined,
                   UNIT_FOCUS_CLASS,
                   'transition-opacity duration-150',
                 )}
-                stroke={outlined ? 'hsl(var(--brand-500))' : BOUNDARY_STROKE}
+                stroke={
+                  outlined
+                    ? 'hsl(var(--brand-500))'
+                    : layers.boundaries
+                      ? BOUNDARY_STROKE
+                      : 'transparent'
+                }
                 strokeWidth={outlined ? outlineWidth : hairline}
                 strokeLinejoin="round"
                 tabIndex={interactive ? 0 : -1}
@@ -290,7 +355,7 @@ export function StateLGAMap({
             centroid label routinely landed in a neighbouring LGA or on the
             shared border. Long names wrap and shrink to stay inside, and the
             handful that cannot are dropped rather than spilled. */}
-        {shapes.map((shape) => (
+        {layers.labels && shapes.map((shape) => (
           <MapLabel
             key={`label-${shape.lgaId}`}
             x={shape.label.x}
@@ -306,15 +371,41 @@ export function StateLGAMap({
             minFontSize={labelFloor}
           />
         ))}
+
       </svg>
 
-      <MapZoomControls
+      {crumbs && crumbs.length > 0 && (
+        <MapBreadcrumb crumbs={crumbs} className="absolute left-2 top-2 max-w-[min(60%,420px)]" />
+      )}
+
+      <MapToolbar
         onZoomIn={() => view.zoomBy(1.6)}
         onZoomOut={() => view.zoomBy(1 / 1.6)}
         onReset={view.reset}
         canReset={view.isZoomed}
+        onFitSelection={selectedShape ? () => view.fitTo(selectedShape.bounds, 0.25) : undefined}
+        fitLabel={selectedShape ? `Zoom to ${selectedShape.name}` : undefined}
+        isFullscreen={fullscreen.isFullscreen}
+        onToggleFullscreen={fullscreen.supported ? fullscreen.toggle : undefined}
+        onExport={mapExport.exportPng}
+        exporting={mapExport.busy}
+        onSearch={onSearch}
+        layers={['boundaries', 'labels', 'indicator']}
+      />
+
+      <MapScaleBar
+        rect={view.rect}
+        renderPx={renderPx}
+        className="absolute bottom-8 left-3 z-[1]"
+      />
+      <PointerCoordinates
+        lat={cursor?.lat ?? null}
+        lon={cursor?.lon ?? null}
+        className="absolute bottom-1.5 left-3 z-[1]"
       />
       <MapAttribution baseMap={baseMap} />
+
+      {overlay}
 
       {hover && hoverShape && (
         <div

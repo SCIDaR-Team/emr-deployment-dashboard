@@ -6,24 +6,42 @@
  * of themeStore — this is a map setting, not a colour scheme, and it is
  * orthogonal to light/dark.
  *
- * **Not persisted, because it is not reachable.** `BaseMapControl` is the only
- * caller of `setBaseMap` and nothing in this dashboard mounts it — the sibling
- * put it on the report explorer, and this one has no explorer. `plain` is
- * therefore the only value a reader can arrive at.
+ * ## Reachable, and therefore persisted again
  *
- * It used to persist to `emr-basemap`, which turned that into a trap rather
- * than a preference: a `satellite` stored by an earlier build came back on
- * every visit, put raster tiles under all three layers and dropped the band
- * fills to 0.55 opacity, with no control anywhere to undo it. A setting nobody
- * can set is not worth remembering.
+ * This used to be a setting nobody could set. The only caller of `setBaseMap`
+ * was a `BaseMapControl` the sibling dashboard mounted on a report explorer
+ * this one does not have, so `plain` was the only value a reader could arrive
+ * at — and persisting it turned the store into a trap rather than a preference:
+ * a `satellite` written by an earlier build came back on every visit, put
+ * raster tiles under all three layers and dropped the band fills to 0.55
+ * opacity, with no control anywhere to undo it.
  *
- * Restoring persistence is part of mounting the control, not a step before it —
- * see the note on `BaseMapControl` for what else that takes. Use a fresh key
- * when the time comes: an `emr-basemap` written before this change may still be
- * sitting in a reader's browser holding a value they never chose.
+ * The picker is now part of the map's own layer panel, at the bottom of the
+ * stack it belongs to — see `MapLayerPanel`. The three things that had to be
+ * true before it could ship are:
+ *
+ *   - The **national** layer's labels needed a halo over imagery. Done, and
+ *     conditioned on the base map so the plain view keeps the flat black that
+ *     reads better over the band fills — see `NigeriaChoropleth`.
+ *   - The band fills drop to 0.55 opacity over tiles (`fillOpacityFor`), and
+ *     the three have to stay tellable apart against whatever is underneath.
+ *     They used to carry a texture as well as a colour, which made that easy;
+ *     the textures were dropped at the client's direction (see `bandFlatFill`),
+ *     so this now rests on the three hues alone and is worth re-checking
+ *     against imagery if the palette ever moves.
+ *   - Tiles are fetched at runtime from `tile.openstreetmap.org` and
+ *     `arcgisonline.com`. Whether a dashboard on a ministry network may reach
+ *     either host is a **deployment** question, not a UI one — which is why
+ *     `plain` remains the default: a reader who never opens the layer panel
+ *     never makes a single third-party request.
+ *
+ * Persisted under a fresh key. An `emr-basemap` written before all this may
+ * still be sitting in a reader's browser holding a value they never chose, and
+ * inheriting it would resurrect exactly the trap described above.
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type BaseMapId = 'plain' | 'osm' | 'satellite';
 
@@ -79,10 +97,15 @@ interface BaseMapStore {
   setBaseMap: (baseMap: BaseMapId) => void;
 }
 
-export const useBaseMapStore = create<BaseMapStore>((set) => ({
-  // Plain by default: the readiness band is the message, and an unrequested
-  // aerial photo behind it is noise until the reader asks. Today it is also
-  // plain by *arrival*, since nothing gives the reader a way to ask.
-  baseMap: 'plain',
-  setBaseMap: (baseMap) => set({ baseMap }),
-}));
+export const useBaseMapStore = create<BaseMapStore>()(
+  persist(
+    (set) => ({
+      // Plain by default: the readiness band is the message, and an unrequested
+      // aerial photo behind it is noise until the reader asks. It is also the
+      // only value that makes no third-party request — see the note above.
+      baseMap: 'plain',
+      setBaseMap: (baseMap) => set({ baseMap }),
+    }),
+    { name: 'emr-map-basemap', version: 1 },
+  ),
+);

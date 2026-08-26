@@ -5,10 +5,14 @@ import { PageHeader, Field } from '@/components/layout/PageHeader';
 import { FilterBar } from '@/components/filters/FilterBar';
 import {
   LGAFacilityMap,
+  MapLegend,
   NigeriaChoropleth,
   StateLGAMap,
+  rankByName,
+  type Crumb,
   type FacilityPoint,
   type GeoDatum,
+  type MapSearchResult,
 } from '@/components/map';
 import { stepFor } from '@/components/map/mapTypes';
 import { Combobox, LoadError, ScaleLegend, Skeleton } from '@/components/ui';
@@ -289,8 +293,103 @@ export default function AssessedStatesPage() {
         lat: f.lat,
         lon: f.lon,
         band: facilityBandUnder(f, domains),
+        // Carried through so the map's own card can name the geography a
+        // coordinate belongs to. A bare lat/lon is only checkable against
+        // something — "9.4172° N, 12.1163° E" tells a reader nothing until it
+        // sits next to "Demsa, Adamawa".
+        state: f.state,
+        lga: f.lga,
+        status: f.functionalityLevel,
       })),
     [scoped, domains],
+  );
+
+  /**
+   * The geographic hierarchy, as the map's own breadcrumb.
+   *
+   * Four levels here rather than three, because this page can reach the thing
+   * that was actually visited. Built from the same `scope` the map and the pane
+   * read, and every crumb navigates through the same `go` — so the breadcrumb
+   * is a URL change like every other selection, and the three views cannot
+   * disagree about where the reader is.
+   */
+  const crumbs = useMemo<Crumb[]>(() => {
+    const out: Crumb[] = [
+      { id: 'ng', label: 'Nigeria', kind: 'Country', onSelect: () => go(assessmentPath()) },
+    ];
+    if (scope.state) {
+      out.push({
+        id: scope.state.id,
+        label: scope.state.name,
+        kind: 'State',
+        onSelect: () => go(assessmentPath(scope.state!.id)),
+      });
+    }
+    if (scope.lga) {
+      out.push({
+        id: scope.lga.id,
+        label: scope.lga.name,
+        kind: 'LGA',
+        onSelect: () => go(assessmentPath(scope.state!.id, bareLgaId(scope.lga!.id))),
+      });
+    }
+    if (scope.level === 'facility') {
+      out.push({ id: scope.facility.uuid, label: scope.facility.name, kind: 'Facility' });
+    }
+    return out;
+  }, [scope, go]);
+
+  /**
+   * The map's locator: a name in, a place out.
+   *
+   * Searches the whole hierarchy from wherever the reader happens to be, not
+   * just the level they are on — the point of a locator is to reach a facility
+   * without already knowing which state and LGA to drill through, and it is
+   * exactly the LGAs nobody can place that are worth searching for. Selecting a
+   * result writes the full path, so the levels above it open on the way.
+   *
+   * Facilities come from `allFacilities` rather than the filtered set, and that
+   * is deliberate: the locator is navigation, not analysis. A reader who has
+   * narrowed to "not ready" and then searches for a clinic by name is asking
+   * where that clinic is, and answering "no results" because it happens to be
+   * moderately ready would be the filter silently eating the question.
+   */
+  const searchPlaces = useCallback(
+    (query: string): MapSearchResult[] => {
+      const states = rankByName(surveyed, query, (st) => st.name).map((st) => ({
+        id: `state:${st.id}`,
+        label: st.name,
+        kind: 'State' as const,
+        hint: st.zone ?? undefined,
+        onSelect: () => go(assessmentPath(st.id)),
+      }));
+
+      // Only LGAs inside the twelve surveyed states can be reached from this
+      // page — the other 469 resolve to nothing, so offering them would be a
+      // list of dead ends.
+      const assessedIds = new Set(surveyed.map((st) => st.id));
+      const reachableLgas = lgas.data.filter((l) => assessedIds.has(l.parentId ?? ''));
+      const lgaHits = rankByName(reachableLgas, query, (l) => l.name).map((l) => ({
+        id: `lga:${l.id}`,
+        label: l.name,
+        kind: 'LGA' as const,
+        hint: states.find((st) => st.id === `state:${l.parentId}`)?.label ?? undefined,
+        onSelect: () => go(assessmentPath(l.parentId!, bareLgaId(l.id))),
+      }));
+
+      const facilityHits = rankByName(allFacilities, query, (f) => f.name).map((f) => ({
+        id: `facility:${f.uuid}`,
+        label: f.name,
+        kind: 'Facility' as const,
+        hint: `${f.lga}, ${f.state}`,
+        onSelect: () => go(assessmentPath(f.stateId, f.lgaId, f.uuid)),
+      }));
+
+      // Broadest first: a reader typing "kano" almost always wants the state,
+      // not the 444th facility whose name contains it.
+      return [...states, ...lgaHits, ...facilityHits];
+    },
+    [surveyed, lgas.data, allFacilities, go],
   );
 
   /** The list one level below wherever the reader is, counted off the same
@@ -389,6 +488,41 @@ export default function AssessedStatesPage() {
       .map((l) => ({ value: bareLgaId(l.id), label: l.name })),
   ];
 
+  /**
+   * The key, drawn *inside* the map frame rather than beside it.
+   *
+   * Bottom right, opposite the toolbar and against the pane it explains — the
+   * eye reaches the legend on its way back from the figures rather than
+   * crossing the whole map for it. Handed to the layer rather than rendered as
+   * its sibling because the frame is what goes full screen, and a legend
+   * outside it disappears exactly when the reader has committed to the map.
+   *
+   * One encoding at both polygon levels, so one legend: they carry investment
+   * need rather than readiness — a budget is allocated against what a place
+   * needs, not against how it is classified, and the classification is in the
+   * pane beside it.
+   */
+  const scaleLegend = (
+    <div className="pointer-events-none absolute bottom-3 right-3 w-[210px] rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+      <ScaleLegend
+        lo={mapScale.lo}
+        hi={mapScale.hi}
+        format={(v) => (costed ? formatNaira(v, true) : formatCount(Math.round(v)))}
+        caption={costed ? 'Investment need' : 'Gaps to close'}
+        noDataLabel={scope.state ? 'no facilities' : 'not surveyed'}
+      />
+    </div>
+  );
+
+  /** The facility layer's own key. Its marks are points carrying a band as a
+   *  silhouette, which is a different vocabulary from the ramp above — so it
+   *  gets the legend that teaches the one actually on screen. */
+  const facilityLegend = (
+    <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+      <MapLegend marks="point" showNoData />
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 flex-col lg:h-full">
       <PageHeader
@@ -477,6 +611,13 @@ export default function AssessedStatesPage() {
               selectedFacilityId={scope.level === 'facility' ? scope.facility.uuid : null}
               onSelect={selectFacility}
               onZoomOut={() => go(assessmentPath(scope.state.id))}
+              crumbs={crumbs}
+              exportScope="Facility readiness band"
+              onSearch={searchPlaces}
+              // No scale legend at facility level: the points carry a readiness
+              // band as a *shape*, not a position on the need ramp, so printing
+              // the ramp there would explain an encoding that is not on screen.
+              overlay={facilityLegend}
               className="h-full"
             />
           ) : scope.state ? (
@@ -489,6 +630,10 @@ export default function AssessedStatesPage() {
               selectedLgaId={null}
               onSelect={selectLga}
               onZoomOut={() => go(assessmentPath())}
+              crumbs={crumbs}
+              overlay={scaleLegend}
+              exportScope={costed ? 'Investment need' : 'Gaps to close'}
+              onSearch={searchPlaces}
               className="h-full"
             />
           ) : (
@@ -497,26 +642,13 @@ export default function AssessedStatesPage() {
               data={nationalMapData}
               selectedId={null}
               onSelect={selectState}
+              crumbs={crumbs}
+              overlay={scaleLegend}
+              exportScope={costed ? 'Investment need' : 'Gaps to close'}
+              onSearch={searchPlaces}
               className="h-full"
             />
           )}
-
-          {/* Bottom right, opposite the zoom controls and against the pane it
-              explains — the eye reaches the legend on its way back from the
-              figures rather than crossing the whole map for it. */}
-          <div className="pointer-events-none absolute bottom-3 right-3 w-[210px] rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-            {/* One encoding at both levels now, so one legend. The polygons
-                carry investment need rather than readiness — a budget is
-                allocated against what a place needs, not against how it is
-                classified, and the classification is in the pane beside it. */}
-            <ScaleLegend
-              lo={mapScale.lo}
-              hi={mapScale.hi}
-              format={(v) => (costed ? formatNaira(v, true) : formatCount(Math.round(v)))}
-              caption={costed ? 'Investment need' : 'Gaps to close'}
-              noDataLabel={scope.state ? 'no facilities' : 'not surveyed'}
-            />
-          </div>
         </div>
 
         <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[420px] lg:border-l lg:border-t-0">

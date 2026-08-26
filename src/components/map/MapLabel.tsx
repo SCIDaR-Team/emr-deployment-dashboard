@@ -196,9 +196,11 @@ function fitShrink(
  * voice, not 37 sizes. So it runs `uniform`: flat black, bold, one size, and a
  * shape that cannot hold its name at that size goes unlabelled and is named on
  * hover instead. Black rather than white because it is the better of the two
- * across all three band fills — white on the amber lands near 2.6:1. No halo:
- * at the size the national layer labels at, the fill is never close enough to
- * black to need one. Add one before adding a base map under this layer.
+ * across all three band fills — white on the amber lands near 2.6:1. Its halo
+ * is *conditional*: over the plain wash the fill is never close enough to black
+ * to need one and a halo only fattens the letters, but over satellite imagery
+ * or an OSM street map a name can land on anything, so the caller turns it on
+ * with the base map — see `NigeriaChoropleth`.
  *
  * The **LGA** layer is up to 44 shapes inside one state, varying in area by two
  * orders of magnitude. Held to one size it would label the big ones and give up

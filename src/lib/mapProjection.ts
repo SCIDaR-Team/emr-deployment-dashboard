@@ -61,6 +61,87 @@ export function gy(lat: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// The inverse, and ground distance
+// ---------------------------------------------------------------------------
+//
+// `gx`/`gy` take a coordinate to the viewBox. Everything below takes the
+// viewBox back to a coordinate, or asks how far apart two viewBox units are on
+// the ground. Both directions are needed the moment the map stops being a
+// picture and starts being an instrument: a pointer readout has a pixel and
+// wants a latitude, and a scale bar has a viewBox width and wants kilometres.
+//
+// Exact inverses of the forward pair, not approximations — a readout that
+// disagrees with the marker it is hovering would be worse than no readout.
+
+/** viewBox x → longitude, in degrees. The exact inverse of `gx`. */
+export function lonAtX(x: number): number {
+  return (x / K + X_MIN) / DEG;
+}
+
+/** viewBox y → latitude, in degrees. The exact inverse of `gy`. */
+export function latAtY(y: number): number {
+  const m = Y_MAX - y / K;
+  return (2 * Math.atan(Math.exp(m)) - Math.PI / 2) / DEG;
+}
+
+/** WGS-84 equatorial circumference, in metres — the length `WORLD_SIZE`
+ *  viewBox units stands for at the equator. */
+const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
+
+/**
+ * Metres of ground per viewBox unit, at a given latitude.
+ *
+ * Mercator's scale factor is 1/cos(lat), so a viewBox unit is *not* a fixed
+ * distance: one unit near Sokoto covers measurably less ground than one unit
+ * on the Bight of Bonny. A scale bar that ignored that would be wrong by ~1.5%
+ * across Nigeria's latitude span — small, but a scale bar exists precisely to
+ * be trusted, so it is corrected rather than waved away.
+ */
+export function metresPerUnit(lat: number): number {
+  return (EARTH_CIRCUMFERENCE_M / WORLD_SIZE) * Math.cos(lat * DEG);
+}
+
+// ---------------------------------------------------------------------------
+// Boxes
+// ---------------------------------------------------------------------------
+
+/** A rectangle in viewBox units. The currency every fit, fly and handoff below
+ *  is denominated in. */
+export interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** Bounding box of a set of already-projected points, padded by `pad` viewBox
+ *  units so a marker at the extreme edge is not cut in half by the frame. */
+export function boundsOfPoints(points: { x: number; y: number }[], pad = 0): Box | null {
+  if (points.length === 0) return null;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of points) {
+    if (p.x < x0) x0 = p.x;
+    if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y;
+    if (p.y > y1) y1 = p.y;
+  }
+  // A single point, or a set that happens to be collinear, has zero extent on
+  // one axis and would fit to a viewBox of width 0 — which is not a view.
+  if (x1 - x0 < 1e-6) {
+    x0 -= 0.5;
+    x1 += 0.5;
+  }
+  if (y1 - y0 < 1e-6) {
+    y0 -= 0.5;
+    y1 += 0.5;
+  }
+  return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad };
+}
+
+// ---------------------------------------------------------------------------
 // Tile-world anchors
 // ---------------------------------------------------------------------------
 
@@ -241,13 +322,28 @@ export function unionBounds(
  * the sliver of ocean or Niger that a coastal or border state's padding now
  * includes, and it reads as a map rather than a cropped one.
  */
+/**
+ * `minPad` is an absolute floor in viewBox units, and it is there so that a
+ * *base extent* always has a visible margin: without it a caller fitting a
+ * degenerate or near-degenerate box gets a viewBox with no breathing room at
+ * all.
+ *
+ * Callers fitting something **inside** an already-framed layer must pass 0.
+ * Four units is a sensible margin around a 700-unit country and a 100-unit
+ * state, and it is larger than the whole subject when the subject is two
+ * facilities 30 metres apart — so left at its default it silently caps how far
+ * "zoom to selection" can go, which is precisely the case it was never written
+ * for. See `useMapViewport`'s `fitTo`, which supplies its own lower bound from
+ * the layer's `maxScale` instead.
+ */
 export function fitViewBox(
   box: { x0: number; y0: number; x1: number; y1: number },
   padFrac = 0.06,
+  minPad = 4,
 ): string {
   const w = box.x1 - box.x0;
   const h = box.y1 - box.y0;
-  const pad = Math.max(Math.max(w, h) * padFrac, 4);
+  const pad = Math.max(Math.max(w, h) * padFrac, minPad);
   const x0 = box.x0 - pad;
   const y0 = box.y0 - pad;
   const x1 = box.x1 + pad;

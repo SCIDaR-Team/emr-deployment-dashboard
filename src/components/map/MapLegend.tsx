@@ -1,12 +1,6 @@
 import { MapHatchDefs } from './MapHatch';
-import { BandPatternDefs } from './BandPattern';
-import {
-  bandMarkerPath,
-  bandPatternFill,
-  useBandPatternId,
-  useHatchPatternId,
-} from './mapTypes';
-import { BAND_LABEL, BAND_TEXTURE, BAND_TEXTURE_LABEL } from '@/lib/bands';
+import { bandMarkerPath, bandFlatFill, useHatchPatternId } from './mapTypes';
+import { BAND_LABEL } from '@/lib/bands';
 import type { Band } from '@/lib/types';
 
 const BAND_ORDER: Band[] = ['ready', 'moderately_ready', 'not_ready'];
@@ -34,10 +28,12 @@ interface MapLegendProps {
  * three-band scale "is used everywhere... define it once and never
  * hand-pick," and the same discipline applies to what accompanies it on a map.
  *
- * The swatches carry the same textures and shapes the map does, because a
- * legend that shows three flat colours against a textured map is worse than no
- * legend: it tells a reader who cannot separate the colours that there is
- * nothing else to look for.
+ * The swatches carry exactly what the map carries, whatever that is. Area
+ * fills are flat colour (see `bandFlatFill` for why the textures went), so the
+ * squares are flat; facility points carry the band as a silhouette, so the
+ * point marks are drawn with `bandMarkerPath` rather than as squares in the
+ * right colour. A legend that teaches a vocabulary the map does not speak is
+ * worse than no legend.
  */
 export function MapLegend({
   showSecondary = false,
@@ -46,7 +42,6 @@ export function MapLegend({
   className,
 }: MapLegendProps) {
   const hatchId = useHatchPatternId();
-  const bandId = useBandPatternId();
 
   return (
     <div
@@ -56,25 +51,12 @@ export function MapLegend({
         <span key={band} className="flex items-center gap-1.5">
           <svg width={14} height={14} aria-hidden>
             {marks === 'area' ? (
-              <>
-                {/* Tile sized for a 14px swatch rather than a viewBox — this is
-                    the one place the texture is not drawn at map scale. */}
-                <BandPatternDefs id={`${bandId}-legend`} unit={4.5} />
-                <rect
-                  width={14}
-                  height={14}
-                  rx={3}
-                  fill={bandPatternFill(`${bandId}-legend`, band)}
-                />
-              </>
+              <rect width={14} height={14} rx={3} fill={bandFlatFill(band)} />
             ) : (
               <path d={bandMarkerPath(band, 7, 7, 5.4)} className={BAND_SWATCH_CLASS[band]} />
             )}
           </svg>
           {BAND_LABEL[band]}
-          {marks === 'area' && BAND_TEXTURE[band] !== 'solid' && (
-            <span className="sr-only"> ({BAND_TEXTURE_LABEL[BAND_TEXTURE[band]]})</span>
-          )}
         </span>
       ))}
       {showNoData && (
