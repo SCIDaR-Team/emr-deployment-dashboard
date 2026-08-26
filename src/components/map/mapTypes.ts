@@ -120,47 +120,42 @@ export function hatchFill(id: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// The readiness band's non-colour carrier
+// Band fills for map polygons
 // ---------------------------------------------------------------------------
-//
-// `BandPattern.tsx` holds the `<pattern>` component; these are the helpers that
-// go with it, kept here for the same reason `useHatchPatternId` is — a module
-// that exports both components and plain functions loses fast refresh.
 
-/** One pattern set per map instance — ids are document-global. */
-export function useBandPatternId(): string {
-  const id = useId();
-  return `band-pattern-${id.replace(/:/g, '')}`;
-}
-
-export function bandPatternId(id: string, band: Band): string {
-  return `${id}-${band}`;
-}
+/** CSS custom property carrying each band's colour. */
+const BAND_VAR: Record<Band, string> = {
+  ready: 'ready',
+  moderately_ready: 'moderate',
+  not_ready: 'not-ready',
+};
 
 /**
- * The `fill` value for a band, or undefined for no data.
+ * Flat band colour for a polygon, or undefined for no data.
  *
- * Callers must leave the `fill-*` Tailwind class *off* a path they fill this
- * way: a class sets `fill` through CSS, which outranks the presentation
- * attribute, and the polygon would come out flat-coloured with the texture
- * silently discarded.
- */
-export function bandPatternFill(id: string, band: Band | null | undefined): string | undefined {
-  return band ? `url(#${bandPatternId(id, band)})` : undefined;
-}
-
-/**
- * Texture tile size for a map, from its **live** viewBox string.
+ * Map polygons used to be filled with a `<pattern>` carrying the band colour
+ * *and* a texture — dots for Moderately ready, 135° stripes for Not ready — so
+ * that the red/amber/green scale survived a colour-vision deficiency and a
+ * greyscale print. That has been dropped at the client's direction: at the
+ * scale a state or an LGA is drawn, the texture read as noise inside the shape
+ * rather than as a second channel, and a flat fill lets the choropleth be read
+ * as one field of colour.
  *
- * All three layers go through this, so a dot is the same size on screen
- * whichever map the reader is on and whatever they have zoomed to — the
- * national view is ~700 viewBox units wide, a rural LGA is under twenty, and a
- * tile in absolute units would be invisible on one and a single stripe across
- * the other. Same correction the stroke widths make by dividing by `view.scale`.
+ * The trade-off is real and worth writing down: colour is now the **only**
+ * carrier on these polygons. Everywhere the band appears outside the map it
+ * still has a second channel — `BandBadge` has a label and an icon, the
+ * distribution bars keep their `.band-texture-*` classes (`BAND_TEXTURE` in
+ * `lib/bands.ts`), and facility points on the deepest layer carry the band as
+ * a *shape* rather than a texture (`bandMarkerPath` below), which a dot a few
+ * pixels across can do and a stripe cannot. Restoring it here means restoring
+ * the pattern, not inventing a new encoding.
+ *
+ * Returned as a colour string rather than a Tailwind class so it can be set as
+ * the `fill` attribute, the same way `scoreStepFill` is — the two are
+ * alternatives for the same slot and must be interchangeable.
  */
-export function textureUnit(viewBox: string): number {
-  const width = Number(viewBox.split(' ')[2]);
-  return (Number.isFinite(width) && width > 0 ? width : 1000) / 170;
+export function bandFlatFill(band: Band | null | undefined): string | undefined {
+  return band ? `hsl(var(--${BAND_VAR[band]}))` : undefined;
 }
 
 /**

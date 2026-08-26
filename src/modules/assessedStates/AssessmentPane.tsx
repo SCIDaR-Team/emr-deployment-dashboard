@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { formatCount, formatNaira } from '@/lib/format';
 import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
 import { BandBadge, BandCards, EmptyState, Tile, TileRow } from '@/components/ui';
+import { FacilityCoordinates } from '@/components/map';
 import type { Band, BandDistribution, FacilitySummary, FacilityThemeId } from '@/lib/types';
 import {
   distributionTotal,
@@ -201,11 +202,17 @@ function FacilityBlocks({ facility }: { facility: FacilitySummary }) {
           <Detail term="Zone" value={facility.zone} />
           <Detail term="Service points" value={formatCount(facility.servicePoints)} />
           <Detail term="Permanent staff" value={formatCount(facility.staffCount)} />
-          <Detail
-            term="Coordinates"
-            value={`${facility.lat.toFixed(4)}, ${facility.lon.toFixed(4)}`}
-            mono
-          />
+          {/* The one detail here that is not just a fact about the facility
+              but a *handle* on it. A coordinate a reader can only look at gets
+              transcribed into a phone by hand, which is where the digit errors
+              come from — so it is copyable, and it opens somewhere that can
+              navigate to it. See `MapCoordinates`. */}
+          <div className="flex items-baseline justify-between gap-3 pt-0.5">
+            <dt className="text-muted-foreground">Coordinates</dt>
+            <dd className="min-w-0">
+              <FacilityCoordinates lat={facility.lat} lon={facility.lon} />
+            </dd>
+          </div>
         </dl>
       </Block>
     </>

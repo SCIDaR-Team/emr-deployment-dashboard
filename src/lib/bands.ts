@@ -122,10 +122,13 @@ export const BAND_CLASSES: Record<
 //
 // One shape vocabulary, two renderings, because the media genuinely differ:
 //
-//   BAND_TEXTURE   area fills — CSS classes for HTML, `<pattern>` for SVG
-//                  (`components/map/BandPattern.tsx`)
-//   BAND_MARKER    point marks, where a texture inside a 6px dot is invisible
-//                  and the shape of the dot is the thing that reads
+//   BAND_TEXTURE   HTML area fills — the `.band-texture-*` classes in
+//                  globals.css, for distribution bars and donut arcs. No
+//                  longer used on the map: polygon fills there are flat
+//                  colour at the client's direction, so colour is their only
+//                  carrier (see `bandFlatFill` in components/map/mapTypes.ts).
+//   BAND_MARKER    point marks, where a texture inside a small dot is
+//                  invisible and the shape of the dot is the thing that reads
 //
 // There was a third, BAND_DECAL, for the ECharts canvas, which could use
 // neither of the above. The charts it served were replaced by the meters and

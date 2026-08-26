@@ -1,30 +1,34 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useFetchJSON } from '@/hooks/useFetchJSON';
 import { DATA_PATHS } from '@/lib/constants';
 import { slugify, formatCount } from '@/lib/format';
 import { BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { MapHatchDefs } from './MapHatch';
-import { BandPatternDefs } from './BandPattern';
 import { MapLabel } from './MapLabel';
 import { TileLayer, MapAttribution, MapClip } from './TileLayer';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import {
   hatchFill,
   useHatchPatternId,
-  useBandPatternId,
-  bandPatternFill,
+  bandFlatFill,
   scoreStepFill,
-  textureUnit,
   BOUNDARY_STROKE,
   UNIT_FOCUS_CLASS,
   fillOpacityFor,
   type GeoDatum,
 } from './mapTypes';
 import { useBaseMapStore } from '@/store/basemapStore';
+import { useMapLayers } from '@/store/mapLayerStore';
 import type { MapFit } from './mapTypes';
-import { MapZoomControls } from './MapZoomControls';
+import { MapToolbar } from './MapToolbar';
+import type { MapSearchResult } from './MapSearch';
+import { MapScaleBar } from './MapScaleBar';
+import { MapBreadcrumb, type Crumb } from './MapBreadcrumb';
+import { PointerCoordinates } from './MapCoordinates';
 import { useMapViewport, unitAtPoint } from '@/hooks/useMapViewport';
+import { useFullscreen } from '@/hooks/useFullscreen';
+import { useMapExport } from '@/hooks/useMapExport';
 import {
   MAP_ASPECT_CLASS,
   SVG_W,
@@ -34,6 +38,8 @@ import {
   geomBounds,
   unionBounds,
   fitViewBox,
+  latAtY,
+  lonAtX,
   type GeoCollection,
 } from '@/lib/mapProjection';
 import { LoadError, Skeleton } from '@/components/ui';
@@ -55,6 +61,18 @@ interface NigeriaChoroplethProps {
   data: Record<string, GeoDatum>;
   selectedId?: string | null;
   onSelect?: (stateId: string) => void;
+  /** The geographic hierarchy above this view — see `MapBreadcrumb`. At
+   *  national extent that is one crumb, and it is still worth drawing: it is
+   *  where the reader learns the map has levels below it. */
+  crumbs?: Crumb[];
+  /** Page-supplied furniture drawn inside the map frame, so it survives full
+   *  screen — the legend, normally. */
+  overlay?: ReactNode;
+  /** What the fills encode, named — stamped under an exported image, where the
+   *  legend is pixels and the reader cannot hover anything to find out. */
+  exportScope?: string;
+  /** Resolve a name to a place the map can go to — see `MapSearch`. */
+  onSearch?: (query: string) => MapSearchResult[];
   className?: string;
 }
 
@@ -80,17 +98,30 @@ export function NigeriaChoropleth({
   data,
   selectedId,
   onSelect,
+  crumbs,
+  overlay,
+  exportScope,
+  onSearch,
   fit = 'aspect',
   className,
 }: NigeriaChoroplethProps) {
   const geo = useFetchJSON<GeoCollection | null>({ path: DATA_PATHS.statesGeo, fallback: null });
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  /** Live position under the pointer, for the coordinate readout. */
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const hatchId = useHatchPatternId();
-  const bandId = useBandPatternId();
   const clipId = `${hatchId}-clip`;
   const baseMap = useBaseMapStore((s) => s.baseMap);
+  const layers = useMapLayers();
+  const fullscreen = useFullscreen<HTMLDivElement>();
   const [frameRef, renderPx] = useRenderSize<HTMLDivElement>();
+  const mapExport = useMapExport(fullscreen.ref, {
+    name: ['nigeria-states', exportScope],
+    scope: crumbs?.map((c) => c.label).join(' / ') ?? 'Nigeria',
+    encoding: exportScope,
+    baseMap,
+  });
 
   const shapes = useMemo(() => {
     if (!geo.data) return [];
@@ -117,6 +148,10 @@ export function NigeriaChoropleth({
   const view = useMapViewport({
     base: baseViewBox,
     maxScale: NATIONAL_MAX_SCALE,
+    layerKey: 'national',
+    // The extent is Nigeria's own bounding box, which is not known until the
+    // boundaries land — see the note on `ready`.
+    ready: shapes.length > 0,
     // Zooming past what this layer can usefully show is the same intent as
     // clicking the state under the crosshair — so it does the same thing.
     onDrillIn: useCallback(
@@ -146,15 +181,30 @@ export function NigeriaChoropleth({
   const outlinePath = shapes.map((s) => s.path).join(' ');
   const fillOpacity = fillOpacityFor(baseMap);
 
+  const selectedShape = selectedId ? shapes.find((sh) => sh.stateId === selectedId) : null;
+
   return (
     <div
-      ref={frameRef}
-      className={cn('relative w-full', fit === 'fill' && 'h-full', className)}
+      ref={(el) => {
+        frameRef(el);
+        // Two refs on one element: the size observer that picks the tile zoom,
+        // and the element the full-screen request is made against.
+        (fullscreen.ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      }}
+      className={cn(
+        'relative w-full',
+        fit === 'fill' && 'h-full',
+        fullscreen.isFullscreen && 'h-full w-full bg-page',
+        className,
+      )}
     >
       <svg
         ref={view.svgRef}
         viewBox={view.viewBox}
-        className={cn('w-full select-none', fit === 'fill' ? 'h-full' : 'h-auto')}
+        className={cn(
+          'w-full select-none',
+          fit === 'fill' || fullscreen.isFullscreen ? 'h-full' : 'h-auto',
+        )}
         style={{
           // Only claim the finger once the reader has deliberately zoomed in.
           // At base scale a one-finger drag is far more likely to be someone
@@ -165,9 +215,14 @@ export function NigeriaChoropleth({
         role="img"
         aria-label="Nigeria states readiness map"
         {...view.bind}
+        onPointerMove={(e) => {
+          view.bind.onPointerMove(e);
+          const pt = view.toViewport(e.clientX, e.clientY);
+          setCursor({ lat: latAtY(pt.y), lon: lonAtX(pt.x) });
+        }}
+        onPointerLeave={() => setCursor(null)}
       >
         <MapHatchDefs id={hatchId} solid={baseMap === 'plain'} />
-        <BandPatternDefs id={bandId} unit={textureUnit(view.viewBox)} />
         <MapClip id={clipId} d={outlinePath} />
         {/* Plain: a wash behind the landmass so states read as sitting on a
             map rather than floating on the card's own background. Otherwise
@@ -191,19 +246,21 @@ export function NigeriaChoropleth({
             const interactive = !isSecondary && !!onSelect;
             const outlined = isSelected || isFocused;
 
-            // A band fill is a `<pattern>` — colour plus texture, so the scale
-            // survives a colour-vision deficiency and a greyscale print. The
-            // Tailwind fill class has to come *off* when one is in use: a class
-            // sets `fill` through CSS, which outranks the attribute, and the
-            // state would render flat with the texture silently dropped.
             // A sequential step wins over the band when the caller supplied
-            // one — see the note on GeoDatum.step. Otherwise a band fill is a
-            // `<pattern>`: colour plus texture, so the scale survives a
-            // colour-vision deficiency and a greyscale print.
-            const bandFill = isSecondary
-              ? hatchFill(hatchId)
-              : (scoreStepFill(datum?.step) ?? bandPatternFill(bandId, datum?.band));
-            const fillClass = bandFill ? undefined : 'fill-nodata';
+            // one — see the note on GeoDatum.step. Otherwise the band's flat
+            // colour; the textures these fills used to carry were dropped at
+            // the client's direction — see `bandFlatFill`.
+            //
+            // With the thematic layer switched off the polygons stay — they
+            // are the geography, not the finding — but they stop carrying a
+            // value and go transparent, so whatever base map is underneath
+            // reads at full strength. This is the toggle's whole purpose.
+            const bandFill = !layers.indicator
+              ? undefined
+              : isSecondary
+                ? hatchFill(hatchId)
+                : (scoreStepFill(datum?.step) ?? bandFlatFill(datum?.band));
+            const fillClass = layers.indicator && !bandFill ? 'fill-nodata' : undefined;
 
             return (
               <path
@@ -211,9 +268,15 @@ export function NigeriaChoropleth({
                 d={shape.path}
                 data-unit-id={shape.stateId}
                 fill={bandFill}
-                fillOpacity={fillOpacity}
+                fillOpacity={layers.indicator ? fillOpacity : 0}
                 className={cn(fillClass, UNIT_FOCUS_CLASS, 'transition-opacity duration-150')}
-                stroke={outlined ? 'hsl(var(--brand-500))' : BOUNDARY_STROKE}
+                stroke={
+                  outlined
+                    ? 'hsl(var(--brand-500))'
+                    : layers.boundaries
+                      ? BOUNDARY_STROKE
+                      : 'transparent'
+                }
                 // Divided by the zoom: stroke width is in viewBox units, so
                 // without this every boundary thickens as the reader zooms in,
                 // and the map ends up more line than fill.
@@ -256,30 +319,68 @@ export function NigeriaChoropleth({
           })}
         </g>
 
-        {/* Permanent state labels — always on, per the FRS: a reader should
-            never have to hover to know which state they're looking at. Anchored
-            at the pole of inaccessibility and sized to the inscribed circle, so
-            a name sits inside its own state rather than over the border it
-            shares with the next one. */}
-        {shapes.map((shape) => (
-          <MapLabel
-            key={`label-${shape.stateId}`}
-            x={shape.label.x}
-            y={shape.label.y}
-            text={shape.name}
-            fontSize={STATE_LABEL_SIZE / view.scale}
-            maxWidth={shape.label.r * 1.9}
-          />
-        ))}
+        {/* Permanent state labels — on by default, per the FRS: a reader
+            should never have to hover to know which state they're looking at.
+            Anchored at the pole of inaccessibility and sized to the inscribed
+            circle, so a name sits inside its own state rather than over the
+            border it shares with the next one. Switchable now, because a name
+            is sometimes the thing in the way — see `MapLayerPanel`.
+
+            The halo follows the base map, and that is what closed the first of
+            the three conditions `BaseMapControl` set on shipping base-map
+            switching. Flat black with no halo is the better reading over the
+            band fills — the colours are light enough that a halo is only
+            fattening the letters — and it is unreadable over satellite imagery
+            or an OSM street map, where a name can land on anything from a
+            reservoir to a roof. So the halo appears exactly when there is
+            imagery for it to separate the name from. */}
+        {layers.labels &&
+          shapes.map((shape) => (
+            <MapLabel
+              key={`label-${shape.stateId}`}
+              x={shape.label.x}
+              y={shape.label.y}
+              text={shape.name}
+              halo={baseMap !== 'plain'}
+              fontSize={STATE_LABEL_SIZE / view.scale}
+              maxWidth={shape.label.r * 1.9}
+            />
+          ))}
+
       </svg>
 
-      <MapZoomControls
+      {crumbs && crumbs.length > 0 && (
+        <MapBreadcrumb crumbs={crumbs} className="absolute left-2 top-2 max-w-[min(60%,420px)]" />
+      )}
+
+      <MapToolbar
         onZoomIn={() => view.zoomBy(1.6)}
         onZoomOut={() => view.zoomBy(1 / 1.6)}
         onReset={view.reset}
         canReset={view.isZoomed}
+        onFitSelection={selectedShape ? () => view.fitTo(selectedShape.bounds, 0.25) : undefined}
+        fitLabel={selectedShape ? `Zoom to ${selectedShape.name}` : undefined}
+        isFullscreen={fullscreen.isFullscreen}
+        onToggleFullscreen={fullscreen.supported ? fullscreen.toggle : undefined}
+        onExport={mapExport.exportPng}
+        exporting={mapExport.busy}
+        onSearch={onSearch}
+        layers={['boundaries', 'labels', 'indicator']}
+      />
+
+      <MapScaleBar
+        rect={view.rect}
+        renderPx={renderPx}
+        className="absolute bottom-8 left-3 z-[1]"
+      />
+      <PointerCoordinates
+        lat={cursor?.lat ?? null}
+        lon={cursor?.lon ?? null}
+        className="absolute bottom-1.5 left-3 z-[1]"
       />
       <MapAttribution baseMap={baseMap} />
+
+      {overlay}
 
       {hover &&
         (() => {

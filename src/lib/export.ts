@@ -202,23 +202,69 @@ function tokenColor(token: string, fallback: string): string {
  */
 const MAX_CANVAS_PIXELS = 16e6;
 
+/**
+ * Marks the element being captured so `onclone` can find it again — the clone
+ * is a different document, so a node reference is no use there.
+ */
+const EXPORT_MARK = 'data-export-target';
+
 async function rasterise(
   el: HTMLElement,
 ): Promise<{ canvas: HTMLCanvasElement; scale: number }> {
   const { default: html2canvas } = await import('html2canvas');
 
-  const area = Math.max(1, el.scrollWidth * el.scrollHeight);
-  const scale = Math.max(1, Math.min(2, Math.sqrt(MAX_CANVAS_PIXELS / area)));
+  /**
+   * Measured, and then **imposed on the clone**.
+   *
+   * `html2canvas` renders by copying the node into an offscreen iframe, and a
+   * height that comes from the layout rather than from the element itself does
+   * not survive the trip: the map frame is `h-full` inside a `flex-1 min-h-0`
+   * column, so in the clone — where those ancestors have no resolved height —
+   * it collapses to zero and the capture comes back as a 0×0 canvas. That then
+   * fails deep inside the caption compositor with a `drawImage` error naming
+   * neither the cause nor the element.
+   *
+   * So the on-screen box is measured here and written onto the clone as
+   * explicit pixels. Elements that size themselves are unaffected; the ones
+   * that inherit their size are the only ones that were ever broken.
+   */
+  const rect = el.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+  const scale = Math.max(1, Math.min(2, Math.sqrt(MAX_CANVAS_PIXELS / (width * height))));
 
-  const canvas = await html2canvas(el, {
-    // Captured in whatever colour scheme is on screen. Forcing light would
-    // recolour the readiness scale between the click and the file, and an
-    // export that does not match what was exported is its own bug report.
-    backgroundColor: tokenColor('--page', '#ffffff'),
-    scale,
-    useCORS: true,
-    logging: false,
-  });
+  el.setAttribute(EXPORT_MARK, '');
+  let canvas: HTMLCanvasElement;
+  try {
+    canvas = await html2canvas(el, {
+      // Captured in whatever colour scheme is on screen. Forcing light would
+      // recolour the readiness scale between the click and the file, and an
+      // export that does not match what was exported is its own bug report.
+      backgroundColor: tokenColor('--page', '#ffffff'),
+      scale,
+      useCORS: true,
+      logging: false,
+      width,
+      height,
+      windowWidth: document.documentElement.clientWidth,
+      windowHeight: document.documentElement.clientHeight,
+      onclone: (doc) => {
+        const clone = doc.querySelector(`[${EXPORT_MARK}]`);
+        if (clone instanceof HTMLElement) {
+          clone.style.width = `${width}px`;
+          clone.style.height = `${height}px`;
+        }
+      },
+    });
+  } finally {
+    el.removeAttribute(EXPORT_MARK);
+  }
+
+  // Belt and braces: if a browser still hands back an empty canvas, say so
+  // here rather than letting it fail later as an opaque `drawImage` error.
+  if (canvas.width === 0 || canvas.height === 0) {
+    throw new Error('The browser rendered an empty image.');
+  }
 
   return { canvas, scale };
 }

@@ -1,42 +1,46 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useFetchJSON } from '@/hooks/useFetchJSON';
 import { DATA_PATHS } from '@/lib/constants';
 import { BAND_LABEL } from '@/lib/bands';
-import { formatScore } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import {
-  gx,
-  gy,
+  latAtY,
+  lonAtX,
   geomToPath,
   geomBounds,
+  boundsOfPoints,
   fitViewBox,
   MAP_ASPECT_CLASS,
   SVG_W,
   SVG_H,
+  type Box,
   type GeoCollection,
 } from '@/lib/mapProjection';
-import { BOUNDARY_STROKE, UNIT_FOCUS_CLASS, bandMarkerPath, useHatchPatternId } from './mapTypes';
+import { BOUNDARY_STROKE, useHatchPatternId } from './mapTypes';
 import { TileLayer, MapAttribution, MapClip } from './TileLayer';
-import { MapZoomControls } from './MapZoomControls';
+import { MapToolbar } from './MapToolbar';
+import type { MapSearchResult } from './MapSearch';
+import { MapScaleBar } from './MapScaleBar';
+import { MapBreadcrumb, type Crumb } from './MapBreadcrumb';
+import { PointerCoordinates, FacilityCoordinates } from './MapCoordinates';
+import { FacilityLayer, FacilityTooltip, type FacilityHover } from './FacilityLayer';
+import { projectFacilities, type FacilityPoint } from './facilityPoints';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import { useMapViewport } from '@/hooks/useMapViewport';
+import { useFullscreen } from '@/hooks/useFullscreen';
+import { useMapExport } from '@/hooks/useMapExport';
 import { useBaseMapStore } from '@/store/basemapStore';
+import { useMapLayers } from '@/store/mapLayerStore';
 import type { MapFit } from './mapTypes';
-import type { Band } from '@/lib/types';
 import { LoadError, Skeleton } from '@/components/ui';
-
-const BAND_FILL_CLASS: Record<string, string> = {
-  ready: 'fill-ready',
-  moderately_ready: 'fill-moderate',
-  not_ready: 'fill-notready',
-};
 
 /**
  * Facility markers carry their band as a *shape* — circle, square, triangle —
- * not as the texture the polygon layers use. A dot here is a handful of pixels
+ * not as the texture the polygon layers use. A dot is a handful of pixels
  * across at base zoom, and a stripe inside one is neither visible nor
  * countable, whereas the silhouette reads at any size. `BAND_MARKER` in
- * `lib/bands.ts` is the source of truth; see `BandPattern.tsx`.
+ * `lib/bands.ts` is the source of truth. The markers
+ * themselves live in `FacilityLayer`, which all three levels now share.
  */
 interface LgaFeatureProps {
   id: string;
@@ -45,14 +49,9 @@ interface LgaFeatureProps {
   name: string;
 }
 
-export interface FacilityPoint {
-  uuid: string;
-  name: string;
-  lat: number;
-  lon: number;
-  band: Band | null;
-  score?: number | null;
-}
+/** Defined with the layer that draws it, and re-exported here because this is
+ *  where callers have always imported it from. */
+export type { FacilityPoint };
 
 interface LGAFacilityMapProps {
   /** See the note on MapFit. */
@@ -65,6 +64,21 @@ interface LGAFacilityMapProps {
   onSelect?: (uuid: string) => void;
   /** Zooming back out past the whole LGA returns to the state's LGA map. */
   onZoomOut?: () => void;
+  /** The geographic hierarchy above this view — see `MapBreadcrumb`. */
+  crumbs?: Crumb[];
+  /**
+   * Page-supplied furniture drawn inside the map frame — the legend, normally.
+   *
+   * Inside rather than beside, because the frame is what goes full screen: a
+   * legend rendered as the map's sibling is on a part of the document the
+   * reader can no longer see the moment they give the map the display.
+   */
+  overlay?: ReactNode;
+  /** What the marks encode, named — stamped under an exported image, where the
+   *  legend is pixels and the reader cannot hover anything to find out. */
+  exportScope?: string;
+  /** Resolve a name to a place the map can go to — see `MapSearch`. */
+  onSearch?: (query: string) => MapSearchResult[];
   className?: string;
 }
 
@@ -72,19 +86,29 @@ interface LGAFacilityMapProps {
  *  LGA's facilities separate into individual compounds on the imagery. */
 const FACILITY_MAX_SCALE = 12;
 
-interface HoverInfo {
-  uuid: string;
-  x: number;
-  y: number;
-}
+/**
+ * How far in before facilities are named on the map itself.
+ *
+ * Labels were deliberately absent from this layer, and the reasoning was sound
+ * at the extent it was reasoning about: at base zoom facilities cluster within
+ * a few viewBox units of each other, so a permanent name on every dot overlaps
+ * into an unreadable mat. But that is an argument about *density*, and density
+ * is exactly what zoom resolves — by the time the reader is this far in they
+ * are looking at a handful of separated points with room between them, and
+ * withholding the names there is withholding them for a reason that has
+ * stopped applying. Below this they stay off, for the original reason.
+ */
+const FACILITY_LABEL_SCALE = 4.5;
 
 /**
- * Facility-level point map within one LGA — adapted from
- * `srh-dashboard/src/components/charts/FacilityMapChart.tsx`'s dot-plotting
- * approach, but scoped to a single LGA and zoomed to its own bounds rather
- * than showing all facilities against the national outline. Positions come
- * straight from each facility's GPS coordinate through the same shared
- * projection as the other two layers.
+ * Facility-level point map within one LGA — the deepest of the three spatial
+ * layers, and the only one whose features are points rather than polygons.
+ *
+ * Positions come straight from each facility's surveyed GPS coordinate through
+ * the same shared projection as the other two layers, so a facility sits where
+ * it sits: at 12x on satellite imagery a marker lands on the compound, and the
+ * coordinate readout under the pointer agrees with the one on the facility's
+ * own card.
  */
 export function LGAFacilityMap({
   stateId,
@@ -94,6 +118,10 @@ export function LGAFacilityMap({
   selectedFacilityId,
   onSelect,
   onZoomOut,
+  crumbs,
+  overlay,
+  exportScope,
+  onSearch,
   fit = 'aspect',
   className,
 }: LGAFacilityMapProps) {
@@ -103,9 +131,20 @@ export function LGAFacilityMap({
     path: DATA_PATHS.lgaGeo(stateId),
     fallback: null,
   });
-  const [hover, setHover] = useState<HoverInfo | null>(null);
+  const [hover, setHover] = useState<FacilityHover | null>(null);
+  /** Live position under the pointer, for the coordinate readout. Null
+   *  whenever the pointer is off the map — see `PointerCoordinates`. */
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
-  const [frameRef, renderPx] = useRenderSize<HTMLDivElement>();
+  const layers = useMapLayers();
+  const [frameRef, renderPx, renderPxH] = useRenderSize<HTMLDivElement>();
+  const fullscreen = useFullscreen<HTMLDivElement>();
+  const mapExport = useMapExport(fullscreen.ref, {
+    name: ['facilities', stateId, lgaId],
+    scope: crumbs?.map((c) => c.label).join(' / ') ?? lgaName,
+    encoding: exportScope ?? 'Facility readiness',
+    baseMap,
+  });
   const clipId = `${useHatchPatternId()}-clip`;
 
   const outline = useMemo(() => {
@@ -114,36 +153,99 @@ export function LGAFacilityMap({
     return feature ? { path: geomToPath(feature.geometry), bounds: geomBounds(feature.geometry) } : null;
   }, [geo.data, lgaId]);
 
-  const points = useMemo(
-    () =>
-      facilities
-        .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lon))
-        .map((f) => ({ ...f, x: gx(f.lon), y: gy(f.lat) })),
-    [facilities],
-  );
+  const points = useMemo(() => projectFacilities(facilities), [facilities]);
 
   const baseViewBox = useMemo(() => {
-    const pointBounds =
-      points.length > 0
-        ? {
-            x0: Math.min(...points.map((p) => p.x)),
-            y0: Math.min(...points.map((p) => p.y)),
-            x1: Math.max(...points.map((p) => p.x)),
-            y1: Math.max(...points.map((p) => p.y)),
-          }
-        : { x0: 0, y0: 0, x1: SVG_W, y1: SVG_H };
-    return fitViewBox(outline?.bounds ?? pointBounds);
+    const fallback: Box = { x0: 0, y0: 0, x1: SVG_W, y1: SVG_H };
+    return fitViewBox(outline?.bounds ?? boundsOfPoints(points, 0.4) ?? fallback);
   }, [outline, points]);
 
-  const view = useMapViewport({ base: baseViewBox, maxScale: FACILITY_MAX_SCALE, onDrillOut: onZoomOut });
+  const view = useMapViewport({
+    base: baseViewBox,
+    maxScale: FACILITY_MAX_SCALE,
+    layerKey: 'lga',
+    // The extent is this LGA's outline, which is not known until the state's
+    // boundary file lands — see the note on `ready`.
+    ready: !!geo.data,
+    onDrillOut: onZoomOut,
+  });
+
+  /**
+   * viewBox units per CSS pixel at the live zoom. Drives the marker size and
+   * the cluster cell, so both are constant on screen.
+   *
+   * **Both axes**, because `preserveAspectRatio` letterboxes: the SVG is fitted
+   * to whichever axis runs out first, so a map given more width than its
+   * viewBox's aspect wants is scaled by its *height* and the width ratio
+   * overstates how large a unit is drawn. Taking the width alone made every
+   * facility marker come out around 30% smaller than the pixel size it asked
+   * for — measured at 7px across where 11px was specified — and shrank the
+   * cluster cell with it, so points that overlapped on screen were not being
+   * grouped. Same correction `StateLGAMap` already makes for its label sizing.
+   */
+  const unitsPerPx = Math.max(
+    view.rect.w / Math.max(1, renderPx),
+    view.rect.h / Math.max(1, renderPxH),
+  );
+
+  const selected = selectedFacilityId
+    ? (points.find((p) => p.uuid === selectedFacilityId) ?? null)
+    : null;
+
+  /**
+   * Frame one facility.
+   *
+   * `boundsOfPoints` opens a single point out to a non-degenerate box, and
+   * `fitTo` then clamps it to this layer's `maxScale` — so a facility is always
+   * framed at the deepest zoom the layer offers, which is where the imagery
+   * resolves the compound it sits on.
+   */
+  const frameFacility = (f: { x: number; y: number }) => {
+    const box = boundsOfPoints([f]);
+    if (box) view.fitTo(box, 0.2);
+  };
+
+  /**
+   * Selecting a facility is a **drill**, not a highlight.
+   *
+   * The other two levels already work this way: clicking a state flies the
+   * camera into that state, clicking an LGA flies into that LGA. A facility is
+   * the fourth level of the same hierarchy, so clicking one has to do the same
+   * thing — otherwise the last step of the drill-down is the only one where the
+   * map does not move, and the reader is left to find the highlighted dot among
+   * the others by eye.
+   *
+   * Deselecting flies back out to the whole LGA, which is the level above, so
+   * the gesture is reversible on the same terms.
+   *
+   * Keyed on the id rather than the object: `selected` is re-derived on every
+   * render, and an effect watching it would re-fly the camera on every
+   * unrelated state change — a hover, a pan, a layer toggle.
+   */
+  const selectedKey = selected?.uuid ?? null;
+  const previousKey = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const previous = previousKey.current;
+    previousKey.current = selectedKey;
+    if (previous === selectedKey) return;
+    if (selectedKey && selected) {
+      frameFacility(selected);
+    } else if (previous !== undefined && previous !== null) {
+      // Came back up from a facility to the LGA. `undefined` is the first
+      // render, where the base extent is already the destination and the
+      // viewport hook's own flight owns the camera.
+      view.reset();
+    }
+    // `view` and `selected` are rebuilt every render; the id is what actually
+    // changes, and re-running on anything else would re-fly the camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
 
   if (geo.isLoading && !geo.data) {
     return <Skeleton className={cn(MAP_ASPECT_CLASS, 'w-full', className)} />;
   }
-  // This branch was missing: a failed boundary fetch left `isLoading` false and
-  // `data` null, so the layer fell through to rendering an outline-less map with
-  // no explanation — or, when it failed before any data arrived, sat on the
-  // skeleton above forever.
+  // A failed boundary fetch leaves `isLoading` false and `data` null, which
+  // without this branch renders an outline-less map with no explanation.
   if (geo.error) {
     return (
       <LoadError
@@ -155,27 +257,30 @@ export function LGAFacilityMap({
     );
   }
 
-  const viewBoxStr = baseViewBox;
-  const vbWidth = Number(viewBoxStr.split(' ')[2] ?? 100);
-  // A pure fraction of the view — no absolute floor. The floor this used to
-  // carry was in viewBox units, which is meaningless across layers: 1.5 units
-  // is a sensible dot on a 200-unit state and a 40-pixel blob on a 27-unit
-  // rural LGA, which is exactly what it rendered as. Divided by the zoom on top
-  // of that, so a marker holds its size on screen as the reader goes in rather
-  // than swallowing the compound the imagery is there to show.
-  const dotRadius = (vbWidth * 0.011) / view.scale;
-
-  const hoverPoint = hover ? points.find((p) => p.uuid === hover.uuid) : null;
+  const vbWidth = Number(baseViewBox.split(' ')[2] ?? 100);
+  const showLabels = layers.labels && view.scale >= FACILITY_LABEL_SCALE;
 
   return (
     <div
-      ref={frameRef}
-      className={cn('relative w-full', fit === 'fill' && 'h-full', className)}
+      ref={(el) => {
+        frameRef(el);
+        // Two refs on one element: the size observer that picks the tile zoom,
+        // and the element the full-screen request is made against.
+        (fullscreen.ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      }}
+      className={cn(
+        'relative w-full',
+        fit === 'fill' && 'h-full',
+        // Full screen hands the element the whole display, which is a different
+        // box from the one the layout gave it — it has to fill that instead.
+        fullscreen.isFullscreen && 'h-full w-full bg-page',
+        className,
+      )}
     >
       <svg
         ref={view.svgRef}
         viewBox={view.viewBox}
-        className={cn('w-full select-none', fit === 'fill' ? 'h-full' : 'h-auto')}
+        className={cn('w-full select-none', fit === 'fill' || fullscreen.isFullscreen ? 'h-full' : 'h-auto')}
         style={{
           // Only claim the finger once the reader has deliberately zoomed in.
           // At base scale a one-finger drag is far more likely to be someone
@@ -186,6 +291,12 @@ export function LGAFacilityMap({
         role="img"
         aria-label={`${lgaName} facility readiness map`}
         {...view.bind}
+        onPointerMove={(e) => {
+          view.bind.onPointerMove(e);
+          const p = view.toViewport(e.clientX, e.clientY);
+          setCursor({ lat: latAtY(p.y), lon: lonAtX(p.x) });
+        }}
+        onPointerLeave={() => setCursor(null)}
       >
         {outline && <MapClip id={clipId} d={outline.path} />}
 
@@ -199,7 +310,7 @@ export function LGAFacilityMap({
           />
         )}
 
-        {outline && (
+        {outline && layers.boundaries && (
           <path
             d={outline.path}
             className="fill-brand-50"
@@ -213,74 +324,84 @@ export function LGAFacilityMap({
           />
         )}
 
-        {points.map((p) => {
-          const isSelected = selectedFacilityId === p.uuid;
-          const fillClass = p.band ? BAND_FILL_CLASS[p.band] : 'fill-nodata';
-          const r = isSelected ? dotRadius * 1.5 : dotRadius;
-          return (
-            <path
-              key={p.uuid}
-              d={bandMarkerPath(p.band, p.x, p.y, r)}
-              className={cn(fillClass, UNIT_FOCUS_CLASS)}
-              strokeLinejoin="round"
-              stroke={isSelected ? 'hsl(var(--brand-500))' : 'hsl(var(--surface))'}
-              strokeWidth={isSelected ? dotRadius / 1.8 : dotRadius / 4}
-              tabIndex={onSelect ? 0 : -1}
-              role={onSelect ? 'button' : undefined}
-              aria-label={`${p.name}${p.band ? `, ${BAND_LABEL[p.band]}` : ', no data'}`}
-              style={{ cursor: onSelect ? 'pointer' : 'default' }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelect?.(p.uuid);
-                }
-              }}
-              onMouseEnter={(e) => {
-                const rect = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                setHover({ uuid: p.uuid, x: e.clientX - rect.left, y: e.clientY - rect.top });
-              }}
-              onMouseMove={(e) => {
-                const rect = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                setHover({ uuid: p.uuid, x: e.clientX - rect.left, y: e.clientY - rect.top });
-              }}
-              onMouseLeave={() => setHover(null)}
-              onClick={() => onSelect?.(p.uuid)}
-            />
-          );
-        })}
-
-        {/* Deliberately no facility labels. At LGA scale facilities cluster
-            within a few viewBox units of each other, so a permanent name on
-            every dot overlapped into an unreadable mat and had to be truncated
-            to fit — which made it unreliable as well as unreadable. The name,
-            band and score are on hover, and in the selection strip below. */}
+        {layers.facilities && (
+          <FacilityLayer
+            points={points}
+            unitsPerPx={unitsPerPx}
+            cluster={layers.cluster}
+            selectedId={selectedFacilityId}
+            onSelect={onSelect}
+            onExpand={(box) => view.fitTo(box, 0.35)}
+            showLabels={showLabels}
+            onHover={setHover}
+          />
+        )}
       </svg>
 
-      <MapZoomControls
+      {crumbs && crumbs.length > 0 && (
+        <MapBreadcrumb crumbs={crumbs} className="absolute left-2 top-2 max-w-[min(60%,420px)]" />
+      )}
+
+      <MapToolbar
         onZoomIn={() => view.zoomBy(1.6)}
         onZoomOut={() => view.zoomBy(1 / 1.6)}
         onReset={view.reset}
         canReset={view.isZoomed}
+        onFitSelection={selected ? () => frameFacility(selected) : undefined}
+        fitLabel={selected ? `Zoom to ${selected.name}` : undefined}
+        isFullscreen={fullscreen.isFullscreen}
+        onToggleFullscreen={fullscreen.supported ? fullscreen.toggle : undefined}
+        onExport={mapExport.exportPng}
+        exporting={mapExport.busy}
+        onSearch={onSearch}
+        layers={['boundaries', 'labels', 'facilities', 'cluster']}
+      />
+
+      <MapScaleBar
+        rect={view.rect}
+        renderPx={renderPx}
+        className="absolute bottom-8 left-3 z-[1]"
+      />
+      <PointerCoordinates
+        lat={cursor?.lat ?? null}
+        lon={cursor?.lon ?? null}
+        className="absolute bottom-1.5 left-3 z-[1]"
       />
       <MapAttribution baseMap={baseMap} />
 
-      {hover && hoverPoint && (
-        <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-pop"
-          style={{ left: hover.x, top: hover.y - 10 }}
-        >
-          <div className="max-w-[220px] font-semibold leading-snug text-foreground">{hoverPoint.name}</div>
-          <p className="mt-0.5 text-muted-foreground">
-            {hoverPoint.band ? BAND_LABEL[hoverPoint.band] : 'No data'}
-            {hoverPoint.score != null ? ` · ${formatScore(hoverPoint.score)}/5` : ''}
+      {overlay}
+
+      {/* The selected facility's own card — name, geography and the surveyed
+          coordinate, with the two things anyone does with a coordinate. Stays
+          up while the facility is selected rather than following the pointer,
+          which is what makes the copy button reachable at all.
+
+          Directly beneath the breadcrumb rather than opposite it: the card
+          describes the feature the last crumb names, so the two read as one
+          block. It was on the right, which collided with the breadcrumb the
+          moment a facility was selected — that is exactly when the breadcrumb
+          is at its longest, since selecting the facility is what adds the
+          fourth crumb. */}
+      {selected && (
+        <div className="absolute left-2 top-11 z-10 w-[250px] rounded-lg border border-border bg-surface/95 p-2.5 shadow-pop backdrop-blur">
+          <p className="text-[13px] font-semibold leading-snug text-foreground">{selected.name}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {[selected.lga, selected.state].filter(Boolean).join(', ') || lgaName}
           </p>
-          {onSelect && (
-            <p className="mt-1 text-[11px] font-medium text-brand-600">
-              {selectedFacilityId === hoverPoint.uuid ? 'View full Scorecard →' : 'Click to select'}
+          {(selected.band || selected.status) && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {[selected.band ? BAND_LABEL[selected.band] : null, selected.status]
+                .filter(Boolean)
+                .join(' · ')}
             </p>
           )}
+          <div className="mt-2 border-t border-border pt-1.5">
+            <FacilityCoordinates lat={selected.lat} lon={selected.lon} />
+          </div>
         </div>
       )}
+
+      <FacilityTooltip hover={hover} selectedId={selectedFacilityId} selectable={!!onSelect} />
 
       {points.length === 0 && (
         <p className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">

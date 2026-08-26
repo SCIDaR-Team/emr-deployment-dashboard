@@ -61,6 +61,32 @@ npm run dev
 Filters are shared across modules and live in the URL, so any scoped view is a
 link: `/assessment?state=Kano&archetype=not_ready`.
 
+## The map
+
+Not a chart of a country — a small GIS. Every geography is a real feature at
+real coordinates, and the same Web Mercator projection in
+`src/lib/mapProjection.ts` serves all three layers, so moving between them is a
+viewBox change and never a reprojection.
+
+| | |
+| --- | --- |
+| **Hierarchy** | Nigeria → State → LGA → PHC. Boundaries are GRID3/COD-AB ADM1 and ADM2 (all 774 LGAs, one file per state); facilities sit at their surveyed GPS coordinate. |
+| **Drill-down** | Strictly progressive: a state resolves into its LGAs, an LGA into the facilities inside it, and a facility into itself. Each level only draws the features that belong to it, so facility points never appear above their own LGA. Click a feature, or simply keep zooming — overshooting a layer's useful range drills through it, and pulling back out past its extent drills back up. |
+| **Selecting a facility** | A drill like any other, not a highlight: the camera flies to the facility at the layer's deepest zoom, names it on the map, and shows its coordinate card. Clicking it again, or the breadcrumb, flies back out to the LGA. |
+| **Transitions** | A level change is a camera move, not a cut. The outgoing layer leaves its viewport in `viewHandoff.ts` and the incoming one flies in from it, easing geometrically so a 40x zoom reads as constant motion. Honours `prefers-reduced-motion`. |
+| **Layers** | Boundaries, place names, thematic fill and facility points toggle independently (`store/mapLayerStore.ts`), over an optional OpenStreetMap or Esri satellite base map. Only the layers a level actually has appear in the panel. |
+| **Coordinates** | Live lat/lon under the pointer, and a selected facility's surveyed position copyable and openable in OpenStreetMap. `lonAtX`/`latAtY` are exact inverses of the forward projection. |
+| **Scale** | A real surveyor's bar, measured at the view's centre latitude — Mercator's scale factor is 1/cos(lat), so a viewBox unit is not a fixed distance. |
+| **Find a place** | A locator in the map's own toolbar, separate from the filter row's Search: it narrows nothing, it resolves a name to a place and goes there, opening the levels in between. Assessed States resolves to a facility; National Coverage stops at the LGA. |
+| **Shareable views** | Pan and zoom ride in the URL as `?v=<layer>~x,y,w`, so a link reopens on the framing the sender chose — not just the same scope. Stamped with the layer that wrote it, so a stale value is ignored rather than misapplied, and dropped entirely at full extent. |
+| **Save as image** | One click writes a PNG of the map frame — legend, scale bar and attribution included, which is what a screenshot loses — with provenance burnt in underneath. Raster base-map tiles cannot be captured (a serialised SVG may not fetch external resources), so the export warns and Plain is lossless. |
+| **Clustering** | Facility points that overlap at the current zoom collapse into a counted marker and dissolve as the reader goes in; the cell is sized in screen pixels, so there is no threshold to tune. |
+
+Base maps default to **plain**, which makes no third-party request. Streets and
+satellite tiles are fetched at runtime from `tile.openstreetmap.org` and
+`arcgisonline.com` — whether a ministry network may reach either is a deployment
+question, so the reader opts in.
+
 ## National Coverage
 
 The map is the page: filters across the top, a full-bleed choropleth, and a pane

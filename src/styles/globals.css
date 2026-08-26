@@ -304,8 +304,14 @@
   /*
    * Readiness textures — the non-colour carrier for HTML area fills.
    * `BAND_TEXTURE` in src/lib/bands.ts is the source of truth for which band
-   * gets which; `components/map/BandPattern.tsx` is the SVG counterpart, the
-   * way MapHatch is the SVG counterpart to .hatch-secondary above.
+   * gets which.
+   *
+   * HTML only, now. There used to be an SVG counterpart painting the same
+   * textures into map polygons, the way MapHatch is the counterpart to
+   * .hatch-secondary above; the map's band fills are flat colour at the
+   * client's direction — see `bandFlatFill` in components/map/mapTypes.ts.
+   * These classes are unaffected: a distribution segment is a 6px bar with no
+   * room for a label, so its texture is still doing real work.
    *
    * Marks are a fixed dark ink rather than --foreground. The band colours do
    * not follow the colour scheme — amber is the same amber in dark mode — so a
