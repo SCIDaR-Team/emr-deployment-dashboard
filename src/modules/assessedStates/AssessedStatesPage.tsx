@@ -108,6 +108,13 @@ export default function AssessedStatesPage() {
     return rows;
   }, [facilities, scope.state, scope.lga]);
 
+  /** Whether anything in scope can actually be drawn as a point. False for the
+   *  whole dataset today — the assessment recorded no coordinates. */
+  const plottable = useMemo(
+    () => scoped.some((f) => f.lat != null && f.lon != null),
+    [scoped],
+  );
+
   const stateLgas = useMemo(
     () =>
       scope.state
@@ -500,14 +507,23 @@ export default function AssessedStatesPage() {
     </div>
   );
 
-  /** The facility layer's own key. Its marks are points carrying a band as a
-   *  silhouette, which is a different vocabulary from the ramp above — so it
-   *  gets the legend that teaches the one actually on screen. */
-  const facilityLegend = (
+  /**
+   * The facility layer's own key. Its marks are points carrying a band as a
+   * silhouette, which is a different vocabulary from the ramp above — so it
+   * gets the legend that teaches the one actually on screen.
+   *
+   * Null when nothing in scope has a coordinate, which is the whole dataset
+   * today: the assessment recorded no positions, so the layer draws no points.
+   * A key explaining four colours over an empty map is worse than no key — it
+   * tells the reader to look for marks that are not there and cannot be, and
+   * sends them hunting for a filter they have not applied. It comes back on its
+   * own the day coordinates arrive.
+   */
+  const facilityLegend = plottable ? (
     <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
       <MapLegend marks="point" showNoData />
     </div>
-  );
+  ) : null;
 
   return (
     <div className="flex min-h-0 flex-col lg:h-full">
