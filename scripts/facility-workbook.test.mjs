@@ -15,8 +15,18 @@ import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import { lookupFor, nameKey, parseFacilityWorkbook } from './facility-workbook.mjs';
 
-/** A miniature of the export: two junk rows, then the header, then data. */
-function workbook(rows) {
+/**
+ * A miniature of the export.
+ *
+ * `lead` is how many junk rows precede the header — the two real exports differ
+ * (`Raw data with readiness level.xlsx` has a grouping row then a numbering
+ * row; the ERA workbook has only the numbering row), which is why the parser
+ * finds the header rather than counting to it.
+ *
+ * `sheets` puts the data sheet behind others, as the ERA workbook does — it
+ * opens on a differently-shaped export of the same survey.
+ */
+function workbook(rows, { lead = 2, sheets = ['Raw data with readiness level'] } = {}) {
   const header = [];
   header[1] = 'Name of facility';
   header[3] = 'UUID';
@@ -27,17 +37,33 @@ function workbook(rows) {
   header[17] = 'LGA';
   header[18] = 'Geography';
 
-  const aoa = [['Facility demography'], [1, 2, 3], header, ...rows];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const junk = [['Facility demography'], [1, 2, 3]].slice(0, lead);
+  const aoa = [...junk, header, ...rows];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Raw data');
+  for (const name of sheets) {
+    const ws =
+      name === 'Raw data with readiness level'
+        ? XLSX.utils.aoa_to_sheet(aoa)
+        : XLSX.utils.aoa_to_sheet([['a different export entirely']]);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  }
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 
-const row = ({ uuid, name, state = 'kano', lga = 'dala', geography = 'rural' }) => {
+const row = ({
+  uuid,
+  name,
+  state = 'kano',
+  lga = 'dala',
+  geography = 'rural',
+  lat,
+  lon,
+}) => {
   const r = [];
   r[1] = name;
   r[3] = uuid;
+  r[11] = lat;
+  r[12] = lon;
   r[16] = state;
   r[17] = lga;
   r[18] = geography;
@@ -45,6 +71,52 @@ const row = ({ uuid, name, state = 'kano', lga = 'dala', geography = 'rural' }) 
 };
 
 describe('parseFacilityWorkbook', () => {
+  it('finds its header wherever the export puts it', () => {
+    for (const lead of [0, 1, 2, 3]) {
+      const records = parseFacilityWorkbook(
+        workbook([row({ uuid: 'u1', name: 'alpha_health_post' })], { lead }),
+      );
+      expect(records, `lead ${lead}`).toHaveLength(1);
+      expect(records[0].uuid, `lead ${lead}`).toBe('u1');
+    }
+  });
+
+  it('reads its own sheet, not whichever comes first', () => {
+    const records = parseFacilityWorkbook(
+      workbook([row({ uuid: 'u1', name: 'alpha_health_post' })], {
+        sheets: ['Raw data ODK', 'Raw data with readiness level'],
+      }),
+    );
+    expect(records).toHaveLength(1);
+    expect(records[0].uuid).toBe('u1');
+  });
+
+  it('reads a coordinate, and treats a blank one as missing rather than 0,0', () => {
+    const records = parseFacilityWorkbook(
+      workbook([
+        row({ uuid: 'u1', name: 'alpha', lat: 6.244616, lon: 7.083059 }),
+        // The latitude-less export: longitude present, latitude empty. Both
+        // must drop — `Number('')` is 0, which is finite and off West Africa.
+        row({ uuid: 'u2', name: 'beta', lon: 7.083059 }),
+        row({ uuid: 'u3', name: 'gamma' }),
+      ]),
+    );
+
+    expect(records[0]).toMatchObject({ lat: 6.244616, lon: 7.083059 });
+    expect(records[1]).toMatchObject({ lat: null, lon: null });
+    expect(records[2]).toMatchObject({ lat: null, lon: null });
+  });
+
+  it('throws on a coordinate outside Nigeria rather than plotting it', () => {
+    expect(() =>
+      parseFacilityWorkbook(
+        // Latitude and longitude the wrong way round: 7.08, 6.24 is still in
+        // the box, so the case that must fail is a genuinely foreign one.
+        workbook([row({ uuid: 'u1', name: 'alpha', lat: 51.5, lon: -0.12 })]),
+      ),
+    ).toThrow(/outside Nigeria/);
+  });
+
   it('reads the setting for each facility', () => {
     const records = parseFacilityWorkbook(
       workbook([

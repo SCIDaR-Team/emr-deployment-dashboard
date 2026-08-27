@@ -145,8 +145,15 @@ export interface DeploymentPlan {
    * where one of the 332 unpriced connectivity blockers is in scope.
    */
   unpricedInterventions: number;
-  byHorizon: Record<Horizon, number>;
-  byDomain: Record<GapDomainId, number>;
+  /**
+   * What the plan costs, split by urgency and by domain. **Naira, not counts.**
+   *
+   * Named for the unit because the earlier `byHorizon`/`byDomain` were not, and
+   * a bare `number` beside `gapCount` — which *is* a count — reads as one too.
+   * Both split the same `costNGN` above, so either one sums to it.
+   */
+  costByHorizon: Record<Horizon, number>;
+  costByDomain: Record<GapDomainId, number>;
   gaps: GapTally[];
   lines: DeploymentLine[];
 }
@@ -278,12 +285,15 @@ export interface FacilitySummary {
   /**
    * The surveyed position, where there is one.
    *
-   * Null throughout the current dataset — the assessment did not record
-   * coordinates. Nullable rather than faked: `projectFacilities` drops a
-   * facility without a fix, so the LGA map draws its boundary and the pane
-   * lists what is inside it, and the facility stays selectable from that list.
-   * An invented position presented as a surveyed one is the one error this
-   * dataset cannot afford.
+   * Present for 2,804 of 2,806, from the ERA workbook — the survey took a GPS
+   * fix at every facility, and the earlier export simply lost the latitude
+   * column. The two without one are the facilities that could not be matched to
+   * that workbook at all.
+   *
+   * Nullable rather than faked: `projectFacilities` drops a facility without a
+   * fix, so the LGA map draws its boundary and the pane lists what is inside
+   * it, and the facility stays selectable from that list. An invented position
+   * presented as a surveyed one is the one error this dataset cannot afford.
    */
   lat: number | null;
   lon: number | null;

@@ -1,9 +1,9 @@
 /**
  * The raw ODK workbook — the assessment's second source.
  *
- * `Raw data with readiness level.xlsx` is the survey export the gaps CSV was
- * derived from: one row per facility, 335 columns, everything the instrument
- * collected before it was summarised into gaps and interventions.
+ * The survey export the gaps CSV was derived from: one row per facility, and
+ * everything the instrument collected before it was summarised into gaps and
+ * interventions.
  *
  * Only what the dashboard actually uses is read out of it. The workbook holds a
  * great deal more — service points, staff counts, devices, per-question
@@ -11,39 +11,40 @@
  * not a free upgrade. Taking one field at a time keeps the model honest about
  * where every figure came from.
  *
- * ## What is not here
+ * ## Two exports, one reader
  *
- * **Latitude.** Column L sits exactly where ODK puts it, between the data
- * collector's name and Longitude, and it is empty in 2,805 of 2,807 rows. The
- * two rows that do carry a value (both Kano) hold plausible latitudes, so the
- * column is correctly positioned and its values were lost in whatever produced
- * this export.
+ * `Raw data with readiness level.xlsx` — the standalone export — has the same
+ * columns in the same positions but **no latitude**: column L is empty in 2,805
+ * of its 2,807 rows, so nothing could be plotted from it and
+ * `FacilitySummary.lat`/`lon` stayed null.
  *
- * Longitude, Altitude and Location accuracy are all fully populated — but a
- * longitude without a latitude is a meridian, not a place, so no facility can
- * be plotted from this file. `FacilitySummary.lat`/`lon` stay null until a
- * re-export arrives. See `docs/ASSESSMENT_DATA.md`.
+ * `ERA dataset_v4 (1).xlsx` carries the same sheet with latitude populated, one
+ * header row higher, and not as its first sheet. So this reader **finds** its
+ * sheet by name and its header by content rather than counting rows: the two
+ * exports differ in exactly the ways a hardcoded offset would read straight
+ * past. Column positions are still fixed and still asserted — the sheet repeats
+ * near-identical question text across its service-point blocks, so a name
+ * lookup is not safe for the columns themselves.
  */
 
 import * as XLSX from 'xlsx';
 
-/** Row 3 of the sheet is the header; rows 4 on are data. */
-const HEADER_ROW = 2;
-const FIRST_DATA_ROW = 3;
+/** The sheet to read, wherever it sits in the book. The ERA workbook opens on
+ *  `Raw data ODK`, which is a different shape. */
+const SHEET_NAME = 'Raw data with readiness level';
+
+/** How far in to look for the header before giving up. Both known exports put
+ *  it in the first three rows. */
+const HEADER_SEARCH_LIMIT = 8;
 
 /**
- * Columns, by position.
- *
- * Positional like the gaps CSV, and for a related reason: this sheet repeats
- * near-identical question text across the five service-point blocks, so a
- * name lookup is not safe here either. The headers are asserted below so a
- * re-export that shifts a column fails the build rather than reading the
- * neighbouring one.
+ * Columns, by position, asserted against the header below so a re-export that
+ * shifts one fails the build rather than reading its neighbour.
  */
 const COL = {
   nameSlug: 1,
   uuid: 3,
-  latitude: 11, // Excel L — empty in this export; see the note above
+  latitude: 11,
   longitude: 12,
   altitude: 13,
   locationAccuracy: 14,
@@ -52,8 +53,6 @@ const COL = {
   geography: 18,
 };
 
-/** The header each column must carry. `latitude` is absent from the header row
- *  in this export, so it is checked by position and emptiness instead. */
 const EXPECTED_HEADERS = {
   nameSlug: 'Name of facility',
   uuid: 'UUID',
@@ -64,6 +63,16 @@ const EXPECTED_HEADERS = {
   lga: 'LGA',
   geography: 'Geography',
 };
+
+/**
+ * Nigeria's bounding box, generously drawn.
+ *
+ * A coordinate outside it is a transposed pair, a decimal-comma, or a stray
+ * cell — all of which would put a clinic in the Gulf of Guinea and none of
+ * which should reach the map. Checked rather than trusted, because a plausible
+ * wrong position is worse than no position: the reader cannot tell.
+ */
+const NIGERIA = { minLat: 3.5, maxLat: 14.5, minLon: 2.5, maxLon: 15.0 };
 
 const slugify = (v) =>
   String(v ?? '')
@@ -88,13 +97,30 @@ const text = (v) => {
  */
 export function parseFacilityWorkbook(buffer) {
   const wb = XLSX.read(buffer, { type: 'buffer' });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
+  // By name where the book has it — the ERA workbook's first sheet is a
+  // different export of the same survey, with different columns.
+  const sheet = wb.Sheets[SHEET_NAME] ?? wb.Sheets[wb.SheetNames[0]];
   if (!sheet) throw new Error('Facility workbook has no sheets');
 
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null });
-  if (rows.length <= FIRST_DATA_ROW) throw new Error('Facility workbook has no data rows');
 
-  const header = rows[HEADER_ROW];
+  // The header row, found rather than counted: the two known exports put it at
+  // different depths, and an offset that is wrong by one reads the numbering
+  // row as headers and silently matches nothing.
+  const headerRow = rows.findIndex(
+    (row, i) => i < HEADER_SEARCH_LIMIT && text(row?.[COL.nameSlug]) === EXPECTED_HEADERS.nameSlug,
+  );
+  if (headerRow === -1) {
+    throw new Error(
+      `Facility workbook has no header row in its first ${HEADER_SEARCH_LIMIT} rows — ` +
+        `expected "${EXPECTED_HEADERS.nameSlug}" in column ` +
+        `${XLSX.utils.encode_col(COL.nameSlug)}.`,
+    );
+  }
+  const firstDataRow = headerRow + 1;
+  if (rows.length <= firstDataRow) throw new Error('Facility workbook has no data rows');
+
+  const header = rows[headerRow];
   for (const [field, expected] of Object.entries(EXPECTED_HEADERS)) {
     const actual = text(header[COL[field]]);
     if (actual !== expected) {
@@ -107,7 +133,7 @@ export function parseFacilityWorkbook(buffer) {
   }
 
   const records = [];
-  for (let r = FIRST_DATA_ROW; r < rows.length; r += 1) {
+  for (let r = firstDataRow; r < rows.length; r += 1) {
     const row = rows[r];
     if (!row || row.every((c) => c === null || String(c).trim() === '')) continue;
 
@@ -128,10 +154,51 @@ export function parseFacilityWorkbook(buffer) {
       uuid: text(row[COL.uuid]),
       nameKey: nameKey(row[COL.state], row[COL.lga], row[COL.nameSlug]),
       geography,
+      ...coordinate(row, r),
     });
   }
 
   return records;
+}
+
+/**
+ * A facility's position, or nulls.
+ *
+ * Both or neither. A longitude without a latitude is a meridian rather than a
+ * place, which is exactly what the earlier export supplied — so a half-pair is
+ * discarded rather than carried as a coordinate that cannot be plotted.
+ *
+ * Out-of-country values throw instead of being dropped. A blank is a facility
+ * whose GPS did not record; a coordinate in the Atlantic is a column that has
+ * moved, and quietly skipping those would let a shifted export through with
+ * most of its facilities silently unplottable.
+ */
+function coordinate(row, r) {
+  // Through `text` first: `Number(null)` and `Number('')` are both 0, which is
+  // finite, in the Gulf of Guinea, and exactly what the latitude-less export
+  // supplies for every row. A blank has to be missing, not the origin.
+  const rawLat = text(row[COL.latitude]);
+  const rawLon = text(row[COL.longitude]);
+  if (rawLat === null || rawLon === null) return { lat: null, lon: null };
+
+  const lat = Number(rawLat);
+  const lon = Number(rawLon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { lat: null, lon: null };
+
+  if (
+    lat < NIGERIA.minLat ||
+    lat > NIGERIA.maxLat ||
+    lon < NIGERIA.minLon ||
+    lon > NIGERIA.maxLon
+  ) {
+    throw new Error(
+      `Facility workbook row ${r + 1} has coordinate ${lat}, ${lon}, which is outside ` +
+        `Nigeria. Check that columns ${XLSX.utils.encode_col(COL.latitude)} and ` +
+        `${XLSX.utils.encode_col(COL.longitude)} are still Latitude and Longitude, ` +
+        `and in that order.`,
+    );
+  }
+  return { lat, lon };
 }
 
 /**

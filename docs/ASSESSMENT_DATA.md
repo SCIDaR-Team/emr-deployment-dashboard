@@ -685,8 +685,10 @@ that machinery is in place and just needs real numbers behind it.
 `DataSource.meta.label` changes from `Synthetic dataset` to one naming the sheet
 and its date. The landing page and README banner declaring every figure
 synthetic come down — every figure on Assessed States is then sourced, with the
-two documented exclusions (no coordinates, Query B's unpriced item) stated where
-they bite rather than as a blanket disclaimer.
+one documented exclusion (Query B's unpriced item) stated where it bites rather
+than as a blanket disclaimer. Coordinates were the other, until the ERA workbook
+supplied the latitude the standalone export had dropped — see
+`scripts/facility-workbook.mjs`.
 
 ### The two encodings, settled
 

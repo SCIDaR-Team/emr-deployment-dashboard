@@ -63,12 +63,19 @@ const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv
 /**
  * The raw ODK export, joined on top of the gaps CSV.
  *
- * Required, not optional. It supplies `geography`, and a build that quietly
- * dropped the field because someone did not have the file would leave every
- * facility reading "Rural" by omission across a committed dataset nobody would
- * think to re-check.
+ * Required, not optional. It supplies `geography` and each facility's
+ * coordinate, and a build that quietly dropped them because someone did not
+ * have the file would leave every facility reading "Rural" by omission, and an
+ * empty map, across a committed dataset nobody would think to re-check.
+ *
+ * The ERA workbook rather than the standalone `Raw data with readiness
+ * level.xlsx`: same sheet, same columns, but with **latitude populated**. The
+ * standalone export's latitude column is empty in 2,805 of 2,807 rows, which is
+ * why every facility was unplottable until now. The older file is still
+ * readable by `parseFacilityWorkbook` — it finds its sheet and header rather
+ * than counting rows — and simply yields null coordinates.
  */
-const WORKBOOK = resolve(ROOT, 'Raw data with readiness level.xlsx');
+const WORKBOOK = resolve(ROOT, 'ERA dataset_v4 (1).xlsx');
 
 const BANDS = ['not_ready', 'moderately_ready', 'ready'];
 
@@ -234,6 +241,18 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
 
   const lga = resolveLga(stateId, slugify(row[COL.lga]), lgaIndex);
 
+  /**
+   * This facility's row in the raw ODK export — its setting and its position.
+   *
+   * Matched on UUID, falling back to state/LGA/name for the two facilities
+   * whose UUID was destroyed by spreadsheet auto-formatting — in both files
+   * alike, which is why neither can be matched on id. Null if a facility cannot
+   * be matched at all; the build reports how many, so a re-export that loses a
+   * column shows up as a number rather than as a field quietly reading one
+   * value everywhere.
+   */
+  const record = workbook.find(uuid, nameKey(row[COL.state], row[COL.lga], row[COL.name]));
+
   const gaps = [];
   const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let costNGN = 0;
@@ -260,16 +279,16 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
     lgaId: lga.lgaId,
     zone: meta.zone,
     /**
-     * No coordinate in this dataset — the survey did not record one.
+     * The surveyed position, from the ERA workbook.
      *
-     * Null rather than invented. `projectFacilities` already drops facilities
-     * without a fix, so the LGA map draws its boundary and the pane lists what
-     * is inside it; a facility stays selectable from that list, which is what
-     * writes the URL anyway. An invented position presented as a surveyed one
-     * is the single error this dataset cannot afford.
+     * Null where the facility could not be matched, or where its row carried no
+     * fix — never invented. `projectFacilities` drops a facility without one, so
+     * an unmatched facility still appears in the pane's list and stays
+     * selectable; it simply is not drawn. A position presented as surveyed when
+     * it is not is the single error this dataset cannot afford.
      */
-    lat: null,
-    lon: null,
+    lat: record?.lat ?? null,
+    lon: record?.lon ?? null,
     functionalityLevel: String(row[COL.functionality] ?? '').trim(),
     isBHCPF: String(row[COL.facilityGroup] ?? '').trim() === 'BHCPF',
 
@@ -283,9 +302,7 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
      * loses the column shows up as a number rather than as a field quietly
      * reading one value everywhere.
      */
-    geography:
-      workbook.find(uuid, nameKey(row[COL.state], row[COL.lga], row[COL.name]))?.geography ??
-      null,
+    geography: record?.geography ?? null,
 
     /**
      * Two overall readings, both carried.
@@ -442,8 +459,8 @@ const HORIZON_PRIORITY = {
 function deploymentFor(facilities, catalogueById) {
   const gapCounts = new Map();
   const lines = new Map();
-  const byHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
-  const byDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
+  const costByHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
+  const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let unpriced = 0;
 
   for (const f of facilities) {
@@ -471,8 +488,8 @@ function deploymentFor(facilities, catalogueById) {
           unpriced += 1;
         } else {
           line.totalCostNGN += iv.costNGN;
-          byHorizon[iv.horizon] += iv.costNGN;
-          byDomain[gap.domain] += iv.costNGN;
+          costByHorizon[iv.horizon] += iv.costNGN;
+          costByDomain[gap.domain] += iv.costNGN;
         }
         lines.set(iv.id, line);
       }
@@ -490,8 +507,8 @@ function deploymentFor(facilities, catalogueById) {
     /** Interventions in scope carrying no price. Zero everywhere except where
      *  one of Query B's 332 facilities is included. */
     unpricedInterventions: unpriced,
-    byHorizon,
-    byDomain,
+    costByHorizon,
+    costByDomain,
     gaps: [...gapCounts.entries()]
       .map(([id, facilityCount]) => {
         const g = catalogueById.get(id);
@@ -940,6 +957,33 @@ export const GAP_BY_ID: Record<string, GapDef> = Object.fromEntries(
 export function gapsForDomains(domains: readonly string[]): GapDef[] {
   if (!domains.length) return GAPS;
   return GAPS.filter((g) => domains.includes(g.domain));
+}
+
+/**
+ * The gap ids in scope under the Domain and Gap area filters together. **The
+ * rule.**
+ *
+ * Every figure derived from gaps goes through here — the pane's headline, the
+ * per-domain rows, the facility card, the list rows and the map's investment
+ * fills. That is the point: they cannot disagree about what was selected.
+ *
+ * Both filters narrow, and a gap area narrows *which gaps are counted*, not
+ * only which facilities are in scope. Selecting a domain's areas and selecting
+ * the domain give identical figures, because every gap sits in exactly one area
+ * and every area in exactly one domain.
+ */
+export function offeredGapIds(
+  domains: readonly string[],
+  gapAreas: readonly string[],
+): Set<string> {
+  const areas = gapAreas.length ? new Set(gapAreas) : null;
+  const ids = new Set<string>();
+  for (const g of GAPS) {
+    if (domains.length && !domains.includes(g.domain)) continue;
+    if (areas && !areas.has(g.area)) continue;
+    ids.add(g.id);
+  }
+  return ids;
 }
 
 /** The conditions inside one area, worst-first — the order \`GAPS\` is already

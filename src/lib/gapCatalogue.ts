@@ -1376,6 +1376,33 @@ export function gapsForDomains(domains: readonly string[]): GapDef[] {
   return GAPS.filter((g) => domains.includes(g.domain));
 }
 
+/**
+ * The gap ids in scope under the Domain and Gap area filters together. **The
+ * rule.**
+ *
+ * Every figure derived from gaps goes through here — the pane's headline, the
+ * per-domain rows, the facility card, the list rows and the map's investment
+ * fills. That is the point: they cannot disagree about what was selected.
+ *
+ * Both filters narrow, and a gap area narrows *which gaps are counted*, not
+ * only which facilities are in scope. Selecting a domain's areas and selecting
+ * the domain give identical figures, because every gap sits in exactly one area
+ * and every area in exactly one domain.
+ */
+export function offeredGapIds(
+  domains: readonly string[],
+  gapAreas: readonly string[],
+): Set<string> {
+  const areas = gapAreas.length ? new Set(gapAreas) : null;
+  const ids = new Set<string>();
+  for (const g of GAPS) {
+    if (domains.length && !domains.includes(g.domain)) continue;
+    if (areas && !areas.has(g.area)) continue;
+    ids.add(g.id);
+  }
+  return ids;
+}
+
 /** The conditions inside one area, worst-first — the order `GAPS` is already
  *  in, so this is a filter rather than a sort. */
 export function gapsInArea(areaId: GapAreaId): GapDef[] {
