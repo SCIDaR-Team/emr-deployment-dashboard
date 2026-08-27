@@ -115,9 +115,13 @@ Four domains. Within each domain, a repeating block:
 <Sub-domain> gap | Intervention 1 | When action is needed | Cost 1 (₦) [| Intervention 2 | When … | Cost 2 (₦)]
 ```
 
-**20 gap columns** — the sub-domains:
+**20 gap columns** — the **gap areas**, the level between a domain and a gap.
+Each is a real entity in the model now (`GAP_AREAS`), and the Gap area filter
+offers exactly these twenty, scoped by the Domain control. Every area, every
+condition inside it and the facility counts behind both are written out in
+[GAP_TAXONOMY.md](GAP_TAXONOMY.md).
 
-| Domain | Sub-domain gap columns |
+| Domain | Gap area columns |
 |---|---|
 | Technical Infrastructure (13–58) | Power · Wiring · Facility-connectivity · Device-sufficiency · Backup-power · Backup-connectivity · Device-maintenance · Data-backup · Mobile-network feasibility |
 | Workforce Capacity (60–75) | Digital-competency · EMR/Data focal-person · Training · Technical-support |
@@ -580,8 +584,10 @@ Gap id: `<sub_domain>__<value_slug>`, e.g.
 long as the sheet's wording is stable — and if the wording changes, the id
 changes, which is correct: it is a different gap.
 
-Per gap: `domain`, `subDomain` (from the gap column), `label` (the value text),
-`horizon` and `costNGN` (from its interventions), and `interventions[]`.
+Per gap: `domain`, `area` (the gap area id, from the gap column), `label` (the
+value text), `horizon` and `costNGN` (from its interventions), and
+`interventions[]`. The area's own label lives once, on `GAP_AREA_BY_ID`, so
+nothing downstream renders a sliced column header.
 
 `unitBasis` and `gapCostNGN(gap, facility)` collapse to a flat `costNGN`, since
 nothing in the file is quantity-scaled. That removes a whole layer of machinery
@@ -589,7 +595,9 @@ from `gapCatalogue.ts` and from `AssessmentPane`.
 
 **Severity** maps from horizon: critical/major → `blocking`, minor/long-term →
 `partial`. Note the file's own bands are *given*, so nothing needs to be
-recomputed from severity — but the Gap filter's grouping still wants it.
+recomputed from severity — but the Gap area filter still wants it, to colour an
+area by whether anything inside it can block deployment (`gapAreaSeverity`).
+Three of the twenty can; see GAP_TAXONOMY.md.
 
 ### Step 3 — model changes
 

@@ -4,6 +4,7 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import {
   GAP_BY_ID,
   GAP_DOMAINS,
+  GAP_AREA_BY_ID,
   GAP_DOMAIN_LABEL,
   HORIZONS,
   HORIZON_SEVERITY,
@@ -761,7 +762,7 @@ function GapBlocks({
             <span className="min-w-0 flex-1">
               <span className="block text-[12.5px] leading-snug text-foreground">{gap.label}</span>
               <span className="mono text-[9.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                {gap.subDomain}
+                {GAP_AREA_BY_ID[gap.area]?.label ?? gap.area} gap
               </span>
             </span>
             <span className="mono shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground">
@@ -806,7 +807,7 @@ function FacilityGaps({
           <li key={id}>
             <p className="text-[12.5px] leading-snug text-foreground">{gap.label}</p>
             <p className="mono mt-0.5 text-[9.5px] uppercase tracking-[0.06em] text-muted-foreground">
-              {GAP_DOMAIN_LABEL[gap.domain]} · {gap.subDomain}
+              {GAP_DOMAIN_LABEL[gap.domain]} · {GAP_AREA_BY_ID[gap.area]?.label ?? gap.area} gap
             </p>
 
             {/* The interventions, which are the point of the dataset: a gap the

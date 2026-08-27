@@ -15,6 +15,7 @@ import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
 import { archetypeDistribution, facilityBandUnder } from '@/lib/archetype';
 import { dominantBand } from '@/lib/bands';
+import { hasGapInAreas } from '@/lib/gapCatalogue';
 import { FACILITY_THEMES } from '@/lib/themes';
 import type {
   Band,
@@ -44,12 +45,12 @@ export function filterFacilities(
     // `facilityBandUnder`. With no domain ticked this is the facility's own
     // EMR-use band; with domains ticked it is
     // the weakest of its readings in them, and so is every figure on the page.
-    // A ticked gap is asking "show me the facilities carrying this", so the
-    // control is an OR across its own selection and an AND against the rest of
-    // the row — the same grammar as every other multi-select here. `every`
-    // would ask for facilities carrying all of them at once, which shrinks to
-    // nothing by the third tick.
-    if (f.gaps.length && !f.gaps.some((id) => fac.gaps?.includes(id))) return false;
+    // A ticked gap area is asking "show me the facilities with a problem here",
+    // so the control is an OR across its own selection and an AND against the
+    // rest of the row — the same grammar as every other multi-select here.
+    // `every` would ask for facilities carrying all of them at once, which
+    // shrinks to nothing by the third tick.
+    if (f.gapAreas.length && !hasGapInAreas(fac.gaps ?? [], f.gapAreas)) return false;
 
     if (f.archetypes.length) {
       const band = facilityBandUnder(fac, f.domains);
