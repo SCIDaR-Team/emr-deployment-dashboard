@@ -6,7 +6,7 @@ import { BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { MapHatchDefs } from './MapHatch';
 import { MapLabel } from './MapLabel';
-import { TileLayer, MapAttribution, MapClip } from './TileLayer';
+import { TileLayer, MapAttribution, MapClip, MapCorner } from './TileLayer';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import {
   hatchFill,
@@ -378,9 +378,12 @@ export function NigeriaChoropleth({
         lon={cursor?.lon ?? null}
         className="absolute bottom-1.5 left-3 z-[1]"
       />
-      <MapAttribution baseMap={baseMap} />
-
-      {overlay}
+      {/* The bottom-right corner as one stack — legend, then attribution.
+          See `MapCorner`. */}
+      <MapCorner>
+        {overlay}
+        <MapAttribution baseMap={baseMap} />
+      </MapCorner>
 
       {hover &&
         (() => {

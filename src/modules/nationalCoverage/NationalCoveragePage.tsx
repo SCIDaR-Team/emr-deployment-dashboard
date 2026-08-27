@@ -210,7 +210,7 @@ export default function NationalCoveragePage() {
    * element that goes full screen.
    */
   const legend = (
-    <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+    <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
       <MapLegend showNoData={false} />
     </div>
   );

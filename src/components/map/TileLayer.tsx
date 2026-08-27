@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { baseMapSource, type BaseMapId } from '@/store/basemapStore';
 import { tilesForRect, parseViewBox, type ViewBoxRect } from './tiles';
 
@@ -102,14 +103,42 @@ export function MapClip({ id, d }: { id: string; d: string }) {
   );
 }
 
-/** Attribution for the active base map. Required by both providers' terms, so
- *  it renders whenever tiles do — not behind a hover or an info popover. */
+/**
+ * Attribution for the active base map. Required by both providers' terms, so
+ * it renders whenever tiles do — not behind a hover or an info popover.
+ *
+ * It does not place itself. It used to pin its own bottom-right corner, which
+ * is the same corner every map layer's legend claims, and the two landed on
+ * top of each other the moment tiles were switched on — the requirement is
+ * that this be *legible*, and half of it under a legend card is not. The map
+ * owns that corner as a single column now; see `MapCorner`.
+ */
 export function MapAttribution({ baseMap }: { baseMap: BaseMapId }) {
   const source = baseMapSource(baseMap);
   if (!source.tile) return null;
   return (
-    <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-surface/85 px-1.5 py-0.5 text-[10px] leading-tight text-muted-foreground">
+    <span className="rounded bg-surface/85 px-1.5 py-0.5 text-[10px] leading-tight text-muted-foreground">
       {source.tile.attribution}
     </span>
+  );
+}
+
+/**
+ * The map's bottom-right corner, as one stack.
+ *
+ * Everything that wants this corner goes through here, so nothing can overlap
+ * anything else in it: whatever legend the page hands down, then the tile
+ * attribution beneath it. Attribution last because it is the smaller claim and
+ * the one that has to survive being read at 10px — put it above the legend and
+ * it reads as part of the key.
+ *
+ * With no tiles the attribution renders nothing and the legend sits exactly
+ * where it always did.
+ */
+export function MapCorner({ children }: { children: ReactNode }) {
+  return (
+    <div className="pointer-events-none absolute bottom-3 right-3 z-[1] flex max-w-[calc(100%-1.5rem)] flex-col items-end gap-1.5">
+      {children}
+    </div>
   );
 }

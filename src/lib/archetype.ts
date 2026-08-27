@@ -83,6 +83,40 @@ export function worstBand(bands: (Band | null)[]): Band | null {
   return worst;
 }
 
+/** The four facility domains. Local rather than imported from `themes` to keep
+ *  this module free of UI concerns — the count is a fact about the dataset. */
+const FACILITY_THEME_COUNT = 4;
+
+/**
+ * How many published readiness columns a domain selection resolves to.
+ *
+ * The whole Domain feature turns on this. The dataset publishes six readiness
+ * columns per facility — two overall readings and four per-domain ones — and
+ * **nothing in this app may produce a seventh.** A selection either names one
+ * of those columns or it does not, and this says which case you are in:
+ *
+ *   overall   nothing ticked, or all four ticked. All four is the same
+ *             statement as none — the reader has narrowed to everything — so
+ *             it falls back to the published overall reading rather than
+ *             claiming the four domains compose into it. They do not: the
+ *             overall EMR-use column is the technical infrastructure column,
+ *             identically, in all 2,806 rows, and the other three domains are
+ *             not in it.
+ *   single    one ticked. That domain's own published column.
+ *   multi     two or three ticked. **No published column answers this**, so no
+ *             single band may be shown for it. Surfaces that need one band
+ *             fall back to the published overall; the pane shows the selected
+ *             domains side by side instead, which is the honest reading.
+ */
+export type DomainSelectionMode = 'overall' | 'single' | 'multi';
+
+export function domainSelectionMode(
+  domains: readonly FacilityThemeId[],
+): DomainSelectionMode {
+  if (!domains.length || domains.length === FACILITY_THEME_COUNT) return 'overall';
+  return domains.length === 1 ? 'single' : 'multi';
+}
+
 /**
  * A facility's readiness under the Domain filter. **The rule.**
  *
@@ -91,10 +125,26 @@ export function worstBand(bands: (Band | null)[]): Band | null {
  * a count, a polygon's colour and a filtered list cannot disagree about what
  * "not ready" meant, because there is one function that decides it.
  *
- * Nothing ticked is not a fifth domain: it is the facility's own overall band.
+ * **Every value it returns is a column the assessment published.** It composes
+ * nothing. It used to: with several domains ticked it returned the weakest of
+ * their bands, on the assessment's principle that strength in one domain cannot
+ * offset a gap in another. That principle is sound and the number it produced
+ * was not — no such column exists in the source, so the figure could not be
+ * checked against anything, and the page was showing a derived band beside
+ * published ones in the same visual language.
+ *
+ * So the three cases, per `domainSelectionMode`:
+ *
+ *   overall   the facility's published EMR-use band.
+ *   single    that domain's published band.
+ *   multi     the published EMR-use band again — a fallback, not an answer.
+ *             Two ticked domains ask a question one swatch of colour cannot
+ *             carry, and the pane answers it properly, one row per domain.
+ *             Callers that can show more than one band should read
+ *             `domainSelectionMode` and do so rather than calling this.
  *
  * **Which overall band, and why `useBand`.** The source carries two — how ready
- * the facility is to run an EMR, and whether anything blocks putting one in.
+ * the facility is to *run* an EMR, and whether anything blocks putting one in.
  * A map point is one colour and cannot show both, so this picks the use band,
  * because that is the scale the four domain bands are on. Ticking a domain then
  * narrows one question rather than switching to a different one, and a point's
@@ -108,6 +158,6 @@ export function facilityBandUnder(
   facility: FacilitySummary,
   domains: readonly FacilityThemeId[],
 ): Band | null {
-  if (!domains.length) return facility.useBand;
-  return worstBand(domains.map((d) => facility.themeBands[d] ?? null));
+  if (domainSelectionMode(domains) !== 'single') return facility.useBand;
+  return facility.themeBands[domains[0]!] ?? null;
 }

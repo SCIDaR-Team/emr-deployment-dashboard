@@ -17,7 +17,7 @@ import {
   type GeoCollection,
 } from '@/lib/mapProjection';
 import { BOUNDARY_STROKE, useHatchPatternId } from './mapTypes';
-import { TileLayer, MapAttribution, MapClip } from './TileLayer';
+import { TileLayer, MapAttribution, MapClip, MapCorner } from './TileLayer';
 import { MapToolbar } from './MapToolbar';
 import type { MapSearchResult } from './MapSearch';
 import { MapScaleBar } from './MapScaleBar';
@@ -367,9 +367,12 @@ export function LGAFacilityMap({
         lon={cursor?.lon ?? null}
         className="absolute bottom-1.5 left-3 z-[1]"
       />
-      <MapAttribution baseMap={baseMap} />
-
-      {overlay}
+      {/* The bottom-right corner as one stack — legend, then attribution.
+          See `MapCorner`. */}
+      <MapCorner>
+        {overlay}
+        <MapAttribution baseMap={baseMap} />
+      </MapCorner>
 
       {/* The selected facility's own card — name, geography and the surveyed
           coordinate, with the two things anyone does with a coordinate. Stays
@@ -403,8 +406,21 @@ export function LGAFacilityMap({
 
       <FacilityTooltip hover={hover} selectedId={selectedFacilityId} selectable={!!onSelect} />
 
+      {/* The empty state, and **`pointer-events-none` is load-bearing**.
+          `inset-0` covers the entire map frame, and this renders after the
+          breadcrumb and the toolbar, so without it this paragraph sits on top
+          of both and silently eats every click on them — the map still pans and
+          zooms, so nothing looks broken except that the controls stop
+          responding.
+
+          It went unnoticed for as long as it did because it never used to
+          render: every facility in the synthetic dataset carried an invented
+          coordinate, so `points` was never empty. The real survey recorded no
+          coordinates, which turned a dormant branch into a permanent
+          full-bleed overlay. Any future full-frame message here needs the same
+          class. */}
       {points.length === 0 && (
-        <p className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+        <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
           No GPS-mapped facilities for this selection
         </p>
       )}

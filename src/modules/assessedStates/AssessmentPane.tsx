@@ -11,9 +11,9 @@ import {
   gapCostNGN,
   gapsForDomains,
 } from '@/lib/gapCatalogue';
-import { facilityBandUnder } from '@/lib/archetype';
+import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
 import { cn } from '@/lib/cn';
-import { formatCount, formatNaira, percentOf } from '@/lib/format';
+import { formatCount, formatNaira } from '@/lib/format';
 import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
 import { BandBadge, BandCards, EmptyState, Tile, TileRow } from '@/components/ui';
 import { FacilityCoordinates } from '@/components/map';
@@ -27,8 +27,9 @@ import type {
 } from '@/lib/types';
 import {
   distributionTotal,
+  domainOverlap,
   facilityDistribution,
-  overallDistribution,
+  facilityDomainDistribution,
   type AssessmentScope,
 } from './assessmentScope';
 
@@ -222,14 +223,13 @@ function FacilityBlocks({
   // first, and what that subset costs. `facility.costNGN` is the whole-facility
   // figure and would contradict the list under it the moment a domain is
   // ticked.
-  const { gaps, cost, unpriced, byDomain } = useMemo(() => {
+  const { gaps, cost, byDomain } = useMemo(() => {
     const offered = new Set(gapsForDomains(domains).map((g) => g.id));
     const gaps = facility.gaps
       .filter((id) => offered.has(id))
       .sort((a, b) => gapUrgency(a) - gapUrgency(b));
 
     let cost = 0;
-    let unpriced = 0;
     // Split from the same `gaps` array the list below renders, rather than
     // from `facility.costByDomain`. The stored figure is the whole facility's
     // and would contradict the list the moment a domain is ticked — the two
@@ -239,7 +239,6 @@ function FacilityBlocks({
       const gap = GAP_BY_ID[id]!;
       const c = gapCostNGN(gap);
       cost += c.costNGN;
-      unpriced += c.unpriced;
       per.set(gap.domain, (per.get(gap.domain) ?? 0) + c.costNGN);
     }
 
@@ -249,7 +248,7 @@ function FacilityBlocks({
       cost: per.get(d.id)!,
     }));
 
-    return { gaps, cost, unpriced, byDomain };
+    return { gaps, cost, byDomain };
   }, [facility, domains]);
 
   return (
@@ -289,11 +288,7 @@ function FacilityBlocks({
 
       <Block
         title="Gaps at this facility"
-        note={
-          unpriced
-            ? `${formatNaira(cost)} to close · ${formatCount(unpriced)} not costed`
-            : `${formatNaira(cost)} to close`
-        }
+        note={`${formatNaira(cost)} to close`}
       >
         <FacilityGaps gaps={gaps} scoped={picked.length > 0} />
       </Block>
@@ -311,15 +306,6 @@ function FacilityBlocks({
               </dd>
             </div>
           </dl>
-          {/* A total that is silent about a critical item is worse than no
-              total. See docs/data-queries, Query B. */}
-          {unpriced > 0 && (
-            <p className="mt-2 text-[11.5px] italic leading-snug text-muted-foreground">
-              Excludes {formatCount(unpriced)}{' '}
-              {unpriced === 1 ? 'intervention' : 'interventions'} the assessment does not
-              price.
-            </p>
-          )}
         </Block>
       )}
 
@@ -461,14 +447,7 @@ function BandCounts({
 }) {
   const total = facilities.length;
   const scored = distributionTotal(distribution);
-
-  const dual = useMemo(
-    () => ({
-      use: overallDistribution(facilities, 'useBand'),
-      deployment: overallDistribution(facilities, 'deploymentBand'),
-    }),
-    [facilities],
-  );
+  const mode = domainSelectionMode(domains);
 
   return (
     <div>
@@ -483,92 +462,120 @@ function BandCounts({
         <p className="mt-3 text-[13px] italic text-muted-foreground">
           None of them carries a readiness band.
         </p>
-      ) : domains.length ? (
-        /* Under a domain there is one reading to show — that domain's, which is
-           always an EMR-use band. The source has no per-domain deployment
-           reading, so the pair below would be the same row twice. */
-        <BandCards counts={distribution} showPercent className="mt-3.5" />
+      ) : mode === 'multi' ? (
+        /* Two or three domains: one row each, side by side.
+
+           Not a single figure, because the assessment publishes no reading for a
+           combination and this app no longer invents one. The rows are the
+           answer to what the reader asked — how do these domains sit — stated at
+           the grain the data actually carries it. */
+        <PerDomainSplit facilities={facilities} domains={domains} />
       ) : (
-        <DualBandTable use={dual.use} deployment={dual.deployment} />
+        /**
+         * One reading, in cards, whether a domain is selected or not.
+         *
+         * `distribution` is already the right column either way — the domain's
+         * own band under a selection, the overall EMR-use band without one —
+         * because `facilityBandUnder` decides that once for the whole page.
+         *
+         * The EMR-deployment split used to sit beside it here, and its removal
+         * is deliberate: all four domain readings are *readiness for EMR use*,
+         * so pairing the overall view with a deployment row put the block on a
+         * different footing from every other state of itself. Selecting a
+         * domain then silently changed which question the block was answering.
+         * One scale throughout means ticking a domain narrows the reading
+         * rather than swapping it.
+         *
+         * The deployment reading is not lost — it is a facility-level fact and
+         * the facility card still carries it beside the use band, which is
+         * where the distance between the two is worth reading.
+         */
+        <BandCards counts={distribution} showPercent className="mt-3.5" />
       )}
     </div>
   );
 }
 
 /**
- * The two overall readings, one above the other.
+ * Two or three domains, one row each.
  *
- * Both at once rather than a control to switch between them, because the
- * interesting thing here is the *distance* between the two rows and distance is
- * only visible when both are on screen. A reader looking at Niger should see
- * that 21 of its facilities are clear to deploy into and none at all is in
- * shape to run an EMR — one number is a plan, the pair is the finding.
+ * The shape the pane takes when the reader has asked something the source does
+ * not answer in a single column. Rather than compose one, the rows put the
+ * selected domains beside each other and let the comparison be the reading —
+ * which is what the reader was after in ticking more than one.
  *
- * A table rather than two sets of cards: stacking two `BandCards` costs about
- * 150px of a 420px column to say six numbers, and the shared row header is what
- * makes the two rows read as one comparison rather than two blocks that happen
- * to be adjacent.
- *
- * The Not-ready column is identical between the rows by construction — the same
- * facilities, not merely the same count, since a critical gap sinks both
- * readings. Seeing it repeat is the point: it shows the reader immediately that
- * the two readings agree about the floor and differ only above it.
+ * Counts and a bar together, unlike the contribution block above, which is a
+ * chooser and can lean on the bar alone. This is the headline: it stands where
+ * a figure the size of `formatCount(total)` used to be, and it has to carry the
+ * numbers a plan is written from.
  */
-function DualBandTable({ use, deployment }: { use: BandDistribution; deployment: BandDistribution }) {
-  const order: Band[] = ['not_ready', 'moderately_ready', 'ready'];
-  const rows: { label: string; dist: BandDistribution }[] = [
-    { label: 'EMR use', dist: use },
-    { label: 'EMR deployment', dist: deployment },
-  ];
+function PerDomainSplit({
+  facilities,
+  domains,
+}: {
+  facilities: FacilitySummary[];
+  domains: FacilityThemeId[];
+}) {
+  // Best first, the same order as the `BandCards` this stands in for. The two
+  // states of one block must not run their columns in opposite directions, or
+  // ticking a second domain would mirror the table under the reader.
+  const order: Band[] = ['ready', 'moderately_ready', 'not_ready'];
+
+  const rows = useMemo(
+    () =>
+      domains.map((id) => ({
+        id,
+        label: THEME_BY_ID[id].shortLabel,
+        dist: facilityDomainDistribution(facilities, id),
+      })),
+    [facilities, domains],
+  );
 
   return (
-    <div className="mt-3.5 overflow-x-auto">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr>
-            <th className="w-[38%] pb-1.5" />
-            {order.map((band) => (
-              <th
-                key={band}
+    <div className="mt-3.5">
+      <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[9px] uppercase tracking-[0.07em] text-muted-foreground">
+        <span className="min-w-0 flex-1">Domain</span>
+        {order.map((b) => (
+          <span key={b} className="w-[46px] shrink-0 text-right">
+            {BAND_LABEL[b].replace('Moderately ready', 'Moderate')}
+          </span>
+        ))}
+      </div>
+
+      <ul>
+        {rows.map(({ id, label, dist }) => (
+          <li
+            key={id}
+            className="flex items-baseline gap-2 border-b border-border py-1.5 last:border-0"
+          >
+            <span className="min-w-0 flex-1 truncate text-[12px] text-foreground">{label}</span>
+            {order.map((b) => (
+              <span
+                key={b}
                 className={cn(
-                  'mono pb-1.5 text-right text-[9px] font-bold uppercase leading-tight tracking-[0.07em]',
-                  BAND_CLASSES[band].text,
+                  'mono w-[46px] shrink-0 text-right text-[12px] font-semibold tabular-nums',
+                  BAND_CLASSES[b].text,
                 )}
               >
-                {BAND_LABEL[band]}
-              </th>
+                {formatCount(dist[b])}
+              </span>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ label, dist }) => {
-            const total = distributionTotal(dist);
-            return (
-              <tr key={label} className="border-t border-border">
-                <th
-                  scope="row"
-                  className="py-2 pr-2 text-[12.5px] font-medium leading-tight text-foreground"
-                >
-                  {label}
-                </th>
-                {order.map((band) => (
-                  <td key={band} className="py-2 text-right align-baseline">
-                    <span className="mono block text-[15px] font-semibold leading-none tabular-nums text-foreground">
-                      {formatCount(dist[band] ?? 0)}
-                    </span>
-                    <span className="mono mt-1 block text-[10px] leading-none tabular-nums text-muted-foreground">
-                      {total ? percentOf(dist[band] ?? 0, total, 1) : '—'}
-                    </span>
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+          </li>
+        ))}
+      </ul>
+
+      {/* Said once, under the rows. Without it the table reads as a breakdown of
+          the facility count above — three columns that sum to the total — when
+          each row is in fact the same facilities counted again under a different
+          domain. */}
+      <p className="mt-2 text-[11px] italic leading-snug text-muted-foreground">
+        Every row counts the same facilities under a different domain, so the rows
+        do not add up. The assessment publishes no combined reading.
+      </p>
     </div>
   );
 }
+
 
 /**
  * The gap reading: how many, spread over how many facilities, and what it costs.
@@ -591,12 +598,11 @@ function GapBlocks({
   facilities: FacilitySummary[];
   domains: FacilityThemeId[];
 }) {
-  const { rows, instances, affected, cost, unpriced, byDomain, total } = useMemo(() => {
+  const { rows, instances, affected, cost, byDomain, total } = useMemo(() => {
     const offered = new Set(gapsForDomains(domains).map((g) => g.id));
     const counts = new Map<string, number>();
     let instances = 0;
     let cost = 0;
-    let unpriced = 0;
     const affected = new Set<string>();
 
     for (const f of facilities) {
@@ -607,7 +613,6 @@ function GapBlocks({
         instances += 1;
         const c = gapCostNGN(GAP_BY_ID[id]!);
         cost += c.costNGN;
-        unpriced += c.unpriced;
         hit = true;
       }
       if (hit) affected.add(f.uuid);
@@ -647,11 +652,32 @@ function GapBlocks({
       instances,
       affected: affected.size,
       cost,
-      unpriced,
       byDomain,
       total: byDomain.reduce((sum, d) => sum + d.cost, 0),
     };
   }, [facilities, domains]);
+
+  /**
+   * Facilities failing in *every* selected domain at once.
+   *
+   * The counterpart to `affected` above, and only meaningful against two or
+   * more domains — with one selected the two figures are the same number.
+   *
+   * It sits here rather than in its own block because it is the same
+   * population counted more strictly, and separating them would invite the
+   * reader to add them up. The pair is the point: `affected` is what the
+   * programme has to budget for, this is the part of it no single workstream
+   * can clear.
+   *
+   * Note it is the figure that actually moves. Every facility in the dataset
+   * carries at least one technical infrastructure gap, so `affected` pins to
+   * the full population whenever infrastructure is selected, while this falls
+   * from 2,670 across two domains to 741 across all four.
+   */
+  const overlap = useMemo(
+    () => (domains.length >= 2 ? domainOverlap(facilities, domains) : null),
+    [facilities, domains],
+  );
 
   if (!rows.length) return <Nothing>No gaps in scope.</Nothing>;
 
@@ -660,22 +686,29 @@ function GapBlocks({
       <TileRow className="grid-cols-3">
         <Tile label="Gaps" value={formatCount(instances)} note="to close" />
         <Tile label="Facilities" value={formatCount(affected)} note="with a gap" />
+        {/* The cost card names the counting rule, because cost is the figure a
+            reader is most likely to carry away and quote. The tiles are a
+            union — everything wrong across the selected domains, the same
+            grammar every other multi-select on this page uses — and the
+            intersection below is a different question about the same
+            population. */}
         <Tile
           label="Cost"
           value={formatNaira(cost, true)}
-          note={unpriced ? 'excludes unpriced' : 'to close them'}
+          note={domains.length ? 'across selected domains' : 'to close them'}
         />
       </TileRow>
 
-      {/* Said under the total rather than folded into it. A figure presented as
-          sourced must not quietly absorb work the source declined to price —
-          332 facilities carry a critical connectivity blocker with no cost
-          against it. See docs/data-queries, Query B. */}
-      {unpriced > 0 && (
-        <p className="mt-2 text-[11.5px] italic leading-snug text-muted-foreground">
-          {formatCount(unpriced)} critical{' '}
-          {unpriced === 1 ? 'intervention is' : 'interventions are'} not priced by the
-          assessment and {unpriced === 1 ? 'is' : 'are'} excluded from this total.
+      {/* The intersection, against the union in the cards above.
+
+          Only from two domains up: with one selected the two are the same
+          facilities, and drawing the distinction would imply one is being made. */}
+      {overlap && (
+        <p className="mt-2 text-[11.5px] leading-snug text-muted-foreground">
+          <span className="mono font-semibold tabular-nums text-foreground">
+            {formatCount(overlap.all)}
+          </span>{' '}
+          of them carry a gap in <em>all {domains.length}</em> selected domains.
         </p>
       )}
 
@@ -937,11 +970,21 @@ function Block({
   );
 }
 
-/** "Workforce Capacity", "the weakest of 2 domains", or nothing at all. */
+/**
+ * What the headline split is banded by — or nothing, when it is the default.
+ *
+ * There is no longer a phrase for a combination of domains, because there is no
+ * longer a reading for one. "The weakest of 2 domains" named a value this app
+ * computed and the assessment never published; the note now either names a
+ * single published column or says the headline has fallen back to the overall
+ * one. All four ticked reads as the default, which it is: narrowing to
+ * everything narrows nothing.
+ */
 function lensLabel(domains: FacilityThemeId[]): string | undefined {
-  if (!domains.length) return undefined;
-  if (domains.length === 1) return THEME_BY_ID[domains[0]!].label;
-  return `the weakest of ${domains.length} domains`;
+  const mode = domainSelectionMode(domains);
+  if (mode === 'overall') return undefined;
+  if (mode === 'single') return THEME_BY_ID[domains[0]!].label;
+  return undefined;
 }
 
 function Nothing({ children }: { children: React.ReactNode }) {
