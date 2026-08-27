@@ -76,6 +76,9 @@ function parse(params: URLSearchParams): Partial<FilterState> {
   if (params.has(KEYS.states)) patch.states = list(KEYS.states);
   if (params.has(KEYS.lgas)) patch.lgas = list(KEYS.lgas);
   if (params.has(KEYS.zones)) patch.zones = list(KEYS.zones);
+  // Narrowed to the two the model knows, like funding below: a link carrying
+  // `?geo=semi-urban` would otherwise sit in the store matching no facility,
+  // with the control showing a value the data has never heard of.
   if (params.has(KEYS.geography)) {
     patch.geography = list(KEYS.geography).filter(
       (v): v is 'rural' | 'urban' => v === 'rural' || v === 'urban',

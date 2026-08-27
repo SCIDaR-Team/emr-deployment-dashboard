@@ -18,6 +18,9 @@ import { MultiSelectDropdown, type DropdownGroup } from '@/components/ui';
 import type { Band, FacilitySummary, FacilityThemeId, FunctionalityLevel } from '@/lib/types';
 
 
+/** The source writes `rural`/`urban`; the bar shows them capitalised. */
+const GEOGRAPHY_LABELS: Record<string, string> = { rural: 'Rural', urban: 'Urban' };
+
 /** Which controls a page shows. Every page uses a subset. */
 export type FilterKey =
   | 'state'
@@ -67,7 +70,6 @@ export interface FilterBarProps {
   className?: string;
 }
 
-const GEOGRAPHY_LABELS: Record<string, string> = { rural: 'Rural', urban: 'Urban' };
 
 /**
  * The filter row, rendered under the page title.
@@ -189,21 +191,10 @@ export function FilterBar({
         />
       )}
 
-      {visible.has('zone') && (
-        <MultiSelectDropdown
-            label="Zone"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
-          groups={[{ label: 'Geopolitical zones', items: options.zones }]}
-          selected={filters.zones}
-          onChange={filters.setZones}
-          placeholder="All zones"
-        />
-      )}
-
       {visible.has('geography') && (
         <MultiSelectDropdown
-            label="Setting"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-36"
+          label="Setting"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-36"
           groups={[
             {
               label: 'Setting',
@@ -218,6 +209,18 @@ export function FilterBar({
           placeholder="All"
         />
       )}
+
+      {visible.has('zone') && (
+        <MultiSelectDropdown
+            label="Zone"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          groups={[{ label: 'Geopolitical zones', items: options.zones }]}
+          selected={filters.zones}
+          onChange={filters.setZones}
+          placeholder="All zones"
+        />
+      )}
+
 
 
 

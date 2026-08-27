@@ -26,7 +26,7 @@ import type { AreaProfile, InvestmentItem, WaveId } from '@/lib/types';
  * to keep — a costed plan whose quantities are not traceable to a finding is a
  * budget, not a plan.
  *
- * Costs are synthetic, like everything else in this dashboard. They are plain
+ * Costs come from the assessment's own indicative pricing. They are plain
  * naira rather than the sibling dashboard's deliberate blanks, because a page
  * about money with no money on it demonstrates nothing.
  *
@@ -61,7 +61,7 @@ export default function InvestmentPlanPage() {
       return {
         name: 'All 12 assessed states',
         facilityCount: national.data?.facilityCount ?? 0,
-        distribution: national.data?.archetypeDistribution ?? {
+        distribution: national.data?.useDistribution ?? {
           not_ready: 0,
           moderately_ready: 0,
           ready: 0,
@@ -74,7 +74,7 @@ export default function InvestmentPlanPage() {
     return {
       name: picked.map((s) => s.name).join(', '),
       facilityCount: agg.facilityCount,
-      distribution: agg.archetypeDistribution,
+      distribution: agg.useDistribution,
       investments: agg.investments,
     };
   }, [selectedStates, states.data, national.data]);

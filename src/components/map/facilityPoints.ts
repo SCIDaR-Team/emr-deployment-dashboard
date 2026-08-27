@@ -13,8 +13,9 @@ import type { Band } from '@/lib/types';
 export interface FacilityPoint {
   uuid: string;
   name: string;
-  lat: number;
-  lon: number;
+  /** Null where the survey recorded no position — see `projectFacilities`. */
+  lat: number | null;
+  lon: number | null;
   band: Band | null;
   score?: number | null;
   /**
@@ -31,7 +32,10 @@ export interface FacilityPoint {
   status?: string;
 }
 
+/** A facility that *has* a fix, so `lat`/`lon` are known non-null here. */
 export interface PlottedFacility extends FacilityPoint {
+  lat: number;
+  lon: number;
   x: number;
   y: number;
 }
@@ -45,7 +49,11 @@ export interface PlottedFacility extends FacilityPoint {
  * the map, which is in the Gulf of Guinea.
  */
 export function projectFacilities(facilities: FacilityPoint[]): PlottedFacility[] {
-  return facilities
-    .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lon))
-    .map((f) => ({ ...f, x: gx(f.lon), y: gy(f.lat) }));
+  const plotted: PlottedFacility[] = [];
+  for (const f of facilities) {
+    const { lat, lon } = f;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    plotted.push({ ...f, lat: lat as number, lon: lon as number, x: gx(lon as number), y: gy(lat as number) });
+  }
+  return plotted;
 }

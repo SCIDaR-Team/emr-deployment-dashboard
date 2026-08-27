@@ -16,8 +16,7 @@ import { BAND_RANK } from './bands';
  *
  * The governing principle from the assessment: strong performance in
  * supporting domains cannot compensate for gaps in technical infrastructure or
- * workforce capacity. Leadership & Governance is also core, but it is assessed
- * at state level only and so does not appear here.
+ * workforce capacity.
  */
 export const FACILITY_CORE_THEMES: readonly FacilityThemeId[] = [
   'technical_infrastructure',
@@ -92,13 +91,23 @@ export function worstBand(bands: (Band | null)[]): Band | null {
  * a count, a polygon's colour and a filtered list cannot disagree about what
  * "not ready" meant, because there is one function that decides it.
  *
- * Nothing ticked is not a fifth domain: it is the facility's own overall band,
- * which is what every figure on these pages meant before the control existed.
+ * Nothing ticked is not a fifth domain: it is the facility's own overall band.
+ *
+ * **Which overall band, and why `useBand`.** The source carries two — how ready
+ * the facility is to run an EMR, and whether anything blocks putting one in.
+ * A map point is one colour and cannot show both, so this picks the use band,
+ * because that is the scale the four domain bands are on. Ticking a domain then
+ * narrows one question rather than switching to a different one, and a point's
+ * colour means the same thing either way.
+ *
+ * The deployment band is not hidden by this — the pane shows both readings side
+ * by side at every level, and the facility card shows both. What this function
+ * decides is only what a single swatch of colour stands for.
  */
 export function facilityBandUnder(
   facility: FacilitySummary,
   domains: readonly FacilityThemeId[],
 ): Band | null {
-  if (!domains.length) return facility.archetype;
+  if (!domains.length) return facility.useBand;
   return worstBand(domains.map((d) => facility.themeBands[d] ?? null));
 }

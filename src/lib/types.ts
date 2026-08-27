@@ -22,58 +22,68 @@
 // ---------------------------------------------------------------------------
 
 /**
- * The five assessment domains. Unchanged from the assessment instrument.
+ * The four assessment domains.
  *
- * A, B and E are *core* — a gap in any of them cannot be offset by strength
- * elsewhere. E (Leadership & Governance) is assessed at state level only: it
- * has no section in the facility instrument, so it never appears in
- * `FacilitySummary.themeBands`.
+ * A and B are *core* — a gap in either cannot be offset by strength elsewhere.
+ *
+ * There is no Leadership & Governance domain. It is not assessed at facility
+ * level and has no column in the source dataset, so the model does not carry
+ * one. Everything here is a facility-level reading, which is why
+ * `FacilityThemeId` is an alias rather than a subset: there is no longer a
+ * domain to exclude.
  */
 export type ThemeId =
   | 'technical_infrastructure' // A — core
   | 'workforce_capacity' // B — core
   | 'workflow_transition' // C — supporting
-  | 'data_use_reporting' // D — supporting
-  | 'leadership_governance'; // E — core, state level only
+  | 'data_use_reporting'; // D — supporting
 
-/** Domains carrying a band at facility level (E is excluded). */
-export type FacilityThemeId = Exclude<ThemeId, 'leadership_governance'>;
+/** Domains carrying a band at facility level — all of them. */
+export type FacilityThemeId = ThemeId;
 
 // ---------------------------------------------------------------------------
 // Gaps
 // ---------------------------------------------------------------------------
 
-/**
- * A domain that gaps are counted under.
- *
- * All five, unlike `FacilityThemeId` — leadership & governance has no facility
- * instrument and so no band, but it has gaps, and they are the state's.
- */
+/** A domain that gaps are counted under. */
 export type GapDomainId = ThemeId;
 
 /**
  * What a gap does to its domain's band.
  *
  * `blocking` puts the domain in Not ready on its own; `partial` only pulls it
- * to Moderately ready. Between them they are why "close every gap and the
- * domain is Ready" is arithmetic rather than a slogan.
+ * to Moderately ready. Read off the gap's urgency rather than declared — see
+ * `Horizon`.
  */
 export type GapSeverity = 'blocking' | 'partial';
 
-/** When an intervention is meant to happen. The Deployment Plan phases on it. */
-export type Horizon = 'immediate' | 'near_term' | 'long_term';
+/**
+ * When an intervention is meant to happen — the source's own four levels.
+ *
+ * Not the three-level scale the synthetic model used. `critical` and `major`
+ * are exactly what `FacilitySummary.deploymentBand` is computed from, so
+ * collapsing them would destroy the distinction the deployment reading rests
+ * on. Ordered worst-first: every sort of gaps or interventions on screen uses
+ * this order, so "most urgent" means one thing everywhere.
+ */
+export type Horizon = 'critical' | 'major' | 'minor' | 'long_term';
 
-/** One priced action against one gap. */
+/** One action against one gap. */
 export interface GapIntervention {
   id: string;
   label: string;
   horizon: Horizon;
-  /** `per_facility`, `per_service_point`, `per_staff`, `per_device`. The reason
-   *  a quantity is not always 1. */
-  unitBasis: string;
-  /** Zero is a real answer for data use and leadership — the gap is tracked and
-   *  closing it costs nothing but attention. */
-  unitCostNGN: number;
+  /**
+   * What the action costs, or `null` where the source does not price it.
+   *
+   * Null and zero are different claims and both occur. Zero is real — naming a
+   * staff member to lead EMR work costs nothing but attention. Null means *not
+   * yet priced*: 332 facilities carry a critical connectivity blocker whose fix
+   * cannot be costed until someone establishes which connection reaches the
+   * site. Nothing may collapse the second into the first, or a total presented
+   * as sourced will quietly absorb a blocker it does not cover.
+   */
+  costNGN: number | null;
 }
 
 /** One line of a rolled-up plan: an intervention, its quantity and its cost. */
@@ -82,33 +92,43 @@ export interface DeploymentLine {
   label: string;
   domain: GapDomainId;
   horizon: Horizon;
-  unitBasis: string;
-  unitCostNGN: number;
+  unitCostNGN: number | null;
   quantity: number;
   facilityCount: number;
   totalCostNGN: number;
+  /** False where the source carries no price for this action. `totalCostNGN` is
+   *  then zero because nothing could be added to it — not because the work is
+   *  free. */
+  priced: boolean;
 }
 
 /** One gap, and how much of the population carries it. */
 export interface GapTally {
   id: string;
   domain: GapDomainId;
+  /** The sub-domain the gap sits under, e.g. "Power". The source has no level
+   *  between this and the gap itself. */
   subDomain: string;
-  indicator: string;
   label: string;
   severity: GapSeverity;
   facilityCount: number;
 }
 
-/**
- * What it takes to deploy into a population — the whole job, not only the
- * priced part of it. See the note on uncosted domains in `gapCatalogue.ts`.
- */
+/** What it takes to deploy into a population — the whole job, not only the
+ *  priced part of it. */
 export interface DeploymentPlan {
   facilityCount: number;
   /** Gap *instances*, not distinct gaps: one facility with four gaps is four. */
   gapCount: number;
   costNGN: number;
+  /**
+   * Actions in scope that the source does not price.
+   *
+   * Carried beside the cost rather than folded into it, so any total covering
+   * one of them can say what it excludes. Zero almost everywhere; non-zero only
+   * where one of the 332 unpriced connectivity blockers is in scope.
+   */
+  unpricedInterventions: number;
   byHorizon: Record<Horizon, number>;
   byDomain: Record<GapDomainId, number>;
   gaps: GapTally[];
@@ -120,9 +140,9 @@ export interface DeploymentPlan {
  *
  * The core pair, and the page is deliberately limited to them: a gap in
  * infrastructure or workforce cannot be offset by strength elsewhere, so they
- * are the two that decide whether a state can deploy at all. Workflow, Data Use
- * and Leadership describe how well a facility runs once it has, which is a
- * question for a different page.
+ * are the two that decide whether a state can deploy at all. Workflow and Data
+ * Use describe how well a facility runs once it has, which is a question for a
+ * different page.
  */
 export type CoverageThemeId = 'technical_infrastructure' | 'workforce_capacity';
 
@@ -149,10 +169,10 @@ export type BandDistribution = Record<Band, number>;
 /**
  * The figures reported beneath the two coverage domains.
  *
- * **These carry no readiness band, and never will** — not in this synthetic
- * dataset and not in the real one. They are measurements: what share of a state
- * has MTN signal, what share is on the grid, how many staff there are. A band
- * is a judgement about readiness and it is made one level up, at the domain.
+ * **These carry no readiness band, and never will.** They are measurements:
+ * what share of a state's facilities the network reaches, what share is on the
+ * grid. A band is a judgement about readiness and it is made one level up, at
+ * the domain.
  *
  * That distinction is load-bearing for the UI. Band colour — the three
  * readiness hues — must never touch a number from this object, or the page
@@ -164,7 +184,10 @@ export type BandDistribution = Record<Band, number>;
  * unremarkable coverage and that is a fact about the source data, not a bug
  * here. Nothing in this codebase may recompute a band from a measure.
  *
- * `null` means not measured at this level — distinct from zero.
+ * The assessment dataset supplies only `networkMtnPct`. Airtel serviceability
+ * is blank in every row of the source and grid connection is not collected at
+ * all, so both stay null — and null means *not measured*, which must render
+ * differently from zero.
  */
 export interface CoverageMeasures {
   /** Share of the area with MTN network coverage, 0–100. */
@@ -236,38 +259,86 @@ export interface FacilitySummary {
   lga: string;
   lgaId: string;
   zone: string;
-  geography: 'rural' | 'urban';
-  lat: number;
-  lon: number;
+  /**
+   * The surveyed position, where there is one.
+   *
+   * Null throughout the current dataset — the assessment did not record
+   * coordinates. Nullable rather than faked: `projectFacilities` drops a
+   * facility without a fix, so the LGA map draws its boundary and the pane
+   * lists what is inside it, and the facility stays selectable from that list.
+   * An invented position presented as a surveyed one is the one error this
+   * dataset cannot afford.
+   */
+  lat: number | null;
+  lon: number | null;
   functionalityLevel: FunctionalityLevel;
   isBHCPF: boolean;
-  /** Overall readiness band for the facility. */
-  archetype: Band | null;
-  /** Band per facility-level domain. Read off `gaps` — see `gapCatalogue`. */
+  /**
+   * Rural or urban, from the raw ODK export rather than the gaps CSV.
+   *
+   * Null where the facility could not be matched to that export. Nullable
+   * rather than defaulted, because "rural" is the overwhelming majority here
+   * (2,205 of 2,806) and a default would be invisible: every unmatched facility
+   * would read as the common case and nothing on screen would say otherwise.
+   */
+  geography: 'rural' | 'urban' | null;
+
+  /**
+   * The two overall readings, both carried.
+   *
+   * `useBand` is how ready the facility is to *run* an EMR; `deploymentBand` is
+   * whether anything blocks putting one in. They are different questions and
+   * they disagree for 553 facilities — always in the same direction, since
+   * deployment is never the worse of the two.
+   *
+   * Both are shown together wherever a readiness reading appears, rather than
+   * one being chosen and the other hidden: the interesting fact about this
+   * dataset is the *distance* between them, and distance is only visible when
+   * both are on screen. 624 facilities are clear to deploy into; 71 are in
+   * shape to actually run an EMR.
+   */
+  useBand: Band | null;
+  deploymentBand: Band | null;
+  /** Band per domain. All four are `readiness for EMR use` — there is no
+   *  per-domain deployment reading anywhere in the source. */
   themeBands: Record<FacilityThemeId, Band | null>;
 
   /**
-   * The gap ids this facility carries. **The reason the band above is what it
-   * is** — not a separate finding beside it.
+   * The gap ids this facility carries. **The reason the bands above are what
+   * they are** — not a separate finding beside them.
    *
-   * Empty means Ready, necessarily: there is nothing left to fix. That is the
-   * claim the whole programme rests on, and it holds here by construction
-   * rather than by assertion.
+   * Every gap is in `GAP_BY_ID`, and the catalogue carries its interventions,
+   * urgencies and prices — so the ids alone are enough to render the facility's
+   * whole gap list. Nothing is quantity-scaled, so a gap costs the same here as
+   * anywhere else it appears.
    */
   gaps: string[];
   gapCount: number;
-  /** What closing them costs. Zero is a real answer — a facility can have gaps
-   *  that cost nothing but attention. */
+  /** What closing them costs: the sum of `gaps`, so the figure and the list
+   *  beneath it cannot disagree. */
   costNGN: number;
+  /** The same total, split by domain. Matches the source's own subtotals. */
+  costByDomain: Record<GapDomainId, number>;
+  /** Actions this facility needs that the source does not price. Non-zero for
+   *  332 facilities, all of them a critical connectivity blocker. */
+  unpricedInterventions: number;
 
-  /** Documenting points: registration, triage, consultation, laboratory,
-   *  pharmacy. Furniture, sockets and devices are all bought per point, so this
-   *  is what turns a gap into a quantity. */
-  servicePoints: number;
-  staffCount: number;
-  deviceCount: number;
-  /** Service points with no device to document on. */
-  deviceShortfall: number;
+  /** Banded, as the source collects it: `<10`, `11-30`, `31-50`, `>50`. */
+  dailyClientLoad: string | null;
+
+  /**
+   * Mobile-network measurement.
+   *
+   * Measurements, not judgements — band colour must never touch them. Airtel
+   * carries only a distance: its serviceability and site-name columns are empty
+   * in every row of the source, so the feasibility reading behind 731 satellite
+   * interventions rests on MTN alone.
+   */
+  mtnBaseStation: string | null;
+  mtnDistanceKm: number | null;
+  mtnServiceability: string | null;
+  mtn4gSignal: string | null;
+  airtelDistanceM: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -305,23 +376,6 @@ export interface DeploymentPhase extends DeploymentPlan {
   wave: WaveId;
   /** Programme quarter this wave opens in, e.g. "Q1 2026". */
   startQuarter: string;
-  /**
-   * Leadership & governance, held apart from `gaps` rather than merged in.
-   *
-   * Merged, the column beside it would mean two different things at once: a
-   * facility count of 281 against "no digital health strategy" counts
-   * facilities for a fact that is true of the state exactly once. It has no LGA
-   * or facility reading, so nothing below a state inherits it.
-   */
-  stateGaps: {
-    id: string;
-    domain: GapDomainId;
-    subDomain: string;
-    indicator: string;
-    label: string;
-    severity: GapSeverity;
-    interventions: { id: string; label: string; horizon: Horizon; totalCostNGN: number }[];
-  }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -343,11 +397,25 @@ export interface AreaProfile {
 
   facilityCount: number;
   lgaCount?: number;
+  /** LGAs the survey actually reached, of `lgaCount` that exist. The two differ
+   *  wherever an assessed state has LGAs with no surveyed facility in them. */
+  assessedLgaCount?: number;
 
-  /** How this area's facilities split across the three bands. All zeroes for a
-   *  desk-reviewed state, which has no facility rows behind it. */
-  archetypeDistribution: BandDistribution;
-  /** Band per domain, including Leadership & Governance at state level. */
+  /**
+   * How this area's facilities split across the three bands, under each of the
+   * two readings.
+   *
+   * Both, for the same reason `FacilitySummary` carries both bands: the pane
+   * shows the pair rather than switching between them. All zeroes for a
+   * desk-reviewed state, which has no facility rows behind it.
+   *
+   * The Not-ready column is identical between them — not merely equal in count
+   * but the same facilities, since a critical gap sinks both readings. The
+   * entire divergence sits in the other two columns.
+   */
+  useDistribution: BandDistribution;
+  deploymentDistribution: BandDistribution;
+  /** Band per domain. All four are EMR-use readings. */
   themeBands: Record<ThemeId, Band | null>;
   /**
    * How this area's facilities split across the bands *within* each domain.
@@ -360,8 +428,10 @@ export interface AreaProfile {
    * state-level reading and no facilities under it.
    */
   themeDistribution: Record<ThemeId, BandDistribution>;
-  /** The area's own overall readiness band. */
-  band: Band | null;
+  /** The area's own overall readiness, under each reading — the dominant band
+   *  of the matching distribution above. */
+  useBand: Band | null;
+  deploymentBand: Band | null;
 
   /**
    * The precomputed readiness layer — National Coverage reads this and nothing
@@ -394,6 +464,14 @@ export interface FilterState {
   geography: ('rural' | 'urban')[];
   funding: ('BHCPF' | 'non-BHCPF')[];
   functionalityLevels: FunctionalityLevel[];
+  /**
+   * Readiness bands the Readiness control has ticked.
+   *
+   * Selects on the EMR-use band when no domain is ticked, and on the ticked
+   * domain's band otherwise — see `facilityBandUnder`, which is the one place
+   * that decision is made. There is no ambiguity at the bottom of the scale:
+   * the Not-ready facilities are the same 1,340 under either overall reading.
+   */
   archetypes: Band[];
   bandByTheme: Partial<Record<ThemeId, Band[]>>;
   /**
@@ -426,9 +504,20 @@ export interface FilterState {
 export interface SnapshotMeta {
   /** ISO timestamp of the run that produced public/data. */
   builtAt: string;
-  /** Always "synthetic" here — see scripts/generate-dummy-data.mjs. */
+  /** The dataset behind the figures — see scripts/ingest-assessment.mjs. */
   source: string;
+  /** The published sheet the ingest read, where it read one. */
+  sourceUrl?: string | null;
+  /**
+   * Hash of the source CSV the figures were built from.
+   *
+   * What makes a screenshot checkable a year later: two dashboards showing
+   * different numbers are either different data or a different build, and this
+   * says which.
+   */
+  contentHash?: string;
   facilityCount: number;
+  /** LGAs the survey reached — not the number that exist. */
   lgaCount: number;
   statesPrimary: number;
   statesSecondary: number;

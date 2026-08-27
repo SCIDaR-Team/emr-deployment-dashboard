@@ -23,7 +23,7 @@ import { baseMapSource, type BaseMapId } from '@/store/basemapStore';
  * Burnt in under the image, because everything above it is pixels the moment
  * the file leaves. It carries the two things a reader of the *file* cannot
  * recover and would otherwise guess at: which geography this is, and that the
- * findings behind the colours are synthetic. The tile attribution rides along
+ * findings behind the colours came from. The tile attribution rides along
  * whenever a base map is on, which is the terms-of-use requirement.
  *
  * ## What does not survive
@@ -76,7 +76,7 @@ export function useMapExport(
           scope,
           ...(encoding ? [`Coloured by: ${encoding}`] : []),
           ...(tile ? [tile.attribution] : []),
-          'EMR Readiness Assessment — synthetic demonstration data',
+          'EMR Readiness Assessment — facility assessment data',
         ],
       });
       toast.success('Map image saved');
