@@ -21,7 +21,7 @@ import { useFilterStore } from '@/store/filterStore';
 import { useFilteredData } from '@/hooks/useFilteredData';
 import { formatCount, formatNaira } from '@/lib/format';
 import { GAP_BY_ID, gapCostNGN, gapsForDomains } from '@/lib/gapCatalogue';
-import { facilityBandUnder } from '@/lib/archetype';
+import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { FacilitySummary, FacilityThemeId } from '@/lib/types';
 import { AssessmentPane, type PaneList, type PaneRow } from './AssessmentPane';
@@ -698,10 +698,12 @@ function subtitleFor(level: AssessmentLevel, domains: FacilityThemeId[]): string
   // Naming the lens here rather than only in the pane: the map is the page, and
   // a reader looking at a red Kano needs to know whether that is Kano overall
   // or Kano's workforce.
-  if (!domains.length) return scope;
-  const lens =
-    domains.length === 1
-      ? THEME_BY_ID[domains[0]!].label
-      : `the weakest of ${domains.length} domains`;
-  return `${scope} · ${lens}`;
+  // Only a single domain names a lens, because only a single domain *is* one.
+  // A combination has no published reading behind it, so the map stays on
+  // investment need for the selected domains and the subtitle says which ones
+  // rather than naming a band the assessment never issued.
+  const mode = domainSelectionMode(domains);
+  if (mode === 'overall') return scope;
+  if (mode === 'single') return `${scope} · ${THEME_BY_ID[domains[0]!].label}`;
+  return `${scope} · ${domains.length} domains`;
 }
