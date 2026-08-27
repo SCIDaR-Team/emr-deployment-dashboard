@@ -3,7 +3,9 @@
  *
  * The survey export the gaps CSV was derived from: one row per facility, and
  * everything the instrument collected before it was summarised into gaps and
- * interventions.
+ * interventions. Read from `ERA dataset_v4 (1).xlsx`, which is **not committed**
+ * — see `.gitignore`, and `WORKBOOK` in `scripts/ingest-assessment.mjs` for
+ * what happens when it is absent.
  *
  * Only what the dashboard actually uses is read out of it. The workbook holds a
  * great deal more — service points, staff counts, devices, per-question
@@ -11,20 +13,22 @@
  * not a free upgrade. Taking one field at a time keeps the model honest about
  * where every figure came from.
  *
- * ## Two exports, one reader
+ * ## Why it finds its sheet and header instead of counting to them
  *
- * `Raw data with readiness level.xlsx` — the standalone export — has the same
- * columns in the same positions but **no latitude**: column L is empty in 2,805
- * of its 2,807 rows, so nothing could be plotted from it and
- * `FacilitySummary.lat`/`lon` stayed null.
+ * There was an earlier export of this same survey, `Raw data with readiness
+ * level.xlsx`, with identical columns in identical positions — and column L,
+ * Latitude, empty in 2,805 of its 2,807 rows. A longitude without a latitude is
+ * a meridian rather than a place, so nothing could be plotted from it.
  *
- * `ERA dataset_v4 (1).xlsx` carries the same sheet with latitude populated, one
- * header row higher, and not as its first sheet. So this reader **finds** its
- * sheet by name and its header by content rather than counting rows: the two
- * exports differ in exactly the ways a hardcoded offset would read straight
- * past. Column positions are still fixed and still asserted — the sheet repeats
- * near-identical question text across its service-point blocks, so a name
- * lookup is not safe for the columns themselves.
+ * The ERA workbook carries the same sheet with latitude populated, one header
+ * row higher, and behind several other sheets. Those are exactly the two
+ * differences a hardcoded offset reads straight past: it would take the
+ * numbering row for headers and match nothing, silently. So the sheet is found
+ * by name and the header by content, and both exports parse.
+ *
+ * Column positions within the row are still fixed and still asserted — the
+ * sheet repeats near-identical question text across its service-point blocks,
+ * so a name lookup is not safe for the columns themselves.
  */
 
 import * as XLSX from 'xlsx';

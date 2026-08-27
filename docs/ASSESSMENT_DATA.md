@@ -10,9 +10,10 @@ in git history if the invented population is ever wanted again.
 
 **Two sources.** The published Google Sheet in `.env` (`facility gaps and
 intervention`) is the primary one; the local CSV is a byte-identical export of
-it, verified on 2026-08-26. `Raw data with readiness level.xlsx` — the raw ODK
-export the gaps CSV was summarised from — is joined on top of it for the
-rural/urban setting. See [Part 2 §7](#7-the-raw-odk-workbook--the-second-source).
+it, verified on 2026-08-26. `ERA dataset_v4 (1).xlsx` — the raw ODK export the
+gaps CSV was summarised from — is joined on top of it for the rural/urban
+setting and each facility's coordinate. See
+[Part 2 §7](#7-the-raw-odk-workbook--the-second-source).
 
 ---
 
@@ -406,36 +407,47 @@ sourced. Rendering the absence is the honest alternative and costs one label.
 
 ### 7. The raw ODK workbook — the second source
 
-`Raw data with readiness level.xlsx` — one sheet, one row per facility, 335
-columns, 2,807 rows under a three-row header. It is the survey export the gaps
-CSV was summarised from, so it holds everything the instrument collected.
+`ERA dataset_v4 (1).xlsx`, sheet `Raw data with readiness level` — one row per
+facility, 2,804 rows, the survey export the gaps CSV was summarised from, so it
+holds everything the instrument collected.
 
-**Only `Geography` is read from it.** The workbook also carries service points,
-staff counts, devices and every per-question response; each of those is a
-decision about what the page should say rather than a free upgrade, so they are
-taken one at a time.
+**It is not committed.** 37 MB against a repo whose next largest file is 7.5 MB,
+and it changes rarely. `public/data/` *is* committed, so a clone that only
+builds and runs the app never needs it; only `npm run data:ingest` does, and it
+names the path when the file is absent.
+
+**Only `Geography` and the coordinate are read from it.** The workbook also
+carries service points, staff counts, devices, connectivity transport media and
+every per-question response; each of those is a decision about what the page
+should say rather than a free upgrade, so they are taken one at a time.
 
 | Excel | Field | State |
 |---|---|---|
-| L | *(latitude — no header)* | **Empty in 2,805 of 2,807 rows** |
+| L | Latitude | Populated |
 | M | Longitude | Populated |
 | N | Altitude | Populated |
-| O | Location accuracy | Populated |
-| S | Geography | `rural` 2,205 · `urban` 601 · 1 blank |
+| O | Location accuracy | Populated (~4.5 m) |
+| S | Geography | `rural` 2,203 · `urban` 601 |
 
-**Latitude is missing, and this is why the map still plots nothing.** Column L
-sits exactly where ODK puts latitude — between the data collector's name and
-Longitude — with no header and two values. Those two (both Kano: 11.677 and
-10.699, against longitudes of 8.13 and 8.63) are plausible latitudes for their
-LGAs, so the column is correctly positioned and its values were lost in whatever
-produced the export.
+**The coordinate arrived late, and the reason is worth keeping.** An earlier
+export — `Raw data with readiness level.xlsx`, since dropped — had these same
+columns in the same positions with **column L empty in 2,805 of its 2,807
+rows**. A longitude without a latitude is a meridian rather than a place, so
+`lat`/`lon` were null and the map plotted nothing.
 
 Column M was checked against known state positions rather than trusted by its
-label, because Nigeria's latitude and longitude ranges overlap. It tracks
-longitude in all twelve states — Kano 8.49 (true lon 8.52, true lat 11.75),
-Lagos 3.40 (3.50 / 6.55), Adamawa 12.55 (12.68 / 9.55) — so the label is right
-and latitude really is absent. A longitude without a latitude is a meridian, so
-`lat`/`lon` stay null. A re-export including column L is all that is needed.
+label, because Nigeria's latitude and longitude ranges overlap: it tracked
+longitude in all twelve states — Lagos 2.71–4.13 against a true longitude range
+of 3.1–4.4 and a latitude range of 6.4–6.7 — confirming the label was right and
+latitude really was absent. The field had been collected: an accuracy of 4.5 m
+in every row means the device held a lock. It was the export that lost it.
+
+The ERA workbook carries the same sheet with column L populated. 2,804 of 2,806
+facilities now plot; the two that do not are the pair that matches no workbook
+row at all. Verified by state centroid — Lagos 6.54/3.40, Kano 11.88/8.49,
+Rivers 4.85/7.02. `parseFacilityWorkbook` guards the rest: a coordinate outside
+Nigeria throws rather than drops, because a blank is a facility whose GPS did
+not record while a point in the Atlantic is a column that has moved.
 
 #### The join
 

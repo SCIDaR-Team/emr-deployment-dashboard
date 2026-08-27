@@ -63,17 +63,17 @@ const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv
 /**
  * The raw ODK export, joined on top of the gaps CSV.
  *
- * Required, not optional. It supplies `geography` and each facility's
- * coordinate, and a build that quietly dropped them because someone did not
- * have the file would leave every facility reading "Rural" by omission, and an
- * empty map, across a committed dataset nobody would think to re-check.
+ * Required whenever the ingest runs, and **not committed** — 37 MB against a
+ * repo whose next largest file is 7.5 MB, changing rarely enough that carrying
+ * every revision in the history is the wrong trade. `public/data/` is committed,
+ * so a clone that only builds and runs the app never needs it; only regenerating
+ * the data does.
  *
- * The ERA workbook rather than the standalone `Raw data with readiness
- * level.xlsx`: same sheet, same columns, but with **latitude populated**. The
- * standalone export's latitude column is empty in 2,805 of 2,807 rows, which is
- * why every facility was unplottable until now. The older file is still
- * readable by `parseFacilityWorkbook` — it finds its sheet and header rather
- * than counting rows — and simply yields null coordinates.
+ * Required rather than optional when it is needed, because it supplies
+ * `geography` and every facility's coordinate. A build that quietly dropped
+ * them because someone did not have the file would leave every facility reading
+ * "Rural" by omission, and an empty map, across a committed dataset nobody
+ * would think to re-check.
  */
 const WORKBOOK = resolve(ROOT, 'ERA dataset_v4 (1).xlsx');
 
@@ -667,9 +667,14 @@ async function main() {
 
   if (!existsSync(WORKBOOK)) {
     throw new Error(
-      `Missing ${WORKBOOK}.\nIt supplies each facility's rural/urban setting. ` +
-        `Without it the field would silently vanish from a committed dataset, ` +
-        `so the build stops instead.`,
+      `Missing ${WORKBOOK}.\n\n` +
+        `It is deliberately not in the repository — 37 MB, and everything it ` +
+        `feeds is already committed under public/data. Put a copy at the path ` +
+        `above to regenerate that data; you do not need it to build or run the ` +
+        `app.\n\n` +
+        `It supplies each facility's rural/urban setting and coordinate. ` +
+        `Without it both would silently vanish from a committed dataset, so ` +
+        `the build stops instead.`,
     );
   }
   const workbook = lookupFor(parseFacilityWorkbook(readFileSync(WORKBOOK)));

@@ -29,6 +29,20 @@ coverage
 .claude/settings.local.json
 Costing model_ERA_Archive.xlsx
 
+# The ERA workbook — the ingest's second source, 37 MB.
+#
+# Not committed: it is an order of magnitude larger than anything else here and
+# it changes rarely, so carrying every future revision in the history costs far
+# more than keeping one copy per machine. `npm run data:ingest` needs it and
+# says so by name when it is absent; `public/data/` is committed, so a clone
+# that only builds and runs the app never needs the file at all.
+ERA dataset_v4 (1).xlsx
+
+# Superseded by the ERA workbook above, which carries the same sheet with the
+# latitude column this one lost. Nothing reads it any more; ignored so a stray
+# `git add -A` cannot put it back.
+Raw data with readiness level.xlsx
+
 # The fetched copy of the assessment sheet (`npm run data:ingest -- --fetch`).
 #
 # Ignored because it is a byte-identical duplicate of the committed

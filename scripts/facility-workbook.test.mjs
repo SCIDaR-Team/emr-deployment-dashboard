@@ -18,10 +18,10 @@ import { lookupFor, nameKey, parseFacilityWorkbook } from './facility-workbook.m
 /**
  * A miniature of the export.
  *
- * `lead` is how many junk rows precede the header — the two real exports differ
- * (`Raw data with readiness level.xlsx` has a grouping row then a numbering
- * row; the ERA workbook has only the numbering row), which is why the parser
- * finds the header rather than counting to it.
+ * `lead` is how many junk rows precede the header — the ERA workbook has a
+ * numbering row, the export before it had a grouping row as well, and a third
+ * revision could have neither. That is why the parser finds the header rather
+ * than counting to it, and why this varies.
  *
  * `sheets` puts the data sheet behind others, as the ERA workbook does — it
  * opens on a differently-shaped export of the same survey.
