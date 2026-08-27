@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "EMR Deployment Dashboard \u2014 NPHCDA (synthetic demonstration data)",
+  "description": "EMR Deployment Dashboard — NPHCDA (synthetic demonstration data)",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -12,7 +12,8 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run --passWithNoTests",
     "geo:build": "node scripts/build-boundaries.mjs",
-    "data:ingest": "node scripts/ingest-assessment.mjs"
+    "data:ingest": "node scripts/ingest-assessment.mjs",
+    "data:taxonomy": "node scripts/gap-taxonomy.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
