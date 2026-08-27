@@ -20,7 +20,7 @@ import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
 import { useFilteredData } from '@/hooks/useFilteredData';
 import { formatCount, formatNaira } from '@/lib/format';
-import { GAP_BY_ID, gapCostNGN, gapsForDomains } from '@/lib/gapCatalogue';
+import { GAP_BY_ID, gapCostNGN, offeredGapIds } from '@/lib/gapCatalogue';
 import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { FacilitySummary, FacilityThemeId } from '@/lib/types';
@@ -91,6 +91,7 @@ export default function AssessedStatesPage() {
    * which one it is in is decided here.
    */
   const domains = useFilterStore((s) => s.domains);
+  const gapAreas = useFilterStore((s) => s.gapAreas);
 
   const surveyed = useMemo(() => assessedStates(states.data), [states.data]);
 
@@ -108,8 +109,8 @@ export default function AssessedStatesPage() {
     return rows;
   }, [facilities, scope.state, scope.lga]);
 
-  /** Whether anything in scope can actually be drawn as a point. False for the
-   *  whole dataset today — the assessment recorded no coordinates. */
+  /** Whether anything in scope can actually be drawn as a point. True almost
+   *  everywhere now: 2,804 of 2,806 facilities carry a surveyed fix. */
   const plottable = useMemo(
     () => scoped.some((f) => f.lat != null && f.lon != null),
     [scoped],
@@ -163,7 +164,7 @@ export default function AssessedStatesPage() {
    */
   const needOf = useCallback(
     (rows: FacilitySummary[]) => {
-      const offered = new Set(gapsForDomains(domains).map((g) => g.id));
+      const offered = offeredGapIds(domains, gapAreas);
       let gaps = 0;
       let costNGN = 0;
       let affected = 0;
@@ -181,7 +182,7 @@ export default function AssessedStatesPage() {
       // the same noun the pane's middle tile uses, so the two cannot disagree.
       return { gaps, costNGN, affected };
     },
-    [domains],
+    [domains, gapAreas],
   );
 
   /**
@@ -654,7 +655,13 @@ export default function AssessedStatesPage() {
         </div>
 
         <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[420px] lg:border-l lg:border-t-0">
-          <AssessmentPane scope={scope} facilities={scoped} domains={domains} list={list} />
+          <AssessmentPane
+            scope={scope}
+            facilities={scoped}
+            domains={domains}
+            gapAreas={gapAreas}
+            list={list}
+          />
         </aside>
       </div>
     </div>
