@@ -326,6 +326,15 @@ function FacilityBlocks({
       <Block title="This facility">
         <dl className="space-y-1.5 text-[13px]">
           <Detail term="Functionality" value={facility.functionalityLevel} />
+          {/* Omitted rather than guessed where the raw export could not be
+              matched: four fifths of these facilities are rural, so a default
+              would read as the answer instead of as its absence. */}
+          {facility.geography && (
+            <Detail
+              term="Setting"
+              value={facility.geography === 'urban' ? 'Urban' : 'Rural'}
+            />
+          )}
           <Detail term="BHCPF" value={facility.isBHCPF ? 'Enrolled' : 'Not enrolled'} />
           <Detail term="Zone" value={facility.zone} />
           {facility.dailyClientLoad && (

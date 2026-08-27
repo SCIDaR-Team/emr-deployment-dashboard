@@ -273,6 +273,15 @@ export interface FacilitySummary {
   lon: number | null;
   functionalityLevel: FunctionalityLevel;
   isBHCPF: boolean;
+  /**
+   * Rural or urban, from the raw ODK export rather than the gaps CSV.
+   *
+   * Null where the facility could not be matched to that export. Nullable
+   * rather than defaulted, because "rural" is the overwhelming majority here
+   * (2,205 of 2,806) and a default would be invisible: every unmatched facility
+   * would read as the common case and nothing on screen would say otherwise.
+   */
+  geography: 'rural' | 'urban' | null;
 
   /**
    * The two overall readings, both carried.
@@ -452,6 +461,7 @@ export interface FilterState {
   states: string[];
   lgas: string[];
   zones: string[];
+  geography: ('rural' | 'urban')[];
   funding: ('BHCPF' | 'non-BHCPF')[];
   functionalityLevels: FunctionalityLevel[];
   /**

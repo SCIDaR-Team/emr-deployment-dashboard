@@ -4,9 +4,10 @@ Decision-support dashboard for planning EMR deployment across Nigeria's primary
 healthcare facilities, for **NPHCDA**, in partnership with NTBLCP, The Global
 Fund and Solina.
 
->  **The figures are the assessment's.** `public/data/` is built from
-> `List of gaps and interventions per facility.csv` — 2,806 facilities across 12
-> states — by `npm run data:ingest`. See
+>  **The figures are the assessment's.** `public/data/` is built by
+> `npm run data:ingest` from `List of gaps and interventions per facility.csv` —
+> 2,806 facilities across 12 states — joined with `Raw data with readiness
+> level.xlsx`, the raw ODK export, for each facility's rural/urban setting. See
 > [`docs/ASSESSMENT_DATA.md`](docs/ASSESSMENT_DATA.md) for what the dataset
 > contains, and [`docs/data-queries/`](docs/data-queries/) for the two things in
 > it the assessment team still needs to settle.

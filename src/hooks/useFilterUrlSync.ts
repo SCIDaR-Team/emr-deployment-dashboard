@@ -34,6 +34,7 @@ const KEYS = {
   states: 'state',
   lgas: 'lga',
   zones: 'zone',
+  geography: 'geo',
   funding: 'funding',
   functionalityLevels: 'level',
   archetypes: 'archetype',
@@ -75,6 +76,14 @@ function parse(params: URLSearchParams): Partial<FilterState> {
   if (params.has(KEYS.states)) patch.states = list(KEYS.states);
   if (params.has(KEYS.lgas)) patch.lgas = list(KEYS.lgas);
   if (params.has(KEYS.zones)) patch.zones = list(KEYS.zones);
+  // Narrowed to the two the model knows, like funding below: a link carrying
+  // `?geo=semi-urban` would otherwise sit in the store matching no facility,
+  // with the control showing a value the data has never heard of.
+  if (params.has(KEYS.geography)) {
+    patch.geography = list(KEYS.geography).filter(
+      (v): v is 'rural' | 'urban' => v === 'rural' || v === 'urban',
+    );
+  }
   if (params.has(KEYS.funding)) {
     patch.funding = list(KEYS.funding).filter(
       (v): v is 'BHCPF' | 'non-BHCPF' => v === 'BHCPF' || v === 'non-BHCPF',
@@ -140,6 +149,7 @@ export function useFilterUrlSync(): void {
   const states = useFilterStore((s) => s.states);
   const lgas = useFilterStore((s) => s.lgas);
   const zones = useFilterStore((s) => s.zones);
+  const geography = useFilterStore((s) => s.geography);
   const funding = useFilterStore((s) => s.funding);
   const functionalityLevels = useFilterStore((s) => s.functionalityLevels);
   const archetypes = useFilterStore((s) => s.archetypes);
@@ -152,6 +162,7 @@ export function useFilterUrlSync(): void {
     states,
     lgas,
     zones,
+    geography,
     funding,
     functionalityLevels,
     domains,

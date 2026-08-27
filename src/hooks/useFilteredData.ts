@@ -33,6 +33,10 @@ export function filterFacilities(
     if (f.states.length && !f.states.includes(fac.state)) return false;
     if (f.lgas.length && !f.lgas.includes(fac.lga)) return false;
     if (f.zones.length && !f.zones.includes(fac.zone)) return false;
+    // A facility with no recorded setting matches no setting selection — it is
+    // unknown, not rural.
+    if (f.geography.length && !(fac.geography && f.geography.includes(fac.geography)))
+      return false;
     if (f.functionalityLevels.length && !f.functionalityLevels.includes(fac.functionalityLevel)) {
       return false;
     }
@@ -113,6 +117,7 @@ export function buildFilterOptions(facilities: FacilitySummary[], selectedStates
     states: tally(facilities, (f) => f.state),
     lgas: tally(inScope, (f) => f.lga),
     zones: tally(facilities, (f) => f.zone),
+    geography: tally(facilities, (f) => f.geography),
     functionalityLevels: tally(facilities, (f) => f.functionalityLevel),
     funding: tally(facilities, (f) => (f.isBHCPF ? 'BHCPF' : 'non-BHCPF')),
   };

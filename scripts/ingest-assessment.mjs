@@ -53,11 +53,21 @@ import {
   slugify,
   titleCase,
 } from './assessment-source.mjs';
+import { lookupFor, nameKey, parseFacilityWorkbook } from './facility-workbook.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'public/data');
 const CACHE = resolve(ROOT, 'scripts/source-data/assessment.csv');
 const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv');
+/**
+ * The raw ODK export, joined on top of the gaps CSV.
+ *
+ * Required, not optional. It supplies `geography`, and a build that quietly
+ * dropped the field because someone did not have the file would leave every
+ * facility reading "Rural" by omission across a committed dataset nobody would
+ * think to re-check.
+ */
+const WORKBOOK = resolve(ROOT, 'Raw data with readiness level.xlsx');
 
 const BANDS = ['not_ready', 'moderately_ready', 'ready'];
 
@@ -199,7 +209,7 @@ function optionalText(raw) {
   return !s || s === 'Not available' ? null : s;
 }
 
-function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta) {
+function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook) {
   const uuid = String(row[COL.uuid] ?? '').trim();
   if (!uuid) throw new Error('Row with no facility UUID');
 
@@ -261,6 +271,20 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta) {
     lon: null,
     functionalityLevel: String(row[COL.functionality] ?? '').trim(),
     isBHCPF: String(row[COL.facilityGroup] ?? '').trim() === 'BHCPF',
+
+    /**
+     * Rural or urban, from the raw ODK export.
+     *
+     * Matched on UUID, falling back to state/LGA/name for the two facilities
+     * whose UUID was destroyed by spreadsheet auto-formatting — in both files
+     * alike, which is why neither can be matched on id. Null if a facility
+     * cannot be matched at all; the build reports how many, so a re-export that
+     * loses the column shows up as a number rather than as a field quietly
+     * reading one value everywhere.
+     */
+    geography:
+      workbook.find(uuid, nameKey(row[COL.state], row[COL.lga], row[COL.name]))?.geography ??
+      null,
 
     /**
      * Two overall readings, both carried.
@@ -608,6 +632,18 @@ async function main() {
       `${new Set(catalogue.flatMap((g) => g.interventions.map((i) => i.id))).size} interventions\n`,
   );
 
+  // --- The raw workbook -----------------------------------------------------
+
+  if (!existsSync(WORKBOOK)) {
+    throw new Error(
+      `Missing ${WORKBOOK}.\nIt supplies each facility's rural/urban setting. ` +
+        `Without it the field would silently vanish from a committed dataset, ` +
+        `so the build stops instead.`,
+    );
+  }
+  const workbook = lookupFor(parseFacilityWorkbook(readFileSync(WORKBOOK)));
+  process.stderr.write(`Read ${workbook.size} rows from the raw facility workbook\n`);
+
   // --- Geography ------------------------------------------------------------
 
   const statesGeo = readJSON('public/geo/nigeria-states.geojson');
@@ -627,7 +663,7 @@ async function main() {
   let roundingDrift = 0;
   let roundedRows = 0;
   for (const row of rows) {
-    const facility = buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta);
+    const facility = buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook);
     const drift = validateRow(row, facility, catalogueById, problems);
     if (drift) {
       roundingDrift += drift;
@@ -923,6 +959,16 @@ function report(facilities, catalogue, national, stateProfiles, rounding) {
   out.push(
     `  sheet rounding    ${naira(rounding.roundingDrift)} over ` +
       `${rounding.roundedRows.toLocaleString()} facilities (the sheet's own ₦1 drift)`,
+  );
+  // Reported rather than asserted. A hard floor on coverage would need an
+  // arbitrary threshold; a number in the build output and in the committed
+  // diff makes a lost column visible without inventing one.
+  const rural = facilities.filter((f) => f.geography === 'rural').length;
+  const urban = facilities.filter((f) => f.geography === 'urban').length;
+  const unknown = facilities.length - rural - urban;
+  out.push(
+    `  setting           ${rural.toLocaleString()} rural · ${urban.toLocaleString()} urban` +
+      (unknown ? ` · ${unknown.toLocaleString()} unmatched` : ''),
   );
   out.push('');
   out.push('  readiness         not ready   moderately       ready');

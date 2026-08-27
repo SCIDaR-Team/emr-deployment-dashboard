@@ -559,7 +559,7 @@ export default function AssessedStatesPage() {
           // showing both would have been one control twice. Gap now selects
           // actual gaps out of the catalogue, so Readiness is the only way left
           // to ask the band question.
-          show={['level', 'funding', 'domain', 'gap', 'archetype', 'search']}
+          show={['level', 'geography', 'funding', 'domain', 'gap', 'archetype', 'search']}
           // State and LGA are navigation here, so Reset has to clear the path
           // as well as the store — the two pickers sit in this row and a reader
           // does not owe them the distinction.

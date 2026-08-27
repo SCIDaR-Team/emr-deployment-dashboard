@@ -8,9 +8,11 @@ This is the dataset behind `public/data/`. It replaced a synthetic stand-in,
 whose generator and documentation were retired once the ingest landed — both are
 in git history if the invented population is ever wanted again.
 
-**Source of truth:** the published Google Sheet in `.env`
-(`facility gaps and intervention`). The local CSV is a byte-identical export of
-it, verified on 2026-08-26.
+**Two sources.** The published Google Sheet in `.env` (`facility gaps and
+intervention`) is the primary one; the local CSV is a byte-identical export of
+it, verified on 2026-08-26. `Raw data with readiness level.xlsx` — the raw ODK
+export the gaps CSV was summarised from — is joined on top of it for the
+rural/urban setting. See [Part 2 §7](#7-the-raw-odk-workbook--the-second-source).
 
 ---
 
@@ -398,11 +400,68 @@ correction, no placeholder prices.
 Inventing a placeholder would put a made-up number inside a total presented as
 sourced. Rendering the absence is the honest alternative and costs one label.
 
+### 7. The raw ODK workbook — the second source
+
+`Raw data with readiness level.xlsx` — one sheet, one row per facility, 335
+columns, 2,807 rows under a three-row header. It is the survey export the gaps
+CSV was summarised from, so it holds everything the instrument collected.
+
+**Only `Geography` is read from it.** The workbook also carries service points,
+staff counts, devices and every per-question response; each of those is a
+decision about what the page should say rather than a free upgrade, so they are
+taken one at a time.
+
+| Excel | Field | State |
+|---|---|---|
+| L | *(latitude — no header)* | **Empty in 2,805 of 2,807 rows** |
+| M | Longitude | Populated |
+| N | Altitude | Populated |
+| O | Location accuracy | Populated |
+| S | Geography | `rural` 2,205 · `urban` 601 · 1 blank |
+
+**Latitude is missing, and this is why the map still plots nothing.** Column L
+sits exactly where ODK puts latitude — between the data collector's name and
+Longitude — with no header and two values. Those two (both Kano: 11.677 and
+10.699, against longitudes of 8.13 and 8.63) are plausible latitudes for their
+LGAs, so the column is correctly positioned and its values were lost in whatever
+produced the export.
+
+Column M was checked against known state positions rather than trusted by its
+label, because Nigeria's latitude and longitude ranges overlap. It tracks
+longitude in all twelve states — Kano 8.49 (true lon 8.52, true lat 11.75),
+Lagos 3.40 (3.50 / 6.55), Adamawa 12.55 (12.68 / 9.55) — so the label is right
+and latitude really is absent. A longitude without a latitude is a meridian, so
+`lat`/`lon` stay null. A re-export including column L is all that is needed.
+
+#### The join
+
+**Primary key: UUID.** 2,804 of 2,806 facilities match directly.
+
+**Fallback: `state/lga/name`.** Two facilities — `Opeki Primary Health Centre`
+(Lagos, Alimosho) and `Saja Isaleora Primary Health Centre` (Oyo, Ogbomosho
+North) — carry `1.23E+19` and `9.88E+18` where a UUID should be. Spreadsheet
+auto-formatting turned a long numeric id into scientific notation, and it
+happened **in both files**, so neither can be matched on id. The fallback key is
+unique across all 2,807 workbook rows (zero collisions, asserted at build time),
+and it recovers both: Opeki urban, Saja Isaleora rural.
+
+A third query for the assessment team, then: those two facilities have no usable
+identifier in either file. Nothing downstream is wrong today, but any future
+join on id will drop them.
+
+**Result: 2,205 rural, 601 urban, 0 unmatched.** Coverage is reported in the
+build output rather than asserted — a hard floor would need an arbitrary
+threshold, whereas a number that moves shows up in the committed diff.
+
 ### Fields the app has that this file does not
 
-`servicePoints`, `staffCount`, `deviceCount`, `deviceShortfall`, `geography`
-(rural/urban), and the `CoverageMeasures` figures (`networkMtnPct`,
-`networkAirtelPct`, `gridConnectionPct`). All are invented by the generator.
+`servicePoints`, `staffCount`, `deviceCount`, `deviceShortfall`, and the
+`CoverageMeasures` figures (`networkAirtelPct`, `gridConnectionPct`). All were
+invented by the generator.
+
+`geography` is no longer among them — it comes from the raw ODK workbook (§7).
+The service-point, staff and device counts are *also* in that workbook and could
+be recovered the same way, one deliberate decision at a time.
 
 Some are recoverable in a different form — device shortfall is *implied* by the
 device-sufficiency gap band (`<75%`, `75–99%`), MTN coverage is derivable from
@@ -765,7 +824,8 @@ and its facilities' split must not answer different questions.
 | Facility card | **Both** overall bands, labelled, above the four domain bands. |
 | Facility map points | Use band (a point is one colour; use is the scale the domains are on). |
 | Domain selected | Everything collapses to that domain's **EMR-use** band — map and pane alike. |
-| Coordinates | Ship without. Facility points layer degrades on its own; the pane is unaffected. |
+| Coordinates | Ship without — the raw workbook's latitude column is empty too. The points layer degrades on its own; the pane is unaffected. |
+| Setting (rural/urban) | Joined from the raw ODK workbook on UUID, falling back to state/LGA/name. |
 | Leadership & governance | Dropped from the model, as the data drops it. |
 | Query A (55 facilities) | Counted as the sheet counts it. Raised with the team. |
 | Query B (332 facilities) | Totalled as-is, `Not costed` shown, totals annotated. Raised with the team. |

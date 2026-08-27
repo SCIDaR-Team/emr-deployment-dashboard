@@ -18,11 +18,15 @@ import { MultiSelectDropdown, type DropdownGroup } from '@/components/ui';
 import type { Band, FacilitySummary, FacilityThemeId, FunctionalityLevel } from '@/lib/types';
 
 
+/** The source writes `rural`/`urban`; the bar shows them capitalised. */
+const GEOGRAPHY_LABELS: Record<string, string> = { rural: 'Rural', urban: 'Urban' };
+
 /** Which controls a page shows. Every page uses a subset. */
 export type FilterKey =
   | 'state'
   | 'lga'
   | 'zone'
+  | 'geography'
   | 'funding'
   | 'level'
   | 'archetype'
@@ -184,6 +188,25 @@ export function FilterBar({
             filters.states.length ? `All in ${filters.states.length} state(s)` : 'All LGAs'
           }
           searchable
+        />
+      )}
+
+      {visible.has('geography') && (
+        <MultiSelectDropdown
+          label="Setting"
+          className="min-w-[8rem] flex-1 sm:flex-none sm:w-36"
+          groups={[
+            {
+              label: 'Setting',
+              items: options.geography.map((o) => ({
+                ...o,
+                label: GEOGRAPHY_LABELS[o.key] ?? o.label,
+              })),
+            },
+          ]}
+          selected={filters.geography}
+          onChange={(next) => filters.setGeography(next as ('rural' | 'urban')[])}
+          placeholder="All"
         />
       )}
 
@@ -371,6 +394,12 @@ function HiddenFilterChips({ show }: { show: Set<FilterKey> }) {
     { key: 'state', label: 'State', values: filters.states, clear: () => filters.setStates([]) },
     { key: 'lga', label: 'LGA', values: filters.lgas, clear: () => filters.setLGAs([]) },
     { key: 'zone', label: 'Zone', values: filters.zones, clear: () => filters.setZones([]) },
+    {
+      key: 'geography',
+      label: 'Setting',
+      values: filters.geography.map((g) => GEOGRAPHY_LABELS[g] ?? g),
+      clear: () => filters.setGeography([]),
+    },
     { key: 'funding', label: 'Funding', values: filters.funding, clear: () => filters.setFunding([]) },
     {
       key: 'level',
