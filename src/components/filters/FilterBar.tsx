@@ -3,12 +3,13 @@ import { RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { BAND_CSS_COLOR, BAND_LABEL } from '@/lib/bands';
 import {
-  GAPS,
   GAP_DOMAINS,
-  GAP_BY_ID,
+  GAP_AREA_BY_ID,
   GAP_DOMAIN_LABEL,
   SEVERITY_BAND,
-  gapsForDomains,
+  gapAreaSeverity,
+  gapAreasForDomains,
+  hasGapInAreas,
 } from '@/lib/gapCatalogue';
 import { facilityBandUnder } from '@/lib/archetype';
 import { THEME_BY_ID } from '@/lib/themes';
@@ -31,7 +32,7 @@ export type FilterKey =
   | 'level'
   | 'archetype'
   | 'domain'
-  | 'gap'
+  | 'gapArea'
   | 'search';
 
 const DEFAULT_KEYS: FilterKey[] = ['state', 'lga', 'archetype', 'level', 'search'];
@@ -111,7 +112,7 @@ export function FilterBar({
   // is in the path.
   const active = filters.isDirty() || Boolean(scopeReset?.active);
 
-  // Gap and Readiness are the same selection — `archetypes` — read through
+  // Gap area and Readiness are the same selection — `archetypes` — read through
   // whichever domains are ticked. The heading says which, because "Foundational
   // gap" means something different under Workforce Capacity than it does over
   // the facility as a whole.
@@ -127,34 +128,41 @@ export function FilterBar({
     facilities.filter((f) => facilityBandUnder(f, filters.domains) === band).length;
 
   /**
-   * The Gap control's options — the leaves of whatever branch Domain selected.
+   * The Gap area control's options — the areas of whatever domains are ticked.
    *
-   * Grouped by sub-domain rather than listed flat, because the catalogue has
-   * four levels and a flat list of 23 throws away two of them: "No national
-   * grid connection" and "No functioning backup power" belong together under
-   * Power infrastructure, and a reader looking for a power problem should find
-   * them in one place. With no domain ticked the list is every facility-level
-   * gap; leadership's only appear when its domain is asked for, because they
-   * are a state's and select no facility.
+   * Areas, not the 73 individual conditions this control used to list. A flat
+   * list of conditions could not answer the question a planner asks: *which
+   * facilities have a power problem?* Power has three conditions and asking it
+   * meant ticking all three and hoping none had been missed. One "Power" entry
+   * asks it once, and its count is facilities rather than survey answers —
+   * which is only sound because a facility carries at most one condition per
+   * area.
+   *
+   * Grouped under the domain heading and scoped by the Domain control, exactly
+   * as LGA is grouped and scoped by State: tick Workforce Capacity and this
+   * list is that domain's four areas rather than all twenty.
    */
-  const gapGroups = useMemo<DropdownGroup[]>(() => {
-    const offered = gapsForDomains(filters.domains);
-    const bySub = new Map<string, typeof offered>();
-    for (const gap of offered) {
-      const key = `${GAP_DOMAIN_LABEL[gap.domain]} · ${gap.subDomain}`;
-      bySub.set(key, [...(bySub.get(key) ?? []), gap]);
+  const gapAreaGroups = useMemo<DropdownGroup[]>(() => {
+    const offered = gapAreasForDomains(filters.domains);
+    const byDomain = new Map<string, typeof offered>();
+    for (const area of offered) {
+      const key = GAP_DOMAIN_LABEL[area.domain];
+      byDomain.set(key, [...(byDomain.get(key) ?? []), area]);
     }
-    return [...bySub.entries()].map(([label, gaps]) => ({
+    return [...byDomain.entries()].map(([label, areas]) => ({
       label,
-      items: gaps.map((gap) => ({
-        key: gap.id,
-        label: gap.label,
-        // How many facilities carry it — the count that says whether ticking it
-        // is worth doing. Leadership gaps carry none: they are not a facility's.
-        count: facilities.filter((f) => f.gaps?.includes(gap.id)).length,
-        // Colour by what the gap does to its domain, not by how common it is:
-        // red for a gap that puts the domain in Not ready on its own.
-        color: BAND_CSS_COLOR[SEVERITY_BAND[gap.severity]],
+      items: areas.map((area) => ({
+        key: area.id,
+        // "Power gap", not "Power" — the control is offering a problem, and the
+        // noun is what makes the row read as one.
+        label: `${area.label} gap`,
+        // Facilities with a gap anywhere in the area. Sound as a facility count
+        // precisely because the area holds at most one condition each.
+        count: facilities.filter((f) => hasGapInAreas(f.gaps ?? [], [area.id])).length,
+        // Colour by what the area can do to its domain, not by how common it
+        // is: red for an area holding at least one gap that puts the domain in
+        // Not ready on its own. Three of the twenty qualify.
+        color: BAND_CSS_COLOR[SEVERITY_BAND[gapAreaSeverity(area.id)]],
       })),
     }));
   }, [filters.domains, facilities]);
@@ -254,14 +262,14 @@ export function FilterBar({
           groups={[
             {
               label: 'Assessment domains',
-              // Counts are gap counts, not facility counts. A domain selects no
-              // facility — every one of them is scored in all of these — so the
-              // useful number beside a domain is how many distinct things can
-              // be wrong inside it.
+              // Counts are gap *areas*, not facility counts. A domain selects
+              // no facility — every one of them is scored in all of these — so
+              // the useful number beside a domain is how much of the Gap area
+              // list it opens: exactly what ticking it does.
               items: GAP_DOMAINS.map((d) => ({
                 key: d.id,
                 label: d.costed ? d.label : `${d.label} · no cost`,
-                count: GAPS.filter((g) => g.domain === d.id).length,
+                count: gapAreasForDomains([d.id]).length,
               })),
             },
           ]}
@@ -272,15 +280,19 @@ export function FilterBar({
         />
       )}
 
-      {visible.has('gap') && (
+      {visible.has('gapArea') && (
         <MultiSelectDropdown
-          label="Gap"
+          label="Gap area"
           className="min-w-[8rem] flex-1 sm:flex-none sm:w-[180px]"
-          groups={gapGroups}
-          selected={filters.gaps}
-          onChange={filters.setGaps}
+          groups={gapAreaGroups}
+          selected={filters.gapAreas}
+          onChange={filters.setGapAreas}
+          // Say which scope is in force, the way LGA does under State — "All
+          // gap areas" over twenty entries and over four look identical.
           placeholder={
-            filters.domains.length ? `Any gap in ${filters.domains.length} domain(s)` : 'Any gap'
+            filters.domains.length
+              ? `All in ${filters.domains.length} domain(s)`
+              : 'All gap areas'
           }
           panelWidth="w-[22rem]"
           searchable
@@ -369,14 +381,14 @@ export function FilterBar({
 /**
  * Is this filter already answerable on the page?
  *
- * Not the same question as "is its own control shown", because Gap and
- * Readiness are two controls over one field: a page showing Gap is showing the
- * reader everything they need to change `archetypes`, and a chip reading
+ * Not the same question as "is its own control shown", because Gap area and
+ * Readiness are two controls over one field: a page showing Gap area is showing
+ * the reader everything they need to change `archetypes`, and a chip reading
  * "Readiness: Not ready" beside it is the row reporting a filter that is
  * visibly on screen.
  */
 function covered(key: FilterKey, show: Set<FilterKey>): boolean {
-  if (key === 'archetype') return show.has('archetype') || show.has('gap');
+  if (key === 'archetype') return show.has('archetype') || show.has('gapArea');
   return show.has(key);
 }
 
@@ -414,10 +426,12 @@ function HiddenFilterChips({ show }: { show: Set<FilterKey> }) {
       clear: () => filters.setArchetypes([]),
     },
     {
-      key: 'gap',
-      label: 'Gap',
-      values: filters.gaps.map((id) => GAP_BY_ID[id]?.label ?? id),
-      clear: () => filters.setGaps([]),
+      key: 'gapArea',
+      label: 'Gap area',
+      values: filters.gapAreas.map((id) =>
+        GAP_AREA_BY_ID[id] ? `${GAP_AREA_BY_ID[id]!.label} gap` : id,
+      ),
+      clear: () => filters.setGapAreas([]),
     },
     {
       // Not narrowing anything by itself, but changing what every band on the

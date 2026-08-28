@@ -49,6 +49,22 @@ export type FacilityThemeId = ThemeId;
 export type GapDomainId = ThemeId;
 
 /**
+ * A gap area — the level between a domain and a gap.
+ *
+ * One per gap column in the source: `power`, `wiring`, `facility_connectivity`,
+ * `device_sufficiency` and sixteen more. A facility holds **at most one
+ * condition per area**, which is what makes the area the unit a filter can
+ * offer and a rollup can count — counting areas counts facilities, where
+ * counting conditions counts survey answers.
+ *
+ * A string alias rather than a union: the areas are extracted from the sheet by
+ * `scripts/ingest-assessment.mjs`, so a hand-written union here would be a
+ * second declaration of the same fact, free to drift from it. `GAP_AREA_BY_ID`
+ * is the roster.
+ */
+export type GapAreaId = string;
+
+/**
  * What a gap does to its domain's band.
  *
  * `blocking` puts the domain in Not ready on its own; `partial` only pulls it
@@ -129,8 +145,15 @@ export interface DeploymentPlan {
    * where one of the 332 unpriced connectivity blockers is in scope.
    */
   unpricedInterventions: number;
-  byHorizon: Record<Horizon, number>;
-  byDomain: Record<GapDomainId, number>;
+  /**
+   * What the plan costs, split by urgency and by domain. **Naira, not counts.**
+   *
+   * Named for the unit because the earlier `byHorizon`/`byDomain` were not, and
+   * a bare `number` beside `gapCount` — which *is* a count — reads as one too.
+   * Both split the same `costNGN` above, so either one sums to it.
+   */
+  costByHorizon: Record<Horizon, number>;
+  costByDomain: Record<GapDomainId, number>;
   gaps: GapTally[];
   lines: DeploymentLine[];
 }
@@ -262,12 +285,15 @@ export interface FacilitySummary {
   /**
    * The surveyed position, where there is one.
    *
-   * Null throughout the current dataset — the assessment did not record
-   * coordinates. Nullable rather than faked: `projectFacilities` drops a
-   * facility without a fix, so the LGA map draws its boundary and the pane
-   * lists what is inside it, and the facility stays selectable from that list.
-   * An invented position presented as a surveyed one is the one error this
-   * dataset cannot afford.
+   * Present for 2,804 of 2,806, from the ERA workbook — the survey took a GPS
+   * fix at every facility, and the earlier export simply lost the latitude
+   * column. The two without one are the facilities that could not be matched to
+   * that workbook at all.
+   *
+   * Nullable rather than faked: `projectFacilities` drops a facility without a
+   * fix, so the LGA map draws its boundary and the pane lists what is inside
+   * it, and the facility stays selectable from that list. An invented position
+   * presented as a surveyed one is the one error this dataset cannot afford.
    */
   lat: number | null;
   lon: number | null;
@@ -486,14 +512,20 @@ export interface FilterState {
    */
   domains: FacilityThemeId[];
   /**
-   * Gap ids the Gap control has ticked.
+   * Gap area ids the Gap area control has ticked.
    *
    * OR within the control, like every other multi-select here: a facility
-   * matches if it carries any of them. Which gaps are on *offer* is decided by
-   * `domains` — that is what makes Domain and Gap one instrument rather than
-   * two, the first selecting a branch of the catalogue and the second a leaf.
+   * matches if it carries a gap in any of them. Which areas are on *offer* is
+   * decided by `domains` — the same relationship State has with LGA, and what
+   * makes Domain and Gap area one instrument rather than two.
+   *
+   * Areas rather than the 73 individual conditions, which is what this used to
+   * hold. A planner asks "which facilities have a power problem", not "which
+   * facilities recorded *best usable source provides 5–8 hours/day*"; the flat
+   * list of conditions could only answer the second, and answered it three
+   * ways at once because Power has three of them.
    */
-  gaps: string[];
+  gapAreas: string[];
   search: string;
 }
 

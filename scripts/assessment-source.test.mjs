@@ -29,6 +29,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractCatalogue,
+  extractGapAreas,
   gapCost,
   parseAssessmentCsv,
   parseMoney,
@@ -139,15 +140,26 @@ describe('parseAssessmentCsv', () => {
   });
 });
 
+describe('extractGapAreas', () => {
+  it('gives every gap column an id, its domain and the sheet\u2019s order', () => {
+    const { blocks } = parseAssessmentCsv(fixture([row()]));
+
+    expect(extractGapAreas(blocks)).toEqual([
+      { id: 'power', domain: 'technical_infrastructure', label: 'Power', order: 0 },
+      { id: 'training', domain: 'workforce_capacity', label: 'Training', order: 1 },
+    ]);
+  });
+});
+
 describe('extractCatalogue', () => {
-  it('makes one entry per (sub-domain, condition), carrying its interventions', () => {
+  it('makes one entry per (area, condition), carrying its interventions', () => {
     const { blocks, rows } = parseAssessmentCsv(fixture([row({ power: POWER_NONE })]));
     const catalogue = extractCatalogue(rows, blocks);
 
     expect(catalogue).toHaveLength(1);
     expect(catalogue[0]).toMatchObject({
       domain: 'technical_infrastructure',
-      subDomain: 'Power',
+      area: 'power',
       label: 'No functional electricity source or 0 hours/day',
       severity: 'blocking',
     });

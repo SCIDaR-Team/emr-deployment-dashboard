@@ -4,12 +4,17 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import {
   GAP_BY_ID,
   GAP_DOMAINS,
+  FACILITY_DOMAIN_IDS,
+  GAP_AREAS,
+  GAP_AREA_BY_ID,
   GAP_DOMAIN_LABEL,
   HORIZONS,
+  HORIZON_LABEL,
   HORIZON_SEVERITY,
   HORIZON_SHORT,
   gapCostNGN,
-  gapsForDomains,
+  gapsInArea,
+  offeredGapIds,
 } from '@/lib/gapCatalogue';
 import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
 import { cn } from '@/lib/cn';
@@ -71,6 +76,15 @@ interface AssessmentPaneProps {
   facilities: FacilitySummary[];
   /** The domains the Domain filter has ticked. Empty is the overall reading. */
   domains: FacilityThemeId[];
+  /**
+   * The gap areas the Gap area filter has ticked.
+   *
+   * Changes what the headline block *is*, not just what it counts — see
+   * `SelectionBlock`. The assessment publishes no readiness band for a gap
+   * area, so once one is ticked the block naming the selection replaces the
+   * block splitting it by band.
+   */
+  gapAreas: string[];
   /** The rows for the list at the bottom, and what one click does. */
   list: PaneList;
 }
@@ -110,7 +124,13 @@ export interface PaneList {
   onSelect: (id: string) => void;
 }
 
-export function AssessmentPane({ scope, facilities, domains, list }: AssessmentPaneProps) {
+export function AssessmentPane({
+  scope,
+  facilities,
+  domains,
+  gapAreas,
+  list,
+}: AssessmentPaneProps) {
   const distribution = useMemo(
     () => facilityDistribution(facilities, domains),
     [facilities, domains],
@@ -142,28 +162,59 @@ export function AssessmentPane({ scope, facilities, domains, list }: AssessmentP
           scroll regions inside 420px leaves neither one enough room. */}
       <div className="pane-scroll min-h-0 flex-1 overflow-y-auto">
         {scope.level === 'facility' ? (
-          <FacilityBlocks facility={scope.facility} domains={domains} />
+          <FacilityBlocks
+            facility={scope.facility}
+            domains={domains}
+            gapAreas={gapAreas}
+          />
         ) : (
           <>
-            <Block title="Assessed facilities" note={lens && `Banded by ${lens}`}>
-              <BandCounts
-                facilities={facilities}
-                distribution={distribution}
-                domains={domains}
-              />
-            </Block>
+            {/* One block or the other, never both.
+
+                With a gap area ticked the population is "facilities carrying
+                this gap", and the assessment publishes no readiness band for a
+                gap area — bands exist at the facility, at the domain and
+                nowhere between. A band split printed over that population
+                would be a domain reading sitting under a gap-area heading,
+                which reads as the gap area's own and is not. So the block
+                names the selection instead, and the counting is left to Gaps
+                in scope directly below. */}
+            {gapAreas.length ? (
+              <Block
+                title="Gap areas in scope"
+                note="The assessment publishes no readiness band for a gap area"
+              >
+                <SelectionBlock gapAreas={gapAreas} domains={domains} />
+              </Block>
+            ) : (
+              <Block title="Assessed facilities" note={lens && `Banded by ${lens}`}>
+                <BandCounts
+                  facilities={facilities}
+                  distribution={distribution}
+                  domains={domains}
+                />
+              </Block>
+            )}
 
             <Block
               title="Gaps in scope"
               note="What is actually wrong, and what closing it costs"
             >
-              <GapBlocks facilities={facilities} domains={domains} />
+              <GapBlocks facilities={facilities} domains={domains} gapAreas={gapAreas} />
             </Block>
 
           </>
         )}
 
-        <PaneListBlock list={list} />
+        {/* The way down, and a facility is the bottom of it.
+
+            At every level above, this list is what the pane is *for* — the
+            other half of the map, ranked by need, and the way to the level
+            below. A facility has no level below, so the list stops being
+            navigation and becomes a roster of the siblings the reader has just
+            filtered past. They came here to read this clinic; the way back to
+            the others is the breadcrumb and the map, both already on screen. */}
+        {scope.level !== 'facility' && <PaneListBlock list={list} />}
       </div>
     </div>
   );
@@ -209,9 +260,11 @@ function PaneHeader({ scope, band }: { scope: AssessmentScope; band: Band | null
 function FacilityBlocks({
   facility,
   domains,
+  gapAreas,
 }: {
   facility: FacilitySummary;
   domains: FacilityThemeId[];
+  gapAreas: string[];
 }) {
   const picked: readonly GapDomainId[] = domains;
 
@@ -219,37 +272,114 @@ function FacilityBlocks({
     ? FACILITY_THEMES.filter((t) => picked.includes(t.id))
     : FACILITY_THEMES;
 
-  // The facility's own gaps, cut to the domains in view, ordered most urgent
-  // first, and what that subset costs. `facility.costNGN` is the whole-facility
-  // figure and would contradict the list under it the moment a domain is
-  // ticked.
-  const { gaps, cost, byDomain } = useMemo(() => {
-    const offered = new Set(gapsForDomains(domains).map((g) => g.id));
-    const gaps = facility.gaps
-      .filter((id) => offered.has(id))
-      .sort((a, b) => gapUrgency(a) - gapUrgency(b));
+  /**
+   * This facility's gaps, grouped by domain, and what each group costs.
+   *
+   * The tree the aggregate levels render has no branching here: a gap column
+   * holds one value, so a facility carries at most one condition per area, and
+   * domain → area → condition collapses to domain → one row per gap. There is
+   * nothing to expand, so nothing is collapsed.
+   *
+   * **Ordered by urgency inside a domain, not by cost.** The aggregate levels
+   * sort on money because the question there is where a budget goes; the
+   * question at a clinic is what has to happen before anyone can deploy, and
+   * that is the horizon. Cost breaks ties, so the grouping still reads as a
+   * spending plan.
+   *
+   * Everything is derived from the same filtered `gaps` array the list renders
+   * — never from `facility.costByDomain`, which is the whole facility's and
+   * would contradict the rows above it the moment a domain or gap area is
+   * ticked.
+   */
+  const { groups, cost, unpriced, gapCount, schedule, actionCount } = useMemo(() => {
+    const offered = offeredGapIds(domains, gapAreas);
+    const mine = facility.gaps.filter((id) => offered.has(id));
 
     let cost = 0;
-    // Split from the same `gaps` array the list below renders, rather than
-    // from `facility.costByDomain`. The stored figure is the whole facility's
-    // and would contradict the list the moment a domain is ticked — the two
-    // sitting one block apart is exactly where a reader would notice.
-    const per = new Map<string, number>();
-    for (const id of gaps) {
+    let unpriced = 0;
+    /**
+     * The same money, split by when it has to be spent.
+     *
+     * Over **interventions, not gaps** — a power gap fires two, a critical
+     * install and an optional grid connection, and they belong in different
+     * quarters. So these counts sum to more than the gap count above them, and
+     * the column is labelled actions to say so. The costs do sum to the total,
+     * because every intervention is counted once.
+     *
+     * `scripts/ingest-assessment.mjs` checks exactly this split against the
+     * sheet's own four summary columns in all 2,806 rows, so these are the
+     * source's numbers rather than an interpretation of them.
+     */
+    const byHorizon = new Map<Horizon, { actions: number; cost: number; unpriced: number }>();
+    const per = new Map<string, { cost: number; unpriced: number; gaps: typeof rows }>();
+    type Row = {
+      id: string;
+      area: string;
+      condition: string;
+      cost: number;
+      unpriced: number;
+      urgency: number;
+      interventions: (typeof GAP_BY_ID)[string]['interventions'];
+    };
+    const rows: Row[] = [];
+
+    for (const id of mine) {
       const gap = GAP_BY_ID[id]!;
       const c = gapCostNGN(gap);
       cost += c.costNGN;
-      per.set(gap.domain, (per.get(gap.domain) ?? 0) + c.costNGN);
+      unpriced += c.unpriced;
+      for (const iv of gap.interventions) {
+        const h = byHorizon.get(iv.horizon) ?? { actions: 0, cost: 0, unpriced: 0 };
+        h.actions += 1;
+        if (iv.costNGN === null) h.unpriced += 1;
+        else h.cost += iv.costNGN;
+        byHorizon.set(iv.horizon, h);
+      }
+
+      const row: Row = {
+        id,
+        area: `${GAP_AREA_BY_ID[gap.area]?.label ?? gap.area} gap`,
+        condition: gap.label,
+        cost: c.costNGN,
+        unpriced: c.unpriced,
+        urgency: gapUrgency(id),
+        interventions: gap.interventions,
+      };
+      rows.push(row);
+      const acc = per.get(gap.domain) ?? { cost: 0, unpriced: 0, gaps: [] as Row[] };
+      acc.cost += c.costNGN;
+      acc.unpriced += c.unpriced;
+      acc.gaps.push(row);
+      per.set(gap.domain, acc);
     }
 
-    const byDomain = GAP_DOMAINS.filter((d) => per.has(d.id)).map((d) => ({
-      id: d.id,
-      label: d.label,
-      cost: per.get(d.id)!,
+    const groups = GAP_DOMAINS.filter((d) => per.has(d.id)).map((d) => {
+      const acc = per.get(d.id)!;
+      return {
+        id: d.id,
+        label: d.label,
+        cost: acc.cost,
+        unpriced: acc.unpriced,
+        gaps: [...acc.gaps].sort((a, b) => a.urgency - b.urgency || b.cost - a.cost),
+      };
+    });
+
+    // Worst-first, and only the horizons in play — a row of zeroes for a
+    // quarter with nothing in it is noise.
+    const schedule = HORIZONS.filter((h) => byHorizon.has(h)).map((h) => ({
+      horizon: h,
+      ...byHorizon.get(h)!,
     }));
 
-    return { gaps, cost, byDomain };
-  }, [facility, domains]);
+    return {
+      groups,
+      cost,
+      unpriced,
+      gapCount: mine.length,
+      schedule,
+      actionCount: schedule.reduce((sum, h) => sum + h.actions, 0),
+    };
+  }, [facility, domains, gapAreas]);
 
   return (
     <>
@@ -286,28 +416,31 @@ function FacilityBlocks({
         </div>
       </Block>
 
+      {/* Gaps and their money in one block.
+
+          They used to be two — the list, then a separate "What it costs" card
+          repeating the domains underneath it. A reader comparing a domain's
+          subtotal against the gaps that produced it had to hold one block in
+          their head while scrolling to the other, and the two could disagree
+          under a filter without either of them saying so. The subtotal now sits
+          on the heading of the gaps it is the sum of. */}
       <Block
         title="Gaps at this facility"
-        note={`${formatNaira(cost)} to close`}
+        note={
+          gapCount
+            ? `${gapCount} to close${picked.length ? ' in the domains in view' : ''}`
+            : undefined
+        }
       >
-        <FacilityGaps gaps={gaps} scoped={picked.length > 0} />
+        <FacilityGaps
+          groups={groups}
+          schedule={schedule}
+          actionCount={actionCount}
+          cost={cost}
+          unpriced={unpriced}
+          scoped={picked.length > 0}
+        />
       </Block>
-
-      {byDomain.length > 1 && (
-        <Block title="What it costs" note="Where this facility's money goes">
-          <dl className="space-y-1.5 text-[13px]">
-            {byDomain.map((d) => (
-              <Detail key={d.id} term={d.label} value={formatNaira(d.cost, true)} mono />
-            ))}
-            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2 text-[13px]">
-              <dt className="font-medium text-foreground">Total</dt>
-              <dd className="mono text-right font-semibold tabular-nums text-foreground">
-                {formatNaira(cost, true)}
-              </dd>
-            </div>
-          </dl>
-        </Block>
-      )}
 
       <Block title="This facility">
         <dl className="space-y-1.5 text-[13px]">
@@ -326,12 +459,12 @@ function FacilityBlocks({
           {facility.dailyClientLoad && (
             <Detail term="Daily client load" value={facility.dailyClientLoad} />
           )}
-          {/* Only where there is one. This dataset carries no coordinates, so
-              the row is absent rather than blank — an empty field reads as a
+          {/* Only where there is one — absent rather than blank for the two
+              facilities that carry none, because an empty field reads as a
               value that failed to load. A coordinate a reader can only look at
               gets transcribed into a phone by hand, which is where the digit
-              errors come from, so where one exists it is copyable and it opens
-              somewhere that can navigate to it. See `MapCoordinates`. */}
+              errors come from, so it is copyable and it opens somewhere that
+              can navigate to it. See `MapCoordinates`. */}
           {facility.lat != null && facility.lon != null && (
             <div className="flex items-baseline justify-between gap-3 pt-0.5">
               <dt className="text-muted-foreground">Coordinates</dt>
@@ -424,6 +557,79 @@ function Detail({ term, value, mono }: { term: string; value: string; mono?: boo
       <dt className="text-muted-foreground">{term}</dt>
       <dd className={cn('text-right text-foreground', mono && 'mono text-xs')}>{value}</dd>
     </div>
+  );
+}
+
+/**
+ * What the Gap area filter is asking for, named rather than counted.
+ *
+ * Takes the place of the band split whenever a gap area is ticked. The reason
+ * is a fact about the source, not a display preference: readiness bands exist
+ * at the facility and at the domain, and at no level between them. A gap area
+ * has none, and the block that used to sit here would have supplied the
+ * domain's — printed under a heading the reader had just filtered to a gap
+ * area, which invites exactly the reading the data does not support.
+ *
+ * So the block says what is selected and stops. The size of the population it
+ * selects is one card below, in Gaps in scope, where it is a count of
+ * facilities carrying a gap rather than a judgement about them.
+ *
+ * Grouped by domain because that is the hierarchy the selection was made in —
+ * Domain scopes which areas the control offers, the same way State scopes LGA.
+ */
+function SelectionBlock({
+  gapAreas,
+  domains,
+}: {
+  gapAreas: string[];
+  domains: FacilityThemeId[];
+}) {
+  const groups = useMemo(() => {
+    const areas = gapAreas
+      .map((id) => GAP_AREA_BY_ID[id])
+      .filter((a): a is NonNullable<typeof a> => Boolean(a))
+      .sort((a, b) => a.order - b.order);
+
+    // Every domain that owns a ticked area, plus any the Domain control ticked
+    // without picking an area inside it — that domain is narrowing what the
+    // control *offers* and nothing else, and saying so is better than leaving
+    // the reader to infer it from a heading that never appears.
+    const ids = new Set<FacilityThemeId>([
+      ...areas.map((a) => a.domain as FacilityThemeId),
+      ...domains,
+    ]);
+
+    return FACILITY_DOMAIN_IDS.filter((id) => ids.has(id)).map((id) => ({
+      id,
+      label: GAP_DOMAIN_LABEL[id],
+      areas: areas.filter((a) => a.domain === id),
+    }));
+  }, [gapAreas, domains]);
+
+  return (
+    <ul className="space-y-2.5">
+      {groups.map((group) => (
+        <li key={group.id}>
+          <p className="mono text-[9.5px] font-bold uppercase tracking-[0.09em] text-muted-foreground">
+            {group.label}
+          </p>
+          {group.areas.length ? (
+            <ul className="mt-1 space-y-0.5">
+              {group.areas.map((area) => (
+                <li key={area.id} className="text-[13px] leading-snug text-foreground">
+                  {area.label} gap
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1 text-[12.5px] italic leading-snug text-muted-foreground">
+              No gap area selected — this domain is only narrowing what the Gap
+              area filter offers.
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -594,13 +800,55 @@ function PerDomainSplit({
 function GapBlocks({
   facilities,
   domains,
+  gapAreas,
 }: {
   facilities: FacilitySummary[];
   domains: FacilityThemeId[];
+  /** The ticked gap areas. Narrows *which gaps are counted*, not only which
+   *  facilities are in scope — see `offeredGapIds`. */
+  gapAreas: string[];
 }) {
-  const { rows, instances, affected, cost, byDomain, total } = useMemo(() => {
-    const offered = new Set(gapsForDomains(domains).map((g) => g.id));
-    const counts = new Map<string, number>();
+  const { tree, instances, affected, cost, unpriced } = useMemo(() => {
+    /**
+     * The gaps this block counts — both filters, not just Domain.
+     *
+     * A gap area selection narrows the population *and* the gaps counted
+     * within it. Ticking the nine Technical Infrastructure areas asks what
+     * those nine cost; answering with every gap those facilities carry returns
+     * the national total instead — 30,557 gaps and ₦16.3bn against Technical
+     * Infrastructure's own 18,667 and ₦12.9bn, printed two rows below in the
+     * same card.
+     */
+    const offered = offeredGapIds(domains, gapAreas);
+    /**
+     * The tree the block renders: domain → gap area → condition.
+     *
+     * The source's own three levels, and the reason the flat list it replaces
+     * read badly — ordered by facility count, that list stepped between domains
+     * on almost every row, so nothing accumulated as the eye went down it.
+     *
+     * Each level carries all three headline figures, and the relationship
+     * between two of them changes with depth, which is worth stating because
+     * the table makes it visible:
+     *
+     *   domain     gaps ≠ facilities. 18,667 technical gaps sit in 2,806
+     *              facilities, because one facility has several.
+     *   area       gaps = facilities, exactly. A gap column holds one value,
+     *              so a facility carries at most one condition per area.
+     *   condition  the same, one rung further down.
+     *
+     * Cost adds up at every level. Facilities never does — a facility with a
+     * power problem and a wiring problem is one facility in the domain row and
+     * appears in two area rows beneath it. Said once under the table.
+     */
+    const perCondition = new Map<string, number>();
+    type Acc = { gaps: number; facs: Set<string>; cost: number; unpriced: number };
+    const perArea = new Map<string, Acc>();
+    const perDomain = new Map<string, Acc>();
+
+    // The headline tiles, from the same single pass. `instances` counts gaps
+    // and `affected` counts clinics — the pair the tiles print, and the pair
+    // the domain rows below diverge on for the same reason.
     let instances = 0;
     let cost = 0;
     const affected = new Set<string>();
@@ -609,53 +857,86 @@ function GapBlocks({
       let hit = false;
       for (const id of f.gaps) {
         if (!offered.has(id)) continue;
-        counts.set(id, (counts.get(id) ?? 0) + 1);
+        const gap = GAP_BY_ID[id]!;
+        const { costNGN: c, unpriced: u } = gapCostNGN(gap);
         instances += 1;
-        const c = gapCostNGN(GAP_BY_ID[id]!);
-        cost += c.costNGN;
+        cost += c;
         hit = true;
+        perCondition.set(id, (perCondition.get(id) ?? 0) + 1);
+
+        const a = perArea.get(gap.area) ?? { gaps: 0, facs: new Set<string>(), cost: 0, unpriced: 0 };
+        a.gaps += 1;
+        a.facs.add(f.uuid);
+        a.cost += c;
+        a.unpriced += u;
+        perArea.set(gap.area, a);
+
+        const d =
+          perDomain.get(gap.domain) ?? { gaps: 0, facs: new Set<string>(), cost: 0, unpriced: 0 };
+        d.gaps += 1;
+        d.facs.add(f.uuid);
+        d.cost += c;
+        d.unpriced += u;
+        perDomain.set(gap.domain, d);
       }
       if (hit) affected.add(f.uuid);
     }
 
-    const rows = [...counts.entries()]
-      .map(([id, n]) => ({ gap: GAP_BY_ID[id]!, n }))
-      .sort((a, b) => b.n - a.n);
+    /** Costliest first at every level — see the sort note on the old
+     *  breakdown. Ties break on gaps then label, so a row of ₦0 actions keeps
+     *  a stable place between renders instead of reshuffling. */
+    const byCost = (a: { cost: number; gaps: number; label: string },
+                    b: { cost: number; gaps: number; label: string }) =>
+      b.cost - a.cost || b.gaps - a.gaps || a.label.localeCompare(b.label);
 
-    // Only the domains actually in play. A row of zeroes for a domain the
-    // filter has excluded is noise, and one for leadership would be wrong
-    // rather than empty — its gaps belong to a state and no facility carries
-    // them, so counting facilities against it would be counting the wrong noun.
-    const perDomain = new Map<string, { gaps: number; cost: number }>();
-    for (const { gap, n } of rows) {
-      const acc = perDomain.get(gap.domain) ?? { gaps: 0, cost: 0 };
-      acc.gaps += n;
-      perDomain.set(gap.domain, acc);
-    }
-    for (const f of facilities) {
-      for (const id of f.gaps) {
-        const gap = GAP_BY_ID[id];
-        if (!gap || !offered.has(id)) continue;
-        const acc = perDomain.get(gap.domain);
-        if (acc) acc.cost += gapCostNGN(gap).costNGN;
-      }
-    }
-
-    const byDomain = GAP_DOMAINS.filter((d) => perDomain.has(d.id)).map((d) => ({
-      id: d.id,
-      label: d.label,
-      ...perDomain.get(d.id)!,
-    }));
+    const tree = GAP_DOMAINS.filter((d) => perDomain.has(d.id))
+      .map((d) => {
+        const acc = perDomain.get(d.id)!;
+        const areas = GAP_AREAS.filter((a) => a.domain === d.id && perArea.has(a.id))
+          .map((a) => {
+            const av = perArea.get(a.id)!;
+            return {
+              id: a.id,
+              label: `${a.label} gap`,
+              gaps: av.gaps,
+              facs: av.facs.size,
+              cost: av.cost,
+              unpriced: av.unpriced,
+              conditions: gapsInArea(a.id)
+                .filter((g) => perCondition.has(g.id))
+                .map((g) => ({
+                  id: g.id,
+                  label: g.label,
+                  gaps: perCondition.get(g.id)!,
+                  facs: perCondition.get(g.id)!,
+                  cost: perCondition.get(g.id)! * gapCostNGN(g).costNGN,
+                  unpriced: perCondition.get(g.id)! * gapCostNGN(g).unpriced,
+                }))
+                .sort(byCost),
+            };
+          })
+          .sort(byCost);
+        return {
+          id: d.id,
+          label: d.label,
+          gaps: acc.gaps,
+          facs: acc.facs.size,
+          cost: acc.cost,
+          unpriced: acc.unpriced,
+          areas,
+        };
+      })
+      .sort(byCost);
 
     return {
-      rows,
+      tree,
       instances,
       affected: affected.size,
       cost,
-      byDomain,
-      total: byDomain.reduce((sum, d) => sum + d.cost, 0),
+      /** Actions in scope the sheet does not price — the footnote's trigger. */
+      unpriced: [...perDomain.values()].reduce((sum, d) => sum + d.unpriced, 0),
     };
-  }, [facilities, domains]);
+  }, [facilities, domains, gapAreas]);
 
   /**
    * Facilities failing in *every* selected domain at once.
@@ -679,7 +960,30 @@ function GapBlocks({
     [facilities, domains],
   );
 
-  if (!rows.length) return <Nothing>No gaps in scope.</Nothing>;
+  /**
+   * Which areas are showing their conditions.
+   *
+   * Collapsed by default: twenty areas and seventy-three conditions in a 420px
+   * column is a wall, and the area is the level a reader is scanning for.
+   *
+   * One exception — filter to a single gap area and it opens itself. Asking for
+   * exactly one area is asking what is wrong inside it, and a lone collapsed
+   * row is the pane withholding the answer to the question just put to it.
+   * Keyed on the selection so re-picking a different single area opens that one
+   * instead of leaving the first one hanging open.
+   */
+  const [manual, setManual] = useState<Record<string, boolean>>({});
+  const auto = gapAreas.length === 1 ? gapAreas[0]! : null;
+  const open = new Set(
+    Object.entries(manual)
+      .filter(([, v]) => v)
+      .map(([k]) => k),
+  );
+  if (auto && manual[auto] === undefined) open.add(auto);
+  const toggle = (id: string) =>
+    setManual((m) => ({ ...m, [id]: !(m[id] ?? id === auto) }));
+
+  if (!tree.length) return <Nothing>No gaps in scope.</Nothing>;
 
   return (
     <div>
@@ -712,83 +1016,262 @@ function GapBlocks({
         </p>
       )}
 
-      {/* Where the money is, by domain.
-          
-          What is left of the old "four facility domains" block, and deliberately
-          not a rebuild of it. That block gave each domain a readiness split,
-          which under a Domain filter was the headline card above repeated word
-          for word — and a band is a summary of gaps anyway, shown at finer
-          grain in the list below. This says the thing a band cannot: how much of
-          the problem each domain holds, and what its share of the bill is.
-          
-          The bar is the share of cost, not of gaps, and the two diverge sharply:
-          data use is the commonest gap in the country and costs nothing at all,
-          because what closes it is a habit rather than a purchase. A domain
-          reading 0% here is not a domain to ignore — it is a domain to act on
-          without a budget. */}
-      <ul className="mt-3 space-y-1.5 border-b border-border pb-3">
-        {byDomain.map(({ id, label, gaps, cost }) => (
-          <li key={id} className="flex items-baseline gap-2">
-            <span className="min-w-0 flex-1 truncate text-[12px] text-foreground">{label}</span>
-            <span className="mono shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {formatCount(gaps)}
-            </span>
-            <span className="h-1.5 w-10 shrink-0 rounded-[1px] bg-surface-sunk" aria-hidden>
-              <span
-                className="block h-full rounded-[1px] bg-foreground/55"
-                style={{ width: `${cost && total ? Math.max(4, (cost / total) * 100) : 0}%` }}
-              />
-            </span>
-            <span className="mono w-[52px] shrink-0 text-right text-[11px] font-semibold tabular-nums text-foreground">
-              {formatNaira(cost, true)}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {/* The gap tree: domain → gap area → condition.
 
-      {/* A header, because the column was a bare number against a sentence and
-          a bare number is a guess. Each row is one gap out of the catalogue —
-          a specific, named thing that is wrong — and the figure is how many
-          facilities in scope carry it. */}
+          Three columns because the reader has just read three tiles, and a
+          breakdown that answers a different set of questions from the headline
+          above it is a breakdown they have to re-learn.
+
+          Gaps and Facilities are equal on every row below a domain, and that
+          repetition is the point rather than noise: it is where the reader can
+          see that one gap here means one facility, which is what makes an area
+          count safe to read as a facility count. They part company only on a
+          domain row, where several gaps land in the same clinic. */}
       <div className="mono mt-3.5 flex items-baseline gap-2 border-b border-border pb-1 text-[9px] uppercase tracking-[0.07em] text-muted-foreground">
         <span className="min-w-0 flex-1">Gap</span>
-        <span className="shrink-0">Facilities</span>
+        <span className="w-[38px] shrink-0 text-right">Gaps</span>
+        <span className="w-[38px] shrink-0 text-right">Facs</span>
+        <span className="w-[52px] shrink-0 text-right">Cost</span>
       </div>
 
-      <ul className="mt-2 space-y-1.5">
-        {rows.map(({ gap, n }) => (
-          <li key={gap.id} className="flex items-baseline gap-2">
-            <span className="min-w-0 flex-1">
-              <span className="block text-[12.5px] leading-snug text-foreground">{gap.label}</span>
-              <span className="mono text-[9.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                {gap.subDomain}
-              </span>
-            </span>
-            <span className="mono shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground">
-              {formatCount(n)}
-            </span>
-          </li>
+      <div className="mt-1.5">
+        {tree.map((domain) => (
+          <div key={domain.id} className="border-b border-border py-1.5 last:border-0">
+            <Row
+              label={domain.label}
+              gaps={domain.gaps}
+              facs={domain.facs}
+              cost={domain.cost}
+              unpriced={domain.unpriced}
+              tone="domain"
+            />
+            <ul className="mt-1">
+              {domain.areas.map((area) => (
+                <li key={area.id}>
+                  <Row
+                    label={area.label}
+                    gaps={area.gaps}
+                    facs={area.facs}
+                    cost={area.cost}
+                    unpriced={area.unpriced}
+                    tone="area"
+                    expanded={open.has(area.id)}
+                    onToggle={area.conditions.length ? () => toggle(area.id) : undefined}
+                  />
+                  {open.has(area.id) && (
+                    <ul className="mb-1 ml-3 border-l border-border pl-2">
+                      {area.conditions.map((c) => (
+                        <li key={c.id}>
+                          <Row
+                            label={c.label}
+                            gaps={c.gaps}
+                            facs={c.facs}
+                            cost={c.cost}
+                            unpriced={c.unpriced}
+                            tone="condition"
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
+
+      {/* Said once, under the table, for the one column that does not add up.
+          Cost does, at every level. */}
+      <p className="mt-2 text-[11px] italic leading-snug text-muted-foreground">
+        Gaps is shown only on a domain row, where several gaps land in the same
+        clinic. Below it every gap is one facility, so the two columns would
+        print the same number twice. Cost adds up at every level; facilities
+        does not — a clinic with a power problem and a wiring problem is one
+        facility on the domain row and appears under both areas.
+        {unpriced > 0 && (
+          <>
+            {' '}
+            <span className="mono not-italic">n/p</span> marks work the source
+            does not price, and <span className="mono not-italic">+</span> a
+            total that excludes some:{' '}
+            <span className="mono not-italic tabular-nums">
+              {formatCount(unpriced)}
+            </span>{' '}
+            action(s) here, all of them the connectivity blocker whose fix
+            cannot be costed until someone establishes which connection reaches
+            the site. Never ₦0, which is a real price the data also carries.
+          </>
+        )}
+      </p>
 
     </div>
   );
 }
 
 /**
- * One facility's own gaps — the list, not a count of it.
+ * One row of the gap tree, at any of its three depths.
  *
- * Takes the ids rather than reading `facility.gaps` itself, because the caller
- * has already cut them to the domains in view and priced exactly that subset.
+ * One component rather than three, because the columns must line up down the
+ * whole table — three near-identical row components drift the moment one of
+ * them gets a tweak, and a misaligned cost column is the sort of thing that
+ * makes a reader distrust the numbers rather than the layout.
+ *
+ * Depth is carried by `tone`, which sets weight and indent only. The figures
+ * are rendered identically at every level: they mean the same thing all the
+ * way down, and styling them differently would suggest otherwise.
+ */
+function Row({
+  label,
+  gaps,
+  facs,
+  cost,
+  unpriced,
+  tone,
+  expanded,
+  onToggle,
+}: {
+  label: string;
+  gaps: number;
+  facs: number;
+  cost: number;
+  /**
+   * Actions here the sheet carries no price for.
+   *
+   * Kept apart from `cost` rather than folded in as zero, because the dataset
+   * has both and they are opposite claims. Naming a focal person really is
+   * free; "check which connection works, then use one" is unpriced because
+   * nobody yet knows which connection that is. Both would print ₦0.
+   */
+  unpriced: number;
+  tone: 'domain' | 'area' | 'condition';
+  expanded?: boolean;
+  /** Absent where there is nothing to open — an area with one condition in
+   *  scope, which a click would only redraw. */
+  onToggle?: () => void;
+}) {
+  const figures = (
+    <>
+      {/* Gaps only where it says something Facilities does not.
+
+          Below a domain the two are the same number every time — a gap column
+          holds one value, so a facility carries at most one condition per area
+          — and printing 2,703 twice on the same row is a column of noise the
+          reader has to check before they can ignore it. The blank is the
+          finding: nothing here counts differently from the column beside it.
+          The cell keeps its width so the numbers stay in line down the table. */}
+      <span
+        className="mono w-[38px] shrink-0 text-right text-[11px] tabular-nums text-muted-foreground"
+        aria-hidden={tone !== 'domain'}
+      >
+        {tone === 'domain' ? formatCount(gaps) : ''}
+      </span>
+      <span className="mono w-[38px] shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+        {formatCount(facs)}
+      </span>
+      <span
+        className="mono w-[52px] shrink-0 text-right text-[11px] font-semibold tabular-nums text-foreground"
+        title={unpriced ? `${unpriced} action(s) the source does not price` : undefined}
+      >
+        {unpriced && !cost ? (
+          <span className="font-normal text-muted-foreground">n/p</span>
+        ) : (
+          <>
+            {formatNaira(cost, true)}
+            {unpriced ? <span className="font-normal text-muted-foreground">+</span> : null}
+          </>
+        )}
+      </span>
+    </>
+  );
+
+  const text = cn(
+    'min-w-0 flex-1 text-left leading-snug',
+    tone === 'domain' && 'mono text-[9.5px] font-bold uppercase tracking-[0.09em] text-foreground',
+    tone === 'area' && 'text-[12px] text-foreground',
+    tone === 'condition' && 'text-[11.5px] text-muted-foreground',
+  );
+
+  if (!onToggle) {
+    return (
+      <div className={cn('flex items-baseline gap-2 py-0.5', tone !== 'domain' && 'pl-3')}>
+        <span className={text}>{label}</span>
+        {figures}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      className="flex w-full items-baseline gap-2 rounded py-0.5 text-left hover:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'mono w-3 shrink-0 text-[9px] text-muted-foreground transition-transform',
+          expanded && 'rotate-90',
+        )}
+      >
+        ▶
+      </span>
+      <span className={text}>{label}</span>
+      {figures}
+    </button>
+  );
+}
+
+/**
+ * One facility's gaps: domain, then the gaps inside it, then what to do.
+ *
+ * Takes the grouped rows rather than reading `facility.gaps` itself, because
+ * the caller has already cut them to the domains and gap areas in view and
+ * priced exactly that subset.
+ *
+ * Three depths, and each says a different kind of thing:
+ *
+ *   domain     a heading and a subtotal — where this clinic's money goes
+ *   gap area   the category, with what closing it costs here
+ *   condition  what the survey actually found, verbatim from the sheet
+ *
+ * Then the interventions, which are the point of the dataset: a gap the reader
+ * cannot act on is a diagnosis without a prescription. They stay inline rather
+ * than behind a disclosure because at facility level they are the deliverable —
+ * the thing somebody buys — and the list is short enough to carry them.
+ *
+ * No gap or facility counts anywhere here. Both are always one.
  */
 function FacilityGaps({
-  gaps,
+  groups,
+  schedule,
+  actionCount,
+  cost,
+  unpriced,
   scoped,
 }: {
-  gaps: string[];
+  schedule: { horizon: Horizon; actions: number; cost: number; unpriced: number }[];
+  actionCount: number;
+  groups: {
+    id: string;
+    label: string;
+    cost: number;
+    unpriced: number;
+    gaps: {
+      id: string;
+      area: string;
+      condition: string;
+      cost: number;
+      unpriced: number;
+      interventions: { id: string; label: string; horizon: Horizon; costNGN: number | null }[];
+    }[];
+  }[];
+  cost: number;
+  unpriced: number;
   scoped: boolean;
 }) {
-  if (!gaps.length) {
+  if (!groups.length) {
     return (
       <Nothing>
         {scoped
@@ -797,56 +1280,165 @@ function FacilityGaps({
       </Nothing>
     );
   }
-  return (
-    <ul className="space-y-3">
-      {gaps.map((id) => {
-        const gap = GAP_BY_ID[id];
-        if (!gap) return null;
-        return (
-          <li key={id}>
-            <p className="text-[12.5px] leading-snug text-foreground">{gap.label}</p>
-            <p className="mono mt-0.5 text-[9.5px] uppercase tracking-[0.06em] text-muted-foreground">
-              {GAP_DOMAIN_LABEL[gap.domain]} · {gap.subDomain}
-            </p>
 
-            {/* The interventions, which are the point of the dataset: a gap the
-                reader cannot act on is a diagnosis without a prescription. */}
-            {gap.interventions.length ? (
-              <ul className="mt-1.5 space-y-1.5 border-l border-border pl-2.5">
-                {gap.interventions.map((iv) => (
-                  <li key={iv.id} className="flex items-baseline gap-2">
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[12px] leading-snug text-muted-foreground">
-                        {iv.label}
-                      </span>
-                      <HorizonChip horizon={iv.horizon} />
-                    </span>
-                    {/* Zero is printed, `null` is named. A gap that costs
-                        nothing still has to be closed; one the source does not
-                        price is a different thing entirely, and a blank would
-                        let a reader take it for free. */}
-                    <span className="mono shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
-                      {iv.costNGN == null ? (
-                        <span className="italic opacity-70">Not costed</span>
-                      ) : (
-                        formatNaira(iv.costNGN, true)
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              /* 55 facilities carry a gap the source records with no action
-                 behind it. Saying so is more honest than hiding the gap or
-                 inventing a fix for it — see docs/data-queries. */
-              <p className="mt-1 border-l border-border pl-2.5 text-[12px] italic text-muted-foreground">
-                No intervention recorded.
-              </p>
-            )}
+  return (
+    <div>
+      {/* When the money has to be spent, before where it goes.
+
+          The domain groups below answer "what is wrong here"; this answers
+          "what has to happen before anyone can deploy", which is the question a
+          clinic is actually visited to settle. Both are the same money — every
+          intervention appears in exactly one row here and in exactly one group
+          below — so the two totals agree.
+
+          Counted in **actions, not gaps**: a power gap fires a critical install
+          and an optional grid connection, and those belong in different
+          quarters. That is why these rows sum past the gap count in the
+          heading. */}
+      <div className="mb-3.5">
+        <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[9px] uppercase tracking-[0.07em] text-muted-foreground">
+          <span className="min-w-0 flex-1">When</span>
+          <span className="w-[52px] shrink-0 text-right">Actions</span>
+          <span className="w-[56px] shrink-0 text-right">Cost</span>
+        </div>
+        <ul className="mt-1">
+          {schedule.map((row) => (
+            <li key={row.horizon} className="flex items-baseline gap-2 py-0.5">
+              <span
+                className={cn(
+                  'min-w-0 flex-1 text-[12px] leading-snug',
+                  HORIZON_SEVERITY[row.horizon] === 'blocking'
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground',
+                )}
+              >
+                {HORIZON_LABEL[row.horizon]}
+              </span>
+              <span className="mono w-[52px] shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                {formatCount(row.actions)}
+              </span>
+              <Money cost={row.cost} unpriced={row.unpriced} className="w-[56px]" />
+            </li>
+          ))}
+          <li className="flex items-baseline gap-2 border-t border-border py-1 mt-0.5">
+            <span className="min-w-0 flex-1 text-[12px] font-medium text-foreground">
+              All actions
+            </span>
+            <span className="mono w-[52px] shrink-0 text-right text-[11px] font-semibold tabular-nums text-foreground">
+              {formatCount(actionCount)}
+            </span>
+            <Money cost={cost} unpriced={unpriced} className="w-[56px] font-semibold" />
           </li>
-        );
-      })}
-    </ul>
+        </ul>
+      </div>
+
+      {groups.map((group) => (
+        <section key={group.id} className="mb-3 last:mb-0">
+          <div className="flex items-baseline gap-2 border-b border-border pb-1">
+            <h4 className="mono min-w-0 flex-1 text-[9.5px] font-bold uppercase tracking-[0.09em] text-foreground">
+              {group.label}
+            </h4>
+            <Money cost={group.cost} unpriced={group.unpriced} className="font-semibold" />
+          </div>
+
+          <ul className="mt-2 space-y-3">
+            {group.gaps.map((gap) => (
+              <li key={gap.id}>
+                <div className="flex items-baseline gap-2">
+                  <p className="min-w-0 flex-1 text-[12.5px] font-medium leading-snug text-foreground">
+                    {gap.area}
+                  </p>
+                  <Money cost={gap.cost} unpriced={gap.unpriced} />
+                </div>
+                {/* The finding, under the category it is filed as. Verbatim
+                    from the sheet — "Power gap" is where it sits, this is what
+                    is actually wrong. */}
+                <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+                  {gap.condition}
+                </p>
+
+                {gap.interventions.length ? (
+                  <ul className="mt-1.5 space-y-1.5 border-l border-border pl-2.5">
+                    {gap.interventions.map((iv) => (
+                      <li key={iv.id} className="flex items-baseline gap-2">
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[12px] leading-snug text-muted-foreground">
+                            {iv.label}
+                          </span>
+                          <HorizonChip horizon={iv.horizon} />
+                        </span>
+                        {/* Zero is printed, `null` is named. A gap that costs
+                            nothing still has to be closed; one the source does
+                            not price is a different thing entirely, and a blank
+                            would let a reader take it for free. */}
+                        <span className="mono shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                          {iv.costNGN == null ? (
+                            <span className="italic opacity-70">Not costed</span>
+                          ) : (
+                            formatNaira(iv.costNGN, true)
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  /* 55 facilities carry a gap the source records with no action
+                     behind it. Saying so is more honest than hiding the gap or
+                     inventing a fix for it — see docs/data-queries. */
+                  <p className="mt-1 border-l border-border pl-2.5 text-[12px] italic text-muted-foreground">
+                    No intervention recorded.
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+
+      <div className="flex items-baseline gap-2 border-t border-border pt-2">
+        <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground">Total</span>
+        <Money cost={cost} unpriced={unpriced} className="text-[13px] font-semibold" />
+      </div>
+      {unpriced > 0 && (
+        <p className="mt-1.5 text-[11px] italic leading-snug text-muted-foreground">
+          The total excludes {formatCount(unpriced)} action(s) the source does not
+          price — never ₦0, which is a real price this data also carries.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A cost, with the unpriced case kept apart from a real zero.
+ *
+ * The same rule the gap tree uses one level up: `n/p` where nothing here is
+ * priced, a trailing `+` on a total that leaves something out, and ₦0 only
+ * where ₦0 is what the sheet says.
+ */
+function Money({
+  cost,
+  unpriced,
+  className,
+}: {
+  cost: number;
+  unpriced: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn('mono shrink-0 text-right text-[11.5px] tabular-nums text-foreground', className)}
+      title={unpriced ? `${unpriced} action(s) the source does not price` : undefined}
+    >
+      {unpriced && !cost ? (
+        <span className="font-normal text-muted-foreground">n/p</span>
+      ) : (
+        <>
+          {formatNaira(cost, true)}
+          {unpriced ? <span className="font-normal text-muted-foreground">+</span> : null}
+        </>
+      )}
+    </span>
   );
 }
 

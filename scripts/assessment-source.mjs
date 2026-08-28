@@ -317,10 +317,52 @@ export function gapValueInRow(row, block) {
 }
 
 // ---------------------------------------------------------------------------
+// Gap areas
+// ---------------------------------------------------------------------------
+
+/**
+ * The level between a domain and a gap: one per gap column in the sheet.
+ *
+ * "Technical Infrastructure" is a domain and "No functional electricity source
+ * or 0 hours/day" is a condition; between them sits **Power** — the gap *area*.
+ * The sheet has always had it (it is the column header, minus the word "gap"),
+ * and the model has never carried it, which is why the Gap filter offered 73
+ * conditions in one flat list and no control could ask the question a planner
+ * actually asks: *which facilities have a power problem?*
+ *
+ * The rule that makes the area the right unit for a filter and a rollup: a
+ * facility holds **at most one condition per area**, because a column holds one
+ * value. So counting areas counts facilities, where counting conditions counts
+ * survey answers.
+ */
+export const gapAreaId = (subDomain) => slugify(subDomain);
+
+/**
+ * Every gap area, in the sheet's own column order.
+ *
+ * Column order rather than alphabetical: the sheet leads each domain with its
+ * blocking areas (Power, then Wiring, then Facility-connectivity) and trails it
+ * with the optional ones, which is the order a reader scanning for the serious
+ * problem wants. Alphabetical would open Technical Infrastructure on
+ * Backup-connectivity.
+ */
+export function extractGapAreas(blocks) {
+  return blocks.map((block, order) => ({
+    id: gapAreaId(block.subDomain),
+    domain: block.domain,
+    /** The column header without its trailing "gap" — "Power",
+     *  "Facility-connectivity". Rendered as "Power gap" where a control needs
+     *  the noun. */
+    label: block.subDomain,
+    order,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // The catalogue
 // ---------------------------------------------------------------------------
 
-/** Readable, bounded, stable. The id rides in the URL via the Gap filter. */
+/** Readable, bounded, stable. The id rides in the URL via the Gap area filter. */
 function gapId(subDomain, value) {
   const stem = `${slugify(subDomain)}__${slugify(value).slice(0, 56)}`;
   return stem.replace(/_+$/, '');
@@ -372,7 +414,10 @@ export function extractCatalogue(rows, blocks) {
         byId.set(id, {
           id,
           domain: block.domain,
-          subDomain: block.subDomain,
+          /** The gap area this condition sits in — see `extractGapAreas`. An id
+           *  rather than the display string the header carries, so a control
+           *  can group, scope and filter on it. */
+          area: gapAreaId(block.subDomain),
           label: value,
           /**
            * The gap's own weight: the worst urgency among its interventions.
@@ -402,10 +447,14 @@ export function extractCatalogue(rows, blocks) {
     }
   }
 
+  // Ordered the way the sheet is: domain, then gap area in column order, then
+  // worst-first within an area. Alphabetical by area would open Technical
+  // Infrastructure on Backup-connectivity rather than Power.
+  const areaOrder = new Map(extractGapAreas(blocks).map((a) => [a.id, a.order]));
   const gaps = [...byId.values()].sort(
     (a, b) =>
       DOMAIN_IDS.indexOf(a.domain) - DOMAIN_IDS.indexOf(b.domain) ||
-      a.subDomain.localeCompare(b.subDomain) ||
+      areaOrder.get(a.area) - areaOrder.get(b.area) ||
       HORIZONS.indexOf(worstHorizon(a.interventions)) -
         HORIZONS.indexOf(worstHorizon(b.interventions)) ||
       a.label.localeCompare(b.label),

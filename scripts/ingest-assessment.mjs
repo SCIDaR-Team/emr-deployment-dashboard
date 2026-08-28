@@ -45,6 +45,7 @@ import {
   HORIZONS,
   HORIZON_SUMMARY_COL,
   extractCatalogue,
+  extractGapAreas,
   gapCost,
   gapValueInRow,
   parseAssessmentCsv,
@@ -62,12 +63,19 @@ const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv
 /**
  * The raw ODK export, joined on top of the gaps CSV.
  *
- * Required, not optional. It supplies `geography`, and a build that quietly
- * dropped the field because someone did not have the file would leave every
- * facility reading "Rural" by omission across a committed dataset nobody would
- * think to re-check.
+ * Required whenever the ingest runs, and **not committed** — 37 MB against a
+ * repo whose next largest file is 7.5 MB, changing rarely enough that carrying
+ * every revision in the history is the wrong trade. `public/data/` is committed,
+ * so a clone that only builds and runs the app never needs it; only regenerating
+ * the data does.
+ *
+ * Required rather than optional when it is needed, because it supplies
+ * `geography` and every facility's coordinate. A build that quietly dropped
+ * them because someone did not have the file would leave every facility reading
+ * "Rural" by omission, and an empty map, across a committed dataset nobody
+ * would think to re-check.
  */
-const WORKBOOK = resolve(ROOT, 'Raw data with readiness level.xlsx');
+const WORKBOOK = resolve(ROOT, 'ERA dataset_v4 (1).xlsx');
 
 const BANDS = ['not_ready', 'moderately_ready', 'ready'];
 
@@ -233,6 +241,18 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
 
   const lga = resolveLga(stateId, slugify(row[COL.lga]), lgaIndex);
 
+  /**
+   * This facility's row in the raw ODK export — its setting and its position.
+   *
+   * Matched on UUID, falling back to state/LGA/name for the two facilities
+   * whose UUID was destroyed by spreadsheet auto-formatting — in both files
+   * alike, which is why neither can be matched on id. Null if a facility cannot
+   * be matched at all; the build reports how many, so a re-export that loses a
+   * column shows up as a number rather than as a field quietly reading one
+   * value everywhere.
+   */
+  const record = workbook.find(uuid, nameKey(row[COL.state], row[COL.lga], row[COL.name]));
+
   const gaps = [];
   const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let costNGN = 0;
@@ -259,16 +279,16 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
     lgaId: lga.lgaId,
     zone: meta.zone,
     /**
-     * No coordinate in this dataset — the survey did not record one.
+     * The surveyed position, from the ERA workbook.
      *
-     * Null rather than invented. `projectFacilities` already drops facilities
-     * without a fix, so the LGA map draws its boundary and the pane lists what
-     * is inside it; a facility stays selectable from that list, which is what
-     * writes the URL anyway. An invented position presented as a surveyed one
-     * is the single error this dataset cannot afford.
+     * Null where the facility could not be matched, or where its row carried no
+     * fix — never invented. `projectFacilities` drops a facility without one, so
+     * an unmatched facility still appears in the pane's list and stays
+     * selectable; it simply is not drawn. A position presented as surveyed when
+     * it is not is the single error this dataset cannot afford.
      */
-    lat: null,
-    lon: null,
+    lat: record?.lat ?? null,
+    lon: record?.lon ?? null,
     functionalityLevel: String(row[COL.functionality] ?? '').trim(),
     isBHCPF: String(row[COL.facilityGroup] ?? '').trim() === 'BHCPF',
 
@@ -282,9 +302,7 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
      * loses the column shows up as a number rather than as a field quietly
      * reading one value everywhere.
      */
-    geography:
-      workbook.find(uuid, nameKey(row[COL.state], row[COL.lga], row[COL.name]))?.geography ??
-      null,
+    geography: record?.geography ?? null,
 
     /**
      * Two overall readings, both carried.
@@ -317,6 +335,16 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
     airtelDistanceM: optionalNumber(row[COL.airtelDistanceM]),
   };
 }
+
+/**
+ * Gap area id → display label, filled once the sheet is parsed.
+ *
+ * Module-level because `deploymentFor` needs it four call sites below `main`
+ * and has no other use for the areas table — threading a lookup through
+ * `profileFor` for one string would be worse than a map filled in one place.
+ */
+const AREA_LABEL = new Map();
+const areaLabel = (id) => AREA_LABEL.get(id) ?? id;
 
 /** Mirrors `gapId` in assessment-source.mjs. Kept in step by the catalogue
  *  lookup failing loudly if it ever drifts. */
@@ -431,8 +459,8 @@ const HORIZON_PRIORITY = {
 function deploymentFor(facilities, catalogueById) {
   const gapCounts = new Map();
   const lines = new Map();
-  const byHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
-  const byDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
+  const costByHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
+  const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let unpriced = 0;
 
   for (const f of facilities) {
@@ -460,8 +488,8 @@ function deploymentFor(facilities, catalogueById) {
           unpriced += 1;
         } else {
           line.totalCostNGN += iv.costNGN;
-          byHorizon[iv.horizon] += iv.costNGN;
-          byDomain[gap.domain] += iv.costNGN;
+          costByHorizon[iv.horizon] += iv.costNGN;
+          costByDomain[gap.domain] += iv.costNGN;
         }
         lines.set(iv.id, line);
       }
@@ -479,15 +507,15 @@ function deploymentFor(facilities, catalogueById) {
     /** Interventions in scope carrying no price. Zero everywhere except where
      *  one of Query B's 332 facilities is included. */
     unpricedInterventions: unpriced,
-    byHorizon,
-    byDomain,
+    costByHorizon,
+    costByDomain,
     gaps: [...gapCounts.entries()]
       .map(([id, facilityCount]) => {
         const g = catalogueById.get(id);
         return {
           id,
           domain: g.domain,
-          subDomain: g.subDomain,
+          subDomain: areaLabel(g.area),
           label: g.label,
           severity: g.severity,
           facilityCount,
@@ -625,10 +653,13 @@ async function main() {
     `Parsed ${rows.length} facilities, ${blocks.length} gap columns from ${origin}\n`,
   );
 
+  const gapAreas = extractGapAreas(blocks);
+  for (const a of gapAreas) AREA_LABEL.set(a.id, a.label);
+
   const catalogue = extractCatalogue(rows, blocks);
   const catalogueById = new Map(catalogue.map((g) => [g.id, g]));
   process.stderr.write(
-    `Extracted ${catalogue.length} gap variants, ` +
+    `Extracted ${gapAreas.length} gap areas, ${catalogue.length} conditions, ` +
       `${new Set(catalogue.flatMap((g) => g.interventions.map((i) => i.id))).size} interventions\n`,
   );
 
@@ -636,9 +667,14 @@ async function main() {
 
   if (!existsSync(WORKBOOK)) {
     throw new Error(
-      `Missing ${WORKBOOK}.\nIt supplies each facility's rural/urban setting. ` +
-        `Without it the field would silently vanish from a committed dataset, ` +
-        `so the build stops instead.`,
+      `Missing ${WORKBOOK}.\n\n` +
+        `It is deliberately not in the repository — 37 MB, and everything it ` +
+        `feeds is already committed under public/data. Put a copy at the path ` +
+        `above to regenerate that data; you do not need it to build or run the ` +
+        `app.\n\n` +
+        `It supplies each facility's rural/urban setting and coordinate. ` +
+        `Without it both would silently vanish from a committed dataset, so ` +
+        `the build stops instead.`,
     );
   }
   const workbook = lookupFor(parseFacilityWorkbook(readFileSync(WORKBOOK)));
@@ -785,7 +821,7 @@ async function main() {
   write('national.json', national);
   write('snapshot.json', snapshot);
 
-  writeGapCatalogue(catalogue);
+  writeGapCatalogue(catalogue, gapAreas);
   writeNationalSplit(national.useDistribution, facilities.length);
 
   report(facilities, catalogue, national, stateProfiles, { roundingDrift, roundedRows });
@@ -795,7 +831,7 @@ async function main() {
 // Generated modules
 // ---------------------------------------------------------------------------
 
-function writeGapCatalogue(catalogue) {
+function writeGapCatalogue(catalogue, areas) {
   const domains = DOMAINS.map((d) => ({ id: d.id, label: d.label, costed: true }));
 
   writeFileSync(
@@ -804,9 +840,10 @@ function writeGapCatalogue(catalogue) {
  * GENERATED by scripts/ingest-assessment.mjs — do not edit.
  *
  * The gap dictionary, extracted from the assessment dataset rather than
- * declared. Every entry here is a (sub-domain, condition) pair the survey
- * actually recorded, carrying the interventions that pair triggers at the
- * urgency and price the sheet gives them.
+ * declared. Three levels, as the source has them: **domain → gap area →
+ * condition**. Every entry in \`GAPS\` is a condition the survey actually
+ * recorded, sitting in one of the twenty areas and carrying the interventions
+ * it triggers at the urgency and price the sheet gives them.
  *
  * Emitted rather than fetched: every control that offers a gap needs the whole
  * list before it can render one, so a network round-trip would only buy a
@@ -816,7 +853,14 @@ function writeGapCatalogue(catalogue) {
  * level and has no column in the source.
  */
 
-import type { Band, FacilityThemeId, GapDomainId, GapSeverity, Horizon } from './types';
+import type {
+  Band,
+  FacilityThemeId,
+  GapAreaId,
+  GapDomainId,
+  GapSeverity,
+  Horizon,
+} from './types';
 
 /** Urgencies, worst-first. The source's own four, not a three-level
  *  approximation of them: major and critical are exactly what the deployment
@@ -863,12 +907,45 @@ export interface GapInterventionDef {
   costNGN: number | null;
 }
 
+export interface GapAreaDef {
+  id: GapAreaId;
+  domain: GapDomainId;
+  /** The column header without its trailing "gap" — "Power",
+   *  "Facility-connectivity". Say "Power gap" where the noun is wanted. */
+  label: string;
+  /** Position in the sheet, which leads each domain with its blocking areas. */
+  order: number;
+}
+
+/**
+ * The gap areas — the level between a domain and a gap.
+ *
+ * Twenty of them, one per gap column in the source. A facility holds **at most
+ * one condition per area**, because a column holds one value, and that is what
+ * makes the area the unit a filter and a rollup can count: counting areas
+ * counts facilities, where counting conditions counts survey answers.
+ *
+ * In the sheet's column order, not alphabetical — see \`extractGapAreas\`.
+ */
+export const GAP_AREAS: GapAreaDef[] = ${JSON.stringify(areas, null, 2)};
+
+export const GAP_AREA_BY_ID: Record<string, GapAreaDef> = Object.fromEntries(
+  GAP_AREAS.map((a) => [a.id, a]),
+);
+
+/** Gap areas for a domain selection. No domains ticked means every area — the
+ *  same grammar as LGA under State. */
+export function gapAreasForDomains(domains: readonly string[]): GapAreaDef[] {
+  if (!domains.length) return GAP_AREAS;
+  return GAP_AREAS.filter((a) => domains.includes(a.domain));
+}
+
 export interface GapDef {
   id: string;
   domain: GapDomainId;
-  /** The sub-domain the gap sits under, e.g. "Power". The source has no level
-   *  between this and the gap itself. */
-  subDomain: string;
+  /** The gap area this condition sits in. An id — the label is on
+   *  \`GAP_AREA_BY_ID\`, so nothing renders a sliced column header. */
+  area: GapAreaId;
   /** The condition the survey recorded, verbatim. */
   label: string;
   severity: GapSeverity;
@@ -885,6 +962,68 @@ export const GAP_BY_ID: Record<string, GapDef> = Object.fromEntries(
 export function gapsForDomains(domains: readonly string[]): GapDef[] {
   if (!domains.length) return GAPS;
   return GAPS.filter((g) => domains.includes(g.domain));
+}
+
+/**
+ * The gap ids in scope under the Domain and Gap area filters together. **The
+ * rule.**
+ *
+ * Every figure derived from gaps goes through here — the pane's headline, the
+ * per-domain rows, the facility card, the list rows and the map's investment
+ * fills. That is the point: they cannot disagree about what was selected.
+ *
+ * Both filters narrow, and a gap area narrows *which gaps are counted*, not
+ * only which facilities are in scope. Selecting a domain's areas and selecting
+ * the domain give identical figures, because every gap sits in exactly one area
+ * and every area in exactly one domain.
+ */
+export function offeredGapIds(
+  domains: readonly string[],
+  gapAreas: readonly string[],
+): Set<string> {
+  const areas = gapAreas.length ? new Set(gapAreas) : null;
+  const ids = new Set<string>();
+  for (const g of GAPS) {
+    if (domains.length && !domains.includes(g.domain)) continue;
+    if (areas && !areas.has(g.area)) continue;
+    ids.add(g.id);
+  }
+  return ids;
+}
+
+/** The conditions inside one area, worst-first — the order \`GAPS\` is already
+ *  in, so this is a filter rather than a sort. */
+export function gapsInArea(areaId: GapAreaId): GapDef[] {
+  return GAPS.filter((g) => g.area === areaId);
+}
+
+/**
+ * Whether an area can block deployment at all.
+ *
+ * The worst severity any of its conditions carries — so \`blocking\` means *some
+ * facility here is stopped*, not that every one is. Only 3 of the 20 areas
+ * qualify, all in Technical Infrastructure; see docs/GAP_TAXONOMY.md.
+ */
+export function gapAreaSeverity(areaId: GapAreaId): GapSeverity {
+  return gapsInArea(areaId).some((g) => g.severity === 'blocking') ? 'blocking' : 'partial';
+}
+
+/** The areas a facility carries a gap in. At most one condition feeds each, so
+ *  the length is how many of the 20 areas are a problem here. */
+export function facilityGapAreas(gapIds: readonly string[]): GapAreaId[] {
+  const seen = new Set<GapAreaId>();
+  for (const id of gapIds) {
+    const area = GAP_BY_ID[id]?.area;
+    if (area) seen.add(area);
+  }
+  return GAP_AREAS.filter((a) => seen.has(a.id)).map((a) => a.id);
+}
+
+/** Does this facility carry a gap in any of these areas? The Gap area filter's
+ *  own question — OR within the control, like every other multi-select. */
+export function hasGapInAreas(gapIds: readonly string[], areas: readonly string[]): boolean {
+  if (!areas.length) return true;
+  return gapIds.some((id) => areas.includes(GAP_BY_ID[id]?.area ?? ''));
 }
 
 /**
