@@ -194,7 +194,7 @@ export default function LandingPage() {
 
           <nav
             aria-label="Dashboard modules"
-            className="grid gap-2.5 sm:grid-cols-3 md:flex md:items-stretch"
+            className="grid min-w-0 gap-2.5 sm:grid-cols-3 md:flex md:items-stretch"
           >
             {NAV_ITEMS.map((mod) => {
               const Icon = ICONS[mod.icon] ?? Map;
@@ -202,14 +202,14 @@ export default function LandingPage() {
                 <NavLink
                   key={mod.path}
                   to={mod.path}
-                  className="group flex items-center gap-3 rounded-[5px] border border-border bg-surface px-3.5 py-1.5 transition-colors hover:border-brand-500 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-border bg-surface px-3.5 py-1.5 transition-colors hover:border-brand-500 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <Icon
                     className="h-[18px] w-[18px] shrink-0 text-muted-foreground transition-colors group-hover:text-brand-500"
                     aria-hidden
                   />
                   <span className="flex min-w-0 flex-col leading-tight">
-                    <span className="text-[13px] font-semibold text-foreground">
+                    <span className="truncate text-[13px] font-semibold text-foreground">
                       {mod.label}
                     </span>
                     <span className="mt-0.5 truncate text-[11px] text-muted-foreground">
@@ -217,7 +217,7 @@ export default function LandingPage() {
                     </span>
                   </span>
                   <ArrowRight
-                    className="ml-3 h-4 w-4 shrink-0 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-brand-500"
+                    className="ml-3 block h-4 w-4 shrink-0 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-brand-500 md:hidden xl:block"
                     aria-hidden
                   />
                 </NavLink>
@@ -229,7 +229,7 @@ export default function LandingPage() {
 
       <main className={cn(SHELL, 'flex flex-1 flex-col justify-center gap-[clamp(0.7rem,2vh,1.25rem)] py-[clamp(0.7rem,2vh,1.25rem)]')}>
         {/* ── The finding, and the evidence for it ─────────────────────── */}
-        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-14">
+        <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12">
           <div className="flex flex-col">
             <p className="eyebrow">National assessment</p>
             <h1 className="mt-3 text-[clamp(1.7rem,2.9vw,2.7rem)] font-semibold leading-[1.08] tracking-tight text-balance text-foreground">
@@ -238,7 +238,7 @@ export default function LandingPage() {
                 Nearly half need foundational infrastructure first.
               </em>
             </h1>
-            <p className="mt-5 max-w-[46ch] text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-muted-foreground">
               Readiness measures whether a facility can realistically begin an EMR
               deployment — not whether it already owns the equipment. What separates the
               bands is the work still outstanding.
@@ -389,7 +389,7 @@ export default function LandingPage() {
                     <p className="mono mt-1 whitespace-nowrap text-[9.5px] uppercase tracking-[0.08em] text-foreground">
                       {label}
                     </p>
-                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{sub}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{sub}</p>
                   </div>
                 </div>
               ))}
