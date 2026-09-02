@@ -245,10 +245,10 @@ export const INTERNET_GROUPS: readonly {
     providers: [
       { id: 'mtn', label: 'MTN', monogram: 'M', brand: { bg: '#FFCC00', fg: '#0F1511' } },
       { id: 'airtel', label: 'Airtel', monogram: 'A', brand: { bg: '#E40000', fg: '#FFFFFF' } },
-      // Dark monogram, not white: Glo's green is bright enough that white on it
-      // measures 3.2:1, under the 4.5 a 8px bold glyph needs. Ink on the same
-      // green measures 5.9 and keeps the brand colour exact.
-      { id: 'glo', label: 'Glo', monogram: 'G', brand: { bg: '#4CA22F', fg: '#0F1511' } },
+      // Ink monogram, not white, here and on Smile: both greens are bright
+      // enough that white on them lands near 3:1, under the 4.5 an 8px bold
+      // glyph needs. Ink clears it without touching the colour.
+      { id: 'glo', label: 'Glo', monogram: 'G', brand: { bg: '#5AB447', fg: '#0F1511' } },
       // EMTS is the corporate name; the network trades as 9mobile, whose mark
       // is the one a reader would recognise — hence the monogram and the green.
       { id: 'emts', label: 'EMTS', monogram: '9', brand: { bg: '#006F51', fg: '#FFFFFF' } },
@@ -267,8 +267,16 @@ export const INTERNET_GROUPS: readonly {
     id: 'wifi',
     label: 'Enterprise wi-fi',
     providers: [
-      { id: 'smile', label: 'Smile', monogram: 'S' },
-      { id: 'century21', label: '21st Century', monogram: '21' },
+      { id: 'smile', label: 'Smile', monogram: 'S', brand: { bg: '#78BE43', fg: '#0F1511' } },
+      /*
+       * The pink of the four-diamond mark, deepened from the artwork's own
+       * #E5217F. At the true value a white monogram measures 4.33:1 and an ink
+       * one 4.37 — the colour sits in the gap where neither passes, so the
+       * only way to keep the glyph legible is to take the hue a step darker.
+       * The other three diamonds (green, amber, violet) are dropped: a chip
+       * this size holds one colour, and the pink is the one the mark leads on.
+       */
+      { id: 'century21', label: '21st Century', monogram: '21', brand: { bg: '#D4176F', fg: '#FFFFFF' } },
       { id: 'ntel', label: 'NTEL', monogram: 'N' },
       // Not an operator at all — the sheet's catch-all column for everyone it
       // did not name. A neutral tile is the honest mark for it.
