@@ -121,6 +121,29 @@ export function formatShare(part: number, whole: number): string {
   return part > 0 && share < 0.5 ? '<1%' : formatPercent(share);
 }
 
+/**
+ * A large count, compacted for a headline (140.9M, 264.1M).
+ *
+ * Uppercase M and k, unlike `formatNaira`'s lowercase bn/m — these sit in a
+ * sentence ("140.9M active subscriptions") rather than in a currency column,
+ * and the capital reads as a unit rather than as part of the number. Below
+ * 10,000 nothing is gained by compacting, so the full figure is kept.
+ */
+export function formatCompactCount(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—';
+  // Threshold and divisor differ for k: compacting starts at 10,000, but the
+  // unit is still a thousand, so 12,345 is 12.3k and not 1.2k.
+  const units: [number, number, string][] = [
+    [1e9, 1e9, 'B'],
+    [1e6, 1e6, 'M'],
+    [1e4, 1e3, 'k'],
+  ];
+  for (const [threshold, divisor, suffix] of units) {
+    if (Math.abs(n) >= threshold) return `${(n / divisor).toFixed(1)}${suffix}`;
+  }
+  return formatCount(n);
+}
+
 /** Naira, compacted for headline figures (₦100.0bn) or full for tables. */
 export function formatNaira(
   amount: number | null | undefined,

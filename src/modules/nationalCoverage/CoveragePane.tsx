@@ -1,8 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import {
+  Globe,
+  Info,
+  Router,
+  Search,
+  Smartphone,
+  Users,
+  Wifi,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
 import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
-import { formatCount, formatPercent } from '@/lib/format';
+import { formatCompactCount, formatCount, formatPercent } from '@/lib/format';
 import { COVERAGE_THEMES, INTERNET_GROUPS, subDomainsFor } from '@/lib/themes';
 import { BandBadge, BandCards } from '@/components/ui';
 import type {
@@ -10,6 +20,7 @@ import type {
   Band,
   CoverageMeasures,
   CoverageThemeId,
+  InternetProviderGroup,
   InternetSubscriptions,
 } from '@/lib/types';
 import {
@@ -227,14 +238,30 @@ function Reading({ band }: { band: Band | null }) {
   );
 }
 
+/* Measure and access-technology icons. Names live in the tables in themes.ts,
+   the components they resolve to live here — the same split Sidebar.tsx uses,
+   so a data table never imports from the icon library. */
+const MEASURE_ICONS: Record<string, LucideIcon> = { Zap, Globe, Users };
+const GROUP_ICONS: Record<InternetProviderGroup, LucideIcon> = {
+  mobile: Smartphone,
+  fixed: Router,
+  wifi: Wifi,
+};
+
 /**
- * The figures beneath a domain.
+ * The figures beneath a domain, as cards.
  *
  * Set in plain ink with no band colour anywhere near them, and that is a rule
  * rather than a style choice: sub-domains carry no readiness level, in this
- * dataset or the real one, so tinting 63% with a readiness hue would invent a
+ * dataset or the real one, so tinting 53.3% with a readiness hue would invent a
  * judgement the data does not make. Colour on this page means band, and only
- * the blocks above have one.
+ * the blocks above have one. The card gives the figure its own frame, an icon
+ * and a denominator — everything the number needs to be read — without giving
+ * it a hue.
+ *
+ * Two across, or one full-width where a sub-domain has a single measure. The
+ * pane is 420px, so two is the most that can hold a 20px figure and still say
+ * what it is a share of.
  */
 function SubDomains({
   themeId,
@@ -247,53 +274,112 @@ function SubDomains({
   if (!subs.length) return null;
 
   return (
-    <div className="mt-3.5 space-y-3 border-t border-border pt-3">
+    <div className="mt-3.5 space-y-4 border-t border-border pt-3.5">
       {subs.map((sub) => (
-        <div key={sub.id}>
-          <p className="text-[12px] font-medium text-foreground">{sub.label}</p>
-          <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">{sub.note}</p>
-          <dl className="mt-2.5 space-y-2.5">
-            {sub.measures.map((measure) => {
-              const value = measures[measure.key];
-              return (
-                <div key={measure.key} className="flex items-center gap-3">
-                  <dt className="mono w-16 shrink-0 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                    {measure.label}
-                  </dt>
-                  <dd className="flex min-w-0 flex-1 items-center gap-2.5">
-                    {measure.format === 'percent' ? (
-                      <>
-                        {/* Neutral ink, and the bar is a magnitude, not a
-                            judgement — no threshold, no colour change. */}
-                        <span className="h-2 min-w-0 flex-1 rounded-[1px] bg-surface-sunk">
-                          <span
-                            className="block h-full rounded-[1px] bg-foreground/60"
-                            style={{ width: `${Math.max(0, Math.min(100, value ?? 0))}%` }}
-                          />
-                        </span>
-                        {/* The figures are the reason this pane exists — they
-                            are set to be read across the room, not squinted at.
-                            Weight and size only: still no band colour, because
-                            a measure carries no band. */}
-                        {/* One decimal always: these are read as a column, and
-                            an exact 45 printed as "45%" beside "50.5%" breaks
-                            the alignment the column is scanned by. */}
-                        <span className="mono w-[52px] shrink-0 text-right text-[17px] font-semibold leading-none tracking-tight text-foreground">
-                          {value == null ? '—' : formatPercent(value, 1)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="mono text-[19px] font-semibold leading-none tracking-tight text-foreground">
-                        {value == null ? '—' : formatCount(value)}
-                      </span>
-                    )}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        </div>
+        <section key={sub.id}>
+          <p className="eyebrow">{sub.label}</p>
+          {/* The note is promoted from a grey gloss to the block's own
+              headline. It is the sentence that says what the figures are, and
+              at 11.5px grey it was read as boilerplate and skipped. */}
+          <h4 className="mt-1 text-[13px] font-semibold leading-snug tracking-tight text-foreground">
+            {sub.note}
+          </h4>
+          <div
+            className={cn(
+              'mt-2.5 grid gap-2',
+              sub.measures.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
+            )}
+          >
+            {sub.measures.map((measure) => (
+              <MeasureCard
+                key={measure.key}
+                icon={MEASURE_ICONS[measure.icon] ?? Globe}
+                label={measure.label}
+                caption={measure.caption}
+                format={measure.format}
+                value={measures[measure.key]}
+              />
+            ))}
+          </div>
+        </section>
       ))}
+    </div>
+  );
+}
+
+/**
+ * One figure, framed.
+ *
+ * ## The bar is capped and the caption is not
+ *
+ * `internetSubscriptionPct` legitimately exceeds 100 — subscriptions are
+ * counted per SIM and Ogun holds 120.5 per hundred people. A bar cannot draw
+ * that, and drawing it at 100% while the caption still reads "of population
+ * with access" would state something false twice over. So the track fills and
+ * the caption says what actually happened: more than one subscription a head.
+ * The figure itself is never clamped.
+ */
+function MeasureCard({
+  icon: Icon,
+  label,
+  caption,
+  format,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  caption: string;
+  format: 'percent' | 'count';
+  value: number | null;
+}) {
+  const isPercent = format === 'percent';
+  const over = isPercent && value != null && value > 100;
+
+  return (
+    <div className="rounded-card border border-border bg-surface p-2.5">
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunk"
+        >
+          <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="mono truncate text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+            {label}
+          </p>
+          {/* One decimal always: these are read as a pair, and an exact 45
+              printed as "45%" beside "50.5%" breaks the alignment. */}
+          <p className="mono mt-0.5 text-[19px] font-semibold leading-none tracking-tight text-foreground">
+            {value == null ? (
+              '—'
+            ) : isPercent ? (
+              <>
+                {value.toFixed(1)}
+                <span className="text-[11px] font-medium text-muted-foreground">%</span>
+              </>
+            ) : (
+              formatCount(value)
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* No track where there is no figure. An empty bar beside a dash reads
+          as a measured zero, and null here means nobody measured. */}
+      {isPercent && value != null && (
+        <span className="mt-2 block h-1.5 rounded-full bg-surface-sunk">
+          {/* A magnitude, not a judgement — no threshold, no colour change. */}
+          <span
+            className="block h-full rounded-full bg-foreground/65"
+            style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+          />
+        </span>
+      )}
+
+      <p className="mt-1.5 text-[9.5px] leading-snug text-muted-foreground">
+        {over ? 'more than one per head' : caption}
+      </p>
     </div>
   );
 }
@@ -341,7 +427,9 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
   const { total, population, byProvider } = internet;
 
   const groups = INTERNET_GROUPS.map((group) => {
-    const reporting = group.providers.filter((p) => byProvider[p.id] != null);
+    const reporting = group.providers
+      .filter((p) => byProvider[p.id] != null)
+      .sort((a, b) => (byProvider[b.id] ?? 0) - (byProvider[a.id] ?? 0));
     return {
       ...group,
       reporting,
@@ -350,6 +438,21 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
       subtotal: reporting.length
         ? reporting.reduce((sum, p) => sum + (byProvider[p.id] ?? 0), 0)
         : null,
+      /*
+       * The bar scale for the rows below: the group's own largest operator.
+       *
+       * Within the group, not across the page. Mobile is 99.8% of everything,
+       * so a bar drawn against the national total would leave fixed broadband
+       * and wi-fi as empty tracks and say nothing about who leads inside them.
+       * The SHARE column beside each bar, and the group's own share above it,
+       * carry the true proportion — the bar only ranks.
+       *
+       * Null where a group has one reporting operator, and no bar is drawn.
+       * Scaled against itself it would fill the track, which on a technology
+       * holding under 0.1% of subscriptions is the one impression the block
+       * exists to correct. With nothing to rank there is nothing to draw.
+       */
+      leader: reporting.length > 1 ? (byProvider[reporting[0]!.id] ?? 0) : null,
     };
   });
 
@@ -358,64 +461,155 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
   );
 
   return (
-    <div className="mt-3.5 border-t border-border pt-3">
-      <p className="text-[12px] font-medium text-foreground">Internet subscriptions</p>
+    <section className="mt-4 border-t border-border pt-3.5">
+      <p className="eyebrow">Internet subscriptions</p>
+      <h4 className="mt-1 text-[15px] font-semibold leading-tight tracking-tight text-foreground">
+        {formatCompactCount(total)} active subscriptions
+      </h4>
       <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
-        {formatCount(total)} active subscriptions over a {formatCount(population)} population
-        (NBS 2025) — the rate above.
+        across a population of {formatCompactCount(population)} (NBS 2025).
       </p>
 
-      <dl className="mt-2.5 space-y-2.5">
-        {groups.map((group) => (
-          <div key={group.id}>
-            {/* The technology, then its share — the row a reader scans. */}
-            <div className="flex items-baseline gap-2">
-              <dt className="mono min-w-0 flex-1 truncate text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                {group.label}
-              </dt>
-              <dd className="mono shrink-0 text-[13px] font-semibold leading-none tracking-tight text-foreground">
-                {group.subtotal == null ? '—' : formatCount(group.subtotal)}
-              </dd>
-              <dd className="mono w-[42px] shrink-0 text-right text-[11px] font-semibold leading-none text-muted-foreground">
-                {group.subtotal == null ? '—' : shareOfSubs(group.subtotal, total)}
-              </dd>
+      {/* The three technologies at a glance, before the operator detail. The
+          finding is the shape of this row — mobile carries all of it — and a
+          reader who stops here has still been told the thing that matters. */}
+      <div className="mt-2.5 rounded-card border border-border bg-surface-sunk/45 px-2.5 py-2">
+        <p className="text-[10px] font-medium text-muted-foreground">
+          Total subscriptions by category
+        </p>
+        <div className="mt-2 grid grid-cols-3 divide-x divide-border">
+          {groups.map((group) => {
+            const Icon = GROUP_ICONS[group.id];
+            return (
+              <div key={group.id} className="px-2 first:pl-0 last:pr-0">
+                <Icon
+                  aria-hidden
+                  className="h-3.5 w-3.5 text-muted-foreground"
+                  strokeWidth={1.75}
+                />
+                <p className="mono mt-1 text-[13px] font-semibold leading-none tracking-tight text-foreground">
+                  {group.subtotal == null ? '—' : formatCompactCount(group.subtotal)}
+                </p>
+                <p className="mt-1 truncate text-[9.5px] leading-none text-muted-foreground">
+                  {group.label}
+                </p>
+                <p className="mono mt-1 text-[9.5px] leading-none text-muted-foreground">
+                  {group.subtotal == null ? '—' : shareOfSubs(group.subtotal, total)}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Then the operators, one table per technology. */}
+      {groups.map((group) => {
+        const Icon = GROUP_ICONS[group.id];
+        return (
+          <div key={group.id} className="mt-3">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-card bg-surface-sunk"
+              >
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="mono truncate text-[10.5px] font-bold uppercase tracking-[0.09em] text-foreground">
+                  {group.label}
+                </p>
+                <p className="mono truncate text-[9.5px] leading-tight text-muted-foreground">
+                  {group.subtotal == null ? '—' : formatCount(group.subtotal)} subscriptions
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="mono text-[13px] font-semibold leading-none tracking-tight text-foreground">
+                  {group.subtotal == null ? '—' : shareOfSubs(group.subtotal, total)}
+                </p>
+                <p className="mt-1 text-[9px] leading-none text-muted-foreground">
+                  of total subscriptions
+                </p>
+              </div>
             </div>
 
-            {/* Operators indented under their technology, biggest first, and
-                only the ones with a figure. */}
             {group.reporting.length > 0 && (
-              <div className="mt-1.5 space-y-1 pl-3">
-                {[...group.reporting]
-                  .sort((a, b) => (byProvider[b.id] ?? 0) - (byProvider[a.id] ?? 0))
-                  .map((provider) => (
-                    <div key={provider.id} className="flex items-baseline gap-2">
-                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
-                        {provider.label}
-                      </span>
-                      <span className="mono shrink-0 text-[11.5px] text-foreground">
-                        {formatCount(byProvider[provider.id] ?? 0)}
-                      </span>
-                      <span className="mono w-[42px] shrink-0 text-right text-[11px] text-muted-foreground">
-                        {shareOfSubs(byProvider[provider.id] ?? 0, total)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
+              <table className="mt-2 w-full table-fixed border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th
+                      scope="col"
+                      className="mono pb-1 text-left text-[8.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
+                    >
+                      Provider
+                    </th>
+                    <th
+                      scope="col"
+                      className="mono w-[76px] pb-1 text-right text-[8.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
+                    >
+                      Subscriptions
+                    </th>
+                    <th
+                      scope="col"
+                      className="mono w-[40px] pb-1 text-right text-[8.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
+                    >
+                      Share
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.reporting.map((provider) => {
+                    const count = byProvider[provider.id] ?? 0;
+                    return (
+                      <tr key={provider.id} className="border-b border-border/60 last:border-0">
+                        <td className="py-1.5 pr-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-[72px] shrink-0 truncate text-[11px] text-foreground">
+                              {provider.label}
+                            </span>
+                            {group.leader != null && (
+                              <span className="h-1.5 min-w-0 flex-1 rounded-full bg-surface-sunk">
+                                <span
+                                  className="block h-full rounded-full bg-foreground/55"
+                                  style={{ width: `${(count / group.leader) * 100}%` }}
+                                />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="mono py-1.5 text-right text-[11px] text-foreground">
+                          {formatCount(count)}
+                        </td>
+                        <td className="mono py-1.5 text-right text-[10px] text-muted-foreground">
+                          {shareOfSubs(count, total)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
-        ))}
-      </dl>
+        );
+      })}
 
       {unreported.length > 0 && (
-        <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
+        <p className="mt-3 text-[10.5px] leading-snug text-muted-foreground">
           Not reported here:{' '}
-          <span className="text-foreground">
-            {unreported.map((p) => p.label).join(', ')}
-          </span>
-          . The source leaves these blank, which is not the same as none.
+          <span className="text-foreground">{unreported.map((p) => p.label).join(', ')}</span>. The
+          source leaves these blank, which is not the same as none.
         </p>
       )}
-    </div>
+
+      {/* The two denominators, said once at the foot rather than argued with
+          in every caption above. */}
+      <div className="mt-2.5 flex gap-2 rounded-card bg-surface-sunk/60 px-2.5 py-2">
+        <Info aria-hidden className="mt-px h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <p className="text-[10px] leading-snug text-muted-foreground">
+          <span className="font-medium text-foreground">Access rates are per head</span> (population
+          level). Subscription counts may exceed the population, as some people hold more than one.
+        </p>
+      </div>
+    </section>
   );
 }
 

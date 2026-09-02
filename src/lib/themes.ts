@@ -101,6 +101,18 @@ export interface MeasureDef {
   key: keyof import('./types').CoverageMeasures;
   label: string;
   format: 'percent' | 'count';
+  /** Icon name from lucide-react, resolved in `CoveragePane`. */
+  icon: string;
+  /**
+   * What the figure is a share *of*, said under the bar.
+   *
+   * A percentage on its own has no denominator, and these two do not share one:
+   * electricity is people with a supply, internet is subscriptions counted per
+   * SIM. Printing "50.5%" and "53.3%" side by side without saying so invites
+   * the reading that both are shares of the same population — which is the one
+   * misreading `internetSubscriptionPct` must never be given.
+   */
+  caption: string;
 }
 
 export interface SubDomainDef {
@@ -128,8 +140,23 @@ export const SUB_DOMAINS: readonly SubDomainDef[] = [
     label: 'Access rates',
     note: 'Population with electricity, and active internet subscriptions per head.',
     measures: [
-      { key: 'electricityAccessPct', label: 'Electricity', format: 'percent' },
-      { key: 'internetSubscriptionPct', label: 'Internet', format: 'percent' },
+      {
+        key: 'electricityAccessPct',
+        label: 'Electricity',
+        format: 'percent',
+        icon: 'Zap',
+        caption: 'of population with access',
+      },
+      {
+        key: 'internetSubscriptionPct',
+        label: 'Internet',
+        format: 'percent',
+        icon: 'Globe',
+        /* Not "of population with access". Subscriptions are counted per SIM,
+           so this is a rate per head that legitimately passes 100 — see the
+           note on the field in types.ts. */
+        caption: 'subscriptions per head',
+      },
     ],
   },
   {
@@ -137,7 +164,15 @@ export const SUB_DOMAINS: readonly SubDomainDef[] = [
     themeId: 'workforce_capacity',
     label: 'Staff',
     note: 'Health workforce headcount.',
-    measures: [{ key: 'staffCount', label: 'Staff', format: 'count' }],
+    measures: [
+      {
+        key: 'staffCount',
+        label: 'Staff',
+        format: 'count',
+        icon: 'Users',
+        caption: 'health workers recorded',
+      },
+    ],
   },
 ];
 
