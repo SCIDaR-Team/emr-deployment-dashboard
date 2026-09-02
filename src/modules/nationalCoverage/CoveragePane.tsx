@@ -102,9 +102,10 @@ export function CoveragePane({
               <Reading band={area.coverage.themeBands[theme.id] ?? null} />
             )}
             <SubDomains themeId={theme.id} measures={measures} />
-            {/* The counts behind the internet rate, under the domain that rate
-                belongs to. Renders nothing below a state, where the workbook
-                has no rows. */}
+            {/* The counts behind the internet rate, directly beneath it: Access
+                rates is the only sub-domain this domain has, so appending here
+                lands the block under the two figures it is the arithmetic for.
+                Renders nothing below a state, where the workbook has no rows. */}
             {theme.id === 'technical_infrastructure' && (
               <InternetProviders internet={area.coverage.internet} />
             )}

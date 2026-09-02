@@ -544,18 +544,13 @@ function investmentsFor(deployment) {
 /**
  * The coverage layer, for the areas this dataset can speak about.
  *
- * Only MTN serviceability is recoverable — as the share of facilities the sheet
- * calls immediately serviceable. Airtel's serviceability column is empty in all
- * 2,806 rows and grid connection is not collected at all, so both stay null:
- * not measured, which is a different claim from zero and must render
- * differently. Staff headcount is likewise absent from this dataset.
+ * Nothing measurable comes out of the facility rows here — the band and the two
+ * rates below it are the coverage workbook's, and this dataset's own MTN
+ * serviceability is a per-facility finding that stays on the facility, where
+ * Assessed States reports it. Staff headcount is absent from this dataset
+ * entirely.
  */
-function coverageFor(facilities, desk = null) {
-  const measured = facilities.filter((f) => f.mtnServiceability !== null);
-  const serviceable = measured.filter(
-    (f) => f.mtnServiceability === 'Immediately serviceable',
-  ).length;
-
+function coverageFor(desk = null) {
   return {
     /**
      * The band arrives classified, from the coverage workbook, and is copied
@@ -583,11 +578,6 @@ function coverageFor(facilities, desk = null) {
       workforce_capacity: null,
     },
     measures: {
-      networkMtnPct: measured.length
-        ? Number(((100 * serviceable) / measured.length).toFixed(1))
-        : null,
-      networkAirtelPct: null,
-      gridConnectionPct: null,
       staffCount: null,
       electricityAccessPct: desk?.electricityAccessPct ?? null,
       internetSubscriptionPct: desk?.internetSubscriptionPct ?? null,
@@ -657,7 +647,7 @@ function profileFor({
     ),
     themeDistribution: themeDistributionOf(facilities),
 
-    coverage: coverageFor(facilities, desk),
+    coverage: coverageFor(desk),
     investments: deployment ? investmentsFor(deployment) : [],
     deployment,
   };

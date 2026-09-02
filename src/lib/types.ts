@@ -193,13 +193,13 @@ export type BandDistribution = Record<Band, number>;
  * The figures reported beneath the two coverage domains.
  *
  * **These carry no readiness band, and never will.** They are measurements:
- * what share of a state's facilities the network reaches, what share is on the
- * grid. A band is a judgement about readiness and it is made one level up, at
- * the domain.
+ * what share of a state's population has power, how many subscriptions it holds
+ * per head. A band is a judgement about readiness and it is made one level up,
+ * at the domain.
  *
  * That distinction is load-bearing for the UI. Band colour — the three
  * readiness hues — must never touch a number from this object, or the page
- * starts implying that 63% MTN coverage *is* a readiness finding. It is
+ * starts implying that a 45% electricity rate *is* a readiness finding. It is
  * context sitting beside one.
  *
  * Nor are the domain bands derived from these figures. They arrive already
@@ -207,10 +207,12 @@ export type BandDistribution = Record<Band, number>;
  * unremarkable coverage and that is a fact about the source data, not a bug
  * here. Nothing in this codebase may recompute a band from a measure.
  *
- * The assessment dataset supplies only `networkMtnPct`. Airtel serviceability
- * is blank in every row of the source and grid connection is not collected at
- * all, so both stay null — and null means *not measured*, which must render
- * differently from zero.
+ * MTN, Airtel and grid connection used to sit here, from the facility survey.
+ * Airtel and grid were blank in every row of that source, and MTN
+ * serviceability is a clinic-level finding on 12 states rather than a statement
+ * about the state itself — the wrong claim for this page. All three are gone;
+ * the per-facility `mtnServiceability` they were rolled up from is untouched
+ * and still reported on Assessed States.
  *
  * The two national rates come from a second source entirely — the coverage
  * workbook, which reports published statistics per state rather than anything
@@ -226,12 +228,6 @@ export type BandDistribution = Record<Band, number>;
  * contradict the source by nearly seven points. See `build-coverage.mjs`.
  */
 export interface CoverageMeasures {
-  /** Share of the area with MTN network coverage, 0–100. */
-  networkMtnPct: number | null;
-  /** Share of the area with Airtel network coverage, 0–100. */
-  networkAirtelPct: number | null;
-  /** Share of the area connected to the national grid, 0–100. */
-  gridConnectionPct: number | null;
   /** Health workforce headcount. An absolute count, not a ratio. */
   staffCount: number | null;
   /** Share of the state's population with access to electricity, 0–100. */

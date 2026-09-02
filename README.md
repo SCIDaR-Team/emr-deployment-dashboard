@@ -109,9 +109,12 @@ stand", and the answer is 37 state-level readings from `AreaProfile.coverage` �
 a different claim from the facility survey, which lives on Assessed States. The
 two are held apart in the type system for that reason.
 
-Beneath the two domains sit sub-domains — Network Coverage (MTN, Airtel), Power,
-Staff — and **these carry no readiness band, by design**. They are measurements,
-not judgements, so band colour never touches them.
+Beneath the two domains sit sub-domains — Access rates (electricity, internet)
+and Staff — and **these carry no readiness band, by design**. They are
+measurements, not judgements, so band colour never touches them. Network
+Coverage and Power were removed: Airtel serviceability and grid connection were
+blank in every source row, and MTN serviceability is a per-facility finding that
+belongs on Assessed States, where it still is.
 
 ## Bands, not scores
 

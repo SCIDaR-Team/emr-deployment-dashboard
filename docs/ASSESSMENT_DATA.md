@@ -488,6 +488,12 @@ not recoverable at all.
 The honest move is to drop the fields that have no source rather than carry
 invented numbers next to real ones on the same card.
 
+**Since superseded:** all three `CoverageMeasures` network/power fields —
+`networkMtnPct` included — were removed outright. The two that had no source
+printed a dash on every area, and the one that did answers a facility-level
+question National Coverage is not asking. Per-facility `mtnServiceability` is
+unaffected.
+
 ---
 
 ## Part 3 — The plan
@@ -644,7 +650,9 @@ In `src/lib/types.ts`:
   `Exclude<…>` and becomes `ThemeId` outright; `DeploymentPhase.stateGaps` goes.
 - **`CoverageMeasures`:** `networkMtnPct` becomes real (share immediately
   serviceable, from column 50). `networkAirtelPct` and `gridConnectionPct` go
-  null — the file has neither. `staffCount` goes.
+  null — the file has neither. `staffCount` goes. *(Superseded: all three
+  network/power fields were later dropped from the type — see §"Fields the app
+  has that this file does not".)*
 
 ### Step 4 — the facility card
 

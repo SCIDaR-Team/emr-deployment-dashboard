@@ -115,13 +115,13 @@ export interface SubDomainDef {
 export const SUB_DOMAINS: readonly SubDomainDef[] = [
   {
     /**
-     * First, because these two *are* the coverage band.
+     * The only figures under this domain, and the pair the band is made from.
      *
-     * Everything else under this domain comes from the facility survey and
-     * exists for 12 states; these come from the desk model that classified all
-     * 37, and the band above them is a judgement made from exactly this pair.
-     * A reader looking at "Not ready" wants the two numbers that decided it
-     * before the ones that did not.
+     * Network Coverage and Power sat here too, from the facility survey. They
+     * were removed rather than left empty: Airtel and grid connection were
+     * never collected, so both printed a dash on every area, and MTN
+     * serviceability answers a question this page is not asking — the coverage
+     * workbook, not the clinic survey, is what National Coverage reports.
      */
     id: 'population_access',
     themeId: 'technical_infrastructure',
@@ -131,23 +131,6 @@ export const SUB_DOMAINS: readonly SubDomainDef[] = [
       { key: 'electricityAccessPct', label: 'Electricity', format: 'percent' },
       { key: 'internetSubscriptionPct', label: 'Internet', format: 'percent' },
     ],
-  },
-  {
-    id: 'network_coverage',
-    themeId: 'technical_infrastructure',
-    label: 'Network Coverage',
-    note: 'Share of assessed facilities the operator can service immediately.',
-    measures: [
-      { key: 'networkMtnPct', label: 'MTN', format: 'percent' },
-      { key: 'networkAirtelPct', label: 'Airtel', format: 'percent' },
-    ],
-  },
-  {
-    id: 'power',
-    themeId: 'technical_infrastructure',
-    label: 'Power',
-    note: 'Share of the area connected to the national grid.',
-    measures: [{ key: 'gridConnectionPct', label: 'Grid connection', format: 'percent' }],
   },
   {
     id: 'staff',
