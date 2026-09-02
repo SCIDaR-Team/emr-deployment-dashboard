@@ -157,20 +157,34 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 }
 
 /**
- * The national shape: a count per band, best first, with the split above it.
+ * The national shape: a count and its share per band, best first, over the
+ * denominator both are taken on.
  *
- * Read as "6 states · READY": the figure and what it counts are one phrase and
- * set together, and the band stands apart from them in its own colour. Running
- * them together as "6 states ready" makes the reader parse a sentence to find
- * two facts; this way the eye takes the number, then the classification, and
- * the row scans down the column with the others.
+ * The same three cards Assessed States uses, and deliberately identical to
+ * them: a reader moving between the two pages is comparing 37 states against
+ * 2,806 facilities, and the comparison is hard enough without the tiles also
+ * being laid out differently.
+ *
+ * The share is the point of adding it. "24 states not ready" is a figure the
+ * reader has to divide by 37 before it says anything, and that nearly two
+ * thirds of the country is not ready *is* the finding — so the card states it
+ * instead of leaving it to be worked out. It sits at the right edge rather than
+ * beside the count, where it read as more digits; out there the three shares
+ * stack into a column of their own.
+ *
+ * `unit` names the count in the line below and nowhere else — which is what
+ * `BandCards` asks for when the surrounding block has already said what is
+ * being counted. On the card it cost more than it explained: "states" between
+ * the figure and the share left a two-digit count no room, so 64.9% wrapped
+ * below its own card and that one card grew taller than the two beside it.
+ * Said once underneath, it covers all three.
  */
 function CountRows({ counts, unit }: { counts: Record<Band, number>; unit: string }) {
   const total = totalOf(counts);
 
   return (
     <div>
-      <BandCards counts={counts} unit={unit} />
+      <BandCards counts={counts} showPercent />
       <p className="mono mt-2.5 text-[10px] text-muted-foreground">
         {formatCount(total)} {unit} classified
       </p>
