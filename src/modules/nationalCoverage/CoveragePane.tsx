@@ -2,10 +2,16 @@ import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
-import { formatCount } from '@/lib/format';
-import { COVERAGE_THEMES, subDomainsFor } from '@/lib/themes';
+import { formatCount, formatPercent } from '@/lib/format';
+import { COVERAGE_THEMES, INTERNET_GROUPS, subDomainsFor } from '@/lib/themes';
 import { BandBadge, BandCards } from '@/components/ui';
-import type { AreaProfile, Band, CoverageMeasures, CoverageThemeId } from '@/lib/types';
+import type {
+  AreaProfile,
+  Band,
+  CoverageMeasures,
+  CoverageThemeId,
+  InternetSubscriptions,
+} from '@/lib/types';
 import {
   bandUnderLens,
   countByBand,
@@ -96,6 +102,12 @@ export function CoveragePane({
               <Reading band={area.coverage.themeBands[theme.id] ?? null} />
             )}
             <SubDomains themeId={theme.id} measures={measures} />
+            {/* The counts behind the internet rate, under the domain that rate
+                belongs to. Renders nothing below a state, where the workbook
+                has no rows. */}
+            {theme.id === 'technical_infrastructure' && (
+              <InternetProviders internet={area.coverage.internet} />
+            )}
           </Block>
         ))}
 
@@ -262,8 +274,11 @@ function SubDomains({
                             are set to be read across the room, not squinted at.
                             Weight and size only: still no band colour, because
                             a measure carries no band. */}
+                        {/* One decimal always: these are read as a column, and
+                            an exact 45 printed as "45%" beside "50.5%" breaks
+                            the alignment the column is scanned by. */}
                         <span className="mono w-[52px] shrink-0 text-right text-[17px] font-semibold leading-none tracking-tight text-foreground">
-                          {value == null ? '—' : `${value}%`}
+                          {value == null ? '—' : formatPercent(value, 1)}
                         </span>
                       </>
                     ) : (
@@ -278,6 +293,127 @@ function SubDomains({
           </dl>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Internet subscriptions, by access technology and operator.
+ *
+ * This is the arithmetic behind the rate above it: `total / population` is
+ * `internetSubscriptionPct`, so a reader who wants to know what "53.3%" is
+ * made of can read down and find out. Grouped by technology because that is
+ * the finding — mobile carries 99.8% of subscriptions and fixed broadband
+ * 0.02%, which for an EMR deployment is the difference between a clinic that
+ * can hold a connection and one that cannot.
+ *
+ * Plain ink throughout. These are counts, not readiness, and the rule on this
+ * page is that band colour means band — see `SubDomains`.
+ *
+ * ## Null and zero are different rows
+ *
+ * Four operators are blank in every row of the source. They are listed by name
+ * as *not reported* rather than printed as `0`, because zero subscriptions is a
+ * claim the workbook never makes. Read out of the data rather than hardcoded,
+ * so an operator that gains figures later simply appears.
+ */
+/**
+ * A subscription share, to one decimal.
+ *
+ * `formatShare`'s whole percentages round mobile's 99.83% to "100%", which
+ * reads as "mobile is everything" — and that fixed broadband and wi-fi are
+ * *small but not nothing* is the whole reason this block is grouped. One
+ * decimal keeps 99.8% honest and keeps EMTS at 0.8% rather than 1%.
+ *
+ * A `<0.1%` floor is kept, for the reason `formatShare` has its own: 175
+ * subscriptions for 21st Century is a real figure, and "0.0%" printed beside
+ * the count reads as a contradiction rather than as a small number.
+ */
+function shareOfSubs(part: number, total: number): string {
+  if (!total) return '—';
+  const share = (part / total) * 100;
+  return part > 0 && share < 0.05 ? '<0.1%' : formatPercent(share, 1);
+}
+
+function InternetProviders({ internet }: { internet: InternetSubscriptions | null }) {
+  if (!internet) return null;
+  const { total, population, byProvider } = internet;
+
+  const groups = INTERNET_GROUPS.map((group) => {
+    const reporting = group.providers.filter((p) => byProvider[p.id] != null);
+    return {
+      ...group,
+      reporting,
+      // Null when the whole group is unmeasured, so it reads "—" rather than
+      // claiming the technology has no subscribers.
+      subtotal: reporting.length
+        ? reporting.reduce((sum, p) => sum + (byProvider[p.id] ?? 0), 0)
+        : null,
+    };
+  });
+
+  const unreported = INTERNET_GROUPS.flatMap((g) =>
+    g.providers.filter((p) => byProvider[p.id] == null),
+  );
+
+  return (
+    <div className="mt-3.5 border-t border-border pt-3">
+      <p className="text-[12px] font-medium text-foreground">Internet subscriptions</p>
+      <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
+        {formatCount(total)} active subscriptions over a {formatCount(population)} population
+        (NBS 2025) — the rate above.
+      </p>
+
+      <dl className="mt-2.5 space-y-2.5">
+        {groups.map((group) => (
+          <div key={group.id}>
+            {/* The technology, then its share — the row a reader scans. */}
+            <div className="flex items-baseline gap-2">
+              <dt className="mono min-w-0 flex-1 truncate text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                {group.label}
+              </dt>
+              <dd className="mono shrink-0 text-[13px] font-semibold leading-none tracking-tight text-foreground">
+                {group.subtotal == null ? '—' : formatCount(group.subtotal)}
+              </dd>
+              <dd className="mono w-[42px] shrink-0 text-right text-[11px] font-semibold leading-none text-muted-foreground">
+                {group.subtotal == null ? '—' : shareOfSubs(group.subtotal, total)}
+              </dd>
+            </div>
+
+            {/* Operators indented under their technology, biggest first, and
+                only the ones with a figure. */}
+            {group.reporting.length > 0 && (
+              <div className="mt-1.5 space-y-1 pl-3">
+                {[...group.reporting]
+                  .sort((a, b) => (byProvider[b.id] ?? 0) - (byProvider[a.id] ?? 0))
+                  .map((provider) => (
+                    <div key={provider.id} className="flex items-baseline gap-2">
+                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
+                        {provider.label}
+                      </span>
+                      <span className="mono shrink-0 text-[11.5px] text-foreground">
+                        {formatCount(byProvider[provider.id] ?? 0)}
+                      </span>
+                      <span className="mono w-[42px] shrink-0 text-right text-[11px] text-muted-foreground">
+                        {shareOfSubs(byProvider[provider.id] ?? 0, total)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </dl>
+
+      {unreported.length > 0 && (
+        <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
+          Not reported here:{' '}
+          <span className="text-foreground">
+            {unreported.map((p) => p.label).join(', ')}
+          </span>
+          . The source leaves these blank, which is not the same as none.
+        </p>
+      )}
     </div>
   );
 }

@@ -592,6 +592,21 @@ function coverageFor(facilities, desk = null) {
       electricityAccessPct: desk?.electricityAccessPct ?? null,
       internetSubscriptionPct: desk?.internetSubscriptionPct ?? null,
     },
+
+    /**
+     * The counts the rate is taken over, where the source has them.
+     *
+     * Null below the state, and null is the honest answer: the workbook has no
+     * LGA rows, and an LGA showing 0 subscriptions would be asserting something
+     * nobody measured.
+     */
+    internet: desk
+      ? {
+          population: desk.population,
+          total: desk.subscriptions,
+          byProvider: desk.byProvider,
+        }
+      : null,
   };
 }
 
@@ -732,9 +747,20 @@ async function main() {
   // Read from committed JSON, not from the workbook: `npm run data:coverage`
   // extracts and validates that file, and the workbook itself is gitignored, so
   // this build needs nothing that a clone does not have.
-  const deskByState = new Map(
-    readJSON('scripts/source-data/national-coverage.json').states.map((s) => [s.id, s]),
-  );
+  const deskCoverage = readJSON('scripts/source-data/national-coverage.json');
+  const deskByState = new Map(deskCoverage.states.map((s) => [s.id, s]));
+  const deskNational = deskCoverage.national;
+
+  // The national block is computed from the same 37 rows, so a mismatch means
+  // the JSON was hand-edited — the one thing its own header tells you not to do.
+  const deskPopulation = deskCoverage.states.reduce((a, s) => a + s.population, 0);
+  if (deskNational.population !== deskPopulation) {
+    throw new Error(
+      `The coverage JSON's national population (${deskNational.population.toLocaleString()}) ` +
+        `is not the sum of its states (${deskPopulation.toLocaleString()}). ` +
+        `Re-run \`npm run data:coverage\` rather than editing that file.`,
+    );
+  }
 
   // Every state, or none — a state silently missing its band is a state that
   // renders as "not measured" on a page whose entire subject is that band.
@@ -842,6 +868,18 @@ async function main() {
     zone: null,
     facilities,
     catalogueById,
+    /**
+     * The national reading, from the workbook rather than from these 37 rows.
+     *
+     * `build-coverage.mjs` computes it: internet as subscriptions over
+     * population — the same division the state rate is, done on the totals —
+     * and electricity as the survey's own published national rate, which is the
+     * only figure available because no state row carries a numerator. Neither
+     * is an average of the states. It carries no `band`: the workbook
+     * classifies states, and the country's own band would be a judgement
+     * nobody made.
+     */
+    desk: deskNational,
     extra: {
       lgaCount: lgaProfiles.length,
       assessedLgaCount: new Set(facilities.map((f) => `${f.stateId}.${f.lgaId}`)).size,

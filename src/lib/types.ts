@@ -214,9 +214,16 @@ export type BandDistribution = Record<Band, number>;
  *
  * The two national rates come from a second source entirely — the coverage
  * workbook, which reports published statistics per state rather than anything
- * observed in a clinic. They are set on all 37 states and on nothing else: the
- * workbook has no LGA rows, and averaging state rates into a national figure
- * would weight Bayelsa like Kano, so both stay null above and below the state.
+ * observed in a clinic. They are set on all 37 states and on the national
+ * profile, and stay null below the state, because the workbook has no LGA rows.
+ *
+ * Neither national figure is an average of the states, and that is deliberate.
+ * `internetSubscriptionPct` is subscriptions over population at both levels —
+ * summed, not averaged, which needs no weighting decision and lands 1.6 points
+ * away from a plain mean. `electricityAccessPct` is the survey's own published
+ * national rate: only the rate is given per state, never a numerator, so
+ * nothing can be rebuilt from the column, and re-aggregating it would
+ * contradict the source by nearly seven points. See `build-coverage.mjs`.
  */
 export interface CoverageMeasures {
   /** Share of the area with MTN network coverage, 0–100. */
@@ -259,6 +266,58 @@ export interface CoverageProfile {
   themeBands: Record<CoverageThemeId, Band | null>;
   /** The sub-domain figures. Unbanded, always — see `CoverageMeasures`. */
   measures: CoverageMeasures;
+  /** The subscription counts behind `internetSubscriptionPct`, where the source
+   *  has them. Null on every area it does not — see `InternetSubscriptions`. */
+  internet: InternetSubscriptions | null;
+}
+
+/**
+ * The eleven operators the coverage workbook counts subscriptions for, grouped
+ * by access technology.
+ *
+ * `mobile` carries 99.8% of all subscriptions in the current data; `fixed`
+ * (0.02%) and `wifi` (0.15%) are rounding error beside it. Both are kept
+ * anyway, because "fixed broadband is almost nonexistent" is a finding about
+ * deploying an EMR, not noise to tidy away.
+ */
+export type InternetProviderGroup = 'mobile' | 'fixed' | 'wifi';
+
+export type InternetProviderId =
+  | 'mtn'
+  | 'glo'
+  | 'airtel'
+  | 'emts'
+  | 'ipnx'
+  | 'mtnFixed'
+  | 'inq'
+  | 'century21'
+  | 'smile'
+  | 'ntel'
+  | 'isp';
+
+/**
+ * The arithmetic behind an area's internet subscription rate.
+ *
+ * `total / population` *is* `internetSubscriptionPct`, and the ingest checks
+ * that in every row — which is what lets the national figure be the same
+ * division done on the totals rather than an average of 37 rates.
+ *
+ * Set on the 37 states and on the national profile, and null everywhere else:
+ * the workbook has no rows below a state, and a null here means the counts are
+ * unknown, not that nobody subscribes.
+ *
+ * **A null in `byProvider` is "not measured", never zero.** Four of the eleven
+ * operators are blank in every row of the source, and printing 0 for ipNX would
+ * assert something the sheet does not say. Anything rendering these must keep
+ * the two apart.
+ */
+export interface InternetSubscriptions {
+  /** NBS 2025 population projection — the rate's denominator. */
+  population: number;
+  /** Active subscriptions, all operators. Sums `byProvider`, treating null as
+   *  absent rather than as zero. */
+  total: number;
+  byProvider: Record<InternetProviderId, number | null>;
 }
 
 // ---------------------------------------------------------------------------

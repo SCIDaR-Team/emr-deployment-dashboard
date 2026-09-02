@@ -7,7 +7,12 @@
  * a level of detail the band cannot support.
  */
 
-import type { CoverageThemeId, ThemeId } from './types';
+import type {
+  CoverageThemeId,
+  InternetProviderGroup,
+  InternetProviderId,
+  ThemeId,
+} from './types';
 
 export interface ThemeDef {
   id: ThemeId;
@@ -109,10 +114,29 @@ export interface SubDomainDef {
 
 export const SUB_DOMAINS: readonly SubDomainDef[] = [
   {
+    /**
+     * First, because these two *are* the coverage band.
+     *
+     * Everything else under this domain comes from the facility survey and
+     * exists for 12 states; these come from the desk model that classified all
+     * 37, and the band above them is a judgement made from exactly this pair.
+     * A reader looking at "Not ready" wants the two numbers that decided it
+     * before the ones that did not.
+     */
+    id: 'population_access',
+    themeId: 'technical_infrastructure',
+    label: 'Access rates',
+    note: 'Population with electricity, and active internet subscriptions per head.',
+    measures: [
+      { key: 'electricityAccessPct', label: 'Electricity', format: 'percent' },
+      { key: 'internetSubscriptionPct', label: 'Internet', format: 'percent' },
+    ],
+  },
+  {
     id: 'network_coverage',
     themeId: 'technical_infrastructure',
     label: 'Network Coverage',
-    note: 'Share of the area with mobile network coverage, by operator.',
+    note: 'Share of assessed facilities the operator can service immediately.',
     measures: [
       { key: 'networkMtnPct', label: 'MTN', format: 'percent' },
       { key: 'networkAirtelPct', label: 'Airtel', format: 'percent' },
@@ -143,3 +167,52 @@ export const COVERAGE_THEMES = THEMES.filter(
 export function subDomainsFor(themeId: CoverageThemeId): SubDomainDef[] {
   return SUB_DOMAINS.filter((s) => s.themeId === themeId);
 }
+
+/**
+ * The three access technologies the coverage workbook counts under, and the
+ * operators it counts within each.
+ *
+ * Order and grouping are the sheet's own. The labels are not: the sheet writes
+ * operators in caps ("21ST CENT") because it is a spreadsheet, and this is a
+ * page.
+ *
+ * `mobile` is 99.8% of every subscription in the data. The other two groups are
+ * kept regardless — that fixed broadband barely exists outside a handful of
+ * states is a fact worth putting on the page when the question is whether a
+ * clinic can hold a connection, not a small number to round away.
+ */
+export const INTERNET_GROUPS: readonly {
+  id: InternetProviderGroup;
+  label: string;
+  providers: readonly { id: InternetProviderId; label: string }[];
+}[] = [
+  {
+    id: 'mobile',
+    label: 'Mobile',
+    providers: [
+      { id: 'mtn', label: 'MTN' },
+      { id: 'airtel', label: 'Airtel' },
+      { id: 'glo', label: 'Glo' },
+      { id: 'emts', label: 'EMTS' },
+    ],
+  },
+  {
+    id: 'fixed',
+    label: 'Fixed broadband',
+    providers: [
+      { id: 'mtnFixed', label: 'MTN Fixed' },
+      { id: 'ipnx', label: 'ipNX' },
+      { id: 'inq', label: 'INQ' },
+    ],
+  },
+  {
+    id: 'wifi',
+    label: 'Enterprise wi-fi',
+    providers: [
+      { id: 'smile', label: 'Smile' },
+      { id: 'century21', label: '21st Century' },
+      { id: 'ntel', label: 'NTEL' },
+      { id: 'isp', label: 'ISP' },
+    ],
+  },
+];
