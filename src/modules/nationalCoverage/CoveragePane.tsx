@@ -13,7 +13,7 @@ import {
 import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { formatCompactCount, formatCount, formatPercent } from '@/lib/format';
-import { COVERAGE_THEMES, INTERNET_GROUPS, subDomainsFor } from '@/lib/themes';
+import { COVERAGE_THEMES, INTERNET_GROUPS, subDomainsFor, type ProviderDef } from '@/lib/themes';
 import { BandBadge, BandCards } from '@/components/ui';
 import type {
   AreaProfile,
@@ -422,6 +422,56 @@ function shareOfSubs(part: number, total: number): string {
   return part > 0 && share < 0.05 ? '<0.1%' : formatPercent(share, 1);
 }
 
+/**
+ * An operator's mark, beside its name.
+ *
+ * The operator's own artwork where `ProviderDef.logo` names a file that has
+ * been supplied, and a monogram tile everywhere else. The real marks are
+ * trademarked artwork this repository does not hold, and inventing a wordmark
+ * for an operator is worse than not drawing one — so the fallback tile carries
+ * the brand's colour where that colour is a known fact (see
+ * `ProviderDef.brand`) and a neutral surface where it is not.
+ *
+ * A supplied logo sits on a light tile in both schemes. Brand artwork is drawn
+ * for paper and most of it is dark ink on transparency, which vanishes on a
+ * dark background; a constant light tile is the standard lockup and the only
+ * one that cannot swallow a mark.
+ *
+ * ## Why brand colour is allowed here, when band colour is not
+ *
+ * The rule on this page is that hue means readiness. This tile is the one
+ * exception, and it holds because the tile answers "who", never "how ready":
+ * it is 18px, it never touches a figure, a bar or a row, and it always sits
+ * immediately left of the name it belongs to. The chip is read as a logo, in
+ * the place a logo goes. Nothing else in the pane may take a brand colour.
+ */
+function ProviderMark({ provider }: { provider: ProviderDef }) {
+  if (provider.logo) {
+    return (
+      <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center overflow-hidden rounded-[3px] bg-white">
+        <img src={provider.logo} alt="" className="h-[14px] w-[14px] object-contain" />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'mono flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] text-[8px] font-bold leading-none',
+        !provider.brand && 'bg-surface-sunk text-muted-foreground',
+      )}
+      style={
+        provider.brand
+          ? { backgroundColor: provider.brand.bg, color: provider.brand.fg }
+          : undefined
+      }
+    >
+      {provider.monogram}
+    </span>
+  );
+}
+
 function InternetProviders({ internet }: { internet: InternetSubscriptions | null }) {
   if (!internet) return null;
   const { total, population, byProvider } = internet;
@@ -563,7 +613,8 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
                       <tr key={provider.id} className="border-b border-border/60 last:border-0">
                         <td className="py-1.5 pr-2">
                           <div className="flex items-center gap-2">
-                            <span className="w-[72px] shrink-0 truncate text-[11px] text-foreground">
+                            <ProviderMark provider={provider} />
+                            <span className="w-[68px] shrink-0 truncate text-[11px] text-foreground">
                               {provider.label}
                             </span>
                             {group.leader != null && (
