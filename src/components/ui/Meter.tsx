@@ -50,7 +50,7 @@ export function BandMark({
       aria-label={label}
       role="img"
       className={cn(
-        'inline-block h-2 w-2 shrink-0 rounded-[1px] align-baseline',
+        'band-swatch inline-block h-2 w-2 shrink-0 rounded-[1px] align-baseline',
         band ? cn(BAND_CLASSES[band].bg, BAND_CLASSES[band].texture) : 'bg-nodata',
         className,
       )}
@@ -167,7 +167,11 @@ export function BandLegend({
         <li key={band} className="flex items-center gap-1.5">
           <span
             aria-hidden
-            className={cn('block h-2 w-5', BAND_CLASSES[band].bg, BAND_CLASSES[band].texture)}
+            className={cn(
+              'band-swatch block h-2 w-5',
+              BAND_CLASSES[band].bg,
+              BAND_CLASSES[band].texture,
+            )}
           />
           {BAND_LABEL[band]}
         </li>
@@ -199,6 +203,15 @@ export function BandLegend({
  * deuteranopia and protanopia and indistinguishable in greyscale, so colour
  * never travels alone. Here it travels with both of the other two carriers.
  *
+ * The card is *filled* with its band rather than set in white with coloured
+ * type. Type was carrying the colour on its own here — a 9px uppercase label
+ * and a 14px icon — which is the thinnest possible reading of a value the
+ * client picked as an area fill, and it left three near-identical white cards
+ * to be told apart by two small marks. Filled, the row states the split before
+ * a single figure is read. The figure itself stays ink (`--on-band`, fixed in
+ * both schemes because the fill under it is): recolouring a number to encode
+ * its band is the thing `BandMark` exists to avoid.
+ *
  * `unit` is for counts of things the reader needs named — "6 states". Omit it
  * where the surrounding block has already said what is being counted, and pass
  * `showPercent` where the share matters as much as the count.
@@ -218,9 +231,16 @@ export function BandCards({
   const total = order.reduce((sum, band) => sum + (counts[band] ?? 0), 0);
 
   return (
-    <div className={cn('grid grid-cols-3 gap-px border border-border bg-border', className)}>
+    /* The rules are `--on-band` at 15%, not `--border`. A hairline in the
+       border colour is a 1.04:1 edge against the Ready and Moderate fills —
+       invisible, so the three cards run together into one strip. This one
+       darkens whatever it lies on, which is what a rule between filled cards
+       has to do. */
+    <div
+      className={cn('grid grid-cols-3 gap-px border border-onband/15 bg-onband/15', className)}
+    >
       {order.map((band) => (
-        <div key={band} className="bg-surface px-2 py-2">
+        <div key={band} className={cn('band-card px-2 py-2', BAND_CLASSES[band].bg)}>
           {/* Figure, then its qualifiers on the same baseline. The unit is the
               number's own noun so it stays against it ("6 states"); the share
               is a second reading of the same count, so it goes to the card's
@@ -228,27 +248,19 @@ export function BandCards({
               and out there the three shares stack into a column of their own.
               The band label has the line under it to itself. */}
           <div className="flex flex-wrap items-baseline gap-x-1.5">
-            <BandIcon
-              band={band}
-              className={cn('h-3.5 w-3.5 shrink-0 translate-y-[2px]', BAND_CLASSES[band].text)}
-            />
-            <span className="mono text-[18px] font-semibold leading-none tracking-tight text-foreground">
+            <BandIcon band={band} className="h-3.5 w-3.5 shrink-0 translate-y-[2px]" />
+            <span className="mono text-[18px] font-semibold leading-none tracking-tight">
               {formatCount(counts[band] ?? 0)}
             </span>
-            {unit && <span className="text-[11px] leading-none text-muted-foreground">{unit}</span>}
+            {unit && <span className="text-[11px] leading-none text-onband-muted">{unit}</span>}
             {showPercent && (
-              <span className="mono ml-auto text-[11px] font-semibold leading-none text-muted-foreground">
+              <span className="mono ml-auto text-[11px] font-semibold leading-none text-onband-muted">
                 {total ? percentOf(counts[band] ?? 0, total, 1) : '—'}
               </span>
             )}
           </div>
 
-          <p
-            className={cn(
-              'mono mt-2 text-[9px] font-bold uppercase leading-tight tracking-[0.07em]',
-              BAND_CLASSES[band].text,
-            )}
-          >
+          <p className="mono mt-2 text-[9px] font-bold uppercase leading-tight tracking-[0.07em]">
             {BAND_LABEL[band]}
           </p>
         </div>

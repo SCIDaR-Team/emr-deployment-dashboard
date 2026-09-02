@@ -51,7 +51,15 @@ export function MapLegend({
         <span key={band} className="flex items-center gap-1.5">
           <svg width={14} height={14} aria-hidden>
             {marks === 'area' ? (
-              <rect width={14} height={14} rx={3} fill={bandFlatFill(band)} />
+              <rect
+                x={0.5}
+                y={0.5}
+                width={13}
+                height={13}
+                rx={2.5}
+                fill={bandFlatFill(band)}
+                stroke="rgb(0 0 0 / 0.12)"
+              />
             ) : (
               <path d={bandMarkerPath(band, 7, 7, 5.4)} className={BAND_SWATCH_CLASS[band]} />
             )}
@@ -62,7 +70,15 @@ export function MapLegend({
       {showNoData && (
         <span className="flex items-center gap-1.5">
           <svg width={14} height={14} aria-hidden>
-            <rect width={14} height={14} rx={3} className="fill-nodata" />
+            <rect
+              x={0.5}
+              y={0.5}
+              width={13}
+              height={13}
+              rx={2.5}
+              className="fill-nodata"
+              stroke="rgb(0 0 0 / 0.12)"
+            />
           </svg>
           No data
         </span>

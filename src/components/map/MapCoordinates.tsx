@@ -129,7 +129,7 @@ export function FacilityCoordinates({
           aria-label={copied ? 'Coordinates copied' : 'Copy coordinates'}
         >
           {copied ? (
-            <Check className="h-3.5 w-3.5 text-ready" aria-hidden />
+            <Check className="h-3.5 w-3.5 text-ready-ink" aria-hidden />
           ) : (
             <Copy className="h-3.5 w-3.5" aria-hidden />
           )}

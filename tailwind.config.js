@@ -39,20 +39,36 @@ export default {
 
         // Readiness bands. These three carry meaning across every surface —
         // donuts, badges, choropleth, checklists, roadmap. Never hand-pick a
-        // status colour; go through statusColor() in src/lib/bands.ts.
+        // status colour; go through BAND_CLASSES in src/lib/bands.ts.
+        //
+        // Two halves per band, and the split is load-bearing: DEFAULT is the
+        // client's pastel and is for FILLS ONLY — a polygon, a swatch, a bar
+        // segment, a badge ground. `ink` is the same band at a text weight and
+        // is what any label, figure, icon or border uses. `text-ready` would
+        // put pale sage on near-white; `text-ready-ink` is the one you want.
         ready: {
           DEFAULT: 'hsl(var(--ready) / <alpha-value>)',
+          ink: 'hsl(var(--ready-ink) / <alpha-value>)',
           wash: 'hsl(var(--ready-wash) / <alpha-value>)',
         },
         moderate: {
           DEFAULT: 'hsl(var(--moderate) / <alpha-value>)',
+          ink: 'hsl(var(--moderate-ink) / <alpha-value>)',
           wash: 'hsl(var(--moderate-wash) / <alpha-value>)',
         },
         notready: {
           DEFAULT: 'hsl(var(--not-ready) / <alpha-value>)',
+          ink: 'hsl(var(--not-ready-ink) / <alpha-value>)',
           wash: 'hsl(var(--not-ready-wash) / <alpha-value>)',
         },
         nodata: 'hsl(var(--no-data) / <alpha-value>)',
+
+        // Ink for text that sits on top of a band fill — the readiness cards.
+        // Fixed in both schemes, because the fill under it is.
+        onband: {
+          DEFAULT: 'hsl(var(--on-band) / <alpha-value>)',
+          muted: 'hsl(var(--on-band-muted) / <alpha-value>)',
+        },
 
         // The score ramp: one hue, light -> dark. Magnitude only — a 1–5
         // score, a share, a maturity step. Never identity, never status.

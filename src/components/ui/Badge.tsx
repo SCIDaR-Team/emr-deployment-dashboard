@@ -17,8 +17,8 @@ const TONES: Record<BadgeTone, string> = {
   neutral: 'bg-muted text-muted-foreground border-border',
   brand: 'bg-brand-50 text-brand-600 border-brand-500/25',
   info: 'bg-brand-50 text-brand-700 border-brand-500/20',
-  warning: 'bg-moderate-wash text-foreground border-moderate/40',
-  danger: 'bg-notready-wash text-notready border-notready/30',
+  warning: 'bg-moderate-wash text-foreground border-moderate-ink/35',
+  danger: 'bg-notready-wash text-notready-ink border-notready-ink/30',
 };
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {

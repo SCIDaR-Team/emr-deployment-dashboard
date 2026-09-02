@@ -11,11 +11,14 @@
  * ---------------------------------------------------------------------------
  * Two colour systems, kept apart. This is the load-bearing rule of the redesign.
  *
- *   1. READINESS BANDS (green / amber / red) are STATUS. They are the only
- *      saturated hues in the product, so colour always means readiness and
- *      never anything else. Each is paired with a texture and a label, because
- *      red vs green measures ΔE 7.0 under deuteranopia — inside the warn band,
- *      and not allowed to carry meaning by hue alone.
+ *   1. READINESS BANDS (red / amber / green) are STATUS. They are the only
+ *      warm hues in the product, so colour always means readiness and never
+ *      anything else. The three values are the client's, and they are pale:
+ *      each band is a fill (`--ready`) paired with an ink (`--ready-ink`) at
+ *      the same hue and a text weight, because a 84%-lightness pastel cannot
+ *      be a label. Each is also paired with a texture and a label, because red
+ *      vs green measures ΔE 7.0 under deuteranopia — inside the warn band, and
+ *      not allowed to carry meaning by hue alone.
  *
  *   2. MAGNITUDE (a 1–5 score, a share, a maturity level) rides a single-hue
  *      BLUE ORDINAL RAMP, --s1 → --s5. Blue also carries every interactive
@@ -76,13 +79,67 @@
     --sidebar: 90 8% 93%;
     --sidebar-foreground: 160 12% 8%;
 
-    --ready: 157 79% 26%;
-    --ready-wash: 152 40% 93%;
-    --moderate: 40 90% 44%;
-    --moderate-wash: 42 82% 92%;
-    --not-ready: 7 62% 47%;
-    --not-ready-wash: 8 65% 94%;
+    /*
+     * The band colours, supplied by the client as RGB:
+     *
+     *   Not ready         255 163 163
+     *   Moderately ready  255 234 175
+     *   Ready             209 231 195
+     *
+     * They are pale by design — they were picked as choropleth fills, where a
+     * saturated hue over half of Nigeria is a wall rather than a reading. So
+     * they are *fills*: polygons, swatches, distribution segments, badge
+     * grounds. They are the same three values in dark mode, because a band
+     * colour identifies a band and must not shift when the page does.
+     *
+     * The fractional hues are deliberate. Rounded to whole degrees the three
+     * fills come back out of HSL one or two counts off the RGB the client
+     * gave us; at these values they round-trip exactly. Do not tidy them.
+     *
+     * `--*-ink` is the second half of each band: the SAME HUE at a weight that
+     * can be read as text, for the label, figure or icon that names the band.
+     * A pastel cannot be text — Ready at 83.5% lightness measures 1.3:1 on the
+     * surface — but nor can the ink just be a dark version of the hue. The
+     * assessment and coverage panes carry their band colour almost entirely as
+     * text: the domain-split columns, the area-list labels, the big reading at
+     * the top. Take the ink much past 30% lightness and those all go to
+     * near-black, and the pane loses its colour entirely — which is the whole
+     * signal it was carrying.
+     *
+     * So the inks are tuned for chroma first, on `--surface`, and they land at
+     * 5.2:1 (Ready), 5.6:1 (Not ready) and 3.3:1 (Moderately ready). Amber
+     * cannot be both amber and 4.5:1 — that is a property of the hue, not a
+     * choice — and the previous palette's amber measured 2.5:1, so this is the
+     * better end of an unavoidable trade.
+     *
+     * `--*-wash` is a pale tint of the same hue, and it is NOT the fill. It is
+     * the ground the ink sits on — a badge, a panel tint — so it has to stay
+     * far enough from the ink to keep that text readable. The fill is for
+     * surfaces with no words on them: polygons, swatches, bar segments.
+     */
+    --ready: 96.7 42.9% 83.5%;
+    --ready-ink: 96.7 60% 30%;
+    --ready-wash: 96.7 45% 93%;
+    --moderate: 44.3 100% 84.3%;
+    --moderate-ink: 44.3 95% 37%;
+    --moderate-wash: 44.3 90% 92%;
+    --not-ready: 0 100% 82%;
+    --not-ready-ink: 0 72% 46%;
+    --not-ready-wash: 0 90% 95%;
     --no-data: 130 6% 74%;
+
+    /*
+     * Text sitting ON a band fill — the readiness cards in both panes.
+     *
+     * A pair rather than a single value, because those cards carry a figure
+     * and a label at full weight and a unit and a share at half. Fixed, and
+     * identical in `.dark` below: the fills are the client's and do not follow
+     * the colour scheme, so text taken from --foreground would flip to white
+     * over a pastel that had not moved. Both clear 4.5:1 on all three fills,
+     * measured against Not ready, which is the darkest of them.
+     */
+    --on-band: 160 14% 10%;
+    --on-band-muted: 158 10% 26%;
 
     /*
      * The score ramp: one hue, light → dark, validated monotone with every
@@ -154,13 +211,27 @@
     --sidebar: 156 8% 14%;
     --sidebar-foreground: 140 12% 94%;
 
-    --ready: 154 54% 40%;
-    --ready-wash: 158 30% 12%;
-    --moderate: 42 76% 52%;
-    --moderate-wash: 40 34% 13%;
-    --not-ready: 8 72% 59%;
-    --not-ready-wash: 8 34% 13%;
+    /* The fills do not move — a Ready polygon is the same colour in both
+       schemes. What moves is the pair around them: the ink comes up towards
+       the fill (it is now the light thing on a dark ground) and the wash drops
+       to a tint of the hue so that ink has something to sit on. The inks are
+       held a little short of the fill so a band label still reads as text
+       rather than as a swatch that lost its box. */
+    --ready: 96.7 42.9% 83.5%;
+    --ready-ink: 96.7 48% 68%;
+    --ready-wash: 96.7 22% 14%;
+    --moderate: 44.3 100% 84.3%;
+    --moderate-ink: 44.3 88% 66%;
+    --moderate-wash: 44.3 30% 14%;
+    --not-ready: 0 100% 82%;
+    --not-ready-ink: 0 88% 71%;
+    --not-ready-wash: 0 32% 16%;
     --no-data: 150 6% 28%;
+
+    /* Deliberately the same as the light scheme — see above. The band fills do
+       not move between schemes, so neither can the ink on top of them. */
+    --on-band: 160 14% 10%;
+    --on-band-muted: 158 10% 26%;
 
     /* The ramp, re-stepped for a dark ground rather than inverted: the dark end
        has to come *up* or it disappears into the surface, so the scale runs
@@ -317,12 +388,48 @@
    * not follow the colour scheme — amber is the same amber in dark mode — so a
    * mark taken from --foreground flips to near-white against a background that
    * did not change, and a texture that reads in light mode all but disappears.
-   * Only the two mid-toned bands are textured (Ready is solid), so one ink
-   * works on both in both schemes.
+   * The fills are pale in both schemes now, which only makes the fixed dark
+   * ink more clearly right.
    *
    * Scaled small enough to survive inside a 6px distribution bar, which is the
    * tightest place any of these has to work.
    */
+  /*
+   * A hairline round a standalone band swatch.
+   *
+   * The band fills are the client's pastels — the lightest of them sits about
+   * two per cent off --surface — so a lone 10px key square on a card reads as
+   * a smudge rather than as a mark. A stack or a waffle does not need this:
+   * its neighbours give it edges. A key, a dot beside a figure, a single
+   * reading swatch does.
+   *
+   * Fixed ink at 12%, for the same reason the textures use one: the fills do
+   * not follow the colour scheme, so a hairline taken from --border would
+   * vanish on the dark side.
+   */
+  /*
+   * A surface filled with a band, which owns the colour of the text on it.
+   *
+   * The colour is set HERE, on the container, rather than as a `text-onband`
+   * on each of the figure, the label and the icon — so that the ink is
+   * inherited and cannot go missing. Those three carried it individually at
+   * first, which meant a build without the `onband` key in tailwind.config.js
+   * silently dropped all three back to --foreground: black-on-pastel in light
+   * mode, which looks exactly right, and white-on-pastel in dark mode, which
+   * is unreadable. A bug that only appears in one scheme, from a class that
+   * quietly does not exist, is not one to leave a card standing on.
+   *
+   * `--on-band` is fixed across both schemes — the band fill under it does not
+   * follow the colour scheme, so nor can the ink. See the token block above.
+   */
+  .band-card {
+    color: hsl(var(--on-band));
+  }
+
+  .band-swatch {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+  }
+
   .band-texture-ready {
     /* Intentionally empty. Ready is the solid one — see bands.ts. */
   }

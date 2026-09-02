@@ -14,7 +14,7 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { formatCompactCount, formatCount, formatPercent } from '@/lib/format';
 import { COVERAGE_THEMES, INTERNET_GROUPS, subDomainsFor, type ProviderDef } from '@/lib/themes';
-import { BandBadge, BandCards } from '@/components/ui';
+import { BandBadge, BandCards, BandIcon } from '@/components/ui';
 import type {
   AreaProfile,
   Band,
@@ -216,24 +216,32 @@ function CountRows({ counts, unit }: { counts: Record<Band, number>; unit: strin
   );
 }
 
-/** The state/LGA shape: one band, stated plainly. */
+/**
+ * The state/LGA shape: one band, stated plainly.
+ *
+ * A filled card rather than a swatch beside a line of coloured type, so that
+ * dropping from national into a state does not drop the colour out of the
+ * pane: `CountRows` above hands the reader three filled cards, and this is the
+ * same block answering the same question one level down. Same fill, same ink,
+ * same icon — one card instead of three, because there is one reading.
+ */
 function Reading({ band }: { band: Band | null }) {
   if (!band) {
-    return <p className="text-[13px] text-muted-foreground">Not assessed.</p>;
+    return (
+      <div className="border border-border bg-surface-sunk px-2.5 py-2.5">
+        <p className="text-[13px] text-muted-foreground">Not assessed.</p>
+      </div>
+    );
   }
   return (
-    <div className="flex items-center gap-2.5">
-      <span
-        aria-hidden
-        className={cn(
-          'block h-3.5 w-7 shrink-0 rounded-[1px]',
-          BAND_CLASSES[band].bg,
-          BAND_CLASSES[band].texture,
-        )}
-      />
-      <span className={cn('text-[17px] font-bold tracking-tight', BAND_CLASSES[band].text)}>
-        {BAND_LABEL[band]}
-      </span>
+    <div
+      className={cn(
+        'band-card flex items-center gap-2 border border-onband/15 px-2.5 py-2.5',
+        BAND_CLASSES[band].bg,
+      )}
+    >
+      <BandIcon band={band} className="h-4 w-4 shrink-0" />
+      <span className="text-[15px] font-bold tracking-tight">{BAND_LABEL[band]}</span>
     </div>
   );
 }

@@ -234,7 +234,7 @@ export default function LandingPage() {
             <p className="eyebrow">National assessment</p>
             <h1 className="mt-3 text-[clamp(1.7rem,2.9vw,2.7rem)] font-semibold leading-[1.08] tracking-tight text-balance text-foreground">
               One in five facilities could deploy an EMR tomorrow.{' '}
-              <em className="not-italic text-notready">
+              <em className="not-italic text-notready-ink">
                 Nearly half need foundational infrastructure first.
               </em>
             </h1>
@@ -277,7 +277,7 @@ export default function LandingPage() {
                     <span
                       aria-hidden
                       className={cn(
-                        'block h-2.5 w-2.5 rounded-[2px]',
+                        'band-swatch block h-2.5 w-2.5 rounded-[2px]',
                         BAND_CLASSES[band].bg,
                         BAND_CLASSES[band].texture,
                       )}
@@ -339,7 +339,7 @@ export default function LandingPage() {
                       <span
                         aria-hidden
                         className={cn(
-                          'block h-2.5 w-5 shrink-0 rounded-[1px]',
+                          'band-swatch block h-2.5 w-5 shrink-0 rounded-[1px]',
                           BAND_CLASSES[band].bg,
                           BAND_CLASSES[band].texture,
                         )}
