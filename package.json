@@ -12,6 +12,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run --passWithNoTests",
     "geo:build": "node scripts/build-boundaries.mjs",
+    "data:coverage": "node scripts/build-coverage.mjs",
     "data:ingest": "node scripts/ingest-assessment.mjs",
     "data:taxonomy": "node scripts/gap-taxonomy.mjs"
   },

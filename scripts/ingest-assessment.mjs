@@ -550,15 +550,38 @@ function investmentsFor(deployment) {
  * not measured, which is a different claim from zero and must render
  * differently. Staff headcount is likewise absent from this dataset.
  */
-function coverageFor(facilities) {
+function coverageFor(facilities, desk = null) {
   const measured = facilities.filter((f) => f.mtnServiceability !== null);
   const serviceable = measured.filter(
     (f) => f.mtnServiceability === 'Immediately serviceable',
   ).length;
 
   return {
-    band: null,
-    themeBands: { technical_infrastructure: null, workforce_capacity: null },
+    /**
+     * The band arrives classified, from the coverage workbook, and is copied
+     * across untouched.
+     *
+     * Set on states only — the workbook has no rows below one. An LGA and the
+     * national profile keep a null band here, which is *not measured* rather
+     * than not ready, and National Coverage already paints those differently.
+     */
+    band: desk?.band ?? null,
+
+    /**
+     * Technical Infrastructure carries the same band; Workforce Capacity stays
+     * null.
+     *
+     * Not a shortcut. The workbook classifies on electricity and internet, both
+     * of which are technical infrastructure and nothing else, so the domain
+     * reading and the overall reading are the same judgement made from the same
+     * two numbers. Saying so lets the Domain lens paint Technical
+     * Infrastructure honestly. Workforce is a question this source never asks,
+     * and a null there is the truthful answer — the lens drops it.
+     */
+    themeBands: {
+      technical_infrastructure: desk?.band ?? null,
+      workforce_capacity: null,
+    },
     measures: {
       networkMtnPct: measured.length
         ? Number(((100 * serviceable) / measured.length).toFixed(1))
@@ -566,11 +589,23 @@ function coverageFor(facilities) {
       networkAirtelPct: null,
       gridConnectionPct: null,
       staffCount: null,
+      electricityAccessPct: desk?.electricityAccessPct ?? null,
+      internetSubscriptionPct: desk?.internetSubscriptionPct ?? null,
     },
   };
 }
 
-function profileFor({ id, level, name, parentId, zone, facilities, catalogueById, extra }) {
+function profileFor({
+  id,
+  level,
+  name,
+  parentId,
+  zone,
+  facilities,
+  catalogueById,
+  extra,
+  desk,
+}) {
   const assessed = facilities.length > 0;
   const deployment = assessed ? deploymentFor(facilities, catalogueById) : null;
 
@@ -607,7 +642,7 @@ function profileFor({ id, level, name, parentId, zone, facilities, catalogueById
     ),
     themeDistribution: themeDistributionOf(facilities),
 
-    coverage: coverageFor(facilities),
+    coverage: coverageFor(facilities, desk),
     investments: deployment ? investmentsFor(deployment) : [],
     deployment,
   };
@@ -692,6 +727,30 @@ async function main() {
     stateMeta.set(slugify(name), { name, zone: ZONE_BY_CODE[f.properties.geozone] ?? null });
   }
 
+  // --- The coverage workbook's desk readings --------------------------------
+  //
+  // Read from committed JSON, not from the workbook: `npm run data:coverage`
+  // extracts and validates that file, and the workbook itself is gitignored, so
+  // this build needs nothing that a clone does not have.
+  const deskByState = new Map(
+    readJSON('scripts/source-data/national-coverage.json').states.map((s) => [s.id, s]),
+  );
+
+  // Every state, or none — a state silently missing its band is a state that
+  // renders as "not measured" on a page whose entire subject is that band.
+  const unread = [...stateMeta.keys()].filter((id) => !deskByState.has(id));
+  const unplaced = [...deskByState.keys()].filter((id) => !stateMeta.has(id));
+  if (unread.length || unplaced.length) {
+    throw new Error(
+      `The coverage readings do not line up with the geography.\n` +
+        (unread.length ? `  no reading for: ${unread.join(', ')}\n` : '') +
+        (unplaced.length ? `  reading for unknown state: ${unplaced.join(', ')}\n` : '') +
+        `\nRe-run \`npm run data:coverage\`; if that succeeds, the geography ` +
+        `and the workbook disagree about the state list.`,
+    );
+  }
+  process.stderr.write(`Read desk coverage readings for ${deskByState.size} states\n`);
+
   // --- Facilities -----------------------------------------------------------
 
   const facilities = [];
@@ -769,6 +828,7 @@ async function main() {
         zone: meta.zone,
         facilities: stateFacilities,
         catalogueById,
+        desk: deskByState.get(stateId),
         extra: { lgaCount: lgas.length, assessedLgaCount: byLga.size },
       }),
     );

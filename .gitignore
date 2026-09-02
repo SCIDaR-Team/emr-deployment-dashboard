@@ -43,6 +43,17 @@ ERA dataset_v4 (1).xlsx
 # `git add -A` cannot put it back.
 Raw data with readiness level.xlsx
 
+# The state coverage workbook — the source of every readiness band on National
+# Coverage.
+#
+# Not committed, for the same reason as the workbooks above: the source stays
+# editable outside the repo and the derived data comes in with it. What *is*
+# committed is `scripts/source-data/national-coverage.json`, the 37 rows
+# `npm run data:coverage` extracts and validates from this file. `data:ingest`
+# reads that JSON and never this workbook, so a clone can rebuild
+# `public/data/` without holding a copy.
+National Coverage.xlsx
+
 # The fetched copy of the assessment sheet (`npm run data:ingest -- --fetch`).
 #
 # Ignored because it is a byte-identical duplicate of the committed

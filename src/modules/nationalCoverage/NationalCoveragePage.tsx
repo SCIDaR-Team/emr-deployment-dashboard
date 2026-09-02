@@ -13,7 +13,7 @@ import {
 import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
-import { formatCount } from '@/lib/format';
+import { formatCount, formatPercent } from '@/lib/format';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
@@ -107,7 +107,7 @@ export default function NationalCoveragePage() {
         n: state.lgaCount ?? 0,
         evidenceGrade: 'primary',
         label: state.name,
-        valueLabel: `${formatCount(state.lgaCount ?? 0)} LGAs`,
+        valueLabel: coverageRates(state) ?? `${formatCount(state.lgaCount ?? 0)} LGAs`,
       };
     }
     return data;
@@ -320,6 +320,33 @@ export default function NationalCoveragePage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+/**
+ * The two figures the band was classified from, for the hover.
+ *
+ * The band on its own says a state is Not ready and stops there; these say why,
+ * and they are the only two inputs the coverage model has — so a reader
+ * hovering Kano learns that 45% electricity access is what put it there, not
+ * its network coverage or its staffing.
+ *
+ * Deliberately not colour-coded and deliberately not banded. These are
+ * measurements sitting *beside* a judgement, and the tooltip renders this
+ * string in muted body text for that reason — see the note on
+ * `CoverageMeasures`. Internet subscription can exceed 100% (per-SIM counting),
+ * which is why it is printed as a plain figure and never as a bar.
+ *
+ * Null when either rate is missing, so the caller falls back rather than
+ * printing a half-sentence with an em dash in it. In practice both are set on
+ * all 37 states and neither is set anywhere else.
+ */
+function coverageRates(area: AreaProfile): string | null {
+  const { electricityAccessPct, internetSubscriptionPct } = area.coverage.measures;
+  if (electricityAccessPct == null || internetSubscriptionPct == null) return null;
+  return (
+    `Electricity ${formatPercent(electricityAccessPct, 1)} · ` +
+    `Internet ${formatPercent(internetSubscriptionPct, 1)}`
   );
 }
 

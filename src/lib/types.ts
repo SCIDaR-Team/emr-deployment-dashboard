@@ -211,6 +211,12 @@ export type BandDistribution = Record<Band, number>;
  * is blank in every row of the source and grid connection is not collected at
  * all, so both stay null — and null means *not measured*, which must render
  * differently from zero.
+ *
+ * The two national rates come from a second source entirely — the coverage
+ * workbook, which reports published statistics per state rather than anything
+ * observed in a clinic. They are set on all 37 states and on nothing else: the
+ * workbook has no LGA rows, and averaging state rates into a national figure
+ * would weight Bayelsa like Kano, so both stay null above and below the state.
  */
 export interface CoverageMeasures {
   /** Share of the area with MTN network coverage, 0–100. */
@@ -221,6 +227,16 @@ export interface CoverageMeasures {
   gridConnectionPct: number | null;
   /** Health workforce headcount. An absolute count, not a ratio. */
   staffCount: number | null;
+  /** Share of the state's population with access to electricity, 0–100. */
+  electricityAccessPct: number | null;
+  /**
+   * Active internet subscriptions as a share of population, 0–100.
+   *
+   * **Legitimately exceeds 100.** Subscriptions are counted per SIM and people
+   * hold more than one, so Ogun reads 120.5%. Anything rendering this must not
+   * clamp it to a 0–100 bar or treat it as a share of people online.
+   */
+  internetSubscriptionPct: number | null;
 }
 
 /**
