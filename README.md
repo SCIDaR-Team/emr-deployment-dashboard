@@ -79,21 +79,31 @@ viewBox change and never a reprojection.
 | | |
 | --- | --- |
 | **Hierarchy** | Nigeria → State → LGA → PHC. Boundaries are GRID3/COD-AB ADM1 and ADM2 (all 774 LGAs, one file per state); facilities sit at their surveyed GPS coordinate. |
-| **Drill-down** | Strictly progressive: a state resolves into its LGAs, an LGA into the facilities inside it, and a facility into itself. Each level only draws the features that belong to it, so facility points never appear above their own LGA. Click a feature, or simply keep zooming — overshooting a layer's useful range drills through it, and pulling back out past its extent drills back up. |
-| **Selecting a facility** | A drill like any other, not a highlight: the camera flies to the facility at the layer's deepest zoom, names it on the map, and shows its coordinate card. Clicking it again, or the breadcrumb, flies back out to the LGA. |
+| **Drill-down** | Strictly progressive: a state resolves into its LGAs, an LGA into the facilities inside it, and a facility into itself. Each level only draws the features that belong to it, so facility points never appear above their own LGA. Click a feature, or simply keep zooming — zooming past a level's handover point drills through it, and pulling back out past its extent drills back up. The +/- buttons cross levels on the same terms the wheel does. |
+| **Zoom range** | Every level's camera limit is a *ground distance*, not a multiple of its own extent: 2 km across the frame nationally, 500 m at state level, 70 m at LGA level. A ratio would mean a different depth in every state and every LGA; a distance reaches the same thing everywhere. The drill fires long before the camera runs out, so an unsurveyed state — which has no layer below it — can still be zoomed to its streets. |
+| **Context** | No level stops at the edge of its subject. The base map is drawn across the whole frame and the ground beyond the subject is *set back* rather than cut away, neighbouring states are outlined below state level, and neighbouring LGAs below that. Panning is allowed to leave the subject, which at street zoom is most of the point. |
+| **Selecting a facility** | A drill like any other, not a highlight: the camera flies to the facility and opens onto roughly 400 m of its neighbourhood — close enough to place it, wide enough to check it against the road it is on, with the rest of the range left in the reader's hands. Clicking it again, or the breadcrumb, flies back out to the LGA. |
+| **Anchor precision** | viewBox strings are formatted at a precision taken from their own span (`viewBoxString`), not at a fixed number of decimals. A flat `toFixed(1)` is 130 m of ground — invisible against a country 1,000 units wide and, against a 0.3-unit facility frame, enough to put "zoom to this facility" most of a frame-height off the coordinate it was aiming at. |
+| **Facilities with no fix** | Not plotted, and *said*. Selecting one shows the same card in the same place with "exact location unavailable" in place of a coordinate; where some in scope are missing, the map reports the count. Two of the 2,806 are in this position. Nothing is ever placed at a centroid or a guess. |
 | **Transitions** | A level change is a camera move, not a cut. The outgoing layer leaves its viewport in `viewHandoff.ts` and the incoming one flies in from it, easing geometrically so a 40x zoom reads as constant motion. Honours `prefers-reduced-motion`. |
-| **Layers** | Boundaries, place names, thematic fill and facility points toggle independently (`store/mapLayerStore.ts`), over an optional OpenStreetMap or Esri satellite base map. Only the layers a level actually has appear in the panel. |
-| **Coordinates** | Live lat/lon under the pointer, and a selected facility's surveyed position copyable and openable in OpenStreetMap. `lonAtX`/`latAtY` are exact inverses of the forward projection. |
+| **Base map** | Streets (OpenStreetMap) / Satellite (Esri World Imagery) / Plain, as a segmented control on the map itself, under the toolbar. Both sources are cut to z19, which is roofs and compound walls. |
+| **Imagery coverage** | Satellite coverage is not uniform and Esri does not error where it is missing — it returns a grey "Map data not yet available" tile with `200 OK`, which loads fine and hides the good imagery underneath. So the map asks Esri's `tilemap` endpoint how deep the photography goes for the current view (one small cached request above z16), requests that level, and says so: *"Sharpest imagery here is z 18. Closer views are enlarged, not more detailed."* Kano city has z19; Rano and Yola North stop at z18. |
+| **Layers** | Boundaries, place names, thematic fill and facility points toggle independently (`store/mapLayerStore.ts`). Only the layers a level actually has appear in the panel. |
+| **Coordinates** | Live lat/lon under the pointer and the slippy-map zoom level, in a status strip beside the scale bar; a selected facility's surveyed position is copyable and openable in OpenStreetMap. `lonAtX`/`latAtY` are exact inverses of the forward projection. |
+| **My location** | The browser's own fix, on a press and never on mount — the one control that relates the map to the person reading it. A refusal is reported once and dropped. |
 | **Scale** | A real surveyor's bar, measured at the view's centre latitude — Mercator's scale factor is 1/cos(lat), so a viewBox unit is not a fixed distance. |
 | **Find a place** | A locator in the map's own toolbar, separate from the filter row's Search: it narrows nothing, it resolves a name to a place and goes there, opening the levels in between. Assessed States resolves to a facility; National Coverage stops at the LGA. |
 | **Shareable views** | Pan and zoom ride in the URL as `?v=<layer>~x,y,w`, so a link reopens on the framing the sender chose — not just the same scope. Stamped with the layer that wrote it, so a stale value is ignored rather than misapplied, and dropped entirely at full extent. |
 | **Save as image** | One click writes a PNG of the map frame — legend, scale bar and attribution included, which is what a screenshot loses — with provenance burnt in underneath. Raster base-map tiles cannot be captured (a serialised SVG may not fetch external resources), so the export warns and Plain is lossless. |
 | **Clustering** | Facility points that overlap at the current zoom collapse into a counted marker and dissolve as the reader goes in; the cell is sized in screen pixels, so there is no threshold to tune. |
 
-Base maps default to **plain**, which makes no third-party request. Streets and
-satellite tiles are fetched at runtime from `tile.openstreetmap.org` and
-`arcgisonline.com` — whether a ministry network may reach either is a deployment
-question, so the reader opts in.
+Base maps default to **Streets**. Tiles are fetched at runtime from
+`tile.openstreetmap.org` and `arcgisonline.com`; whether a ministry network may
+reach either is a deployment question, and it is answered directly rather than
+by abstaining — failed tiles are counted, and a base map that is plainly not
+arriving says so and offers **Plain**, which makes no third-party request at
+all. The neighbour outlines below national level come from a 65 kB simplified
+copy of the ADM1 layer (`npm run geo:context`), not the 2.0 MB original.
 
 ## National Coverage
 

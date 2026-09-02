@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { handoffFrom, recordView } from '@/components/map/viewHandoff';
 import { VIEWPORT_PARAM, decodeViewport } from '@/components/map/viewportUrl';
 import { useViewportUrl } from './useViewportUrl';
-import { fitViewBox, type Box } from '@/lib/mapProjection';
+import { fitViewBox, viewBoxString, type Box } from '@/lib/mapProjection';
 
 /**
  * Pan/zoom state for a map layer, plus the gesture that carries the reader
@@ -35,8 +35,11 @@ export function parseRect(viewBox: string): ViewportRect {
   return { x, y, w, h };
 }
 
+/** Span-aware, because a hundredth of a viewBox unit is thirteen metres — fine
+ *  across a country and a visible jump across a compound. See
+ *  `viewBoxString`. */
 function formatRect(r: ViewportRect): string {
-  return `${r.x.toFixed(2)} ${r.y.toFixed(2)} ${r.w.toFixed(2)} ${r.h.toFixed(2)}`;
+  return viewBoxString(r.x, r.y, r.w, r.h);
 }
 
 /** How much accumulated over-zoom counts as "the reader means it" (~1.5x). */
@@ -130,8 +133,47 @@ interface Options {
    * extent is known from the first render.
    */
   ready?: boolean;
-  /** How far in this layer can usefully go before the next one takes over. */
+  /**
+   * The hard limit on how far the camera goes in, as a multiple of the base
+   * extent's width.
+   *
+   * This is the **camera's** limit, not the level's. It used to be both, and
+   * that conflation is what stopped the drill-down being one continuous zoom:
+   * the national map's limit was 5x — 260 km across the frame — so a reader
+   * zooming into an unsurveyed state hit an invisible wall two orders of
+   * magnitude short of the roads they were reaching for, and the only way
+   * further in was to already know which state to click.
+   *
+   * Layers now set this from a *ground distance* they should be able to reach
+   * (see `unitsForMetres`), and hand the level change to `drillScale` instead.
+   */
   maxScale?: number;
+  /**
+   * The scale at which zooming in hands over to the level below.
+   *
+   * Push past it with intent and `onDrillIn` fires with the point under the
+   * pointer, exactly as overshooting `maxScale` used to. Defaults to `maxScale`,
+   * which reproduces the old behaviour for any caller that does not set it.
+   *
+   * Separating the two is what lets a level be both *deep* and *drillable*: the
+   * state map hands over to an LGA at 5x because that is where the LGA's own
+   * detail is the better thing to be looking at, and still lets the camera run
+   * to the street if the reader keeps going somewhere the drill cannot follow.
+   */
+  drillScale?: number;
+  /**
+   * How far outside the base extent the camera may roam, as a fraction of that
+   * extent, on top of half a viewport in every direction.
+   *
+   * Zero is a map of a shape. Anything above it is a map of a *place*: the
+   * ground does not stop at an administrative border, and a reader zoomed onto
+   * a clinic near the edge of Chikun has the rest of Kaduna a few hundred
+   * metres away and every reason to want to see it. The clamp used to pin the
+   * viewport strictly inside the subject's own bounding box, so panning stopped
+   * dead at the frame edge and the neighbouring ground was unreachable at any
+   * zoom.
+   */
+  panMargin?: number;
   /** Called with the centre of the view and the live `<svg>`, so the layer can
    *  hit-test which of its own units the reader has zoomed into — see
    *  `unitAtPoint`. */
@@ -142,11 +184,16 @@ interface Options {
 export function useMapViewport({
   base,
   maxScale = 6,
+  drillScale,
+  panMargin = 0.25,
   layerKey,
   ready = true,
   onDrillIn,
   onDrillOut,
 }: Options) {
+  /** Handing over to the level below is the default meaning of "as far as this
+   *  goes" for a caller that names only one limit. */
+  const drillAt = drillScale ?? maxScale;
   const svgRef = useRef<SVGSVGElement>(null);
   const baseRect = useMemo(() => parseRect(base), [base]);
 
@@ -306,18 +353,63 @@ export function useMapViewport({
   const captured = useRef(false);
   const [panning, setPanning] = useState(false);
 
+  /**
+   * Keep the camera somewhere sensible.
+   *
+   * Zooming *out* still stops at the base extent — going further out is a
+   * drill-out, and that is `onDrillOut`'s business rather than the camera's.
+   * Panning, though, is allowed to leave the subject: the roam margin is a
+   * fraction of the base extent plus half a viewport, so at full extent the map
+   * barely moves and at street zoom the reader can cross into the neighbouring
+   * LGA and back without the frame fighting them. See `panMargin`.
+   */
   const clamp = useCallback(
     (r: ViewportRect): ViewportRect => {
       const w = Math.min(r.w, baseRect.w);
       const h = Math.min(r.h, baseRect.h);
+      const mx = baseRect.w * panMargin + w / 2;
+      const my = baseRect.h * panMargin + h / 2;
       return {
         w,
         h,
-        x: Math.min(Math.max(r.x, baseRect.x), baseRect.x + baseRect.w - w),
-        y: Math.min(Math.max(r.y, baseRect.y), baseRect.y + baseRect.h - h),
+        x: Math.min(Math.max(r.x, baseRect.x - mx), baseRect.x + baseRect.w + mx - w),
+        y: Math.min(Math.max(r.y, baseRect.y - my), baseRect.y + baseRect.h + my - h),
       };
     },
-    [baseRect],
+    [baseRect, panMargin],
+  );
+
+  /**
+   * How far past this layer a zoom was asking to go.
+   *
+   * Two ways to be asking for a level this layer does not hold, and they add up
+   * to one number because they can never both be non-zero:
+   *
+   * - The **clamp remainder** — how much of the requested zoom the camera could
+   *   not absorb. Negative against the base extent (there is no further out),
+   *   positive against `maxScale` (no further in).
+   * - Zoom **through the drill threshold**, which is how a deep layer hands over
+   *   long before its own camera limit. Measured from wherever the gesture
+   *   started, so crossing the threshold in one flick counts for the part past
+   *   it rather than for the whole of it.
+   *
+   * Shared by the gestures and by the +/- buttons. The buttons used to be
+   * exempt, back when the camera's limit *was* the handover point and pressing
+   * + simply stopped: now that the camera runs on past it, a reader zooming
+   * with the button would sail through the level change and end up at street
+   * zoom on the state layer, with no facilities on it and no way to discover
+   * that a layer with facilities exists. The gesture and the button have to
+   * mean the same thing.
+   */
+  const levelSignal = useCallback(
+    (fromW: number, wantedW: number, gotW: number) => {
+      const clamped = Math.log(gotW / wantedW);
+      const before = baseRect.w / fromW;
+      const after = baseRect.w / gotW;
+      const past = after > drillAt ? Math.log(after / Math.max(before, drillAt)) : 0;
+      return clamped + past;
+    },
+    [baseRect, drillAt],
   );
 
   /** Client coordinates → viewBox units. Valid because the SVG is rendered at
@@ -355,10 +447,9 @@ export function useMapViewport({
         y: focus.y - (focus.y - cur.y) * (h / cur.h),
       });
       setViewport(next);
-      // Positive = wanted to go further in than allowed, negative = further out.
-      return Math.log(w / wanted);
+      return levelSignal(cur.w, wanted, w);
     },
-    [baseRect, maxScale, clamp, setViewport],
+    [baseRect, maxScale, clamp, setViewport, levelSignal],
   );
 
   const registerOvershoot = useCallback(
@@ -588,14 +679,36 @@ export function useMapViewport({
         }),
       );
     },
+    /**
+     * Put a point in the middle of the frame, at whatever zoom is current.
+     *
+     * A pan rather than a zoom, which is what "recentre here" means — the
+     * reader has already chosen how close they are and is only saying *where*.
+     * Used by the locate control and by anything that knows a coordinate but
+     * has no opinion about scale.
+     */
+    centreOn: (point: { x: number; y: number }, ms?: number) => {
+      const r = rectRef.current;
+      flyTo(clamp({ ...r, x: point.x - r.w / 2, y: point.y - r.h / 2 }), ms ?? STEP_MS);
+    },
+    /** This layer's full extent, for anything that has to reason about how far
+     *  out the camera can go rather than where it currently is. */
+    baseRect,
     zoomBy: (factor: number) => {
       const r = rectRef.current;
       const minW = baseRect.w / maxScale;
-      const w = Math.min(Math.max(r.w / factor, minW), baseRect.w);
+      const wanted = r.w / factor;
+      const w = Math.min(Math.max(wanted, minW), baseRect.w);
       const h = w * (r.h / r.w);
       const cx = r.x + r.w / 2;
       const cy = r.y + r.h / 2;
       flyTo(clamp({ w, h, x: cx - w / 2, y: cy - h / 2 }), STEP_MS);
+      // The buttons hand over between levels on the same terms the wheel does —
+      // see `levelSignal`. The centre of the frame is what they zoom about, so
+      // the centre is what a drill from one hit-tests; `lastFocus` is cleared
+      // by the unanchored zoom path for exactly this reason.
+      lastFocus.current = null;
+      registerOvershoot(levelSignal(r.w, wanted, w));
     },
     reset: () => flyTo(baseRect),
   };

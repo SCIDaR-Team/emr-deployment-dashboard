@@ -6,28 +6,37 @@ import { cn } from '@/lib/cn';
 import {
   latAtY,
   lonAtX,
+  gx,
+  gy,
   geomToPath,
   geomBounds,
+  geomLabelPoint,
   boundsOfPoints,
+  boxAround,
   fitViewBox,
+  unitsForMetres,
   MAP_ASPECT_CLASS,
   SVG_W,
   SVG_H,
   type Box,
   type GeoCollection,
 } from '@/lib/mapProjection';
-import { BOUNDARY_STROKE, useHatchPatternId } from './mapTypes';
-import { TileLayer, MapAttribution, MapClip, MapCorner } from './TileLayer';
+import { BOUNDARY_STROKE } from './mapTypes';
+import { MapPinOff } from 'lucide-react';
+import { TileLayer, MapAttribution, MapCorner, BaseMapNotice } from './TileLayer';
+import { MapNotice } from './MapNotice';
+import { useImageryDepth } from './imageryCoverage';
+import { MapLabel } from './MapLabel';
 import { MapToolbar } from './MapToolbar';
 import type { MapSearchResult } from './MapSearch';
-import { MapScaleBar } from './MapScaleBar';
 import { MapBreadcrumb, type Crumb } from './MapBreadcrumb';
-import { PointerCoordinates, FacilityCoordinates } from './MapCoordinates';
+import { MapStatusBar, FacilityCoordinates } from './MapCoordinates';
 import { FacilityLayer, FacilityTooltip, type FacilityHover } from './FacilityLayer';
 import { projectFacilities, type FacilityPoint } from './facilityPoints';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import { useMapViewport } from '@/hooks/useMapViewport';
 import { useFullscreen } from '@/hooks/useFullscreen';
+import { useGeolocate, geolocateMessage } from '@/hooks/useGeolocate';
 import { useMapExport } from '@/hooks/useMapExport';
 import { useBaseMapStore } from '@/store/basemapStore';
 import { useMapLayers } from '@/store/mapLayerStore';
@@ -82,9 +91,44 @@ interface LGAFacilityMapProps {
   className?: string;
 }
 
-/** The deepest layer, and the one where zoom buys the most — at 12x an urban
- *  LGA's facilities separate into individual compounds on the imagery. */
-const FACILITY_MAX_SCALE = 12;
+/**
+ * How narrow a frame this layer will show, in metres of ground.
+ *
+ * This is the number the whole drill-down is built to reach. 70 m across the
+ * frame is one compound and its immediate neighbours — a roof, a perimeter
+ * wall, the track leading to the gate — which is what it takes to say *that*
+ * building is the clinic rather than merely *there* is the clinic.
+ *
+ * ## Why it stops there and not deeper
+ *
+ * Past a provider's own deepest level, zoom stops buying detail and starts
+ * buying magnification: OpenStreetMap is cut to z19 and Esri to z19 at best
+ * (z18 over most of rural Nigeria — see `imageryCoverage.ts`), so a frame
+ * narrower than this is the same pixels, larger. 70 m lands around z21 on a
+ * wide screen, roughly two levels of enlargement, which is where a building
+ * outline is comfortably clickable and still recognisably itself. Going
+ * further would let the reader zoom until the imagery was unreadable and read
+ * that as the map failing.
+ *
+ * Stated as a distance rather than as the 12x multiple it replaces, because 12x
+ * meant twelve different things. Dala is 8 km across and Toro is 90: the same
+ * ratio landed one reader on a compound and the other on a district, and the
+ * layer's stated purpose — see the note on the component — was only ever true
+ * for the small ones. The multiple is now derived per LGA from its own extent,
+ * so every LGA reaches the same ground.
+ */
+const FACILITY_MIN_VIEW_M = 70;
+
+/**
+ * And how wide a frame selecting a facility opens onto.
+ *
+ * Not the limit above: arriving pinned to the tightest zoom the layer has shows
+ * the reader a roof with no way to tell which roof, and every check they might
+ * want to make — is it on the road, is it the building the coordinate claims —
+ * needs the surroundings in frame. 400 m puts the compound in the middle of its
+ * own neighbourhood and leaves three more zoom steps in hand.
+ */
+const FACILITY_SELECT_VIEW_M = 400;
 
 /**
  * How far in before facilities are named on the map itself.
@@ -145,12 +189,38 @@ export function LGAFacilityMap({
     encoding: exportScope ?? 'Facility readiness',
     baseMap,
   });
-  const clipId = `${useHatchPatternId()}-clip`;
+  const [myLocation, setMyLocation] = useState<{ x: number; y: number } | null>(null);
 
   const outline = useMemo(() => {
     if (!geo.data) return null;
     const feature = geo.data.features.find((f) => f.properties.lgaId === lgaId);
     return feature ? { path: geomToPath(feature.geometry), bounds: geomBounds(feature.geometry) } : null;
+  }, [geo.data, lgaId]);
+
+  /**
+   * The LGAs around this one.
+   *
+   * The state's boundary file is already in hand — this layer fetches it to
+   * find one outline in it — so the other forty-three cost nothing but the
+   * paths. Drawing them is not decoration: an LGA rendered alone is a shape
+   * floating on a card, and a reader zoomed onto a facility three hundred
+   * metres from the boundary could not see that the town it serves continues
+   * into Fagge. "See surrounding LGAs for geographic context" is the
+   * requirement, and this is it.
+   *
+   * Inert and unlabelled at base zoom, named once the reader has zoomed in far
+   * enough for the names to have somewhere to sit.
+   */
+  const neighbours = useMemo(() => {
+    if (!geo.data) return [];
+    return geo.data.features
+      .filter((f) => f.properties.lgaId !== lgaId)
+      .map((f) => ({
+        lgaId: f.properties.lgaId,
+        name: f.properties.name,
+        path: geomToPath(f.geometry, 0.004),
+        label: geomLabelPoint(f.geometry),
+      }));
   }, [geo.data, lgaId]);
 
   const points = useMemo(() => projectFacilities(facilities), [facilities]);
@@ -160,14 +230,56 @@ export function LGAFacilityMap({
     return fitViewBox(outline?.bounds ?? boundsOfPoints(points, 0.4) ?? fallback);
   }, [outline, points]);
 
+  /**
+   * The camera's limit for *this* LGA, derived from its own extent so that
+   * every LGA bottoms out at the same ground distance. See
+   * `FACILITY_MIN_VIEW_M`.
+   */
+  const { maxScale, selectViewUnits } = useMemo(() => {
+    const [, y = 0, w = SVG_W, h = SVG_H] = baseViewBox.split(' ').map(Number);
+    const centreLat = latAtY(y + h / 2);
+    const minW = unitsForMetres(FACILITY_MIN_VIEW_M, centreLat);
+    return {
+      // The floor of 4 is for the pathological case of a `baseViewBox` narrower
+      // than the limit itself — an LGA smaller than 500 m across, which does
+      // not exist, but a zoom range that inverts would be worse than a shallow
+      // one.
+      maxScale: minW > 0 ? Math.max(4, w / minW) : 12,
+      selectViewUnits: unitsForMetres(FACILITY_SELECT_VIEW_M, centreLat),
+    };
+  }, [baseViewBox]);
+
   const view = useMapViewport({
     base: baseViewBox,
-    maxScale: FACILITY_MAX_SCALE,
+    maxScale,
+    // No drill below this: the facility *is* the bottom of the hierarchy, and
+    // it is reached by selecting one rather than by zooming through it. Zooming
+    // out past the LGA still hands back to the state, as before.
     layerKey: 'lga',
+    // A generous roam, because this is the layer where leaving the subject is
+    // the point: a facility near a boundary has half its catchment in the next
+    // LGA, and at 70 m across the frame the reader is panning street by
+    // street.
+    panMargin: 0.6,
     // The extent is this LGA's outline, which is not known until the state's
     // boundary file lands — see the note on `ready`.
     ready: !!geo.data,
     onDrillOut: onZoomOut,
+  });
+
+  /**
+   * How close the imagery actually goes here — see `useImageryDepth`. Caps what
+   * the base map is asked for, so a view deeper than the provider's coverage
+   * shows enlarged photography of the right place rather than Esri's grey
+   * "Map data not yet available" grid.
+   */
+  const imagery = useImageryDepth(baseMap, view.rect, renderPx);
+
+  // Uncomposed on purpose — see the same note in `NigeriaChoropleth`.
+  const geolocate = useGeolocate((lat, lon) => {
+    const point = { x: gx(lon), y: gy(lat) };
+    setMyLocation(point);
+    view.centreOn(point);
   });
 
   /**
@@ -193,16 +305,36 @@ export function LGAFacilityMap({
     : null;
 
   /**
+   * The selected facility as the survey recorded it, coordinate or not.
+   *
+   * `points` has already dropped everything without a fix, so a facility with
+   * no coordinate selected from the pane simply vanished from the map — no
+   * marker, no card, no explanation, indistinguishable from a bug. Two of the
+   * 2,806 are in that position, and they are exactly the ones a reader most
+   * needs told about: the requirement is to *say* a location is unavailable
+   * rather than to invent one, and saying nothing is not saying it.
+   */
+  const selectedRecord = selectedFacilityId
+    ? (facilities.find((f) => f.uuid === selectedFacilityId) ?? null)
+    : null;
+  const selectedUnplaced = !!selectedRecord && !selected;
+
+  /** How many in scope the map cannot plot. Reported once, quietly, rather
+   *  than per facility — see the notice below. */
+  const unplacedCount = facilities.length - points.length;
+
+  /**
    * Frame one facility.
    *
-   * `boundsOfPoints` opens a single point out to a non-degenerate box, and
-   * `fitTo` then clamps it to this layer's `maxScale` — so a facility is always
-   * framed at the deepest zoom the layer offers, which is where the imagery
-   * resolves the compound it sits on.
+   * Opens onto its neighbourhood rather than onto the tightest zoom the layer
+   * has — see `FACILITY_SELECT_VIEW_M` — and leaves the rest of the range in
+   * the reader's hands.
    */
   const frameFacility = (f: { x: number; y: number }) => {
-    const box = boundsOfPoints([f]);
-    if (box) view.fitTo(box, 0.2);
+    // A box of a stated width, not `boundsOfPoints` — that opens a single point
+    // out to half a viewBox unit, which is about 650 m and an accident rather
+    // than a decision. See `FACILITY_SELECT_VIEW_M`.
+    view.fitTo(boxAround(f, selectViewUnits || 1), 0.05);
   };
 
   /**
@@ -224,7 +356,20 @@ export function LGAFacilityMap({
    */
   const selectedKey = selected?.uuid ?? null;
   const previousKey = useRef<string | null | undefined>(undefined);
+  /**
+   * Nothing is framed until the LGA's own extent is known.
+   *
+   * `useMapViewport` re-frames on the extent arriving — that is what `ready` is
+   * for — and it would land *after* a fly issued from here and overwrite it. A
+   * cold link straight to a facility hit exactly that: the card and the
+   * highlighted marker appeared, the camera flew to the compound, and the
+   * boundary file landing a moment later pulled it back out to the whole LGA.
+   * Both effects run in the same commit and the hook's is registered first, so
+   * gating on the same condition is enough to put this one last.
+   */
+  const extentReady = !!geo.data;
   useEffect(() => {
+    if (!extentReady) return;
     const previous = previousKey.current;
     previousKey.current = selectedKey;
     if (previous === selectedKey) return;
@@ -236,10 +381,11 @@ export function LGAFacilityMap({
       // viewport hook's own flight owns the camera.
       view.reset();
     }
-    // `view` and `selected` are rebuilt every render; the id is what actually
-    // changes, and re-running on anything else would re-fly the camera.
+    // `view` and `selected` are rebuilt every render; the id and the readiness
+    // flag are what actually change, and re-running on anything else would
+    // re-fly the camera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKey]);
+  }, [selectedKey, extentReady]);
 
   if (geo.isLoading && !geo.data) {
     return <Skeleton className={cn(MAP_ASPECT_CLASS, 'w-full', className)} />;
@@ -257,8 +403,24 @@ export function LGAFacilityMap({
     );
   }
 
-  const vbWidth = Number(baseViewBox.split(' ')[2] ?? 100);
   const showLabels = layers.labels && view.scale >= FACILITY_LABEL_SCALE;
+  /** Neighbouring LGAs are named as soon as the reader has left base zoom —
+   *  which is the moment they can be panned into and the moment a name on one
+   *  stops being a name on a sliver at the frame's edge. */
+  const showNeighbourLabels = layers.labels && view.scale >= 1.6;
+  const locatePx = unitsPerPx * 6;
+  /**
+   * Boundary weights in **screen pixels**, via `unitsPerPx`.
+   *
+   * The old `min(0.6, max(0.15, vbWidth / 900))` was a viewBox-unit expression
+   * with a floor, and for every LGA in the country the floor won — an LGA's
+   * extent is one to two orders of magnitude smaller than the 900 that divisor
+   * was scaled for. So the width was a constant 0.15 units, which is a
+   * different number of pixels in every LGA: about 5px in Dala and under 1px in
+   * Toro. Asking for the pixels directly says what was meant, and holds across
+   * the zoom range the layer now covers.
+   */
+  const neighbourStroke = unitsPerPx * 1;
 
   return (
     <div
@@ -298,16 +460,41 @@ export function LGAFacilityMap({
         }}
         onPointerLeave={() => setCursor(null)}
       >
-        {outline && <MapClip id={clipId} d={outline.path} />}
+
 
         {baseMap !== 'plain' && (
           <TileLayer
             baseMap={baseMap}
             viewBox={view.viewBox}
             renderPx={renderPx}
-            clipId={outline ? clipId : undefined}
+            renderPxH={renderPxH}
+            zoomCap={imagery.zoomCap}
+            focusPath={outline?.path}
             scrim={0.08}
+            // The lightest surround on any layer. This is where the reader is
+            // asking a question *about the ground* — which road is that, is
+            // there a compound there — and the LGA boundary is the least
+            // interesting line on the screen for answering it. Enough to keep
+            // the subject legible as the subject, and no more.
+            surroundScrim={0.3}
           />
+        )}
+
+        {/* The LGAs either side, drawn behind the subject and inert. See
+            `neighbours`. */}
+        {layers.boundaries && neighbours.length > 0 && (
+          <g aria-hidden pointerEvents="none">
+            {neighbours.map((n) => (
+              <path
+                key={n.lgaId}
+                d={n.path}
+                fill="none"
+                stroke="hsl(var(--map-boundary) / 0.4)"
+                strokeWidth={neighbourStroke}
+                strokeLinejoin="round"
+              />
+            ))}
+          </g>
         )}
 
         {outline && layers.boundaries && (
@@ -320,7 +507,11 @@ export function LGAFacilityMap({
             // no readiness band at this level for it to be encoding.
             fillOpacity={baseMap === 'plain' ? 1 : 0.06}
             stroke={BOUNDARY_STROKE}
-            strokeWidth={Math.min(0.6, Math.max(0.15, vbWidth / 900)) / view.scale}
+            // Twice the neighbours' width, and at 0.9 alpha against their 0.4.
+            // With the base map now drawn across the whole frame and the
+            // neighbouring LGAs outlined beside it, one boundary among many at
+            // the same weight stops reading as the one the page is about.
+            strokeWidth={neighbourStroke * 2}
           />
         )}
 
@@ -335,6 +526,39 @@ export function LGAFacilityMap({
             showLabels={showLabels}
             onHover={setHover}
           />
+        )}
+
+        {/* Neighbour names go on top of the fills but under the markers — they
+            are orientation, and a facility marker must never be hidden by
+            one. */}
+        {showNeighbourLabels &&
+          neighbours.map((n) => (
+            <MapLabel
+              key={`nb-${n.lgaId}`}
+              x={n.label.x}
+              y={n.label.y}
+              text={n.name}
+              mode="shrink"
+              halo
+              fontWeight={500}
+              fontSize={unitsPerPx * 11}
+              maxWidth={n.label.r * 1.9}
+              minFontSize={unitsPerPx * 8}
+              className="fill-black/55"
+            />
+          ))}
+
+        {myLocation && (
+          <g pointerEvents="none">
+            <circle cx={myLocation.x} cy={myLocation.y} r={locatePx * 2} className="fill-brand-500/20" />
+            <circle
+              cx={myLocation.x}
+              cy={myLocation.y}
+              r={locatePx}
+              className="fill-brand-600 stroke-white"
+              strokeWidth={locatePx / 3}
+            />
+          </g>
         )}
       </svg>
 
@@ -354,23 +578,24 @@ export function LGAFacilityMap({
         onExport={mapExport.exportPng}
         exporting={mapExport.busy}
         onSearch={onSearch}
+        onLocate={geolocate.supported ? geolocate.locate : undefined}
+        locating={geolocate.status === 'locating'}
         layers={['boundaries', 'labels', 'facilities', 'cluster']}
       />
 
-      <MapScaleBar
+      <MapStatusBar
         rect={view.rect}
         renderPx={renderPx}
-        className="absolute bottom-8 left-3 z-[1]"
-      />
-      <PointerCoordinates
-        lat={cursor?.lat ?? null}
-        lon={cursor?.lon ?? null}
-        className="absolute bottom-1.5 left-3 z-[1]"
+        cursor={cursor}
+        className="absolute bottom-2 left-3 z-[1]"
       />
       {/* The bottom-right corner as one stack — legend, then attribution.
           See `MapCorner`. */}
       <MapCorner>
         {overlay}
+        <MapNotice text={geolocateMessage(geolocate.status)} onDismiss={geolocate.clear} />
+        <MapNotice text={imagery.notice} />
+        <BaseMapNotice baseMap={baseMap} />
         <MapAttribution baseMap={baseMap} />
       </MapCorner>
 
@@ -404,6 +629,40 @@ export function LGAFacilityMap({
         </div>
       )}
 
+      {/* The same card for a facility the survey placed nowhere.
+          
+          It is the same shape and the same position as the card above on
+          purpose: the reader has selected a facility and is owed an answer
+          about it, and "we do not know where this one is" is an answer. What
+          they must not get is the previous behaviour — the marker, the card and
+          the camera move all silently not happening, which reads as the
+          selection having failed rather than as the data being incomplete. The
+          one thing the map will not do is put it somewhere plausible. */}
+      {selectedUnplaced && selectedRecord && (
+        <div className="absolute left-2 top-11 z-10 w-[250px] rounded-lg border border-border bg-surface/95 p-2.5 shadow-pop backdrop-blur">
+          <p className="text-[13px] font-semibold leading-snug text-foreground">
+            {selectedRecord.name}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {[selectedRecord.lga, selectedRecord.state].filter(Boolean).join(', ') || lgaName}
+          </p>
+          {(selectedRecord.band || selectedRecord.status) && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {[selectedRecord.band ? BAND_LABEL[selectedRecord.band] : null, selectedRecord.status]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          )}
+          <div className="mt-2 flex items-start gap-1.5 border-t border-border pt-1.5 text-[11px] leading-tight text-muted-foreground">
+            <MapPinOff className="mt-px h-3.5 w-3.5 shrink-0 text-moderate-ink" aria-hidden />
+            <span>
+              Exact location unavailable — the survey recorded no GPS coordinate for this
+              facility, so it is not plotted.
+            </span>
+          </div>
+        </div>
+      )}
+
       <FacilityTooltip hover={hover} selectedId={selectedFacilityId} selectable={!!onSelect} />
 
       {/* The empty state, and **`pointer-events-none` is load-bearing**.
@@ -422,6 +681,19 @@ export function LGAFacilityMap({
       {points.length === 0 && (
         <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
           No GPS-mapped facilities for this selection
+        </p>
+      )}
+
+      {/* And when *some* are missing, which is the more common case: a count,
+          once, low in the frame. A map that plots 9 of 10 facilities and says
+          nothing about the tenth is quietly under-reporting the LGA — the
+          reader counts dots and gets a different number from the pane beside
+          them, with no way to tell which figure is wrong. */}
+      {points.length > 0 && unplacedCount > 0 && !selectedUnplaced && (
+        <p className="pointer-events-none absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 rounded border border-border bg-surface/92 px-2 py-1 text-[11px] text-muted-foreground backdrop-blur">
+          {unplacedCount === 1
+            ? '1 facility has no recorded coordinate and is not plotted'
+            : `${unplacedCount} facilities have no recorded coordinate and are not plotted`}
         </p>
       )}
     </div>

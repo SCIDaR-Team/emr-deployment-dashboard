@@ -101,6 +101,23 @@ export function metresPerUnit(lat: number): number {
   return (EARTH_CIRCUMFERENCE_M / WORLD_SIZE) * Math.cos(lat * DEG);
 }
 
+/**
+ * viewBox units spanning `metres` of ground at a given latitude.
+ *
+ * The inverse of `metresPerUnit`, and the thing every *depth* decision on the
+ * map is now expressed in. A zoom limit written as a ratio ("this layer goes to
+ * 12x") means a different amount of ground in every LGA it is applied to: 12x
+ * into Dala is two hundred metres across and 12x into Toro is four kilometres,
+ * so the same constant reaches a compound in one place and a district in the
+ * other. A limit written as a *distance* — "this layer goes down to 150 m
+ * across the frame" — reaches the same thing everywhere, and the ratio is then
+ * derived per subject from its own extent.
+ */
+export function unitsForMetres(metres: number, lat: number): number {
+  const perUnit = metresPerUnit(lat);
+  return perUnit > 0 ? metres / perUnit : 0;
+}
+
 // ---------------------------------------------------------------------------
 // Boxes
 // ---------------------------------------------------------------------------
@@ -139,6 +156,19 @@ export function boundsOfPoints(points: { x: number; y: number }[], pad = 0): Box
     y1 += 0.5;
   }
   return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad };
+}
+
+/**
+ * A square box of a given width centred on a point.
+ *
+ * `boundsOfPoints` on a single point opens it out to an arbitrary half-unit,
+ * which is roughly 650 m — fine as a guard against a zero-width viewBox, and
+ * far too coarse when the caller means "frame this clinic's compound". This
+ * says the width instead of inheriting it.
+ */
+export function boxAround(point: { x: number; y: number }, width: number): Box {
+  const half = Math.max(width, 1e-6) / 2;
+  return { x0: point.x - half, y0: point.y - half, x1: point.x + half, y1: point.y + half };
 }
 
 // ---------------------------------------------------------------------------
@@ -336,6 +366,28 @@ export function unionBounds(
  * for. See `useMapViewport`'s `fitTo`, which supplies its own lower bound from
  * the layer's `maxScale` instead.
  */
+/**
+ * A viewBox string, at a precision the viewBox itself decides.
+ *
+ * **Absolute rounding does not survive a deep zoom.** These were `toFixed(1)`
+ * and `toFixed(2)`, which is a tenth and a hundredth of a viewBox unit — around
+ * 130 m and 13 m of ground. Perfectly sensible against a country 1,000 units
+ * wide, and quietly ruinous against a facility view 0.3 units wide: rounding
+ * the *origin* to the nearest 0.1 moved the whole frame by up to 65 m, so
+ * "zoom to this facility" put the marker most of a frame-height off centre and
+ * the map failed the one thing it promises at that depth — that the facility's
+ * coordinate is the anchor.
+ *
+ * Precision is therefore taken from the span: enough decimals that one step is
+ * about a thousandth of what is on screen, which is sub-pixel at any zoom and
+ * still gives the national view the short string it always had.
+ */
+export function viewBoxString(x: number, y: number, w: number, h: number): string {
+  const span = Math.max(1e-9, Math.min(w, h));
+  const dp = Math.min(8, Math.max(1, Math.ceil(-Math.log10(span)) + 3));
+  return `${x.toFixed(dp)} ${y.toFixed(dp)} ${w.toFixed(dp)} ${h.toFixed(dp)}`;
+}
+
 export function fitViewBox(
   box: { x0: number; y0: number; x1: number; y1: number },
   padFrac = 0.06,
@@ -348,7 +400,7 @@ export function fitViewBox(
   const y0 = box.y0 - pad;
   const x1 = box.x1 + pad;
   const y1 = box.y1 + pad;
-  return `${x0.toFixed(1)} ${y0.toFixed(1)} ${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}`;
+  return viewBoxString(x0, y0, x1 - x0, y1 - y0);
 }
 
 // ---------------------------------------------------------------------------

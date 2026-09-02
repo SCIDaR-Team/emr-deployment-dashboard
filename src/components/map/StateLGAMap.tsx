@@ -8,10 +8,13 @@ import {
   geomToPath,
   geomLabelPoint,
   geomBounds,
+  gx,
+  gy,
   unionBounds,
   fitViewBox,
   latAtY,
   lonAtX,
+  unitsForMetres,
   MAP_ASPECT_CLASS,
   type GeoCollection,
 } from '@/lib/mapProjection';
@@ -19,21 +22,28 @@ import {
   BOUNDARY_STROKE,
   UNIT_FOCUS_CLASS,
   fillOpacityFor,
-  useHatchPatternId,
   bandFlatFill,
   scoreStepFill,
   type GeoDatum,
 } from './mapTypes';
 import { MapLabel } from './MapLabel';
-import { TileLayer, MapAttribution, MapClip, MapCorner } from './TileLayer';
+import {
+  TileLayer,
+  MapAttribution,
+  MapCorner,
+  BaseMapNotice,
+} from './TileLayer';
+import { MapNotice } from './MapNotice';
+import { useImageryDepth } from './imageryCoverage';
+import { StateContextLayer } from './ContextBoundaries';
 import { MapToolbar } from './MapToolbar';
 import type { MapSearchResult } from './MapSearch';
-import { MapScaleBar } from './MapScaleBar';
 import { MapBreadcrumb, type Crumb } from './MapBreadcrumb';
-import { PointerCoordinates } from './MapCoordinates';
+import { MapStatusBar } from './MapCoordinates';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import { useMapViewport, unitAtPoint } from '@/hooks/useMapViewport';
 import { useFullscreen } from '@/hooks/useFullscreen';
+import { useGeolocate, geolocateMessage } from '@/hooks/useGeolocate';
 import { useMapExport } from '@/hooks/useMapExport';
 import { useBaseMapStore } from '@/store/basemapStore';
 import { useMapLayers } from '@/store/mapLayerStore';
@@ -77,7 +87,26 @@ interface StateLGAMapProps {
 
 /** A state's LGAs are already small on screen; past this the facility layer is
  *  the one with anything left to add. */
-const STATE_MAX_SCALE = 4;
+/**
+ * Where the state layer hands over to the LGA below it.
+ *
+ * Unchanged as a *handover* point — four times the state's own extent is about
+ * where one LGA fills the frame and its own layer becomes the better thing to
+ * be looking at. What changed is that it is no longer also the camera's limit;
+ * see `STATE_MIN_VIEW_M`.
+ */
+const STATE_DRILL_SCALE = 4;
+
+/**
+ * And the narrowest frame the camera will show, in metres of ground.
+ *
+ * Half a kilometre is a street grid with named roads on OSM and individual
+ * compounds on imagery. Most readers never get here — the drill fires at 4x and
+ * takes them to the LGA layer — but the ones who do are the ones panning across
+ * a border into an LGA they have not selected, and stopping them at 4x there
+ * would be the map refusing to show ground it is already displaying.
+ */
+const STATE_MIN_VIEW_M = 500;
 
 /**
  * How large an LGA name is drawn, in CSS pixels — see where it is converted.
@@ -142,7 +171,6 @@ export function StateLGAMap({
     encoding: exportScope,
     baseMap,
   });
-  const clipId = `${useHatchPatternId()}-clip`;
 
   const shapes = useMemo(() => {
     if (!geo.data) return [];
@@ -160,9 +188,19 @@ export function StateLGAMap({
     [shapes],
   );
 
+  /** The camera's own limit, from a ground distance rather than a ratio — a
+   *  state's extent varies fivefold, so a fixed multiple would mean five
+   *  different depths. See `STATE_MIN_VIEW_M`. */
+  const maxScale = useMemo(() => {
+    const [, y = 0, w = 1000, h = 813] = baseViewBox.split(' ').map(Number);
+    const minW = unitsForMetres(STATE_MIN_VIEW_M, latAtY(y + h / 2));
+    return minW > 0 ? Math.max(STATE_DRILL_SCALE, w / minW) : STATE_DRILL_SCALE;
+  }, [baseViewBox]);
+
   const view = useMapViewport({
     base: baseViewBox,
-    maxScale: STATE_MAX_SCALE,
+    maxScale,
+    drillScale: STATE_DRILL_SCALE,
     layerKey: 'state',
     // The extent is the union of this state's LGAs, which is not known until
     // the boundary file lands — see the note on `ready`.
@@ -170,11 +208,31 @@ export function StateLGAMap({
     onDrillIn: useCallback(
       (point: { x: number; y: number }, svg: SVGSVGElement | null) => {
         const lgaId = unitAtPoint(svg, point);
-        if (lgaId) onSelect?.(lgaId);
+        // Not the one already selected. On the coverage page an LGA selection
+        // keeps this same layer mounted at the same extent, so re-firing on it
+        // would re-select — and where selection toggles, drop the reader back
+        // out of the LGA they were zooming into.
+        if (lgaId && lgaId !== selectedLgaId) onSelect?.(lgaId);
       },
-      [onSelect],
+      [onSelect, selectedLgaId],
     ),
     onDrillOut: onZoomOut,
+  });
+
+  /**
+   * How close the imagery actually goes here — see `useImageryDepth`. Caps what
+   * the base map is asked for, so a view deeper than the provider's coverage
+   * shows enlarged photography of the right place rather than Esri's grey
+   * "Map data not yet available" grid.
+   */
+  const imagery = useImageryDepth(baseMap, view.rect, renderPx);
+
+  const [myLocation, setMyLocation] = useState<{ x: number; y: number } | null>(null);
+  // Uncomposed on purpose — see the same note in `NigeriaChoropleth`.
+  const geolocate = useGeolocate((lat, lon) => {
+    const point = { x: gx(lon), y: gy(lat) };
+    setMyLocation(point);
+    view.centreOn(point);
   });
 
   if (geo.isLoading && !geo.data) {
@@ -231,6 +289,17 @@ export function StateLGAMap({
   const labelSize = (LGA_LABEL_PX * unitPerPx) / view.scale;
   const labelFloor = (LGA_LABEL_MIN_PX * unitPerPx) / view.scale;
   const fillOpacity = fillOpacityFor(baseMap);
+  /** A constant on-screen size for the location dot, in viewBox units. */
+  const locatePx = (view.rect.w / Math.max(1, renderPx)) * 6;
+  /**
+   * Neighbouring states are named only once the reader has zoomed in.
+   *
+   * At full extent the state fills the frame and its neighbours are slivers
+   * along the edge, where a name has nowhere to sit and would land half off the
+   * map. Zoomed in, those slivers are the ground the reader has panned into and
+   * the name is the whole point of drawing them.
+   */
+  const showContextLabels = view.scale > 1.4;
   const hoverDatum = hover ? data[hover.lgaId] : null;
   const hoverShape = hover ? shapes.find((s) => s.lgaId === hover.lgaId) : null;
 
@@ -275,11 +344,36 @@ export function StateLGAMap({
         }}
         onPointerLeave={() => setCursor(null)}
       >
-        <MapClip id={clipId} d={outlinePath} />
         {baseMap === 'plain' ? (
           <path d={outlinePath} className="fill-brand-50" />
         ) : (
-          <TileLayer baseMap={baseMap} viewBox={view.viewBox} renderPx={renderPx} clipId={clipId} />
+          <TileLayer
+            baseMap={baseMap}
+            viewBox={view.viewBox}
+            renderPx={renderPx}
+            renderPxH={renderPxH}
+            zoomCap={imagery.zoomCap}
+            focusPath={outlinePath}
+            // Lighter than the national layer's: the neighbouring *states* are
+            // somewhere a reader can actually go from here — one drill-out and
+            // a click — and at this extent their roads and towns are the
+            // context that makes the subject state a place rather than a
+            // silhouette.
+            surroundScrim={0.45}
+          />
+        )}
+
+        {/* The states around this one, behind everything and inert. A map of
+            Kano that does not show Jigawa is a diagram of Kano — see
+            `StateContextLayer`. Drawn under the plain wash too, so the flat
+            base map gains the same orientation the tiled ones have. */}
+        {layers.boundaries && (
+          <StateContextLayer
+            exceptId={stateId}
+            strokeWidth={hairline * 1.5}
+            showLabels={layers.labels && showContextLabels}
+            labelSize={labelSize * 1.3}
+          />
         )}
 
         <g style={{ filter: 'drop-shadow(0 1px 3px rgb(0 0 0 / 0.14))' }}>
@@ -372,6 +466,18 @@ export function StateLGAMap({
           />
         ))}
 
+        {myLocation && (
+          <g pointerEvents="none">
+            <circle cx={myLocation.x} cy={myLocation.y} r={locatePx * 2} className="fill-brand-500/20" />
+            <circle
+              cx={myLocation.x}
+              cy={myLocation.y}
+              r={locatePx}
+              className="fill-brand-600 stroke-white"
+              strokeWidth={locatePx / 3}
+            />
+          </g>
+        )}
       </svg>
 
       {crumbs && crumbs.length > 0 && (
@@ -390,23 +496,24 @@ export function StateLGAMap({
         onExport={mapExport.exportPng}
         exporting={mapExport.busy}
         onSearch={onSearch}
+        onLocate={geolocate.supported ? geolocate.locate : undefined}
+        locating={geolocate.status === 'locating'}
         layers={['boundaries', 'labels', 'indicator']}
       />
 
-      <MapScaleBar
+      <MapStatusBar
         rect={view.rect}
         renderPx={renderPx}
-        className="absolute bottom-8 left-3 z-[1]"
-      />
-      <PointerCoordinates
-        lat={cursor?.lat ?? null}
-        lon={cursor?.lon ?? null}
-        className="absolute bottom-1.5 left-3 z-[1]"
+        cursor={cursor}
+        className="absolute bottom-2 left-3 z-[1]"
       />
       {/* The bottom-right corner as one stack — legend, then attribution.
           See `MapCorner`. */}
       <MapCorner>
         {overlay}
+        <MapNotice text={geolocateMessage(geolocate.status)} onDismiss={geolocate.clear} />
+        <MapNotice text={imagery.notice} />
+        <BaseMapNotice baseMap={baseMap} />
         <MapAttribution baseMap={baseMap} />
       </MapCorner>
 

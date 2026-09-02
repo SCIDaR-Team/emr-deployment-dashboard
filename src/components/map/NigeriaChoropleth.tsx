@@ -6,7 +6,14 @@ import { BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { MapHatchDefs } from './MapHatch';
 import { MapLabel } from './MapLabel';
-import { TileLayer, MapAttribution, MapClip, MapCorner } from './TileLayer';
+import {
+  TileLayer,
+  MapAttribution,
+  MapCorner,
+  BaseMapNotice,
+} from './TileLayer';
+import { MapNotice } from './MapNotice';
+import { useImageryDepth } from './imageryCoverage';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import {
   hatchFill,
@@ -23,9 +30,8 @@ import { useMapLayers } from '@/store/mapLayerStore';
 import type { MapFit } from './mapTypes';
 import { MapToolbar } from './MapToolbar';
 import type { MapSearchResult } from './MapSearch';
-import { MapScaleBar } from './MapScaleBar';
 import { MapBreadcrumb, type Crumb } from './MapBreadcrumb';
-import { PointerCoordinates } from './MapCoordinates';
+import { MapStatusBar } from './MapCoordinates';
 import { useMapViewport, unitAtPoint } from '@/hooks/useMapViewport';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useMapExport } from '@/hooks/useMapExport';
@@ -36,12 +42,16 @@ import {
   geomToPath,
   geomLabelPoint,
   geomBounds,
+  gx,
+  gy,
   unionBounds,
   fitViewBox,
   latAtY,
   lonAtX,
+  unitsForMetres,
   type GeoCollection,
 } from '@/lib/mapProjection';
+import { useGeolocate, geolocateMessage } from '@/hooks/useGeolocate';
 import { LoadError, Skeleton } from '@/components/ui';
 
 /** Boundary fidelity in absolute viewBox units — small relative to the
@@ -76,9 +86,29 @@ interface NigeriaChoroplethProps {
   className?: string;
 }
 
-/** How far the national map can zoom before the state's own LGA layer is the
- *  better thing to be looking at. */
-const NATIONAL_MAX_SCALE = 5;
+/**
+ * How far the national map can zoom before the state's own LGA layer is the
+ * better thing to be looking at.
+ *
+ * A *handover* point, not a wall. Push past it over a surveyed state and the
+ * map drills into it; push past it over one this page has nothing to say about
+ * and the camera simply keeps going, which is what `NATIONAL_MAX_SCALE` below
+ * is now for.
+ */
+const NATIONAL_DRILL_SCALE = 5;
+
+/**
+ * And how far the camera itself goes.
+ *
+ * Expressed as the narrowest frame the layer will show rather than as a
+ * multiple, so it means the same thing regardless of how the country happens to
+ * be framed: two kilometres across is a town's street grid on OSM and its roofs
+ * on imagery. Nothing forces a reader to zoom the *national* layer that far —
+ * the drill takes them to the state's own layer long before — but the twenty-
+ * five unsurveyed states have no layer below this one, and the old 5x limit
+ * meant the map simply refused to show them at any useful scale.
+ */
+const NATIONAL_MIN_VIEW_M = 2_000;
 
 interface HoverInfo {
   stateId: string;
@@ -111,11 +141,10 @@ export function NigeriaChoropleth({
   /** Live position under the pointer, for the coordinate readout. */
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const hatchId = useHatchPatternId();
-  const clipId = `${hatchId}-clip`;
   const baseMap = useBaseMapStore((s) => s.baseMap);
   const layers = useMapLayers();
   const fullscreen = useFullscreen<HTMLDivElement>();
-  const [frameRef, renderPx] = useRenderSize<HTMLDivElement>();
+  const [frameRef, renderPx, renderPxH] = useRenderSize<HTMLDivElement>();
   const mapExport = useMapExport(fullscreen.ref, {
     name: ['nigeria-states', exportScope],
     scope: crumbs?.map((c) => c.label).join(' / ') ?? 'Nigeria',
@@ -145,9 +174,24 @@ export function NigeriaChoropleth({
     [shapes],
   );
 
+  /**
+   * The camera's limit, derived from the frame rather than fixed.
+   *
+   * `unitsForMetres` at the middle of the country: Mercator's scale factor
+   * varies across Nigeria's latitude span, so a metre is a slightly different
+   * number of viewBox units in Sokoto than on the coast, and taking the middle
+   * keeps the limit honest to within a percent either way.
+   */
+  const maxScale = useMemo(() => {
+    const [, y = 0, w = SVG_W, h = SVG_H] = baseViewBox.split(' ').map(Number);
+    const minW = unitsForMetres(NATIONAL_MIN_VIEW_M, latAtY(y + h / 2));
+    return minW > 0 ? Math.max(NATIONAL_DRILL_SCALE, w / minW) : NATIONAL_DRILL_SCALE;
+  }, [baseViewBox]);
+
   const view = useMapViewport({
     base: baseViewBox,
-    maxScale: NATIONAL_MAX_SCALE,
+    maxScale,
+    drillScale: NATIONAL_DRILL_SCALE,
     layerKey: 'national',
     // The extent is Nigeria's own bounding box, which is not known until the
     // boundaries land — see the note on `ready`.
@@ -161,6 +205,33 @@ export function NigeriaChoropleth({
       },
       [onSelect, data],
     ),
+  });
+
+  /**
+   * The reader's own position, as a place on this map.
+   *
+   * Recentres without changing zoom — see `centreOn`. A fix outside Nigeria is
+   * still honoured: the clamp keeps the camera near the country, so someone
+   * viewing from abroad gets the nearest edge rather than a silent no-op, and
+   * the marker tells them where the fix actually landed.
+   */
+  /**
+   * How close the imagery actually goes here — see `useImageryDepth`. Caps what
+   * the base map is asked for, so a view deeper than the provider's coverage
+   * shows enlarged photography of the right place rather than Esri's grey
+   * "Map data not yet available" grid.
+   */
+  const imagery = useImageryDepth(baseMap, view.rect, renderPx);
+
+  const [myLocation, setMyLocation] = useState<{ x: number; y: number } | null>(null);
+  // Passed uncomposed rather than through `useCallback`: `useGeolocate` keeps
+  // the latest handler in a ref, and memoising this one would freeze it around
+  // the `view` from the first render — whose camera is still framed on the
+  // placeholder extent, since the boundaries have not landed yet.
+  const geolocate = useGeolocate((lat, lon) => {
+    const point = { x: gx(lon), y: gy(lat) };
+    setMyLocation(point);
+    view.centreOn(point);
   });
 
   if (geo.isLoading && !geo.data) {
@@ -180,6 +251,9 @@ export function NigeriaChoropleth({
   const hoverDatum = hover ? data[hover.stateId] : null;
   const outlinePath = shapes.map((s) => s.path).join(' ');
   const fillOpacity = fillOpacityFor(baseMap);
+  /** How wide "my location" is drawn, in viewBox units — a constant size on
+   *  screen, like every other marker on these maps. */
+  const locatePx = (view.rect.w / Math.max(1, renderPx)) * 6;
 
   const selectedShape = selectedId ? shapes.find((sh) => sh.stateId === selectedId) : null;
 
@@ -223,18 +297,30 @@ export function NigeriaChoropleth({
         onPointerLeave={() => setCursor(null)}
       >
         <MapHatchDefs id={hatchId} solid={baseMap === 'plain'} />
-        <MapClip id={clipId} d={outlinePath} />
         {/* Plain: a wash behind the landmass so states read as sitting on a
             map rather than floating on the card's own background. Otherwise
-            the reader's chosen base map, clipped to the country — see
-            TileLayer. */}
+            the reader's chosen base map, drawn across the whole frame with the
+            country picked out of it — see TileLayer for why this stopped being
+            a clip. */}
         {baseMap === 'plain' ? (
           <path d={outlinePath} className="fill-brand-50" />
         ) : (
           // The live viewBox, not the base one: tiles then re-cut themselves at
           // the zoom the reader is actually at, so imagery sharpens on the way
           // in instead of upscaling.
-          <TileLayer baseMap={baseMap} viewBox={view.viewBox} renderPx={renderPx} clipId={clipId} />
+          <TileLayer
+            baseMap={baseMap}
+            viewBox={view.viewBox}
+            renderPx={renderPx}
+            renderPxH={renderPxH}
+            zoomCap={imagery.zoomCap}
+            focusPath={outlinePath}
+            // Heavier than the layers below, because the neighbouring countries
+            // are pure orientation here — nothing on this page has anything to
+            // say about Niger or Cameroon, and they should read as edge rather
+            // than as content.
+            surroundScrim={0.6}
+          />
         )}
 
         <g style={{ filter: 'drop-shadow(0 2px 5px rgb(0 0 0 / 0.16))' }}>
@@ -347,6 +433,26 @@ export function NigeriaChoropleth({
             />
           ))}
 
+        {/* The reader's own position, in the convention every map uses for it —
+            a filled dot inside a ring. Drawn last so nothing paints over it,
+            and sized in pixels so it stays a dot at every zoom. */}
+        {myLocation && (
+          <g pointerEvents="none">
+            <circle
+              cx={myLocation.x}
+              cy={myLocation.y}
+              r={locatePx * 2}
+              className="fill-brand-500/20"
+            />
+            <circle
+              cx={myLocation.x}
+              cy={myLocation.y}
+              r={locatePx}
+              className="fill-brand-600 stroke-white"
+              strokeWidth={locatePx / 3}
+            />
+          </g>
+        )}
       </svg>
 
       {crumbs && crumbs.length > 0 && (
@@ -365,23 +471,24 @@ export function NigeriaChoropleth({
         onExport={mapExport.exportPng}
         exporting={mapExport.busy}
         onSearch={onSearch}
+        onLocate={geolocate.supported ? geolocate.locate : undefined}
+        locating={geolocate.status === 'locating'}
         layers={['boundaries', 'labels', 'indicator']}
       />
 
-      <MapScaleBar
+      <MapStatusBar
         rect={view.rect}
         renderPx={renderPx}
-        className="absolute bottom-8 left-3 z-[1]"
+        cursor={cursor}
+        className="absolute bottom-2 left-3 z-[1]"
       />
-      <PointerCoordinates
-        lat={cursor?.lat ?? null}
-        lon={cursor?.lon ?? null}
-        className="absolute bottom-1.5 left-3 z-[1]"
-      />
-      {/* The bottom-right corner as one stack — legend, then attribution.
-          See `MapCorner`. */}
+      {/* The bottom-right corner as one stack — legend, attribution, and
+          whatever the base map has to say for itself. See `MapCorner`. */}
       <MapCorner>
         {overlay}
+        <MapNotice text={geolocateMessage(geolocate.status)} onDismiss={geolocate.clear} />
+        <MapNotice text={imagery.notice} />
+        <BaseMapNotice baseMap={baseMap} />
         <MapAttribution baseMap={baseMap} />
       </MapCorner>
 

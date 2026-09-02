@@ -28,14 +28,15 @@ import { BASE_MAPS, useBaseMapStore } from '@/store/basemapStore';
  * do; the honest reading is that at national extent facilities are not a layer
  * yet — they become one two levels down, and the reader finds the row there.
  *
- * ## The base map lives here
+ * ## The base map is here
  *
- * Streets / Satellite / Plain is the bottom layer of the same stack, so it sits
- * at the bottom of the same panel rather than in a separate control elsewhere
- * on the page. This is the first thing in the dashboard to mount
- * `BaseMapControl`'s function — see the note on that component for what had to
- * be true first, and `NigeriaChoropleth` for the label halo that closed the
- * last of it.
+ * Streets / Satellite / Plain is the bottom layer of the same stack, so it
+ * belongs at the bottom of the same panel, and this is the only place it is
+ * offered. It briefly also sat on the map surface as a segmented control, on
+ * the argument that flicking between street and imagery is a gesture rather
+ * than a preference; that was removed at the client's direction. If it ever
+ * comes back, it reads this same store — the taxonomy is right here, and a
+ * second control is a shortcut to it, never a second source of truth.
  */
 
 export function MapLayerPanel({
