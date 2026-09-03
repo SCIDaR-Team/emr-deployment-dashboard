@@ -1,9 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { ArrowRight } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import { nextModule } from '@/app/navigation';
 import { cn } from '@/lib/cn';
 import { SectionTabs, type PageSection } from './SectionTabs';
+import { ThemeToggle } from './ThemeToggle';
 
 interface PageHeaderProps {
   title: string;
@@ -16,7 +14,7 @@ interface PageHeaderProps {
    *  title bar, so the title row keeps a fixed height on every page. */
   children?: React.ReactNode;
   /** Actions that sit at the right of the title row — export menus, mode
-   *  toggles. The next-module arrow is appended after them. */
+   *  toggles. The colour-scheme switch is appended after them. */
   actions?: React.ReactNode;
   /**
    * The page's own sections, in document order — rendered as a strip of
@@ -46,8 +44,6 @@ export function PageHeader({
   sections,
   className,
 }: PageHeaderProps) {
-  const { pathname } = useLocation();
-  const next = nextModule(pathname);
   const ref = useRef<HTMLElement>(null);
 
   /**
@@ -94,21 +90,13 @@ export function PageHeader({
           )}
         </div>
 
+        {/* The colour-scheme switch rides the header on every page, in the
+            slot the next-module arrow held. The arrow walked the rail in order
+            for a presenter clicking through; the rail itself does that, and it
+            was one more thing in the corner of every screen. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {actions}
-          {next && (
-            // A predictable "next" is worth keeping from the prototype — these
-            // stakeholders present from the dashboard in sequence. Hidden on
-            // small screens, where the top corner is already spoken for by the
-            // navigation button.
-            <Link
-              to={next}
-              aria-label="Next module"
-              className="hidden h-8 w-8 place-items-center rounded border border-input text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:grid"
-            >
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          )}
+          <ThemeToggle />
         </div>
       </div>
 

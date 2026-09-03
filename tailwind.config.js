@@ -61,6 +61,14 @@ export default {
           ink: 'hsl(var(--not-ready-ink) / <alpha-value>)',
           wash: 'hsl(var(--not-ready-wash) / <alpha-value>)',
         },
+        // Urgency, not readiness — see the note in globals.css. Ink only: these
+        // four never fill a shape, they colour a word or a glyph beside one.
+        urgency: {
+          critical: 'hsl(var(--urgency-critical) / <alpha-value>)',
+          major: 'hsl(var(--urgency-major) / <alpha-value>)',
+          minor: 'hsl(var(--urgency-minor) / <alpha-value>)',
+          optional: 'hsl(var(--urgency-optional) / <alpha-value>)',
+        },
         nodata: 'hsl(var(--no-data) / <alpha-value>)',
 
         // Ink for text that sits on top of a band fill — the readiness cards.

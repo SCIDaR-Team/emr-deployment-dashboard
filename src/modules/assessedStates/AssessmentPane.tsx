@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
+import { BAND_CLASSES, BAND_LABEL, HORIZON_CLASSES, URGENCY_MARKER } from '@/lib/bands';
 import {
   GAP_BY_ID,
   GAP_DOMAINS,
@@ -10,7 +10,6 @@ import {
   GAP_DOMAIN_LABEL,
   HORIZONS,
   HORIZON_LABEL,
-  HORIZON_SEVERITY,
   HORIZON_SHORT,
   gapCostNGN,
   gapsInArea,
@@ -20,7 +19,7 @@ import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
 import { cn } from '@/lib/cn';
 import { formatCount, formatNaira } from '@/lib/format';
 import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
-import { BandBadge, BandCards, EmptyState, Tile, TileRow } from '@/components/ui';
+import { BandBadge, BandCards, EmptyState } from '@/components/ui';
 import { FacilityCoordinates } from '@/components/map';
 import type {
   Band,
@@ -197,12 +196,11 @@ export function AssessmentPane({
             )}
 
             <Block
-              title="Gaps in scope"
-              note="What is actually wrong, and what closing it costs"
+              title="Gaps and interventions"
+              note="What is wrong, what closes it, when, and what that costs"
             >
               <GapBlocks facilities={facilities} domains={domains} gapAreas={gapAreas} />
             </Block>
-
           </>
         )}
 
@@ -239,9 +237,9 @@ function PaneHeader({ scope, band }: { scope: AssessmentScope; band: Band | null
 
   return (
     <div className="shrink-0 border-b border-border px-4 py-3">
-      <p className="mono text-[10px] uppercase tracking-[0.09em] text-muted-foreground">{level}</p>
+      <p className="mono text-[11px] uppercase tracking-[0.09em] text-muted-foreground">{level}</p>
       <div className="mt-1 flex items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold leading-tight text-foreground">{name}</h2>
+        <h2 className="text-[20px] font-semibold leading-tight text-foreground">{name}</h2>
         {band && <BandBadge band={band} size="sm" />}
       </div>
     </div>
@@ -443,7 +441,7 @@ function FacilityBlocks({
       </Block>
 
       <Block title="This facility">
-        <dl className="space-y-1.5 text-[13px]">
+        <dl className="space-y-1.5 text-[14px]">
           <Detail term="Functionality" value={facility.functionalityLevel} />
           {/* Omitted rather than guessed where the raw export could not be
               matched: four fifths of these facilities are rural, so a default
@@ -506,7 +504,7 @@ function ConnectivityBlock({ facility }: { facility: FacilitySummary }) {
 
   return (
     <Block title="Mobile network" note="Measured, not a readiness reading">
-      <dl className="space-y-1.5 text-[13px]">
+      <dl className="space-y-1.5 text-[14px]">
         {facility.mtnServiceability && (
           <Detail term="MTN serviceability" value={facility.mtnServiceability} />
         )}
@@ -528,6 +526,21 @@ function ConnectivityBlock({ facility }: { facility: FacilitySummary }) {
   );
 }
 
+/**
+ * The when-phrase on its own, for the horizon cards.
+ *
+ * `HORIZON_LABEL` carries the urgency and the phrase in one string — "Critical
+ * — before deployment" — which is right for a row that has no other heading.
+ * A card prints the urgency as its own heading, so the full label would set the
+ * same word twice, one line apart.
+ */
+const HORIZON_WHEN: Record<Horizon, string> = {
+  critical: 'Before deployment',
+  major: 'Before deployment',
+  minor: 'During deployment',
+  long_term: 'After deployment',
+};
+
 /** A gap's place in the urgency order, for sorting. Most urgent first. */
 function gapUrgency(id: string): number {
   const gap = GAP_BY_ID[id];
@@ -542,9 +555,9 @@ function gapUrgency(id: string): number {
 function BandLine({ label, band, note }: { label: string; band: Band | null; note?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate text-[13px] text-foreground">{label}</span>
+      <span className="min-w-0 truncate text-[14px] text-foreground">{label}</span>
       <span className="flex shrink-0 items-center gap-2">
-        {note && <span className="mono text-[10px] text-muted-foreground">{note}</span>}
+        {note && <span className="mono text-[11px] text-muted-foreground">{note}</span>}
         <BandBadge band={band} size="sm" />
       </span>
     </div>
@@ -610,19 +623,19 @@ function SelectionBlock({
     <ul className="space-y-2.5">
       {groups.map((group) => (
         <li key={group.id}>
-          <p className="mono text-[9.5px] font-bold uppercase tracking-[0.09em] text-muted-foreground">
+          <p className="mono text-[10.5px] font-bold uppercase tracking-[0.09em] text-muted-foreground">
             {group.label}
           </p>
           {group.areas.length ? (
             <ul className="mt-1 space-y-0.5">
               {group.areas.map((area) => (
-                <li key={area.id} className="text-[13px] leading-snug text-foreground">
+                <li key={area.id} className="text-[14px] leading-snug text-foreground">
                   {area.label} gap
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-[12.5px] italic leading-snug text-muted-foreground">
+            <p className="mt-1 text-[13.5px] italic leading-snug text-muted-foreground">
               No gap area selected — this domain is only narrowing what the Gap
               area filter offers.
             </p>
@@ -660,12 +673,12 @@ function BandCounts({
       <p className="mono text-[30px] font-semibold leading-none tracking-tight text-foreground">
         {formatCount(total)}
       </p>
-      <p className="mono mt-1 text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
+      <p className="mono mt-1 text-[11px] uppercase tracking-[0.09em] text-muted-foreground">
         {total === 1 ? 'facility in scope' : 'facilities in scope'}
       </p>
 
       {scored === 0 ? (
-        <p className="mt-3 text-[13px] italic text-muted-foreground">
+        <p className="mt-3 text-[14px] italic text-muted-foreground">
           None of them carries a readiness band.
         </p>
       ) : mode === 'multi' ? (
@@ -739,10 +752,10 @@ function PerDomainSplit({
 
   return (
     <div className="mt-3.5">
-      <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[9px] uppercase tracking-[0.07em] text-muted-foreground">
+      <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
         <span className="min-w-0 flex-1">Domain</span>
         {order.map((b) => (
-          <span key={b} className="w-[46px] shrink-0 text-right">
+          <span key={b} className="w-[52px] shrink-0 text-right">
             {BAND_LABEL[b].replace('Moderately ready', 'Moderate')}
           </span>
         ))}
@@ -754,12 +767,12 @@ function PerDomainSplit({
             key={id}
             className="flex items-baseline gap-2 border-b border-border py-1.5 last:border-0"
           >
-            <span className="min-w-0 flex-1 truncate text-[12px] text-foreground">{label}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{label}</span>
             {order.map((b) => (
               <span
                 key={b}
                 className={cn(
-                  'mono w-[46px] shrink-0 text-right text-[12px] font-semibold tabular-nums',
+                  'mono w-[52px] shrink-0 text-right text-[13px] font-semibold tabular-nums',
                   BAND_CLASSES[b].text,
                 )}
               >
@@ -774,7 +787,7 @@ function PerDomainSplit({
           the facility count above — three columns that sum to the total — when
           each row is in fact the same facilities counted again under a different
           domain. */}
-      <p className="mt-2 text-[11px] italic leading-snug text-muted-foreground">
+      <p className="mt-2 text-[12px] italic leading-snug text-muted-foreground">
         Every row counts the same facilities under a different domain, so the rows
         do not add up. The assessment publishes no combined reading.
       </p>
@@ -784,18 +797,48 @@ function PerDomainSplit({
 
 
 /**
- * The gap reading: how many, spread over how many facilities, and what it costs.
+ * Gaps and the interventions that close them — one reading, four depths.
  *
- * Three figures at the top because they are three different questions and a
- * programme asks all of them. *Gaps* is instances, not distinct problems — one
- * facility with four gaps is four, because four things have to be bought or
- * done. *Facilities affected* is how wide it goes. *Cost* is what the first two
- * come to, and it is smaller than the gap count implies, because two of the
- * five domains are closed by attention rather than procurement.
+ * The source's own chain, end to end: a **domain** holds **sub-domains**, a
+ * sub-domain holds the **gap** conditions the survey recorded, and each gap
+ * names the **interventions** it calls for. Splitting that across two blocks
+ * made the reader join a finding to its fix by scrolling; nesting it puts the
+ * prescription under the diagnosis, which is where it is in the data.
  *
- * Then the gaps themselves, commonest first. Commonest rather than costliest:
- * this pane answers "what is wrong here", and the money question has a page of
- * its own that can phase and rank it properly.
+ * It also puts the money where the money actually is. A gap carries no price in
+ * this source — it is a finding. The intervention it triggers is the priced,
+ * schedulable thing, so every naira on this page has always been intervention
+ * money, and now the tree says so at the row that spends it.
+ *
+ * ## Two columns, and why not three
+ *
+ * The tree carries **Facilities** and **Cost**, and deliberately not a count of
+ * interventions beside them. A facility carries at most one condition per
+ * sub-domain — a gap column holds one value — so below the domain row the
+ * intervention count and the facility count are the *same number by
+ * construction*, everywhere except Power, the one gap that fires two actions.
+ * Carried down four rungs that column printed the figure beside it twice on 18
+ * of 27 rows. The intervention total keeps its own tile, and the horizon cards
+ * below it are where an action count is genuinely the subject.
+ *
+ * So each rung says only what is not already said one column over:
+ *
+ *   domain · sub-domain · gap   facilities carrying it, and what closing it costs
+ *   intervention                its urgency, and its **unit** price
+ *
+ * The unit price is new at this level — it appears nowhere above the facility
+ * card today — and it makes the rung above it legible as the sentence a
+ * programme actually needs: *571 facilities × ₦3.0m = ₦1.7bn*. It is labelled
+ * `each` because it is the one figure in the tree that does **not** roll up,
+ * and an unlabelled ₦3.0m under a ₦1.7bn total invites exactly the wrong sum.
+ *
+ * ## What is collapsed
+ *
+ * Domains and sub-domains always show; gaps and their interventions sit behind
+ * the sub-domain's toggle. Twenty sub-domains over seventy-three conditions and
+ * their actions is a wall in a 420px column, and the sub-domain is the level a
+ * reader scans for. One exception: filter to a single gap area and it opens
+ * itself, because asking for one area is asking what is wrong inside it.
  */
 function GapBlocks({
   facilities,
@@ -808,7 +851,7 @@ function GapBlocks({
    *  facilities are in scope — see `offeredGapIds`. */
   gapAreas: string[];
 }) {
-  const { tree, instances, affected, cost, unpriced } = useMemo(() => {
+  const { tree, schedule, gapCount, actCount, affected, cost, unpriced } = useMemo(() => {
     /**
      * The gaps this block counts — both filters, not just Domain.
      *
@@ -820,37 +863,28 @@ function GapBlocks({
      * same card.
      */
     const offered = offeredGapIds(domains, gapAreas);
-    /**
-     * The tree the block renders: domain → gap area → condition.
-     *
-     * The source's own three levels, and the reason the flat list it replaces
-     * read badly — ordered by facility count, that list stepped between domains
-     * on almost every row, so nothing accumulated as the eye went down it.
-     *
-     * Each level carries all three headline figures, and the relationship
-     * between two of them changes with depth, which is worth stating because
-     * the table makes it visible:
-     *
-     *   domain     gaps ≠ facilities. 18,667 technical gaps sit in 2,806
-     *              facilities, because one facility has several.
-     *   area       gaps = facilities, exactly. A gap column holds one value,
-     *              so a facility carries at most one condition per area.
-     *   condition  the same, one rung further down.
-     *
-     * Cost adds up at every level. Facilities never does — a facility with a
-     * power problem and a wiring problem is one facility in the domain row and
-     * appears in two area rows beneath it. Said once under the table.
-     */
+
+    /** What a branch of the tree carries. No action count: see the block note. */
+    type Acc = { facs: Set<string>; cost: number; unpriced: number };
+    const blank = (): Acc => ({ facs: new Set<string>(), cost: 0, unpriced: 0 });
+
+    /** Facilities carrying each condition. Everything below a sub-domain is
+     *  derived from this one number: a gap column holds a single value, so a
+     *  facility carries at most one condition per area and the condition's
+     *  cost is that count times a constant. */
     const perCondition = new Map<string, number>();
-    type Acc = { gaps: number; facs: Set<string>; cost: number; unpriced: number };
     const perArea = new Map<string, Acc>();
     const perDomain = new Map<string, Acc>();
+    /** The one place an action count *is* the subject, so the only accumulator
+     *  that carries one. */
+    const byHorizon = new Map<Horizon, Acc & { acts: number }>();
 
-    // The headline tiles, from the same single pass. `instances` counts gaps
-    // and `affected` counts clinics — the pair the tiles print, and the pair
-    // the domain rows below diverge on for the same reason.
-    let instances = 0;
+    // The headline figures, from the same single pass, so the four tiles and
+    // the tree beneath them cannot disagree.
+    let gapCount = 0;
+    let actCount = 0;
     let cost = 0;
+    let unpriced = 0;
     const affected = new Set<string>();
 
     for (const f of facilities) {
@@ -858,36 +892,46 @@ function GapBlocks({
       for (const id of f.gaps) {
         if (!offered.has(id)) continue;
         const gap = GAP_BY_ID[id]!;
-        const { costNGN: c, unpriced: u } = gapCostNGN(gap);
-        instances += 1;
-        cost += c;
+        gapCount += 1;
         hit = true;
         perCondition.set(id, (perCondition.get(id) ?? 0) + 1);
 
-        const a = perArea.get(gap.area) ?? { gaps: 0, facs: new Set<string>(), cost: 0, unpriced: 0 };
-        a.gaps += 1;
-        a.facs.add(f.uuid);
-        a.cost += c;
-        a.unpriced += u;
-        perArea.set(gap.area, a);
+        const area = perArea.get(gap.area) ?? blank();
+        const domain = perDomain.get(gap.domain) ?? blank();
+        area.facs.add(f.uuid);
+        domain.facs.add(f.uuid);
 
-        const d =
-          perDomain.get(gap.domain) ?? { gaps: 0, facs: new Set<string>(), cost: 0, unpriced: 0 };
-        d.gaps += 1;
-        d.facs.add(f.uuid);
-        d.cost += c;
-        d.unpriced += u;
-        perDomain.set(gap.domain, d);
+        for (const iv of gap.interventions) {
+          const horizon = byHorizon.get(iv.horizon) ?? { ...blank(), acts: 0 };
+          horizon.acts += 1;
+          horizon.facs.add(f.uuid);
+          for (const acc of [area, domain, horizon] as Acc[]) {
+            // A price the source withholds is counted, never added as zero.
+            if (iv.costNGN === null) acc.unpriced += 1;
+            else acc.cost += iv.costNGN;
+          }
+          byHorizon.set(iv.horizon, horizon);
+
+          actCount += 1;
+          if (iv.costNGN === null) unpriced += 1;
+          else cost += iv.costNGN;
+        }
+
+        perArea.set(gap.area, area);
+        perDomain.set(gap.domain, domain);
       }
       if (hit) affected.add(f.uuid);
     }
 
-    /** Costliest first at every level — see the sort note on the old
-     *  breakdown. Ties break on gaps then label, so a row of ₦0 actions keeps
-     *  a stable place between renders instead of reshuffling. */
-    const byCost = (a: { cost: number; gaps: number; label: string },
-                    b: { cost: number; gaps: number; label: string }) =>
-      b.cost - a.cost || b.gaps - a.gaps || a.label.localeCompare(b.label);
+    /** Costliest first at every depth. The question at this level is where a
+     *  budget goes; the facility card sorts the same rows by urgency instead,
+     *  because the question at a clinic is what has to happen first. Ties break
+     *  on facilities then label, so a row of ₦0 actions keeps a stable place
+     *  between renders instead of reshuffling. */
+    const byCost = (
+      a: { cost: number; facs: number; label: string },
+      b: { cost: number; facs: number; label: string },
+    ) => b.cost - a.cost || b.facs - a.facs || a.label.localeCompare(b.label);
 
     const tree = GAP_DOMAINS.filter((d) => perDomain.has(d.id))
       .map((d) => {
@@ -898,20 +942,31 @@ function GapBlocks({
             return {
               id: a.id,
               label: `${a.label} gap`,
-              gaps: av.gaps,
               facs: av.facs.size,
               cost: av.cost,
               unpriced: av.unpriced,
               conditions: gapsInArea(a.id)
                 .filter((g) => perCondition.has(g.id))
-                .map((g) => ({
-                  id: g.id,
-                  label: g.label,
-                  gaps: perCondition.get(g.id)!,
-                  facs: perCondition.get(g.id)!,
-                  cost: perCondition.get(g.id)! * gapCostNGN(g).costNGN,
-                  unpriced: perCondition.get(g.id)! * gapCostNGN(g).unpriced,
-                }))
+                .map((g) => {
+                  const n = perCondition.get(g.id)!;
+                  const c = gapCostNGN(g);
+                  return {
+                    id: g.id,
+                    label: g.label,
+                    facs: n,
+                    cost: n * c.costNGN,
+                    unpriced: n * c.unpriced,
+                    /** Most urgent first, not costliest. There are at most two,
+                     *  they are a sequence rather than a ranking — install now,
+                     *  connect to the grid later — and printing them out of
+                     *  order would misstate the plan. */
+                    interventions: [...g.interventions].sort(
+                      (x, y) =>
+                        HORIZONS.indexOf(x.horizon) - HORIZONS.indexOf(y.horizon) ||
+                        (y.costNGN ?? 0) - (x.costNGN ?? 0),
+                    ),
+                  };
+                })
                 .sort(byCost),
             };
           })
@@ -919,7 +974,6 @@ function GapBlocks({
         return {
           id: d.id,
           label: d.label,
-          gaps: acc.gaps,
           facs: acc.facs.size,
           cost: acc.cost,
           unpriced: acc.unpriced,
@@ -928,14 +982,20 @@ function GapBlocks({
       })
       .sort(byCost);
 
-    return {
-      tree,
-      instances,
-      affected: affected.size,
-      cost,
-      /** Actions in scope the sheet does not price — the footnote's trigger. */
-      unpriced: [...perDomain.values()].reduce((sum, d) => sum + d.unpriced, 0),
-    };
+    // Worst-first, and only the horizons in play — a card of zeroes for a
+    // quarter with nothing in it is noise.
+    const schedule = HORIZONS.filter((h) => byHorizon.has(h)).map((h) => {
+      const acc = byHorizon.get(h)!;
+      return {
+        horizon: h,
+        acts: acc.acts,
+        facs: acc.facs.size,
+        cost: acc.cost,
+        unpriced: acc.unpriced,
+      };
+    });
+
+    return { tree, schedule, gapCount, actCount, affected: affected.size, cost, unpriced };
   }, [facilities, domains, gapAreas]);
 
   /**
@@ -961,14 +1021,9 @@ function GapBlocks({
   );
 
   /**
-   * Which areas are showing their conditions.
+   * Which sub-domains are showing their gaps.
    *
-   * Collapsed by default: twenty areas and seventy-three conditions in a 420px
-   * column is a wall, and the area is the level a reader is scanning for.
-   *
-   * One exception — filter to a single gap area and it opens itself. Asking for
-   * exactly one area is asking what is wrong inside it, and a lone collapsed
-   * row is the pane withholding the answer to the question just put to it.
+   * Collapsed by default, opened by the one-area filter — see the block note.
    * Keyed on the selection so re-picking a different single area opens that one
    * instead of leaving the first one hanging open.
    */
@@ -987,28 +1042,38 @@ function GapBlocks({
 
   return (
     <div>
-      <TileRow className="grid-cols-3">
-        <Tile label="Gaps" value={formatCount(instances)} note="to close" />
-        <Tile label="Facilities" value={formatCount(affected)} note="with a gap" />
-        {/* The cost card names the counting rule, because cost is the figure a
-            reader is most likely to carry away and quote. The tiles are a
-            union — everything wrong across the selected domains, the same
-            grammar every other multi-select on this page uses — and the
-            intersection below is a different question about the same
-            population. */}
-        <Tile
+      {/* Four figures on one line, and each answers a question the others
+          cannot. Gaps is what is wrong; Interventions is what has to be done
+          about it, and runs ahead of the first because one gap can call for two
+          actions. Facilities is how wide it goes. Cost is what the second
+          column comes to — it prices interventions, never gaps, which is why
+          the two counts are worth carrying separately at the top of a block
+          that spends the rest of its height reconciling them.
+
+          Not the shared `Tile`: its padding and label size are set for a
+          three-across row and would truncate "Interventions" at the quarter
+          width this one needs. */}
+      <div className="grid grid-cols-4 gap-px border border-border bg-border">
+        <HeadFigure label="Gaps" value={formatCount(gapCount)} note="to close" />
+        <HeadFigure
+          label="Interventions"
+          value={formatCount(actCount)}
+          note="to close them"
+        />
+        <HeadFigure label="Facilities" value={formatCount(affected)} note="with a gap" />
+        <HeadFigure
           label="Cost"
           value={formatNaira(cost, true)}
-          note={domains.length ? 'across selected domains' : 'to close them'}
+          note={unpriced ? 'excludes unpriced' : 'for those interventions'}
         />
-      </TileRow>
+      </div>
 
-      {/* The intersection, against the union in the cards above.
+      {/* The intersection, against the union in the figures above.
 
           Only from two domains up: with one selected the two are the same
           facilities, and drawing the distinction would imply one is being made. */}
       {overlap && (
-        <p className="mt-2 text-[11.5px] leading-snug text-muted-foreground">
+        <p className="mt-2 text-[12.5px] leading-snug text-muted-foreground">
           <span className="mono font-semibold tabular-nums text-foreground">
             {formatCount(overlap.all)}
           </span>{' '}
@@ -1016,22 +1081,58 @@ function GapBlocks({
         </p>
       )}
 
-      {/* The gap tree: domain → gap area → condition.
+      {/* When the work has to happen, before what the work is.
 
-          Three columns because the reader has just read three tiles, and a
-          breakdown that answers a different set of questions from the headline
-          above it is a breakdown they have to re-learn.
+          Urgency belongs to the intervention and not to the gap, so this split
+          has no equivalent in the tree below — a power gap has no single
+          horizon to file itself under. The two blocking cards are what a
+          deployment date actually turns on: they are exactly what
+          `FacilitySummary.deploymentBand` is computed from, one level down.
 
-          Gaps and Facilities are equal on every row below a domain, and that
-          repetition is the point rather than noise: it is where the reader can
-          see that one gap here means one facility, which is what makes an area
-          count safe to read as a facility count. They part company only on a
-          domain row, where several gaps land in the same clinic. */}
-      <div className="mono mt-3.5 flex items-baseline gap-2 border-b border-border pb-1 text-[9px] uppercase tracking-[0.07em] text-muted-foreground">
-        <span className="min-w-0 flex-1">Gap</span>
-        <span className="w-[38px] shrink-0 text-right">Gaps</span>
-        <span className="w-[38px] shrink-0 text-right">Facs</span>
-        <span className="w-[52px] shrink-0 text-right">Cost</span>
+          Facilities on the Critical card is the same population the readiness
+          block above counts as Not ready to deploy, arrived at from the other
+          end — a facility is Not ready precisely because it carries one of
+          these. Both narrow together under a filter, so the two blocks can be
+          read against each other on any selection.
+
+          Two across rather than four: the figures read beside their labels
+          rather than under them, and "Interventions 2,355" does not fit in a
+          quarter of 420px. */}
+      <div className="mt-3.5 grid grid-cols-2 gap-px border border-border bg-border">
+        {schedule.map((row) => (
+          <div key={row.horizon} className="min-w-0 bg-surface px-2.5 py-2">
+            <p
+              className={cn(
+                'mono text-[10px] font-bold uppercase tracking-[0.07em]',
+                HORIZON_CLASSES[row.horizon].text,
+              )}
+            >
+              <span aria-hidden className="mr-1">
+                {URGENCY_MARKER[row.horizon]}
+              </span>
+              {HORIZON_SHORT[row.horizon]}
+            </p>
+            <p className="text-[10.5px] leading-tight text-muted-foreground">
+              {HORIZON_WHEN[row.horizon]}
+            </p>
+            <dl className="mt-1.5 space-y-0.5">
+              <CardFigure label="Interventions" value={formatCount(row.acts)} />
+              <CardFigure label="Facilities" value={formatCount(row.facs)} />
+              <CardFigure
+                label="Cost"
+                value={row.unpriced && !row.cost ? 'n/p' : formatNaira(row.cost, true)}
+                suffix={row.unpriced && row.cost ? '+' : undefined}
+              />
+            </dl>
+          </div>
+        ))}
+      </div>
+
+      {/* The tree: domain → sub-domain → gap → intervention. */}
+      <div className="mono mt-3.5 flex items-baseline gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
+        <span className="min-w-0 flex-1">Gap and intervention</span>
+        <span className="w-[70px] shrink-0 text-right">Facilities</span>
+        <span className="w-[88px] shrink-0 text-right">Cost</span>
       </div>
 
       <div className="mt-1.5">
@@ -1039,7 +1140,6 @@ function GapBlocks({
           <div key={domain.id} className="border-b border-border py-1.5 last:border-0">
             <Row
               label={domain.label}
-              gaps={domain.gaps}
               facs={domain.facs}
               cost={domain.cost}
               unpriced={domain.unpriced}
@@ -1050,26 +1150,46 @@ function GapBlocks({
                 <li key={area.id}>
                   <Row
                     label={area.label}
-                    gaps={area.gaps}
                     facs={area.facs}
                     cost={area.cost}
                     unpriced={area.unpriced}
                     tone="area"
                     expanded={open.has(area.id)}
-                    onToggle={area.conditions.length ? () => toggle(area.id) : undefined}
+                    onToggle={() => toggle(area.id)}
                   />
                   {open.has(area.id) && (
                     <ul className="mb-1 ml-3 border-l border-border pl-2">
                       {area.conditions.map((c) => (
-                        <li key={c.id}>
+                        <li key={c.id} className="mb-1 last:mb-0">
                           <Row
                             label={c.label}
-                            gaps={c.gaps}
                             facs={c.facs}
                             cost={c.cost}
                             unpriced={c.unpriced}
                             tone="condition"
                           />
+                          {c.interventions.length ? (
+                            <ul>
+                              {c.interventions.map((iv) => (
+                                <li key={iv.id}>
+                                  <Row
+                                    label={iv.label}
+                                    horizon={iv.horizon}
+                                    unitCostNGN={iv.costNGN}
+                                    tone="intervention"
+                                  />
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            /* 55 facilities carry a gap the source records with
+                               no action behind it. Saying so is more honest
+                               than hiding the gap or inventing a fix for it —
+                               see docs/data-queries. */
+                            <p className="py-0.5 pl-6 text-[12px] italic leading-snug text-muted-foreground">
+                              No intervention recorded.
+                            </p>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -1080,50 +1200,82 @@ function GapBlocks({
           </div>
         ))}
       </div>
-
-      {/* Said once, under the table, for the one column that does not add up.
-          Cost does, at every level. */}
-      <p className="mt-2 text-[11px] italic leading-snug text-muted-foreground">
-        Gaps is shown only on a domain row, where several gaps land in the same
-        clinic. Below it every gap is one facility, so the two columns would
-        print the same number twice. Cost adds up at every level; facilities
-        does not — a clinic with a power problem and a wiring problem is one
-        facility on the domain row and appears under both areas.
-        {unpriced > 0 && (
-          <>
-            {' '}
-            <span className="mono not-italic">n/p</span> marks work the source
-            does not price, and <span className="mono not-italic">+</span> a
-            total that excludes some:{' '}
-            <span className="mono not-italic tabular-nums">
-              {formatCount(unpriced)}
-            </span>{' '}
-            action(s) here, all of them the connectivity blocker whose fix
-            cannot be costed until someone establishes which connection reaches
-            the site. Never ₦0, which is a real price the data also carries.
-          </>
-        )}
-      </p>
-
     </div>
   );
 }
 
 /**
- * One row of the gap tree, at any of its three depths.
+ * One of the four headline figures.
  *
- * One component rather than three, because the columns must line up down the
- * whole table — three near-identical row components drift the moment one of
- * them gets a tweak, and a misaligned cost column is the sort of thing that
- * makes a reader distrust the numbers rather than the layout.
+ * A quarter of 420px is 91px, so the label wraps rather than truncating —
+ * "Interventions" losing its tail is worse than it taking two lines, and the
+ * four cells set their own height together anyway.
+ */
+function HeadFigure({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <div className="min-w-0 bg-surface px-2 py-2.5">
+      <p className="mono text-[9.5px] uppercase leading-tight tracking-[0.06em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mono mt-1 text-[18px] font-semibold leading-none tabular-nums text-foreground">
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{note}</p>
+    </div>
+  );
+}
+
+/** One figure inside a horizon card: label left, value right. */
+function CardFigure({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mono shrink-0 text-[12px] font-semibold tabular-nums text-foreground">
+        {value}
+        {suffix && <span className="font-normal text-muted-foreground">{suffix}</span>}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * One row of the tree, at any of its four depths.
  *
- * Depth is carried by `tone`, which sets weight and indent only. The figures
- * are rendered identically at every level: they mean the same thing all the
- * way down, and styling them differently would suggest otherwise.
+ * One component rather than four, because the columns must line up down the
+ * whole table — near-identical row components drift the moment one of them
+ * gets a tweak, and a misaligned cost column is the sort of thing that makes a
+ * reader distrust the numbers rather than the layout.
+ *
+ * Depth is carried by `tone`, which sets weight and indent. The three rollup
+ * depths render identically, because their figures mean the same thing all the
+ * way down and styling them differently would suggest otherwise. An
+ * intervention is the exception and reads differently on purpose: it is not a
+ * population, it is the thing being bought, so it carries a unit price where
+ * the others carry a total and leaves the Facilities column to the gap above
+ * it, whose count it would only repeat.
  */
 function Row({
   label,
-  gaps,
+  horizon,
+  unitCostNGN,
   facs,
   cost,
   unpriced,
@@ -1132,9 +1284,15 @@ function Row({
   onToggle,
 }: {
   label: string;
-  gaps: number;
-  facs: number;
-  cost: number;
+  /** An intervention's urgency, as a chip beside its text. Only interventions
+   *  carry one — a gap has no single horizon, which is the whole reason the
+   *  cards above the tree exist. */
+  horizon?: Horizon;
+  /** What *one* of this intervention costs, or null where the source does not
+   *  price it. Interventions only. */
+  unitCostNGN?: number | null;
+  facs?: number;
+  cost?: number;
   /**
    * Actions here the sheet carries no price for.
    *
@@ -1143,41 +1301,55 @@ function Row({
    * free; "check which connection works, then use one" is unpriced because
    * nobody yet knows which connection that is. Both would print ₦0.
    */
-  unpriced: number;
-  tone: 'domain' | 'area' | 'condition';
+  unpriced?: number;
+  tone: 'domain' | 'area' | 'condition' | 'intervention';
   expanded?: boolean;
-  /** Absent where there is nothing to open — an area with one condition in
-   *  scope, which a click would only redraw. */
   onToggle?: () => void;
 }) {
-  const figures = (
-    <>
-      {/* Gaps only where it says something Facilities does not.
+  const leaf = tone === 'intervention';
 
-          Below a domain the two are the same number every time — a gap column
-          holds one value, so a facility carries at most one condition per area
-          — and printing 2,703 twice on the same row is a column of noise the
-          reader has to check before they can ignore it. The blank is the
-          finding: nothing here counts differently from the column beside it.
-          The cell keeps its width so the numbers stay in line down the table. */}
+  const figures = leaf ? (
+    <>
+      {/* The gap above already counts the facilities; an intervention fires
+          once at each of them, so the cell is held open for alignment and left
+          empty rather than printing that number a second time. */}
+      <span className="w-[70px] shrink-0" aria-hidden />
       <span
-        className="mono w-[38px] shrink-0 text-right text-[11px] tabular-nums text-muted-foreground"
-        aria-hidden={tone !== 'domain'}
+        className="mono w-[88px] shrink-0 text-right text-[12px] tabular-nums text-muted-foreground"
+        title={
+          unitCostNGN == null
+            ? 'The source does not price this action'
+            : 'What one costs. The total on the gap above is this across the facilities on that row.'
+        }
       >
-        {tone === 'domain' ? formatCount(gaps) : ''}
+        {unitCostNGN == null ? (
+          <span className="italic">n/p</span>
+        ) : (
+          <>
+            {formatNaira(unitCostNGN, true)}
+            <span className="ml-0.5 text-[9.5px] uppercase tracking-[0.04em]">each</span>
+          </>
+        )}
       </span>
-      <span className="mono w-[38px] shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
-        {formatCount(facs)}
+    </>
+  ) : (
+    <>
+      <span className="mono w-[70px] shrink-0 text-right text-[12px] tabular-nums text-muted-foreground">
+        {formatCount(facs ?? 0)}
       </span>
       <span
-        className="mono w-[52px] shrink-0 text-right text-[11px] font-semibold tabular-nums text-foreground"
-        title={unpriced ? `${unpriced} action(s) the source does not price` : undefined}
+        className="mono w-[88px] shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground"
+        title={
+          unpriced
+            ? `Excludes ${unpriced} action(s) the source does not price — not ₦0, which this data also carries`
+            : undefined
+        }
       >
         {unpriced && !cost ? (
           <span className="font-normal text-muted-foreground">n/p</span>
         ) : (
           <>
-            {formatNaira(cost, true)}
+            {formatNaira(cost ?? 0, true)}
             {unpriced ? <span className="font-normal text-muted-foreground">+</span> : null}
           </>
         )}
@@ -1187,15 +1359,31 @@ function Row({
 
   const text = cn(
     'min-w-0 flex-1 text-left leading-snug',
-    tone === 'domain' && 'mono text-[9.5px] font-bold uppercase tracking-[0.09em] text-foreground',
-    tone === 'area' && 'text-[12px] text-foreground',
-    tone === 'condition' && 'text-[11.5px] text-muted-foreground',
+    tone === 'domain' && 'mono text-[10.5px] font-bold uppercase tracking-[0.09em] text-foreground',
+    tone === 'area' && 'text-[13px] text-foreground',
+    tone === 'condition' && 'text-[12.5px] text-foreground',
+    leaf && 'text-[12px] text-muted-foreground',
   );
+
+  const body =
+    horizon !== undefined ? (
+      <span className={text}>
+        {/* Inline, not on its own line under the label: four urgencies over
+            seventy-three conditions is a lot of rows to spend a line each on. */}
+        <HorizonChip horizon={horizon} inline />
+        {label}
+      </span>
+    ) : (
+      <span className={text}>{label}</span>
+    );
+
+  const indent =
+    tone === 'domain' ? '' : leaf ? 'pl-6' : 'pl-3';
 
   if (!onToggle) {
     return (
-      <div className={cn('flex items-baseline gap-2 py-0.5', tone !== 'domain' && 'pl-3')}>
-        <span className={text}>{label}</span>
+      <div className={cn('flex items-baseline gap-2 py-0.5', indent)}>
+        {body}
         {figures}
       </div>
     );
@@ -1211,13 +1399,13 @@ function Row({
       <span
         aria-hidden
         className={cn(
-          'mono w-3 shrink-0 text-[9px] text-muted-foreground transition-transform',
+          'mono w-3 shrink-0 text-[10px] text-muted-foreground transition-transform',
           expanded && 'rotate-90',
         )}
       >
         ▶
       </span>
-      <span className={text}>{label}</span>
+      {body}
       {figures}
     </button>
   );
@@ -1296,38 +1484,37 @@ function FacilityGaps({
           quarters. That is why these rows sum past the gap count in the
           heading. */}
       <div className="mb-3.5">
-        <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[9px] uppercase tracking-[0.07em] text-muted-foreground">
+        <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
           <span className="min-w-0 flex-1">When</span>
-          <span className="w-[52px] shrink-0 text-right">Actions</span>
-          <span className="w-[56px] shrink-0 text-right">Cost</span>
+          <span className="w-[58px] shrink-0 text-right">Actions</span>
+          <span className="w-[64px] shrink-0 text-right">Cost</span>
         </div>
         <ul className="mt-1">
           {schedule.map((row) => (
             <li key={row.horizon} className="flex items-baseline gap-2 py-0.5">
-              <span
-                className={cn(
-                  'min-w-0 flex-1 text-[12px] leading-snug',
-                  HORIZON_SEVERITY[row.horizon] === 'blocking'
-                    ? 'font-medium text-foreground'
-                    : 'text-muted-foreground',
-                )}
-              >
+              <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-foreground">
+                <span
+                  aria-hidden
+                  className={cn('mr-1.5', HORIZON_CLASSES[row.horizon].text)}
+                >
+                  {URGENCY_MARKER[row.horizon]}
+                </span>
                 {HORIZON_LABEL[row.horizon]}
               </span>
-              <span className="mono w-[52px] shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+              <span className="mono w-[58px] shrink-0 text-right text-[12px] tabular-nums text-muted-foreground">
                 {formatCount(row.actions)}
               </span>
-              <Money cost={row.cost} unpriced={row.unpriced} className="w-[56px]" />
+              <Money cost={row.cost} unpriced={row.unpriced} className="w-[64px]" />
             </li>
           ))}
           <li className="flex items-baseline gap-2 border-t border-border py-1 mt-0.5">
-            <span className="min-w-0 flex-1 text-[12px] font-medium text-foreground">
+            <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
               All actions
             </span>
-            <span className="mono w-[52px] shrink-0 text-right text-[11px] font-semibold tabular-nums text-foreground">
+            <span className="mono w-[58px] shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground">
               {formatCount(actionCount)}
             </span>
-            <Money cost={cost} unpriced={unpriced} className="w-[56px] font-semibold" />
+            <Money cost={cost} unpriced={unpriced} className="w-[64px] font-semibold" />
           </li>
         </ul>
       </div>
@@ -1335,7 +1522,7 @@ function FacilityGaps({
       {groups.map((group) => (
         <section key={group.id} className="mb-3 last:mb-0">
           <div className="flex items-baseline gap-2 border-b border-border pb-1">
-            <h4 className="mono min-w-0 flex-1 text-[9.5px] font-bold uppercase tracking-[0.09em] text-foreground">
+            <h4 className="mono min-w-0 flex-1 text-[10.5px] font-bold uppercase tracking-[0.09em] text-foreground">
               {group.label}
             </h4>
             <Money cost={group.cost} unpriced={group.unpriced} className="font-semibold" />
@@ -1345,7 +1532,7 @@ function FacilityGaps({
             {group.gaps.map((gap) => (
               <li key={gap.id}>
                 <div className="flex items-baseline gap-2">
-                  <p className="min-w-0 flex-1 text-[12.5px] font-medium leading-snug text-foreground">
+                  <p className="min-w-0 flex-1 text-[13.5px] font-medium leading-snug text-foreground">
                     {gap.area}
                   </p>
                   <Money cost={gap.cost} unpriced={gap.unpriced} />
@@ -1353,7 +1540,7 @@ function FacilityGaps({
                 {/* The finding, under the category it is filed as. Verbatim
                     from the sheet — "Power gap" is where it sits, this is what
                     is actually wrong. */}
-                <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+                <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                   {gap.condition}
                 </p>
 
@@ -1362,7 +1549,7 @@ function FacilityGaps({
                     {gap.interventions.map((iv) => (
                       <li key={iv.id} className="flex items-baseline gap-2">
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[12px] leading-snug text-muted-foreground">
+                          <span className="block text-[13px] leading-snug text-muted-foreground">
                             {iv.label}
                           </span>
                           <HorizonChip horizon={iv.horizon} />
@@ -1371,7 +1558,7 @@ function FacilityGaps({
                             nothing still has to be closed; one the source does
                             not price is a different thing entirely, and a blank
                             would let a reader take it for free. */}
-                        <span className="mono shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                        <span className="mono shrink-0 text-right text-[12px] tabular-nums text-muted-foreground">
                           {iv.costNGN == null ? (
                             <span className="italic opacity-70">Not costed</span>
                           ) : (
@@ -1385,7 +1572,7 @@ function FacilityGaps({
                   /* 55 facilities carry a gap the source records with no action
                      behind it. Saying so is more honest than hiding the gap or
                      inventing a fix for it — see docs/data-queries. */
-                  <p className="mt-1 border-l border-border pl-2.5 text-[12px] italic text-muted-foreground">
+                  <p className="mt-1 border-l border-border pl-2.5 text-[13px] italic text-muted-foreground">
                     No intervention recorded.
                   </p>
                 )}
@@ -1396,11 +1583,11 @@ function FacilityGaps({
       ))}
 
       <div className="flex items-baseline gap-2 border-t border-border pt-2">
-        <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground">Total</span>
-        <Money cost={cost} unpriced={unpriced} className="text-[13px] font-semibold" />
+        <span className="min-w-0 flex-1 text-[14px] font-medium text-foreground">Total</span>
+        <Money cost={cost} unpriced={unpriced} className="text-[14px] font-semibold" />
       </div>
       {unpriced > 0 && (
-        <p className="mt-1.5 text-[11px] italic leading-snug text-muted-foreground">
+        <p className="mt-1.5 text-[12px] italic leading-snug text-muted-foreground">
           The total excludes {formatCount(unpriced)} action(s) the source does not
           price — never ₦0, which is a real price this data also carries.
         </p>
@@ -1427,7 +1614,7 @@ function Money({
 }) {
   return (
     <span
-      className={cn('mono shrink-0 text-right text-[11.5px] tabular-nums text-foreground', className)}
+      className={cn('mono shrink-0 text-right text-[12.5px] tabular-nums text-foreground', className)}
       title={unpriced ? `${unpriced} action(s) the source does not price` : undefined}
     >
       {unpriced && !cost ? (
@@ -1444,15 +1631,27 @@ function Money({
 
 /** An intervention's urgency, as a chip. Text as well as colour — the four
  *  urgencies are not the three readiness bands and must not read as them. */
-function HorizonChip({ horizon }: { horizon: Horizon }) {
-  const blocking = HORIZON_SEVERITY[horizon] === 'blocking';
+function HorizonChip({ horizon, inline }: { horizon: Horizon; inline?: boolean }) {
   return (
     <span
       className={cn(
-        'mono mt-0.5 inline-block text-[9.5px] uppercase tracking-[0.06em]',
-        blocking ? 'font-semibold text-foreground' : 'text-muted-foreground',
+        'mono font-semibold uppercase tracking-[0.06em]',
+        // Leading the label on one line, or standing under it on its own.
+        // Inline where the rows are many and a line each is a screenful; on its
+        // own line at the facility card, where there are a handful and the
+        // intervention text is the row rather than a detail of one.
+        inline ? 'mr-1.5 text-[9.5px]' : 'mt-0.5 inline-block text-[10.5px]',
+        HORIZON_CLASSES[horizon].text,
       )}
     >
+      {/* Shape before word before colour, so the chip ranks itself in
+          greyscale too. Weight no longer carries the blocking/partial split —
+          hue does it better, and leaving the two blocking urgencies bold and
+          the other two grey made Minor look like a footnote when it is 27,347
+          actions and ₦7.3bn. */}
+      <span aria-hidden className="mr-1">
+        {URGENCY_MARKER[horizon]}
+      </span>
       {HORIZON_SHORT[horizon]}
     </span>
   );
@@ -1479,10 +1678,10 @@ function PaneListBlock({ list }: { list: PaneList }) {
   return (
     <div className="border-t border-border">
       <div className="flex items-center justify-between gap-3 px-4 pt-3">
-        <h3 className="mono text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
+        <h3 className="mono text-[11px] font-bold uppercase tracking-[0.11em] text-foreground">
           {label}
         </h3>
-        <span className="mono text-[10px] text-muted-foreground">{formatCount(total)}</span>
+        <span className="mono text-[11px] text-muted-foreground">{formatCount(total)}</span>
       </div>
 
       {total > 12 && (
@@ -1496,7 +1695,7 @@ function PaneListBlock({ list }: { list: PaneList }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`Search ${label.toLowerCase()}…`}
             aria-label={`Search ${label.toLowerCase()}`}
-            className="w-full rounded border border-input bg-surface py-1.5 pl-7 pr-2 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="w-full rounded border border-input bg-surface py-1.5 pl-7 pr-2 text-[14px] text-foreground placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           />
         </div>
       )}
@@ -1513,21 +1712,21 @@ function PaneListBlock({ list }: { list: PaneList }) {
                 className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-sunk focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-[13px] font-medium text-foreground">
+                  <span className="block truncate text-[14px] font-medium text-foreground">
                     {row.name}
                   </span>
-                  <span className="mono block text-[10px] text-muted-foreground">
+                  <span className="mono block text-[11px] text-muted-foreground">
                     {row.note}
                     {row.need ? ` · ${formatCount(row.need.gaps)} gaps` : ''}
                   </span>
                 </span>
                 {row.need ? (
-                  <span className="mono shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground">
+                  <span className="mono shrink-0 text-right text-[13px] font-semibold tabular-nums text-foreground">
                     {formatNaira(row.need.costNGN, true)}
                   </span>
                 ) : (
                   <span
-                    className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground"
+                    className="shrink-0 text-[11px] uppercase tracking-wide text-muted-foreground"
                     aria-label={row.band ? BAND_LABEL[row.band] : 'No band'}
                   >
                     <BandBadge band={row.band} size="sm" />
@@ -1553,10 +1752,10 @@ function Block({
 }) {
   return (
     <section className="border-b border-border px-4 py-3">
-      <h3 className="mono text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
+      <h3 className="mono text-[11px] font-bold uppercase tracking-[0.11em] text-foreground">
         {title}
       </h3>
-      {note && <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{note}</p>}
+      {note && <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{note}</p>}
       <div className="mt-2.5">{children}</div>
     </section>
   );
@@ -1580,5 +1779,5 @@ function lensLabel(domains: FacilityThemeId[]): string | undefined {
 }
 
 function Nothing({ children }: { children: React.ReactNode }) {
-  return <p className="text-[13px] italic text-muted-foreground">{children}</p>;
+  return <p className="text-[14px] italic text-muted-foreground">{children}</p>;
 }

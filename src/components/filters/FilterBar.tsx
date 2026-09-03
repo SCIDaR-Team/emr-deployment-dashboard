@@ -38,7 +38,15 @@ export type FilterKey =
 const DEFAULT_KEYS: FilterKey[] = ['state', 'lga', 'archetype', 'level', 'search'];
 
 export interface FilterBarProps {
-  /** The unfiltered population. Option counts are computed from it. */
+  /**
+   * The population the options and their counts are computed from.
+   *
+   * The page's *scope*, not the whole dataset, and not the filtered result:
+   * a count should say how many facilities the reader is looking at an option
+   * would offer, so it has to move when they drill down and hold still when
+   * they tick something else. Assessed States passes the facilities inside its
+   * path; a page with no path passes everything.
+   */
   facilities: FacilitySummary[];
   show?: FilterKey[];
   /**
@@ -68,6 +76,17 @@ export interface FilterBarProps {
    * button; `clear` runs alongside the store reset.
    */
   scopeReset?: { active: boolean; clear: () => void };
+  /**
+   * Keep every control on one line from `lg` up.
+   *
+   * Off by default, because the designed widths are what make a short row read
+   * as a row of equal fields. Assessed States has nine controls and they wrap
+   * to two lines at any realistic width — which costs ~46px of a viewport whose
+   * map and pane are both fighting for height, and splits the row at a
+   * different control on every screen size. Here the widths give way instead:
+   * the controls share whatever the line has, down to a floor they truncate at.
+   */
+  singleRow?: boolean;
   className?: string;
 }
 
@@ -97,6 +116,7 @@ export function FilterBar({
   children,
   leading,
   scopeReset,
+  singleRow = false,
   className,
 }: FilterBarProps) {
   const filters = useFilterStore();
@@ -113,10 +133,55 @@ export function FilterBar({
    */
   const domains = facilityLens(filters.domains);
 
-  const options = useMemo(
+  const built = useMemo(
     () => buildFilterOptions(facilities, filters.states),
     [facilities, filters.states],
   );
+
+  /**
+   * Options, plus any value that is selected but absent from this scope.
+   *
+   * `buildFilterOptions` derives its lists from the population, so a value the
+   * scope has none of is not offered — right for a fresh list, a trap for a
+   * live selection. 261 of the 305 assessed LGAs are missing at least one
+   * Setting, Funding or Functionality value, so a reader who ticks one
+   * nationally and then drills into an LGA without it would find the filter
+   * still narrowing the page and no longer on the list that set it — nothing
+   * to untick, and Reset the only way out.
+   *
+   * The absent value is kept, reading 0, so it can always be cleared where it
+   * was set. Every state carries every option, so this only ever bites at LGA
+   * level.
+   */
+  const options = useMemo(() => {
+    const keep = (
+      items: { key: string; label: string; count: number }[],
+      selected: string[],
+    ) => {
+      const have = new Set(items.map((i) => i.key));
+      const missing = selected.filter((k) => !have.has(k));
+      return missing.length
+        ? [...items, ...missing.map((key) => ({ key, label: key, count: 0 }))]
+        : items;
+    };
+    return {
+      ...built,
+      states: keep(built.states, filters.states),
+      lgas: keep(built.lgas, filters.lgas),
+      zones: keep(built.zones, filters.zones),
+      geography: keep(built.geography, filters.geography),
+      funding: keep(built.funding, filters.funding),
+      functionalityLevels: keep(built.functionalityLevels, filters.functionalityLevels),
+    };
+  }, [
+    built,
+    filters.states,
+    filters.lgas,
+    filters.zones,
+    filters.geography,
+    filters.funding,
+    filters.functionalityLevels,
+  ]);
 
   // Reset asks whether anything moved, not whether the population narrowed —
   // Domain does the first without the second, and so does a page whose scope
@@ -178,14 +243,34 @@ export function FilterBar({
     }));
   }, [domains, facilities]);
 
+  /**
+   * The width override for `singleRow`, appended to each control's own classes
+   * so tailwind-merge drops the fixed `sm:w-[…]` rather than fighting it.
+   *
+   * `basis-0` with `flex-1` shares the line evenly instead of by content, so
+   * the row stays a grid of equal fields; `min-w-0` lets them shrink past their
+   * text, which the trigger already truncates. The cap keeps a short row (the
+   * Investment page shows one control) from stretching one dropdown across the
+   * page.
+   */
+  const dense = singleRow
+    ? 'min-w-0 flex-1 basis-0 sm:w-auto sm:flex-1 lg:max-w-[172px]'
+    : '';
+
   return (
-    <div className={cn('flex w-full flex-wrap items-end gap-3', className)}>
+    <div
+      className={cn(
+        'flex w-full flex-wrap items-end gap-3',
+        singleRow && 'lg:flex-nowrap lg:gap-2',
+        className,
+      )}
+    >
       {leading}
 
       {visible.has('state') && (
         <MultiSelectDropdown
             label="State"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]", dense)}
           groups={[{ label: 'States assessed', items: options.states }]}
           selected={filters.states}
           onChange={filters.setStates}
@@ -197,7 +282,7 @@ export function FilterBar({
       {visible.has('lga') && (
         <MultiSelectDropdown
             label="LGA"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]", dense)}
           groups={[{ label: 'LGAs', items: options.lgas }]}
           selected={filters.lgas}
           onChange={filters.setLGAs}
@@ -213,7 +298,7 @@ export function FilterBar({
       {visible.has('geography') && (
         <MultiSelectDropdown
           label="Setting"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-36"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-36", dense)}
           groups={[
             {
               label: 'Setting',
@@ -232,7 +317,7 @@ export function FilterBar({
       {visible.has('zone') && (
         <MultiSelectDropdown
             label="Zone"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]", dense)}
           groups={[{ label: 'Geopolitical zones', items: options.zones }]}
           selected={filters.zones}
           onChange={filters.setZones}
@@ -247,7 +332,7 @@ export function FilterBar({
       {visible.has('level') && (
         <MultiSelectDropdown
             label="Functionality"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]", dense)}
           groups={[{ label: 'Functionality level', items: options.functionalityLevels }]}
           selected={filters.functionalityLevels}
           onChange={(next) => filters.setFunctionalityLevels(next as FunctionalityLevel[])}
@@ -258,7 +343,7 @@ export function FilterBar({
       {visible.has('funding') && (
         <MultiSelectDropdown
             label="Funding"
-          className="min-w-[9.5rem] flex-1 sm:flex-none sm:w-40"
+          className={cn("min-w-[9.5rem] flex-1 sm:flex-none sm:w-40", dense)}
           groups={[{ label: 'Funding', items: options.funding }]}
           selected={filters.funding}
           onChange={(next) => filters.setFunding(next as ('BHCPF' | 'non-BHCPF')[])}
@@ -269,7 +354,7 @@ export function FilterBar({
       {visible.has('domain') && (
         <MultiSelectDropdown
           label="Domain"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[156px]"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-[156px]", dense)}
           groups={[
             {
               label: 'Assessment domains',
@@ -292,7 +377,7 @@ export function FilterBar({
             // a filter the reader cannot see from here and did not clear.
             filters.setDomains(withFacilityDomains(filters.domains, next as FacilityThemeId[]))
           }
-          placeholder="All domains"
+          placeholder={singleRow ? 'All' : 'All domains'}
           panelWidth="w-72"
         />
       )}
@@ -300,7 +385,7 @@ export function FilterBar({
       {visible.has('gapArea') && (
         <MultiSelectDropdown
           label="Gap area"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[180px]"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-[180px]", dense)}
           groups={gapAreaGroups}
           selected={filters.gapAreas}
           onChange={filters.setGapAreas}
@@ -309,7 +394,9 @@ export function FilterBar({
           placeholder={
             domains.length
               ? `All in ${domains.length} domain(s)`
-              : 'All gap areas'
+              : singleRow
+                ? 'All'
+                : 'All gap areas'
           }
           panelWidth="w-[22rem]"
           searchable
@@ -319,7 +406,7 @@ export function FilterBar({
       {visible.has('archetype') && (
         <MultiSelectDropdown
             label="Readiness"
-          className="min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]"
+          className={cn("min-w-[8rem] flex-1 sm:flex-none sm:w-[140px]", dense)}
           groups={[
             {
               // Named for the domains in force, the same as Gap — this control
@@ -335,12 +422,12 @@ export function FilterBar({
           ]}
           selected={filters.archetypes}
           onChange={(next) => filters.setArchetypes(next as Band[])}
-          placeholder="All readiness levels"
+          placeholder={singleRow ? 'All' : 'All readiness levels'}
         />
       )}
 
       {visible.has('search') && (
-        <div className="min-w-[7.5rem] flex-1">
+        <div className={cn('min-w-[7.5rem] flex-1', singleRow && 'min-w-[104px] basis-0')}>
           <label
             htmlFor="facility-search"
             className="mono mb-1 block text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground"
@@ -374,7 +461,7 @@ export function FilterBar({
             filters.reset();
             scopeReset?.clear();
           }}
-          className="flex h-10 items-center gap-1.5 rounded-lg border border-input px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-brand-500/50 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-input px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-brand-500/50 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <RotateCcw size={14} aria-hidden />
           Reset

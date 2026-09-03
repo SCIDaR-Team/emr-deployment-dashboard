@@ -17,7 +17,6 @@ import { NAV_ITEMS, moduleFor } from '@/app/navigation';
 import { cn } from '@/lib/cn';
 import { useDismissable, useScrollLock } from '@/hooks/useDismissable';
 import { useSidebarStore } from '@/store/sidebarStore';
-import { ThemeToggle } from './ThemeToggle';
 
 const ICONS: Record<string, LucideIcon> = {
   Home,
@@ -122,10 +121,7 @@ function NavContents({
         })}
       </ul>
 
-      <div className="mt-auto border-t border-border p-3">
-        <ThemeToggle vertical={collapsed} />
-        {footer}
-      </div>
+      <div className="mt-auto border-t border-border p-3">{footer}</div>
     </>
   );
 }
@@ -157,7 +153,7 @@ export function Sidebar() {
         // Width only — animating anything else here would drag the map and the
         // charts through a resize on every frame of the transition.
         'transition-[width] duration-200 ease-out',
-        collapsed ? 'w-[60px]' : 'w-[232px]',
+        collapsed ? 'w-[60px]' : 'w-[192px]',
       )}
     >
       <BrandBlock collapsed={collapsed} />
@@ -171,7 +167,7 @@ export function Sidebar() {
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             className={cn(
-              'mono mt-2 flex w-full items-center gap-2.5 px-1 py-1.5 text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground transition-colors',
+              'mono flex w-full items-center gap-2.5 px-1 py-1.5 text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground transition-colors',
               'hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               collapsed && 'justify-center',
             )}

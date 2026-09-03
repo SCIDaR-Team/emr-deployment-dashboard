@@ -49,18 +49,6 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/** Order for the circular next-arrow walkthrough in the page header. Follows
- *  the rail, so "next" means the item below the one you are on. */
-export const MODULE_ORDER = NAV_ITEMS.map((item) => item.path);
-
-export function nextModule(path: string): string | null {
-  // Deep routes (`/assessment/kano`) should still resolve to their module's
-  // successor rather than falling off the end.
-  const i = MODULE_ORDER.findIndex((p) => path === p || path.startsWith(`${p}/`));
-  if (i === -1 || i === MODULE_ORDER.length - 1) return null;
-  return MODULE_ORDER[i + 1] ?? null;
-}
-
 /** The module a pathname belongs to, for the rail's active state and the
  *  mobile bar's title. Longest match wins so `/assessment/kano/dala` stays on
  *  Assessed States. */
