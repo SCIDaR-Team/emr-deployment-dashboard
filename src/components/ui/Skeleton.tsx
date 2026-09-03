@@ -76,12 +76,12 @@ export function LoadError({ what, error, onRetry, className }: LoadErrorProps) {
     <div
       role="alert"
       className={cn(
-        'rounded-card border border-notready/30 bg-notready-wash px-5 py-6',
+        'rounded-card border border-notready-ink/25 bg-notready-wash px-5 py-6',
         className,
       )}
     >
       <div className="flex items-start gap-3">
-        <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-notready" aria-hidden />
+        <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-notready-ink" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="font-medium text-foreground">Could not load {what}</p>
           <p className="mt-1 text-sm text-muted-foreground">

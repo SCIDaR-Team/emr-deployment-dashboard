@@ -22,7 +22,7 @@ import { useFilteredData } from '@/hooks/useFilteredData';
 import { formatCount, formatNaira } from '@/lib/format';
 import { GAP_BY_ID, gapCostNGN, offeredGapIds } from '@/lib/gapCatalogue';
 import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
-import { THEME_BY_ID } from '@/lib/themes';
+import { THEME_BY_ID, facilityLens } from '@/lib/themes';
 import type { FacilitySummary, FacilityThemeId } from '@/lib/types';
 import { AssessmentPane, type PaneList, type PaneRow } from './AssessmentPane';
 import {
@@ -90,7 +90,13 @@ export default function AssessedStatesPage() {
    * source has no per-domain deployment reading. So the page has two modes, and
    * which one it is in is decided here.
    */
-  const domains = useFilterStore((s) => s.domains);
+  const storeDomains = useFilterStore((s) => s.domains);
+  // Narrowed to the four the facility survey scores. The store's Domain
+  // selection is shared with National Coverage, which can add Leadership &
+  // Governance — a state-level reading no facility carries. It drops out here
+  // rather than reaching a band lookup as an unknown key; the tick survives in
+  // the store, so going back to that page finds it still set.
+  const domains = useMemo(() => facilityLens(storeDomains), [storeDomains]);
   const gapAreas = useFilterStore((s) => s.gapAreas);
 
   const surveyed = useMemo(() => assessedStates(states.data), [states.data]);

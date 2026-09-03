@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="grid min-h-[60vh] place-items-center p-8">
         <div className="card max-w-lg p-6">
-          <h1 className="text-lg font-semibold text-notready">Something went wrong</h1>
+          <h1 className="text-lg font-semibold text-notready-ink">Something went wrong</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             This view failed to render. The rest of the dashboard is unaffected.
           </p>

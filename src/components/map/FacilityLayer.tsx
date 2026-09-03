@@ -157,7 +157,11 @@ export function FacilityLayer({
 
             {/* The count is the whole reason a cluster is better than a blob: it
                 states the number the overlapping dots could not. Not
-                interactive — the marker under it takes the click. */}
+                interactive — the marker under it takes the click.
+
+                Ink, not surface: the band fills are the client's pastels and
+                are lighter than --surface in both schemes, so a knocked-out
+                numeral would be white on near-white. */}
             {!lone && (
               <text
                 x={c.x}
@@ -167,7 +171,7 @@ export function FacilityLayer({
                 fontSize={r * 1.05}
                 fontWeight={700}
                 pointerEvents="none"
-                className="fill-surface"
+                className="fill-black"
               >
                 {c.members.length}
               </text>

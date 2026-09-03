@@ -130,6 +130,16 @@ export const DATA_PATHS = {
   national: '/data/national.json',
   statesGeo: '/geo/nigeria-states.geojson',
   /**
+   * The same 37 outlines, simplified to about a kilometre — 65 kB against the
+   * 2.0 MB above.
+   *
+   * Drawn *behind* the state and LGA layers so a map of Kano also shows Jigawa
+   * and Katsina around it. That line is one device pixel wide and never the
+   * subject of the view, so full ADM1 fidelity would be 2 MB spent on detail
+   * nothing can resolve. Built by `npm run geo:context`.
+   */
+  stateContextGeo: '/geo/nigeria-states-context.json',
+  /**
    * LGA boundaries, one file per state — all 774 LGAs across all 37 states,
    * built by `npm run geo:build`.
    *

@@ -12,7 +12,7 @@ import {
   hasGapInAreas,
 } from '@/lib/gapCatalogue';
 import { facilityBandUnder } from '@/lib/archetype';
-import { THEME_BY_ID } from '@/lib/themes';
+import { DOMAIN_LABEL, THEME_BY_ID, facilityLens, withFacilityDomains } from '@/lib/themes';
 import { buildFilterOptions } from '@/hooks/useFilteredData';
 import { useFilterStore } from '@/store/filterStore';
 import { MultiSelectDropdown, type DropdownGroup } from '@/components/ui';
@@ -102,6 +102,17 @@ export function FilterBar({
   const filters = useFilterStore();
   const visible = new Set(show);
 
+  /**
+   * The Domain selection, narrowed to the four domains this page can read.
+   *
+   * The store holds the union of both pages' domains, and National Coverage can
+   * put Leadership & Governance in it — a domain no facility carries a band
+   * for and `THEME_BY_ID` has no entry for. It falls out here, once, so nothing
+   * below has to think about it; `withFacilityDomains` puts it back when this
+   * bar writes. See `facilityLens`.
+   */
+  const domains = facilityLens(filters.domains);
+
   const options = useMemo(
     () => buildFilterOptions(facilities, filters.states),
     [facilities, filters.states],
@@ -117,15 +128,15 @@ export function FilterBar({
   // gap" means something different under Workforce Capacity than it does over
   // the facility as a whole.
   const bandGroupLabel =
-    filters.domains.length === 0
+    domains.length === 0
       ? 'Overall readiness'
-      : filters.domains.length === 1
-        ? `Gap in ${THEME_BY_ID[filters.domains[0]!].label}`
-        : `Gap in the weakest of ${filters.domains.length} domains`;
+      : domains.length === 1
+        ? `Gap in ${THEME_BY_ID[domains[0]!].label}`
+        : `Gap in the weakest of ${domains.length} domains`;
 
   /** Counted the way the page filters: one rule, in `facilityBandUnder`. */
   const bandCount = (band: Band) =>
-    facilities.filter((f) => facilityBandUnder(f, filters.domains) === band).length;
+    facilities.filter((f) => facilityBandUnder(f, domains) === band).length;
 
   /**
    * The Gap area control's options — the areas of whatever domains are ticked.
@@ -143,7 +154,7 @@ export function FilterBar({
    * list is that domain's four areas rather than all twenty.
    */
   const gapAreaGroups = useMemo<DropdownGroup[]>(() => {
-    const offered = gapAreasForDomains(filters.domains);
+    const offered = gapAreasForDomains(domains);
     const byDomain = new Map<string, typeof offered>();
     for (const area of offered) {
       const key = GAP_DOMAIN_LABEL[area.domain];
@@ -165,7 +176,7 @@ export function FilterBar({
         color: BAND_CSS_COLOR[SEVERITY_BAND[gapAreaSeverity(area.id)]],
       })),
     }));
-  }, [filters.domains, facilities]);
+  }, [domains, facilities]);
 
   return (
     <div className={cn('flex w-full flex-wrap items-end gap-3', className)}>
@@ -273,8 +284,14 @@ export function FilterBar({
               })),
             },
           ]}
-          selected={filters.domains}
-          onChange={(next) => filters.setDomains(next as FacilityThemeId[])}
+          selected={domains}
+          onChange={(next) =>
+            // Folded back over the store's own selection rather than written
+            // flat: this dropdown lists four items and a Leadership tick set on
+            // National Coverage is not one of them, so a plain write would drop
+            // a filter the reader cannot see from here and did not clear.
+            filters.setDomains(withFacilityDomains(filters.domains, next as FacilityThemeId[]))
+          }
           placeholder="All domains"
           panelWidth="w-72"
         />
@@ -290,8 +307,8 @@ export function FilterBar({
           // Say which scope is in force, the way LGA does under State — "All
           // gap areas" over twenty entries and over four look identical.
           placeholder={
-            filters.domains.length
-              ? `All in ${filters.domains.length} domain(s)`
+            domains.length
+              ? `All in ${domains.length} domain(s)`
               : 'All gap areas'
           }
           panelWidth="w-[22rem]"
@@ -308,7 +325,7 @@ export function FilterBar({
               // Named for the domains in force, the same as Gap — this control
               // and that one are two ways into `archetypes`, and both are read
               // through `facilityBandUnder`.
-              label: filters.domains.length ? bandGroupLabel : 'Facility archetype',
+              label: domains.length ? bandGroupLabel : 'Facility archetype',
               items: (['ready', 'moderately_ready', 'not_ready'] as Band[]).map((band) => ({
                 key: band,
                 label: BAND_LABEL[band],
@@ -437,9 +454,14 @@ function HiddenFilterChips({ show }: { show: Set<FilterKey> }) {
       // Not narrowing anything by itself, but changing what every band on the
       // page means — a Readiness filter reading through Workforce Capacity on a
       // page with no Domain control is the sort of thing this row exists for.
+      //
+      // Unnarrowed, and read through `DOMAIN_LABEL` rather than `THEME_BY_ID`
+      // for that reason: this row reports the *selection*, not what this page
+      // can act on. A Leadership tick set on National Coverage is exactly the
+      // invisible filter it exists to surface, and it must be nameable here.
       key: 'domain',
       label: 'Domain',
-      values: filters.domains.map((d) => THEME_BY_ID[d].label),
+      values: filters.domains.map((d) => DOMAIN_LABEL[d]),
       clear: () => filters.setDomains([]),
     },
   ] satisfies Chip[]).filter((f) => !covered(f.key, show) && f.values.length > 0);

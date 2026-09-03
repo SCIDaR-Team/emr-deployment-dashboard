@@ -9,6 +9,7 @@ import {
   Home,
   ImageDown,
   Loader2,
+  LocateFixed,
   Search,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -33,7 +34,10 @@ import { useMapLayersModified, type MapLayerId } from '@/store/mapLayerStore';
  *   is not the same as zooming.
  * - **Find** resolves a name to a place and goes there. See `MapSearch` for
  *   why that is not the same control as the filter row's Search.
- * - **Layers** opens the stack. See `MapLayerPanel`.
+ * - **My location** recentres on the reader's own position. The only control
+ *   here that relates the map to the person in front of it rather than to the
+ *   data — see `useGeolocate`.
+ * - **Layers** opens the stack, base map included. See `MapLayerPanel`.
  * - **Save image** captures the frame — legend, scale bar and attribution
  *   included, which is what a screenshot loses. See `useMapExport`.
  *
@@ -55,6 +59,8 @@ export function MapToolbar({
   onExport,
   exporting,
   onSearch,
+  onLocate,
+  locating,
   layers,
   className,
 }: {
@@ -79,6 +85,12 @@ export function MapToolbar({
   /** Resolve a query to places the map can go to. Omit to leave the locator
    *  out — see `MapSearch`. */
   onSearch?: (query: string) => MapSearchResult[];
+  /** Recentre on the reader's own position. Omitted where the browser has no
+   *  geolocation, which is then absent rather than present and inert. */
+  onLocate?: () => void;
+  /** True while a fix is in flight — the radio can take several seconds and a
+   *  button that appears to do nothing gets pressed again. */
+  locating?: boolean;
   /** Which layer toggles this level offers. Omit to leave the panel out. */
   layers?: MapLayerId[];
   className?: string;
@@ -170,6 +182,23 @@ export function MapToolbar({
               <Minimize2 className="h-3.5 w-3.5" aria-hidden />
             ) : (
               <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+            )}
+          </button>
+        )}
+
+        {onLocate && (
+          <button
+            type="button"
+            onClick={onLocate}
+            disabled={locating}
+            title="Show my location"
+            aria-label="Centre the map on my location"
+            className={button}
+          >
+            {locating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <LocateFixed className="h-3.5 w-3.5" aria-hidden />
             )}
           </button>
         )}

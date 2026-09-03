@@ -34,7 +34,9 @@ import { baseMapSource, type BaseMapId } from '@/store/basemapStore';
  * OpenStreetMap and Esri tiles come out blank. The polygons, points, labels and
  * every piece of chrome are unaffected. Rather than hand over a map with a hole
  * where the imagery was, the caller is told before the file is written; see the
- * warning below. Exporting on the default **Plain** base map is lossless.
+ * warning below. Exporting on the **Plain** base map is lossless — which since
+ * the base map default moved to Streets is a deliberate choice the reader makes
+ * for the export rather than the state they were already in.
  */
 export function useMapExport(
   frameRef: React.RefObject<HTMLElement>,

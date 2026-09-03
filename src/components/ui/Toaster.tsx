@@ -10,9 +10,9 @@ const ICONS: Record<ToastTone, typeof Info> = {
 };
 
 const ACCENT: Record<ToastTone, string> = {
-  success: 'text-ready',
-  error: 'text-notready',
-  warning: 'text-moderate',
+  success: 'text-ready-ink',
+  error: 'text-notready-ink',
+  warning: 'text-moderate-ink',
   info: 'text-brand-600',
 };
 

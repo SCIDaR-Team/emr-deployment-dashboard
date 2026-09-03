@@ -11,6 +11,7 @@ import { GAP_AREA_BY_ID } from '@/lib/gapCatalogue';
 import { persist } from 'zustand/middleware';
 import type {
   Band,
+  DomainId,
   FacilityThemeId,
   FilterState,
   FunctionalityLevel,
@@ -29,7 +30,7 @@ interface FilterActions {
   /** Point every readiness reading at another set of domains. The chosen bands
    *  stay put: the reader asked "which facilities are not ready", and changing
    *  the domains re-asks that question rather than starting over. */
-  setDomains: (domains: FacilityThemeId[]) => void;
+  setDomains: (domains: DomainId[]) => void;
   setGapAreas: (areas: string[]) => void;
   setSearch: (search: string) => void;
   /** Apply a partial state wholesale — used once, by useFilterUrlSync. */

@@ -1,14 +1,23 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, BarChart3, Coins, Map, type LucideIcon } from 'lucide-react';
+import { Link, NavLink } from 'react-router-dom';
+import {
+  ArrowRight,
+  BarChart3,
+  Building2,
+  Coins,
+  Info,
+  Landmark,
+  Map,
+  MapPin,
+  type LucideIcon,
+} from 'lucide-react';
 import { NAV_ITEMS } from '@/app/navigation';
-import { BandLegend } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
-import { BAND_ACTION, BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
+import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { COVERAGE } from '@/lib/constants';
 import { formatCount } from '@/lib/format';
-import { NATIONAL_SPLIT, NATIONAL_TOTAL } from '@/lib/nationalSplit';
+import { NATIONAL_DEPLOYMENT_SPLIT, NATIONAL_TOTAL } from '@/lib/nationalSplit';
 import type { Band } from '@/lib/types';
 
 /**
@@ -20,15 +29,37 @@ import type { Band } from '@/lib/types';
  * pass while DataProvider warms the datasets behind it. Nothing here waits on a
  * fetch, and nothing here fills in late.
  *
- * The page leads with the finding rather than the programme name. "EMR
- * READINESS ASSESSMENT" set at 6xl told a reader what the thing was called and
- * nothing about what it found — and in the new palette the dark hero it sat on
- * no longer exists, because green stopped being furniture.
+ * **One screen.** The page is laid out to land inside a laptop viewport without
+ * scrolling: a header of module cards, two columns, a coverage strip, the
+ * measurement note, a footer rule. That constraint is the design — a front door
+ * that needs scrolling has asked the reader for something before telling them
+ * anything. The structure is `flex-col` with `min-h-screen` rather than a hard
+ * `h-screen`, so a genuinely short viewport scrolls instead of clipping: never
+ * hide content to protect a layout.
  *
- * The signature mark is the hundred-tile waffle: the same three-band
- * vocabulary the rest of the app uses, with the same textures from `bands.ts`,
- * at the one scale where a reader sees the *shape* of the national result
- * before reading a number. Four green tiles out of a hundred is the argument.
+ * **Counts lead, percentages support.** The three band blocks read 624 / 842 /
+ * 1,340 before they read 22.2 / 30.0 / 47.8. Facilities are the unit the
+ * programme acts in — a rollout is planned, costed and staffed per facility,
+ * not per percentage point — so the absolute is the headline, carrying the band
+ * name beside it, and the share is what gives it scale on the line beneath.
+ *
+ * **One reading, and it is deployment.** The source carries two overall bands
+ * per facility — readiness to *use* an EMR and readiness to *deploy* one — and
+ * the pages behind this one show both, because the distance between them is the
+ * interesting fact. The front door does not: a landing page that reported the
+ * use split gave a Ready count (71) that no module behind it agreed with, and
+ * the question this dashboard exists to answer is what deployment takes. Every
+ * figure here is `NATIONAL_DEPLOYMENT_SPLIT`; the footer says the other reading
+ * exists and where to find it.
+ *
+ * **On the palette.** This page follows a mockup drawn with a dark-green
+ * wordmark, green eyebrows and a green primary button. It is not built that
+ * way, and the reason is the rule at the top of `globals.css`: green, amber and
+ * red are *status*, and green is Ready. Spending it on furniture is exactly how
+ * the previous design lost the ability to mean anything by it. So the mark is
+ * ink, the primary control is `brand-500` blue like every other control in the
+ * product, and the only saturated colour here is the three bands and the
+ * figures reporting them.
  */
 
 const ICONS: Record<string, LucideIcon> = {
@@ -37,11 +68,36 @@ const ICONS: Record<string, LucideIcon> = {
   Coins,
 };
 
+/**
+ * The page's horizontal measure.
+ *
+ * Wider than the 1152px the page used to hold itself to, which left a 13"
+ * laptop with a gutter the size of the waffle on each side. Prose stays inside
+ * its own `max-w-[Nch]` caps — only the grids stretch.
+ */
+const SHELL = 'mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 xl:px-14';
+
 /** Best case first — the waffle reads top-left to bottom-right. */
 const BAND_ORDER: readonly Band[] = ['ready', 'moderately_ready', 'not_ready'] as const;
 
-const ARCHETYPES = NATIONAL_SPLIT;
+const ARCHETYPES = NATIONAL_DEPLOYMENT_SPLIT;
 const SCORED_TOTAL = NATIONAL_TOTAL;
+
+/**
+ * What each band means, in the terms the band is actually computed from.
+ *
+ * Kept here rather than taken from `BAND_DESCRIPTION` in `bands.ts`, which
+ * glosses the *use* reading. Deployment banding is mechanical and worth stating
+ * exactly: critical gaps outstanding → Not ready, else major gaps outstanding →
+ * Moderately ready, else Ready. Note Ready requires *both* to be clear — "no
+ * critical gap", which is how the mockup put it, describes the top two bands
+ * rather than the top one.
+ */
+const BAND_RULE: Record<Band, string> = {
+  ready: 'Nothing critical or major outstanding',
+  moderately_ready: 'Major work to close, but nothing critical',
+  not_ready: 'At least one critical gap blocks deployment',
+};
 
 /**
  * Hundred tiles apportioned by largest remainder.
@@ -72,211 +128,314 @@ function waffleTiles(): Band[] {
 
 export default function LandingPage() {
   const tiles = useMemo(waffleTiles, []);
-  const { lgas } = useDataContext();
+  const { national } = useDataContext();
 
-  const readyTiles = tiles.filter((b) => b === 'ready').length;
-  const lgaCount = lgas.data.length || COVERAGE.lgas;
+  /**
+   * LGAs the survey *reached*, not LGAs that exist.
+   *
+   * This read `lgas.data.length`, which is every LGA in the country — the
+   * dataset carries all 774 so the national map has something to draw for the
+   * desk-reviewed states, and 469 of those rows hold no facilities at all. The
+   * tile therefore claimed the survey covered 774 LGAs the moment the fetch
+   * landed, having briefly and correctly said 305 before it. `assessedLgaCount`
+   * is the ingest's own count of the reached ones.
+   */
+  const lgaCount = national.data?.assessedLgaCount ?? COVERAGE.lgas;
+
+  const stats: [LucideIcon, string, string, string][] = [
+    // Widest scope first, narrowing left to right: the whole country, the part
+    // of it visited, and then what that visit covered.
+    [Map, String(COVERAGE.statesTotal), 'States & FCT', 'Nationwide scope'],
+    [MapPin, String(COVERAGE.statesPrimary), 'States visited', 'Primary facility survey'],
+    [Landmark, formatCount(lgaCount), 'LGAs reached', 'Local government areas'],
+    [
+      Building2,
+      formatCount(COVERAGE.facilitiesScored),
+      'Facilities assessed',
+      'Primary healthcare facilities',
+    ],
+  ];
 
   return (
-    <div className="min-h-screen bg-page">
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2.5">
-            <span className="mono grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[3px] border-[1.5px] border-foreground text-[11px] font-bold tracking-tighter">
+    <div className="flex min-h-screen flex-col bg-page">
+      {/*
+        The three modules are the header, as cards rather than text links. A
+        reader who arrives knowing which module they want should not have to
+        enter through National Coverage and re-navigate from the rail — and on a
+        page with no scroll, the header is the only place the modules can live,
+        so each card carries the label *and* the line saying what that module
+        has that the others do not. Below `md` they stack under the wordmark.
+      */}
+      <header className="border-b border-border bg-surface">
+        <div
+          className={cn(
+            SHELL,
+            'flex flex-col gap-3 py-2 md:flex-row md:items-center md:justify-between md:gap-8',
+          )}
+        >
+          <Link
+            to="/"
+            className="flex shrink-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            {/* Ink, not brand blue and not green: the mark is identity, and
+                identity is the one thing on this page that should not look
+                like either a control or a readiness band. */}
+            <span className="mono grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[4px] bg-foreground text-[12px] font-bold tracking-tighter text-surface">
               ER
             </span>
-            <span className="mono text-[11px] uppercase tracking-[0.1em] text-foreground">
-              EMR readiness
+            <span className="flex flex-col leading-none">
+              <span className="mono text-[13px] font-semibold uppercase tracking-[0.09em] text-foreground">
+                EMR readiness
+              </span>
+              <span className="mono mt-1 text-[9.5px] uppercase tracking-[0.13em] text-muted-foreground">
+                Nigeria
+              </span>
             </span>
-          </div>
-          <Link
-            to="/states"
-            className="inline-flex items-center gap-2 bg-brand-500 px-3.5 py-2 text-[13px] font-semibold text-surface transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            Enter the dashboard
-            <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
+
+          <nav
+            aria-label="Dashboard modules"
+            className="grid min-w-0 gap-2.5 sm:grid-cols-3 md:flex md:items-stretch"
+          >
+            {NAV_ITEMS.map((mod) => {
+              const Icon = ICONS[mod.icon] ?? Map;
+              return (
+                <NavLink
+                  key={mod.path}
+                  to={mod.path}
+                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-border bg-surface px-3.5 py-1.5 transition-colors hover:border-brand-500 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                >
+                  <Icon
+                    className="h-[18px] w-[18px] shrink-0 text-muted-foreground transition-colors group-hover:text-brand-500"
+                    aria-hidden
+                  />
+                  <span className="flex min-w-0 flex-col leading-tight">
+                    <span className="truncate text-[13px] font-semibold text-foreground">
+                      {mod.label}
+                    </span>
+                    <span className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {mod.description}
+                    </span>
+                  </span>
+                  <ArrowRight
+                    className="ml-3 block h-4 w-4 shrink-0 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-brand-500 md:hidden xl:block"
+                    aria-hidden
+                  />
+                </NavLink>
+              );
+            })}
+          </nav>
         </div>
       </header>
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-14">
-          <div>
+      <main className={cn(SHELL, 'flex flex-1 flex-col justify-center gap-[clamp(0.7rem,2vh,1.25rem)] py-[clamp(0.7rem,2vh,1.25rem)]')}>
+        {/* ── The finding, and the evidence for it ─────────────────────── */}
+        <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12">
+          <div className="flex flex-col">
             <p className="eyebrow">National assessment</p>
-            <h1 className="mt-3 max-w-[21ch] text-[clamp(1.9rem,4.2vw,2.9rem)] font-semibold leading-[1.12] tracking-tight text-balance text-foreground">
-              Nigeria&rsquo;s health facilities are ready in people and{' '}
-              <em className="not-italic text-notready">unready in power</em>.
+            <h1 className="mt-3 text-[clamp(1.7rem,2.9vw,2.7rem)] font-semibold leading-[1.08] tracking-tight text-balance text-foreground">
+              One in five facilities could deploy an EMR tomorrow.{' '}
+              <em className="not-italic text-notready-ink">
+                Nearly half need foundational infrastructure first.
+              </em>
             </h1>
-            <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">
-              Of {formatCount(COVERAGE.facilitiesScored)} primary healthcare facilities
-              assessed across {COVERAGE.statesPrimary} states,{' '}
-              {formatCount(ARCHETYPES.ready)} can run an electronic medical record today.
-              The constraint is not staff willingness or data habits — both score near the
-              top of the instrument. It is electricity, connectivity and backup.
+            <p className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-muted-foreground">
+              Readiness measures whether a facility can realistically begin an EMR
+              deployment — not whether it already owns the equipment. What separates the
+              bands is the work still outstanding.
             </p>
 
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 to="/states"
-                className="inline-flex items-center gap-2 bg-brand-500 px-4 py-2.5 text-[13px] font-semibold text-surface transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="inline-flex items-center gap-2 rounded-[5px] bg-brand-500 px-4 py-2.5 text-[13px] font-semibold text-surface transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
-                Enter the dashboard
+                Explore the assessment
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <Link
                 to="/assessment"
-                className="inline-flex items-center gap-2 border border-input px-4 py-2.5 text-[13px] font-semibold text-foreground transition-colors hover:border-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="inline-flex items-center gap-2 rounded-[5px] border border-input px-4 py-2.5 text-[13px] font-semibold text-foreground transition-colors hover:border-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 <BarChart3 className="h-4 w-4" aria-hidden />
-                See the assessed states
+                View assessed states
               </Link>
             </div>
           </div>
 
-          <div>
-            <p className="eyebrow mb-2.5">Every hundred facilities</p>
-            <div className="grid grid-cols-[repeat(20,minmax(0,1fr))] gap-[2px]">
+          <div className="flex flex-col">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <h2 className="mono text-[13px] font-semibold uppercase tracking-[0.09em] text-foreground">
+                {formatCount(SCORED_TOTAL)} facilities assessed
+              </h2>
+              {/* Hand-rolled rather than <BandLegend/> so it can sit on the
+                  heading's baseline at the far right, which the shared
+                  component's own flex row cannot do. Same swatches, same
+                  textures, same labels. */}
+              <ul className="mono ml-auto flex flex-wrap items-center gap-x-5 gap-y-1 text-[10.5px] text-muted-foreground">
+                {BAND_ORDER.map((band) => (
+                  <li key={band} className="flex items-center gap-1.5">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'band-swatch block h-2.5 w-2.5 rounded-[2px]',
+                        BAND_CLASSES[band].bg,
+                        BAND_CLASSES[band].texture,
+                      )}
+                    />
+                    {BAND_LABEL[band]}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-3 grid grid-cols-[repeat(20,minmax(0,1fr))] gap-[3px]">
               {tiles.map((band, i) => (
                 <span
                   key={i}
                   title={BAND_LABEL[band]}
                   className={cn(
-                    'block aspect-square rounded-[1px]',
+                    'block aspect-square rounded-[2px]',
                     BAND_CLASSES[band].bg,
                     BAND_CLASSES[band].texture,
                   )}
                 />
               ))}
             </div>
-            <p className="mono mt-2.5 text-[10.5px] leading-relaxed text-muted-foreground">
-              One tile is one per cent of the {formatCount(SCORED_TOTAL)} facilities with a
-              computed readiness band. {readyTiles} are ready.
+            {/*
+              "Each square represents 1 facility" — which the mockup said — is
+              off by a factor of 28. A hundred squares cannot each be one of
+              2,806 facilities, and the point of the waffle is that the count of
+              green squares *is* the percentage.
+            */}
+            <p className="mt-2 text-[11.5px] text-muted-foreground">
+              Each square is one per cent of the facilities assessed.
             </p>
-            <BandLegend className="mt-3" />
-          </div>
-        </div>
 
-        {/* ── Coverage ───────────────────────────────────────────────── */}
-        <div className="mt-12 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            // Widest scope first, narrowing left to right: the whole country,
-            // the part of it visited, and then what that visit covered.
-            [String(COVERAGE.statesTotal), 'States & FCT'],
-            [String(COVERAGE.statesPrimary), 'States visited'],
-            [formatCount(lgaCount), 'LGAs covered'],
-            [formatCount(COVERAGE.facilitiesScored), 'Facilities assessed'],
-          ].map(([value, label]) => (
-            <div key={label} className="bg-surface px-4 py-3.5">
-              <p className="mono text-[25px] font-semibold leading-none tracking-tight text-foreground">
-                {value}
-              </p>
-              <p className="mono mt-1.5 text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
-                {label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+            {/* ── The three bands ──────────────────────────────────────
+                Percentage first, count under it. Divided by rules rather
+                than boxed, so the three read as one sentence in three
+                parts rather than three separate claims. */}
+            <div className="mt-4 grid gap-x-7 gap-y-5 sm:grid-cols-3">
+              {BAND_ORDER.map((band, i) => {
+                const count = ARCHETYPES[band];
+                return (
+                  <div
+                    key={band}
+                    className={cn(
+                      'flex flex-col',
+                      i > 0 && 'sm:border-l sm:border-border sm:pl-7',
+                    )}
+                  >
+                    {/*
+                      Count and band name on one line, and no swatch before it.
+                      The swatch was the non-colour carrier for the band, but
+                      that job is done here by the word itself — `BAND_LABEL` is
+                      set in the band's own colour immediately beside the
+                      figure, so the reading survives greyscale and colour-vision
+                      deficiency on the text alone. Dropping it also returns the
+                      row of vertical space that lets the share keep its
+                      "of those assessed" qualifier.
 
-      {/* ── What the three bands mean ──────────────────────────────────── */}
-      <section className="border-t border-border bg-surface">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-          <p className="eyebrow">The scale</p>
-          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-foreground">
-            Every facility lands in exactly one of three bands
-          </h2>
-          <p className="mt-2 max-w-[68ch] text-[13px] text-muted-foreground">
-            The two lower bands are not the same problem, and the difference is what a
-            rollout plan is built on.
-          </p>
-
-          <div className="mt-5 grid gap-px border border-border bg-border md:grid-cols-3">
-            {BAND_ORDER.map((band) => {
-              const count = ARCHETYPES[band];
-              return (
-                <div key={band} className="bg-surface p-4">
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      aria-hidden
+                      The label stacks under the figure below `xl`. "1,340 NOT
+                      READY" needs about 164px inline and a third of the
+                      evidence column is 161px at 1280 and 114px at 1024 — so
+                      inline is a promise this layout cannot keep at every
+                      width. Stacking is chosen by *width* rather than by
+                      content, which is what keeps the three blocks in register:
+                      a label that wrapped on the longest band alone would drop
+                      that block's remaining lines below its neighbours'.
+                    */}
+                    <p
                       className={cn(
-                        'block h-2.5 w-6 rounded-[1px]',
-                        BAND_CLASSES[band].bg,
-                        BAND_CLASSES[band].texture,
+                        'mono font-semibold tracking-tight',
+                        BAND_CLASSES[band].text,
                       )}
-                    />
-                    <p className="mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
-                      {BAND_LABEL[band]}
+                    >
+                      <span className="text-[31px] leading-none">{formatCount(count)}</span>
+                      <span className="mt-1.5 block whitespace-nowrap text-[11px] uppercase leading-none tracking-[0.09em] xl:ml-2 xl:mt-0 xl:inline">
+                        {BAND_LABEL[band]}
+                      </span>
+                    </p>
+                    <p className="mono mt-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+                      {((count / SCORED_TOTAL) * 100).toFixed(1)}% of those assessed
+                    </p>
+                    <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
+                      {BAND_RULE[band]}
                     </p>
                   </div>
-                  <p className="mono mt-2.5 text-[28px] font-semibold leading-none tracking-tight text-foreground">
-                    {formatCount(count)}
-                    <span className="ml-2 text-[13px] font-medium tracking-normal text-muted-foreground">
-                      {((count / SCORED_TOTAL) * 100).toFixed(1)}%
-                    </span>
-                  </p>
-                  <p className="mt-2 text-[13px] text-muted-foreground">{BAND_ACTION[band]}</p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-
         </div>
-      </section>
 
-      {/* ── Modules ────────────────────────────────────────────────────── */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-          <p className="eyebrow">The dashboard</p>
-          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-foreground">
-Three modules, from the national picture to a costed plan
-          </h2>
-
-          <div className="mt-5 grid gap-px border border-border bg-border sm:grid-cols-3">
-            {NAV_ITEMS.map((mod) => {
-              const Icon = ICONS[mod.icon] ?? Map;
-              return (
-                <Link
-                  key={mod.path}
-                  to={mod.path}
-                  className="group flex flex-col bg-surface p-4 transition-colors hover:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        {/* ── Coverage ─────────────────────────────────────────────────── */}
+        <div className="rounded-[6px] border border-border bg-surface px-5 py-3.5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-7">
+            <p className="eyebrow shrink-0 lg:w-[104px]">The assessment</p>
+            <div className="grid flex-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+              {stats.map(([Icon, value, label, sub], i) => (
+                <div
+                  key={label}
+                  className={cn(
+                    'flex items-center gap-3',
+                    i > 0 && 'lg:border-l lg:border-border lg:pl-6',
+                  )}
                 >
-                  <Icon className="h-[18px] w-[18px] text-brand-500" aria-hidden />
-                  <h3 className="mt-3 text-[13.5px] font-semibold text-foreground">
-                    {mod.label}
-                  </h3>
-                  <p className="mt-1 flex-1 text-[12.5px] leading-relaxed text-muted-foreground">
-                    {mod.description}
-                  </p>
-                  <ArrowRight
-                    className="mt-3 h-4 w-4 self-end text-brand-500 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </Link>
-              );
-            })}
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[5px] bg-surface-sunk text-muted-foreground">
+                    <Icon className="h-[18px] w-[18px]" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="mono text-[24px] font-semibold leading-none tracking-tight text-foreground">
+                      {value}
+                    </p>
+                    <p className="mono mt-1 whitespace-nowrap text-[9.5px] uppercase tracking-[0.08em] text-foreground">
+                      {label}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </section>
+
+        {/* ── How the band is arrived at ───────────────────────────────────
+            The rule, stated where the reader has just met the numbers rather
+            than in a footnote under them. */}
+        <div className="flex items-start gap-3.5 rounded-[6px] border border-border bg-surface px-5 py-3">
+          <Info className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-500" aria-hidden />
+          <div>
+            <p className="mono text-[10px] font-semibold uppercase tracking-[0.11em] text-foreground">
+              How readiness is measured
+            </p>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+              A facility&rsquo;s band is a count of the work still outstanding, never a
+              score. Critical gaps — overwhelmingly electricity, connectivity and backup
+              power — put it in Not ready on their own; major gaps alone pull it to
+              Moderately ready. The two lower bands are different problems, and each takes
+              a different response.
+            </p>
+          </div>
+        </div>
+      </main>
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <p className="mono text-[10.5px] leading-relaxed text-muted-foreground">
-            NPHCDA, in partnership with NTBLCP, The Global Fund and Solina.{' '}
-            {COVERAGE.statesPrimary} states assessed by primary facility survey;{' '}
-            {COVERAGE.statesSecondary} states and the FCT by secondary desk review, which
-            yields state-level findings only. Readiness is reported as a band —
-            ready, moderately ready or not ready — and never as a score, and every
-            facility carries two: readiness to <em>use</em> an EMR and readiness to{' '}
-            <em>deploy</em> one.{' '}
+        <div className={cn(SHELL, 'py-3')}>
+          <p className="mono text-[9.5px] leading-relaxed text-muted-foreground">
+            NPHCDA, with NTBLCP, The Global Fund and Solina · {COVERAGE.statesPrimary}{' '}
+            states by facility survey; {COVERAGE.statesSecondary} states and the FCT by
+            desk review, which yields state-level findings only · Each facility also
+            carries a stricter <em>readiness-to-use</em> band, shown inside the dashboard
+            ·{' '}
             {/* What replaced the blanket "everything here is synthetic" notice.
                 The figures are sourced now, so a global disclaimer would be
-                false — but the two things the dataset does not carry are worth
-                stating once, in the same place, rather than leaving a reader to
-                infer them from an absence. */}
+                false — but the one thing the dataset does not carry is worth
+                stating once rather than leaving a reader to infer it. */}
             <strong className="font-semibold text-foreground">
-              Costs are the assessment&rsquo;s own indicative pricing and exclude a small
-              number of critical actions it does not price.
+              Costs are indicative and exclude a few critical actions the assessment does
+              not price.
             </strong>
           </p>
         </div>

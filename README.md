@@ -79,21 +79,31 @@ viewBox change and never a reprojection.
 | | |
 | --- | --- |
 | **Hierarchy** | Nigeria → State → LGA → PHC. Boundaries are GRID3/COD-AB ADM1 and ADM2 (all 774 LGAs, one file per state); facilities sit at their surveyed GPS coordinate. |
-| **Drill-down** | Strictly progressive: a state resolves into its LGAs, an LGA into the facilities inside it, and a facility into itself. Each level only draws the features that belong to it, so facility points never appear above their own LGA. Click a feature, or simply keep zooming — overshooting a layer's useful range drills through it, and pulling back out past its extent drills back up. |
-| **Selecting a facility** | A drill like any other, not a highlight: the camera flies to the facility at the layer's deepest zoom, names it on the map, and shows its coordinate card. Clicking it again, or the breadcrumb, flies back out to the LGA. |
+| **Drill-down** | Strictly progressive: a state resolves into its LGAs, an LGA into the facilities inside it, and a facility into itself. Each level only draws the features that belong to it, so facility points never appear above their own LGA. Click a feature, or simply keep zooming — zooming past a level's handover point drills through it, and pulling back out past its extent drills back up. The +/- buttons cross levels on the same terms the wheel does. |
+| **Zoom range** | Every level's camera limit is a *ground distance*, not a multiple of its own extent: 2 km across the frame nationally, 500 m at state level, 70 m at LGA level. A ratio would mean a different depth in every state and every LGA; a distance reaches the same thing everywhere. The drill fires long before the camera runs out, so an unsurveyed state — which has no layer below it — can still be zoomed to its streets. |
+| **Context** | No level stops at the edge of its subject. The base map is drawn across the whole frame and the ground beyond the subject is *set back* rather than cut away, neighbouring states are outlined below state level, and neighbouring LGAs below that. Panning is allowed to leave the subject, which at street zoom is most of the point. |
+| **Selecting a facility** | A drill like any other, not a highlight: the camera flies to the facility and opens onto roughly 400 m of its neighbourhood — close enough to place it, wide enough to check it against the road it is on, with the rest of the range left in the reader's hands. Clicking it again, or the breadcrumb, flies back out to the LGA. |
+| **Anchor precision** | viewBox strings are formatted at a precision taken from their own span (`viewBoxString`), not at a fixed number of decimals. A flat `toFixed(1)` is 130 m of ground — invisible against a country 1,000 units wide and, against a 0.3-unit facility frame, enough to put "zoom to this facility" most of a frame-height off the coordinate it was aiming at. |
+| **Facilities with no fix** | Not plotted, and *said*. Selecting one shows the same card in the same place with "exact location unavailable" in place of a coordinate; where some in scope are missing, the map reports the count. Two of the 2,806 are in this position. Nothing is ever placed at a centroid or a guess. |
 | **Transitions** | A level change is a camera move, not a cut. The outgoing layer leaves its viewport in `viewHandoff.ts` and the incoming one flies in from it, easing geometrically so a 40x zoom reads as constant motion. Honours `prefers-reduced-motion`. |
-| **Layers** | Boundaries, place names, thematic fill and facility points toggle independently (`store/mapLayerStore.ts`), over an optional OpenStreetMap or Esri satellite base map. Only the layers a level actually has appear in the panel. |
-| **Coordinates** | Live lat/lon under the pointer, and a selected facility's surveyed position copyable and openable in OpenStreetMap. `lonAtX`/`latAtY` are exact inverses of the forward projection. |
+| **Base map** | Streets (OpenStreetMap) / Satellite (Esri World Imagery) / Plain, as a segmented control on the map itself, under the toolbar. Both sources are cut to z19, which is roofs and compound walls. |
+| **Imagery coverage** | Satellite coverage is not uniform and Esri does not error where it is missing — it returns a grey "Map data not yet available" tile with `200 OK`, which loads fine and hides the good imagery underneath. So the map asks Esri's `tilemap` endpoint how deep the photography goes for the current view (one small cached request above z16), requests that level, and says so: *"Sharpest imagery here is z 18. Closer views are enlarged, not more detailed."* Kano city has z19; Rano and Yola North stop at z18. |
+| **Layers** | Boundaries, place names, thematic fill and facility points toggle independently (`store/mapLayerStore.ts`). Only the layers a level actually has appear in the panel. |
+| **Coordinates** | Live lat/lon under the pointer and the slippy-map zoom level, in a status strip beside the scale bar; a selected facility's surveyed position is copyable and openable in OpenStreetMap. `lonAtX`/`latAtY` are exact inverses of the forward projection. |
+| **My location** | The browser's own fix, on a press and never on mount — the one control that relates the map to the person reading it. A refusal is reported once and dropped. |
 | **Scale** | A real surveyor's bar, measured at the view's centre latitude — Mercator's scale factor is 1/cos(lat), so a viewBox unit is not a fixed distance. |
 | **Find a place** | A locator in the map's own toolbar, separate from the filter row's Search: it narrows nothing, it resolves a name to a place and goes there, opening the levels in between. Assessed States resolves to a facility; National Coverage stops at the LGA. |
 | **Shareable views** | Pan and zoom ride in the URL as `?v=<layer>~x,y,w`, so a link reopens on the framing the sender chose — not just the same scope. Stamped with the layer that wrote it, so a stale value is ignored rather than misapplied, and dropped entirely at full extent. |
 | **Save as image** | One click writes a PNG of the map frame — legend, scale bar and attribution included, which is what a screenshot loses — with provenance burnt in underneath. Raster base-map tiles cannot be captured (a serialised SVG may not fetch external resources), so the export warns and Plain is lossless. |
 | **Clustering** | Facility points that overlap at the current zoom collapse into a counted marker and dissolve as the reader goes in; the cell is sized in screen pixels, so there is no threshold to tune. |
 
-Base maps default to **plain**, which makes no third-party request. Streets and
-satellite tiles are fetched at runtime from `tile.openstreetmap.org` and
-`arcgisonline.com` — whether a ministry network may reach either is a deployment
-question, so the reader opts in.
+Base maps default to **Streets**. Tiles are fetched at runtime from
+`tile.openstreetmap.org` and `arcgisonline.com`; whether a ministry network may
+reach either is a deployment question, and it is answered directly rather than
+by abstaining — failed tiles are counted, and a base map that is plainly not
+arriving says so and offers **Plain**, which makes no third-party request at
+all. The neighbour outlines below national level come from a 65 kB simplified
+copy of the ADM1 layer (`npm run geo:context`), not the 2.0 MB original.
 
 ## National Coverage
 
@@ -109,9 +119,90 @@ stand", and the answer is 37 state-level readings from `AreaProfile.coverage` �
 a different claim from the facility survey, which lives on Assessed States. The
 two are held apart in the type system for that reason.
 
-Beneath the two domains sit sub-domains — Network Coverage (MTN, Airtel), Power,
-Staff — and **these carry no readiness band, by design**. They are measurements,
-not judgements, so band colour never touches them.
+### Three domains, from two desk sources
+
+| Domain | Source | States |
+|---|---|---|
+| Technical Infrastructure | `National Coverage.xlsx` — electricity access and internet subscription | 37 |
+| Workforce Capacity | *no desk reading* — null everywhere | 0 |
+| Leadership & Governance | `National coverage leadership domain scoring.xlsx` | 27 |
+
+Leadership is the one coverage domain with **no facility behind it**. A clinic
+cannot be asked whether its state has a digital health strategy, so it is absent
+from `ThemeId` and present only in `CoverageThemeId` — which is why the shared
+Domain filter now carries `DomainId`, the union of both, and each page narrows
+it to what it can paint (`coverageLens` here, `facilityLens` on Assessed
+States). A Leadership tick set here survives a trip to Assessed States and is
+still set on the way back.
+
+It covers 27 states. The other ten are **absent from the source file, not
+written as zeroes**: their band is null, the map paints them as no-data with the
+key switched on to say so, and the pane's counts read "27 states classified · 10
+not yet assessed" rather than three shares of a denominator nobody was given.
+
+### Sub-domains carry no band
+
+Beneath Technical Infrastructure sit Access rates (electricity, internet) and
+beneath Workforce, Staff — and **these carry no readiness band, by design**.
+They are measurements, not judgements, so band colour never touches them.
+Network Coverage and Power were removed: Airtel serviceability and grid
+connection were blank in every source row, and MTN serviceability is a
+per-facility finding that belongs on Assessed States, where it still is.
+
+### The one banded sub-domain, and why the rule bends here
+
+Leadership's four sub-domains — governance structure, data governance policy,
+digital health strategy, financial commitment — **do** carry a readiness band,
+and they are the only sub-domains in the model that do. The exception is the
+source's own, not this page's.
+
+The workbook scores each answer Yes 5 / Partial 3 / No 1, and bands a state by
+cutting the mean of the four at ≥ 4 and ≥ 3 — on that same 1–5 scale. So one
+answer put through the sheet's own cut points lands exactly on a band name:
+
+| Answer | Score | Sheet's band for that score |
+|---|---|---|
+| Yes | 5 | Ready |
+| Partial | 3 | Moderately ready |
+| No | 1 | Not ready |
+
+That is the same function on the same scale, not an analogy — which is what
+separates these from electricity access, where 45% is a *quantity* and calling
+it Not ready would invent a threshold nobody set. `build-leadership.mjs` derives
+each sub-domain band by calling the sheet's own banding function rather than
+writing a table, so the mapping cannot be typed in wrongly or drift if the cut
+points move. The Yes/Partial/No wording is dropped entirely: carrying both would
+only raise the question of which is authoritative.
+
+What it buys is one vocabulary — a reader learns the three bands on the map and
+reads them unchanged down to the last row of the pane.
+
+**The four do not roll up to the fifth.** The sheet *averages* them, which is
+neither of this codebase's rollup rules; worst-wins disagrees with it on 7 of
+27. Rivers is Ready with a Not-ready data governance policy; Kano and Lagos are
+Ready over Moderately-ready rows. That is a finding — a state can be ready
+overall and still be missing the policy that governs the record — so the block
+says the source averages rather than letting a reader who learnt worst-wins on
+the Domain filter read it as a bug. Nothing rebuilds the state band from the
+four. What *is* asserted at build time, in 27 of 27 rows, is containment: a
+state's band always sits between the weakest and strongest of its own four.
+
+They read two ways, by scope. A state shows its own four rows, weakest first,
+each with a band pill; the country shows how the 27 split across each:
+
+| Sub-domain | Has it | |
+|---|---|---|
+| Data governance policy | 5 of 27 | 22 not ready · 4 moderately · 1 ready |
+| Digital health strategy | 6 of 27 | 21 not ready · 1 moderately · 5 ready |
+| Financial commitment | 15 of 27 | 12 not ready · 13 moderately · 2 ready |
+| Governance structure | 16 of 27 | 11 not ready · 16 ready |
+
+That split is the reason the domain earns a national reading. Roughly half the
+scored states have built the *institution* — a body that owns digital health,
+money against an EMR — and almost none have written down what either is for.
+"Leadership is weak" is all the band can say; these four rows say which of the
+four to fund, and they point at a different intervention from the one the band
+implies.
 
 ## Bands, not scores
 
@@ -125,6 +216,15 @@ fractions of a point — and every one of those operations claims a precision th
 underlying evidence does not carry. Removing the number removes the temptation
 structurally: there is no `number` in `AreaProfile` to average, so nothing
 downstream can quietly invent one.
+
+The leadership workbook is the one source that tested this. It scores its four
+answers 5 / 3 / 1, averages them, and bands the mean — so the mean was there for
+the taking. `build-leadership.mjs` checks it against the sheet's own band and
+then drops it: what reaches `AreaProfile` is the state's band and a band per
+sub-domain, which says everything the average does and one thing more, namely
+which of the four is missing. Note the score is dropped even though the
+sub-domain *bands* are kept — a band per row is a classification the source
+made, where a 2.5 against a 2.0 is a distance four answers cannot support.
 
 What replaces it is **counts**. Where the sibling ranks states by mean score,
 this one ranks them by how many of their facilities are not ready — a figure a

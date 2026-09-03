@@ -32,14 +32,23 @@ import type { ViewportRect } from '@/hooks/useMapViewport';
 
 export const VIEWPORT_PARAM = 'v';
 
-/** Three significant-ish decimals: enough to land within a few metres at the
- *  deepest zoom, short enough to keep the URL readable. */
-function round(n: number): string {
-  return n.toFixed(3).replace(/\.?0+$/, '');
+/**
+ * Decimals scaled to the width being shared, trailing zeros trimmed.
+ *
+ * A flat three decimals is 1.3 m of ground, which was "within a few metres at
+ * the deepest zoom" when the deepest zoom was a kilometre across. The facility
+ * view is now seventy metres across, where 1.3 m is a visible nudge — a shared
+ * link would reopen a frame or two off the position the sender chose. Two more
+ * decimals at that depth costs a handful of URL characters and nothing else.
+ */
+function round(n: number, span: number): string {
+  const dp = Math.min(8, Math.max(3, Math.ceil(-Math.log10(Math.max(1e-9, span))) + 3));
+  return n.toFixed(dp).replace(/\.?0+$/, '');
 }
 
 export function encodeViewport(layerKey: string, rect: ViewportRect): string {
-  return `${layerKey}~${round(rect.x)},${round(rect.y)},${round(rect.w)}`;
+  const w = rect.w;
+  return `${layerKey}~${round(rect.x, w)},${round(rect.y, w)},${round(w, w)}`;
 }
 
 /**

@@ -66,17 +66,33 @@ export const BAND_TIMELINE: Record<Band, string> = {
  *
  * `texture` is the carrier for the places where a label will not fit: a map
  * polygon, a 6px distribution segment, a donut arc. See `BAND_TEXTURE` below.
+ *
+ * The entries split two ways, and the split matters. `bg`, `wash` and `fill`
+ * are the client's band colours — pastels, chosen as choropleth fills. `text`
+ * and `border` are the *ink* half of the same band: same hue, taken down to a
+ * weight that can be read as a label. Reach for `.text` on anything with
+ * words in it and `.bg`/`.fill` on anything without, and the two never cross.
  */
 /**
  * The band colours as raw CSS, for the few places that need a value rather than
  * a class — an inline `style`, a canvas, an SVG attribute a class cannot reach.
  * Same custom properties the Tailwind tokens are built on, so they stay in step
- * with the theme and follow it into dark mode.
+ * with the theme. This is the *fill*; for a value that will be text, see
+ * `BAND_CSS_INK` below.
  */
 export const BAND_CSS_COLOR: Record<Band, string> = {
-  not_ready: 'hsl(var(--notready))',
+  not_ready: 'hsl(var(--not-ready))',
   moderately_ready: 'hsl(var(--moderate))',
   ready: 'hsl(var(--ready))',
+};
+
+/** The ink half of each band — the same hue at a text weight. Use this, never
+ *  `BAND_CSS_COLOR`, wherever the value ends up as a `color` or a stroke on a
+ *  label: the fills are pastels and do not read as text. */
+export const BAND_CSS_INK: Record<Band, string> = {
+  not_ready: 'hsl(var(--not-ready-ink))',
+  moderately_ready: 'hsl(var(--moderate-ink))',
+  ready: 'hsl(var(--ready-ink))',
 };
 
 export const BAND_CLASSES: Record<
@@ -84,26 +100,26 @@ export const BAND_CLASSES: Record<
   { text: string; bg: string; wash: string; border: string; fill: string; texture: string }
 > = {
   not_ready: {
-    text: 'text-notready',
+    text: 'text-notready-ink',
     bg: 'bg-notready',
     wash: 'bg-notready-wash',
-    border: 'border-notready',
+    border: 'border-notready-ink',
     fill: 'fill-notready',
     texture: 'band-texture-notready',
   },
   moderately_ready: {
-    text: 'text-moderate',
+    text: 'text-moderate-ink',
     bg: 'bg-moderate',
     wash: 'bg-moderate-wash',
-    border: 'border-moderate',
+    border: 'border-moderate-ink',
     fill: 'fill-moderate',
     texture: 'band-texture-moderate',
   },
   ready: {
-    text: 'text-ready',
+    text: 'text-ready-ink',
     bg: 'bg-ready',
     wash: 'bg-ready-wash',
-    border: 'border-ready',
+    border: 'border-ready-ink',
     fill: 'fill-ready',
     texture: 'band-texture-ready',
   },

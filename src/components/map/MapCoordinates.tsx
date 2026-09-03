@@ -1,7 +1,10 @@
-import { useCallback, useState } from 'react';
-import { Check, Copy, ExternalLink, Crosshair } from 'lucide-react';
+import { useCallback, useState, type ReactNode } from 'react';
+import { Check, Copy, ExternalLink, Crosshair, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatLatLon, plainLatLon, POINTER_DP } from './coordinates';
+import { zoomForRect } from './tiles';
+import { MapScaleBar } from './MapScaleBar';
+import type { ViewportRect } from '@/hooks/useMapViewport';
 
 /**
  * Latitude and longitude, treated as data rather than as decoration.
@@ -129,7 +132,7 @@ export function FacilityCoordinates({
           aria-label={copied ? 'Coordinates copied' : 'Copy coordinates'}
         >
           {copied ? (
-            <Check className="h-3.5 w-3.5 text-ready" aria-hidden />
+            <Check className="h-3.5 w-3.5 text-ready-ink" aria-hidden />
           ) : (
             <Copy className="h-3.5 w-3.5" aria-hidden />
           )}
@@ -145,6 +148,89 @@ export function FacilityCoordinates({
           <ExternalLink className="h-3.5 w-3.5" aria-hidden />
         </a>
       </span>
+    </div>
+  );
+}
+
+/**
+ * How far in the map is, on the scale every other mapping tool uses.
+ *
+ * Not a ratio against the layer's own extent — that number is meaningless
+ * across levels, since "4x" is a different amount of ground in Kano and in
+ * Dala. The slippy-map zoom level is absolute: z 6 is a country, z 12 is a
+ * town, z 17 is a street, z 19 is a roof, in this map and in every other one
+ * the reader has used. It is what makes "zoom until you can see the building"
+ * a checkable instruction rather than a hope.
+ *
+ * One decimal place, because the camera is continuous and an integer readout
+ * would sit still through a third of a gesture.
+ */
+export function MapZoomLevel({
+  rect,
+  renderPx,
+  className,
+}: {
+  rect: ViewportRect;
+  renderPx: number;
+  className?: string;
+}) {
+  const z = zoomForRect(rect, renderPx);
+  if (!Number.isFinite(z)) return null;
+  return (
+    <div
+      className={cn(
+        'pointer-events-none flex items-center gap-1.5 rounded border border-border bg-surface/92 px-2 py-1 backdrop-blur',
+        className,
+      )}
+      title="Map zoom level — the same scale as OpenStreetMap and Google Maps"
+    >
+      <ZoomIn className="h-3 w-3 text-muted-foreground" aria-hidden />
+      <span className="mono text-[10px] leading-none text-foreground">z {z.toFixed(1)}</span>
+    </div>
+  );
+}
+
+/**
+ * The map's status bar: how much ground, how far in, and where the pointer is.
+ *
+ * One component rather than three absolutely-positioned siblings in each of the
+ * three layers, because they are one thing — the strip along the bottom of the
+ * frame that every desktop GIS has, and that turns a picture into an
+ * instrument. Keeping them together is also what stops the coordinate readout
+ * appearing and disappearing under the scale bar as the pointer crosses the
+ * edge of the map: the row reserves its height whether or not there is a
+ * coordinate to put in it.
+ */
+export function MapStatusBar({
+  rect,
+  renderPx,
+  cursor,
+  extra,
+  className,
+}: {
+  rect: ViewportRect;
+  renderPx: number;
+  /** Null whenever the pointer is off the map — see `PointerCoordinates`. */
+  cursor: { lat: number; lon: number } | null;
+  /** Anything the layer wants in the same strip, to its right. */
+  extra?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('pointer-events-none flex flex-col items-start gap-1', className)}>
+      {/* The bar gets the same chip as everything else in the strip. It used to
+          sit bare on the map, which was fine over a flat wash and illegible the
+          moment satellite imagery went underneath it — dark text and a dark
+          rule on a dark roof. Every readout on a map has to survive whatever
+          the base map happens to put behind it. */}
+      <span className="rounded border border-border bg-surface/92 px-1.5 py-1 backdrop-blur">
+        <MapScaleBar rect={rect} renderPx={renderPx} />
+      </span>
+      <div className="flex min-h-[22px] items-center gap-1">
+        <MapZoomLevel rect={rect} renderPx={renderPx} />
+        <PointerCoordinates lat={cursor?.lat ?? null} lon={cursor?.lon ?? null} />
+        {extra}
+      </div>
     </div>
   );
 }

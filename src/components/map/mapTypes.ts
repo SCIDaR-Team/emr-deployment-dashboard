@@ -35,9 +35,17 @@ export const UNIT_FOCUS_CLASS = 'outline-none';
  * Over tiles the fill has to let the imagery through or the base map is
  * pointless — but not so far that the three bands stop being distinguishable
  * from each other, which is the fill's actual job.
+ *
+ * Raised from 0.55, which was tuned against the old saturated palette: at any
+ * higher value those hues buried the roads and place names outright. The
+ * client's fills are pastels and do not, so the same headroom now buys colour
+ * fidelity instead. At 0.55 a Not-ready polygon composited to about #FAC7C5
+ * against the pane card's #FFA3A3, and a reader looking from the map to the
+ * pane saw two different reds for one band. At 0.8 it lands within a couple of
+ * counts of the card and the tile detail still reads through.
  */
 export function fillOpacityFor(baseMap: BaseMapId): number {
-  return baseMap === 'plain' ? 1 : 0.55;
+  return baseMap === 'plain' ? 1 : 0.8;
 }
 
 /**

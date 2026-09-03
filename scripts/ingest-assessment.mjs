@@ -544,33 +544,102 @@ function investmentsFor(deployment) {
 /**
  * The coverage layer, for the areas this dataset can speak about.
  *
- * Only MTN serviceability is recoverable — as the share of facilities the sheet
- * calls immediately serviceable. Airtel's serviceability column is empty in all
- * 2,806 rows and grid connection is not collected at all, so both stay null:
- * not measured, which is a different claim from zero and must render
- * differently. Staff headcount is likewise absent from this dataset.
+ * Nothing measurable comes out of the facility rows here — the band and the two
+ * rates below it are the coverage workbook's, and this dataset's own MTN
+ * serviceability is a per-facility finding that stays on the facility, where
+ * Assessed States reports it. Staff headcount is absent from this dataset
+ * entirely.
  */
-function coverageFor(facilities) {
-  const measured = facilities.filter((f) => f.mtnServiceability !== null);
-  const serviceable = measured.filter(
-    (f) => f.mtnServiceability === 'Immediately serviceable',
-  ).length;
-
+function coverageFor(desk = null, leadership = null) {
   return {
-    band: null,
-    themeBands: { technical_infrastructure: null, workforce_capacity: null },
-    measures: {
-      networkMtnPct: measured.length
-        ? Number(((100 * serviceable) / measured.length).toFixed(1))
-        : null,
-      networkAirtelPct: null,
-      gridConnectionPct: null,
-      staffCount: null,
+    /**
+     * The band arrives classified, from the coverage workbook, and is copied
+     * across untouched.
+     *
+     * Set on states only — the workbook has no rows below one. An LGA and the
+     * national profile keep a null band here, which is *not measured* rather
+     * than not ready, and National Coverage already paints those differently.
+     */
+    band: desk?.band ?? null,
+
+    /**
+     * Technical Infrastructure carries the same band; Workforce Capacity stays
+     * null.
+     *
+     * Not a shortcut. The workbook classifies on electricity and internet, both
+     * of which are technical infrastructure and nothing else, so the domain
+     * reading and the overall reading are the same judgement made from the same
+     * two numbers. Saying so lets the Domain lens paint Technical
+     * Infrastructure honestly. Workforce is a question this source never asks,
+     * and a null there is the truthful answer — the lens drops it.
+     *
+     * Leadership & Governance comes from a *second* desk source, the leadership
+     * scoring workbook, and is a genuinely independent reading: it is scored
+     * from four governance answers and knows nothing about electricity. It
+     * covers 27 states, so ten carry a null here — not measured, which the page
+     * paints as no-data rather than as Not ready.
+     */
+    themeBands: {
+      technical_infrastructure: desk?.band ?? null,
+      workforce_capacity: null,
+      leadership_governance: leadership?.band ?? null,
     },
+    measures: {
+      staffCount: null,
+      electricityAccessPct: desk?.electricityAccessPct ?? null,
+      internetSubscriptionPct: desk?.internetSubscriptionPct ?? null,
+    },
+
+    /**
+     * The counts the rate is taken over, where the source has them.
+     *
+     * Null below the state, and null is the honest answer: the workbook has no
+     * LGA rows, and an LGA showing 0 subscriptions would be asserting something
+     * nobody measured.
+     */
+    internet: desk
+      ? {
+          population: desk.population,
+          total: desk.subscriptions,
+          byProvider: desk.byProvider,
+        }
+      : null,
+
+    /**
+     * The four answers the Leadership band was scored from.
+     *
+     * The same relationship `internet` has to the internet rate: this is the
+     * arithmetic behind the band directly above it, so a reader told a state is
+     * Not ready for leadership can read down and find which of the four things
+     * it is missing.
+     *
+     * Null on the ten unscored states and at every level but the state — the
+     * workbook has no LGA rows and makes no national claim. Null is *not
+     * measured*, and the pane says so rather than printing four "No"s nobody
+     * wrote.
+     *
+     * A band per sub-domain, already classified in `build-leadership.mjs` by
+     * the sheet's own cut points — see `LeadershipBands`. The workbook's mean
+     * is validated there and deliberately left there: "bands, not scores" is a
+     * type-level invariant, and this is the one source that could have broken
+     * it.
+     */
+    leadership: leadership ? leadership.subDomains : null,
   };
 }
 
-function profileFor({ id, level, name, parentId, zone, facilities, catalogueById, extra }) {
+function profileFor({
+  id,
+  level,
+  name,
+  parentId,
+  zone,
+  facilities,
+  catalogueById,
+  extra,
+  desk,
+  leadership,
+}) {
   const assessed = facilities.length > 0;
   const deployment = assessed ? deploymentFor(facilities, catalogueById) : null;
 
@@ -607,7 +676,7 @@ function profileFor({ id, level, name, parentId, zone, facilities, catalogueById
     ),
     themeDistribution: themeDistributionOf(facilities),
 
-    coverage: coverageFor(facilities),
+    coverage: coverageFor(desk, leadership),
     investments: deployment ? investmentsFor(deployment) : [],
     deployment,
   };
@@ -692,6 +761,69 @@ async function main() {
     stateMeta.set(slugify(name), { name, zone: ZONE_BY_CODE[f.properties.geozone] ?? null });
   }
 
+  // --- The coverage workbook's desk readings --------------------------------
+  //
+  // Read from committed JSON, not from the workbook: `npm run data:coverage`
+  // extracts and validates that file, and the workbook itself is gitignored, so
+  // this build needs nothing that a clone does not have.
+  const deskCoverage = readJSON('scripts/source-data/national-coverage.json');
+  const deskByState = new Map(deskCoverage.states.map((s) => [s.id, s]));
+  const deskNational = deskCoverage.national;
+
+  // The national block is computed from the same 37 rows, so a mismatch means
+  // the JSON was hand-edited — the one thing its own header tells you not to do.
+  const deskPopulation = deskCoverage.states.reduce((a, s) => a + s.population, 0);
+  if (deskNational.population !== deskPopulation) {
+    throw new Error(
+      `The coverage JSON's national population (${deskNational.population.toLocaleString()}) ` +
+        `is not the sum of its states (${deskPopulation.toLocaleString()}). ` +
+        `Re-run \`npm run data:coverage\` rather than editing that file.`,
+    );
+  }
+
+  // Every state, or none — a state silently missing its band is a state that
+  // renders as "not measured" on a page whose entire subject is that band.
+  const unread = [...stateMeta.keys()].filter((id) => !deskByState.has(id));
+  const unplaced = [...deskByState.keys()].filter((id) => !stateMeta.has(id));
+  if (unread.length || unplaced.length) {
+    throw new Error(
+      `The coverage readings do not line up with the geography.\n` +
+        (unread.length ? `  no reading for: ${unread.join(', ')}\n` : '') +
+        (unplaced.length ? `  reading for unknown state: ${unplaced.join(', ')}\n` : '') +
+        `\nRe-run \`npm run data:coverage\`; if that succeeds, the geography ` +
+        `and the workbook disagree about the state list.`,
+    );
+  }
+  process.stderr.write(`Read desk coverage readings for ${deskByState.size} states\n`);
+
+  // --- The leadership workbook's desk readings ------------------------------
+  //
+  // The second desk source, read the same way: committed JSON, extracted and
+  // validated by `npm run data:leadership`.
+  //
+  // Unlike coverage, this one is **deliberately partial**. It scores 27 of the
+  // 37 states, so there is no every-state-or-none check here — a state missing
+  // from this file is a state nobody has assessed for leadership yet, which is
+  // the ordinary case rather than a broken build. What *is* checked is the
+  // other direction: a reading for a state the geography does not have would be
+  // dropped on the floor at merge time with nothing to show it happened.
+  const deskLeadership = readJSON('scripts/source-data/national-leadership.json');
+  const leadershipByState = new Map(deskLeadership.states.map((s) => [s.id, s]));
+
+  const misplaced = [...leadershipByState.keys()].filter((id) => !stateMeta.has(id));
+  if (misplaced.length) {
+    throw new Error(
+      `Leadership reading for unknown state(s): ${misplaced.join(', ')}.\n` +
+        `Re-run \`npm run data:leadership\`; if that succeeds, the geography ` +
+        `and the leadership workbook disagree about the state list.`,
+    );
+  }
+
+  process.stderr.write(
+    `Read desk leadership readings for ${leadershipByState.size} of ` +
+      `${stateMeta.size} states (${stateMeta.size - leadershipByState.size} unscored)\n`,
+  );
+
   // --- Facilities -----------------------------------------------------------
 
   const facilities = [];
@@ -769,6 +901,8 @@ async function main() {
         zone: meta.zone,
         facilities: stateFacilities,
         catalogueById,
+        desk: deskByState.get(stateId),
+        leadership: leadershipByState.get(stateId),
         extra: { lgaCount: lgas.length, assessedLgaCount: byLga.size },
       }),
     );
@@ -782,6 +916,18 @@ async function main() {
     zone: null,
     facilities,
     catalogueById,
+    /**
+     * The national reading, from the workbook rather than from these 37 rows.
+     *
+     * `build-coverage.mjs` computes it: internet as subscriptions over
+     * population — the same division the state rate is, done on the totals —
+     * and electricity as the survey's own published national rate, which is the
+     * only figure available because no state row carries a numerator. Neither
+     * is an average of the states. It carries no `band`: the workbook
+     * classifies states, and the country's own band would be a judgement
+     * nobody made.
+     */
+    desk: deskNational,
     extra: {
       lgaCount: lgaProfiles.length,
       assessedLgaCount: new Set(facilities.map((f) => `${f.stateId}.${f.lgaId}`)).size,
@@ -822,7 +968,7 @@ async function main() {
   write('snapshot.json', snapshot);
 
   writeGapCatalogue(catalogue, gapAreas);
-  writeNationalSplit(national.useDistribution, facilities.length);
+  writeNationalSplit(national.deploymentDistribution, facilities.length);
 
   report(facilities, catalogue, national, stateProfiles, { roundingDrift, roundedRows });
 }
@@ -1062,13 +1208,17 @@ function writeNationalSplit(distribution, total) {
     `/**
  * GENERATED by scripts/ingest-assessment.mjs — do not edit.
  *
- * The national EMR-use readiness split, available synchronously so the landing
- * page can paint before \`DataProvider\` has fetched anything.
+ * The national EMR-deployment readiness split, available synchronously so the
+ * landing page can paint before \`DataProvider\` has fetched anything.
+ *
+ * Deployment, not use: this dashboard's question is what it takes to *deploy*
+ * an EMR, and a front door that led with the use split reported a different
+ * Ready count from every page behind it.
  */
 
 import type { Band } from './types';
 
-export const NATIONAL_SPLIT: Record<Band, number> = ${JSON.stringify(distribution)};
+export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = ${JSON.stringify(distribution)};
 
 /** Facilities carrying a band — the denominator every share on the landing
  *  page is taken over. Every assessed facility carries both overall bands, so

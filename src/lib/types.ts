@@ -167,7 +167,40 @@ export interface DeploymentPlan {
  * Use describe how well a facility runs once it has, which is a question for a
  * different page.
  */
-export type CoverageThemeId = 'technical_infrastructure' | 'workforce_capacity';
+export type CoverageThemeId =
+  | 'technical_infrastructure'
+  | 'workforce_capacity'
+  | 'leadership_governance';
+
+/**
+ * Leadership & Governance — the one coverage domain that is *not* a facility
+ * domain.
+ *
+ * It is deliberately absent from `ThemeId`. The facility survey has no
+ * leadership column and never will: a clinic cannot be asked whether its state
+ * has a digital health strategy. This is a state-level judgement from a
+ * state-level source, which is exactly why it belongs on National Coverage and
+ * nowhere on Assessed States.
+ *
+ * That asymmetry is the reason `CoverageThemeId` is no longer a subset of
+ * `ThemeId`, and the reason the shared Domain filter now carries `DomainId`
+ * below rather than `ThemeId`.
+ */
+export type LeadershipThemeId = 'leadership_governance';
+
+/**
+ * Every id the Domain control can hold — the four facility domains plus
+ * Leadership.
+ *
+ * The control is shared between Assessed States and National Coverage, and the
+ * two pages have readings for overlapping but different sets. Rather than give
+ * them separate controls (and separate URLs, and a selection that vanishes when
+ * you move between them), the *store* holds the union and each page narrows to
+ * what it can actually paint: `coverageLens` on one side, `facilityLens` on the
+ * other. Anything a page has no reading for drops out at its own boundary
+ * rather than arriving at a map as an unknown key.
+ */
+export type DomainId = ThemeId | LeadershipThemeId;
 
 // ---------------------------------------------------------------------------
 // Readiness bands
@@ -193,13 +226,13 @@ export type BandDistribution = Record<Band, number>;
  * The figures reported beneath the two coverage domains.
  *
  * **These carry no readiness band, and never will.** They are measurements:
- * what share of a state's facilities the network reaches, what share is on the
- * grid. A band is a judgement about readiness and it is made one level up, at
- * the domain.
+ * what share of a state's population has power, how many subscriptions it holds
+ * per head. A band is a judgement about readiness and it is made one level up,
+ * at the domain.
  *
  * That distinction is load-bearing for the UI. Band colour — the three
  * readiness hues — must never touch a number from this object, or the page
- * starts implying that 63% MTN coverage *is* a readiness finding. It is
+ * starts implying that a 45% electricity rate *is* a readiness finding. It is
  * context sitting beside one.
  *
  * Nor are the domain bands derived from these figures. They arrive already
@@ -207,20 +240,39 @@ export type BandDistribution = Record<Band, number>;
  * unremarkable coverage and that is a fact about the source data, not a bug
  * here. Nothing in this codebase may recompute a band from a measure.
  *
- * The assessment dataset supplies only `networkMtnPct`. Airtel serviceability
- * is blank in every row of the source and grid connection is not collected at
- * all, so both stay null — and null means *not measured*, which must render
- * differently from zero.
+ * MTN, Airtel and grid connection used to sit here, from the facility survey.
+ * Airtel and grid were blank in every row of that source, and MTN
+ * serviceability is a clinic-level finding on 12 states rather than a statement
+ * about the state itself — the wrong claim for this page. All three are gone;
+ * the per-facility `mtnServiceability` they were rolled up from is untouched
+ * and still reported on Assessed States.
+ *
+ * The two national rates come from a second source entirely — the coverage
+ * workbook, which reports published statistics per state rather than anything
+ * observed in a clinic. They are set on all 37 states and on the national
+ * profile, and stay null below the state, because the workbook has no LGA rows.
+ *
+ * Neither national figure is an average of the states, and that is deliberate.
+ * `internetSubscriptionPct` is subscriptions over population at both levels —
+ * summed, not averaged, which needs no weighting decision and lands 1.6 points
+ * away from a plain mean. `electricityAccessPct` is the survey's own published
+ * national rate: only the rate is given per state, never a numerator, so
+ * nothing can be rebuilt from the column, and re-aggregating it would
+ * contradict the source by nearly seven points. See `build-coverage.mjs`.
  */
 export interface CoverageMeasures {
-  /** Share of the area with MTN network coverage, 0–100. */
-  networkMtnPct: number | null;
-  /** Share of the area with Airtel network coverage, 0–100. */
-  networkAirtelPct: number | null;
-  /** Share of the area connected to the national grid, 0–100. */
-  gridConnectionPct: number | null;
   /** Health workforce headcount. An absolute count, not a ratio. */
   staffCount: number | null;
+  /** Share of the state's population with access to electricity, 0–100. */
+  electricityAccessPct: number | null;
+  /**
+   * Active internet subscriptions as a share of population, 0–100.
+   *
+   * **Legitimately exceeds 100.** Subscriptions are counted per SIM and people
+   * hold more than one, so Ogun reads 120.5%. Anything rendering this must not
+   * clamp it to a 0–100 bar or treat it as a share of people online.
+   */
+  internetSubscriptionPct: number | null;
 }
 
 /**
@@ -243,6 +295,126 @@ export interface CoverageProfile {
   themeBands: Record<CoverageThemeId, Band | null>;
   /** The sub-domain figures. Unbanded, always — see `CoverageMeasures`. */
   measures: CoverageMeasures;
+  /** The subscription counts behind `internetSubscriptionPct`, where the source
+   *  has them. Null on every area it does not — see `InternetSubscriptions`. */
+  internet: InternetSubscriptions | null;
+  /** A band per leadership sub-domain. Null wherever the Leadership band is
+   *  null — see `LeadershipBands`. */
+  leadership: LeadershipBands | null;
+}
+
+// ---------------------------------------------------------------------------
+// Leadership & Governance
+// ---------------------------------------------------------------------------
+
+/** The four things the leadership workbook asks of a state. */
+export type LeadershipSubDomainId =
+  | 'governance_structure'
+  | 'data_governance_policy'
+  | 'digital_health_strategy'
+  | 'financial_commitment';
+
+
+
+/**
+ * A readiness band per leadership sub-domain — **the one place in this model
+ * where a sub-domain carries a band**, and the exception is the source's own.
+ *
+ * ## Why this is not the violation it looks like
+ *
+ * `CoverageMeasures` states the rule these break: a sub-domain reports figures,
+ * a band is a judgement made one level up, and band colour must never touch a
+ * measure. That rule holds for electricity access and staff headcount, which
+ * are *measurements* — 45% is a quantity, and calling it Not ready would be
+ * inventing a threshold the source never set.
+ *
+ * These are not measurements. The leadership workbook scores each answer Yes 5
+ * / Partial 3 / No 1 and bands a state by cutting the mean of the four at >= 4
+ * and >= 3 — on that same 1-5 scale. So a single answer put through the sheet's
+ * own cut points lands exactly on a band name:
+ *
+ *     Yes -> 5 -> Ready     Partial -> 3 -> Moderately ready     No -> 1 -> Not ready
+ *
+ * The band is therefore the source's own classification of that sub-domain, not
+ * a reading this codebase has invented, and `build-leadership.mjs` derives it
+ * by calling the sheet's banding function rather than by writing a table. The
+ * Yes/Partial/No wording is dropped entirely: carrying both would leave the
+ * reader wondering which is authoritative, and the page can now speak one
+ * vocabulary from the map down to the last row.
+ *
+ * ## The four do not roll up to the fifth, and the pane must say so
+ *
+ * The state's own band is the *average* of these four, which is neither of this
+ * codebase's rollup rules. `worstBand` disagrees with the sheet on 7 of 27
+ * states: Rivers is Ready with a Not-ready data governance policy, Kano and
+ * Lagos are Ready over Moderately-ready rows. That is a finding, not a
+ * contradiction — a state can be ready overall and still be missing the policy
+ * that governs the record — but it only reads that way if the block says the
+ * source averages them. Nothing may rebuild the state band from these.
+ *
+ * What *is* guaranteed, and asserted at build time in 27 of 27 rows, is
+ * containment: the state's band always sits between the weakest and strongest
+ * of its four. A badge outside its own rows would be a broken source.
+ *
+ * ## Still no score
+ *
+ * The mean the workbook bands is checked in the build script and dropped there.
+ * "Bands, not scores" is a type-level invariant — there is no `number` in
+ * `AreaProfile` to average — so nothing downstream can rank states by 2.5
+ * against 2.0, a distance four answers cannot support.
+ *
+ * Null on every area with no reading: the ten unscored states, every LGA, and
+ * the nation. Null is *not measured*, which is not Not ready.
+ */
+export type LeadershipBands = Record<LeadershipSubDomainId, Band>;
+
+/**
+ * The eleven operators the coverage workbook counts subscriptions for, grouped
+ * by access technology.
+ *
+ * `mobile` carries 99.8% of all subscriptions in the current data; `fixed`
+ * (0.02%) and `wifi` (0.15%) are rounding error beside it. Both are kept
+ * anyway, because "fixed broadband is almost nonexistent" is a finding about
+ * deploying an EMR, not noise to tidy away.
+ */
+export type InternetProviderGroup = 'mobile' | 'fixed' | 'wifi';
+
+export type InternetProviderId =
+  | 'mtn'
+  | 'glo'
+  | 'airtel'
+  | 'emts'
+  | 'ipnx'
+  | 'mtnFixed'
+  | 'inq'
+  | 'century21'
+  | 'smile'
+  | 'ntel'
+  | 'isp';
+
+/**
+ * The arithmetic behind an area's internet subscription rate.
+ *
+ * `total / population` *is* `internetSubscriptionPct`, and the ingest checks
+ * that in every row — which is what lets the national figure be the same
+ * division done on the totals rather than an average of 37 rates.
+ *
+ * Set on the 37 states and on the national profile, and null everywhere else:
+ * the workbook has no rows below a state, and a null here means the counts are
+ * unknown, not that nobody subscribes.
+ *
+ * **A null in `byProvider` is "not measured", never zero.** Four of the eleven
+ * operators are blank in every row of the source, and printing 0 for ipNX would
+ * assert something the sheet does not say. Anything rendering these must keep
+ * the two apart.
+ */
+export interface InternetSubscriptions {
+  /** NBS 2025 population projection — the rate's denominator. */
+  population: number;
+  /** Active subscriptions, all operators. Sums `byProvider`, treating null as
+   *  absent rather than as zero. */
+  total: number;
+  byProvider: Record<InternetProviderId, number | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -510,7 +682,10 @@ export interface FilterState {
    * the same way two ticked functionality levels do. See `filterFacilities`,
    * which is where that grouping is applied.
    */
-  domains: FacilityThemeId[];
+  /** The Domain control's selection. Holds `DomainId`, not `ThemeId`: the
+   *  control is shared with National Coverage, which offers Leadership &
+   *  Governance. Each page narrows this to what it can read — see `DomainId`. */
+  domains: DomainId[];
   /**
    * Gap area ids the Gap area control has ticked.
    *
