@@ -67,7 +67,7 @@ export default {
           critical: 'hsl(var(--urgency-critical) / <alpha-value>)',
           major: 'hsl(var(--urgency-major) / <alpha-value>)',
           minor: 'hsl(var(--urgency-minor) / <alpha-value>)',
-          optional: 'hsl(var(--urgency-optional) / <alpha-value>)',
+          longterm: 'hsl(var(--urgency-longterm) / <alpha-value>)',
         },
         nodata: 'hsl(var(--no-data) / <alpha-value>)',
 
