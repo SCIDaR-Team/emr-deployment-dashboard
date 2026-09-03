@@ -14,6 +14,7 @@
     "geo:build": "node scripts/build-boundaries.mjs",
     "geo:context": "node scripts/build-state-context.mjs",
     "data:coverage": "node scripts/build-coverage.mjs",
+    "data:leadership": "node scripts/build-leadership.mjs",
     "data:ingest": "node scripts/ingest-assessment.mjs",
     "data:taxonomy": "node scripts/gap-taxonomy.mjs"
   },

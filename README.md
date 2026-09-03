@@ -119,12 +119,90 @@ stand", and the answer is 37 state-level readings from `AreaProfile.coverage` �
 a different claim from the facility survey, which lives on Assessed States. The
 two are held apart in the type system for that reason.
 
-Beneath the two domains sit sub-domains — Access rates (electricity, internet)
-and Staff — and **these carry no readiness band, by design**. They are
-measurements, not judgements, so band colour never touches them. Network
-Coverage and Power were removed: Airtel serviceability and grid connection were
-blank in every source row, and MTN serviceability is a per-facility finding that
-belongs on Assessed States, where it still is.
+### Three domains, from two desk sources
+
+| Domain | Source | States |
+|---|---|---|
+| Technical Infrastructure | `National Coverage.xlsx` — electricity access and internet subscription | 37 |
+| Workforce Capacity | *no desk reading* — null everywhere | 0 |
+| Leadership & Governance | `National coverage leadership domain scoring.xlsx` | 27 |
+
+Leadership is the one coverage domain with **no facility behind it**. A clinic
+cannot be asked whether its state has a digital health strategy, so it is absent
+from `ThemeId` and present only in `CoverageThemeId` — which is why the shared
+Domain filter now carries `DomainId`, the union of both, and each page narrows
+it to what it can paint (`coverageLens` here, `facilityLens` on Assessed
+States). A Leadership tick set here survives a trip to Assessed States and is
+still set on the way back.
+
+It covers 27 states. The other ten are **absent from the source file, not
+written as zeroes**: their band is null, the map paints them as no-data with the
+key switched on to say so, and the pane's counts read "27 states classified · 10
+not yet assessed" rather than three shares of a denominator nobody was given.
+
+### Sub-domains carry no band
+
+Beneath Technical Infrastructure sit Access rates (electricity, internet) and
+beneath Workforce, Staff — and **these carry no readiness band, by design**.
+They are measurements, not judgements, so band colour never touches them.
+Network Coverage and Power were removed: Airtel serviceability and grid
+connection were blank in every source row, and MTN serviceability is a
+per-facility finding that belongs on Assessed States, where it still is.
+
+### The one banded sub-domain, and why the rule bends here
+
+Leadership's four sub-domains — governance structure, data governance policy,
+digital health strategy, financial commitment — **do** carry a readiness band,
+and they are the only sub-domains in the model that do. The exception is the
+source's own, not this page's.
+
+The workbook scores each answer Yes 5 / Partial 3 / No 1, and bands a state by
+cutting the mean of the four at ≥ 4 and ≥ 3 — on that same 1–5 scale. So one
+answer put through the sheet's own cut points lands exactly on a band name:
+
+| Answer | Score | Sheet's band for that score |
+|---|---|---|
+| Yes | 5 | Ready |
+| Partial | 3 | Moderately ready |
+| No | 1 | Not ready |
+
+That is the same function on the same scale, not an analogy — which is what
+separates these from electricity access, where 45% is a *quantity* and calling
+it Not ready would invent a threshold nobody set. `build-leadership.mjs` derives
+each sub-domain band by calling the sheet's own banding function rather than
+writing a table, so the mapping cannot be typed in wrongly or drift if the cut
+points move. The Yes/Partial/No wording is dropped entirely: carrying both would
+only raise the question of which is authoritative.
+
+What it buys is one vocabulary — a reader learns the three bands on the map and
+reads them unchanged down to the last row of the pane.
+
+**The four do not roll up to the fifth.** The sheet *averages* them, which is
+neither of this codebase's rollup rules; worst-wins disagrees with it on 7 of
+27. Rivers is Ready with a Not-ready data governance policy; Kano and Lagos are
+Ready over Moderately-ready rows. That is a finding — a state can be ready
+overall and still be missing the policy that governs the record — so the block
+says the source averages rather than letting a reader who learnt worst-wins on
+the Domain filter read it as a bug. Nothing rebuilds the state band from the
+four. What *is* asserted at build time, in 27 of 27 rows, is containment: a
+state's band always sits between the weakest and strongest of its own four.
+
+They read two ways, by scope. A state shows its own four rows, weakest first,
+each with a band pill; the country shows how the 27 split across each:
+
+| Sub-domain | Has it | |
+|---|---|---|
+| Data governance policy | 5 of 27 | 22 not ready · 4 moderately · 1 ready |
+| Digital health strategy | 6 of 27 | 21 not ready · 1 moderately · 5 ready |
+| Financial commitment | 15 of 27 | 12 not ready · 13 moderately · 2 ready |
+| Governance structure | 16 of 27 | 11 not ready · 16 ready |
+
+That split is the reason the domain earns a national reading. Roughly half the
+scored states have built the *institution* — a body that owns digital health,
+money against an EMR — and almost none have written down what either is for.
+"Leadership is weak" is all the band can say; these four rows say which of the
+four to fund, and they point at a different intervention from the one the band
+implies.
 
 ## Bands, not scores
 
@@ -138,6 +216,15 @@ fractions of a point — and every one of those operations claims a precision th
 underlying evidence does not carry. Removing the number removes the temptation
 structurally: there is no `number` in `AreaProfile` to average, so nothing
 downstream can quietly invent one.
+
+The leadership workbook is the one source that tested this. It scores its four
+answers 5 / 3 / 1, averages them, and bands the mean — so the mean was there for
+the taking. `build-leadership.mjs` checks it against the sheet's own band and
+then drops it: what reaches `AreaProfile` is the state's band and a band per
+sub-domain, which says everything the average does and one thing more, namely
+which of the four is missing. Note the score is dropped even though the
+sub-domain *bands* are kept — a band per row is a classification the source
+made, where a 2.5 against a 2.0 is a distance four answers cannot support.
 
 What replaces it is **counts**. Where the sibling ranks states by mean score,
 this one ranks them by how many of their facilities are not ready — a figure a

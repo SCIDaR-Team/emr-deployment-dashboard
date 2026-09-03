@@ -9,8 +9,11 @@
 
 import type {
   CoverageThemeId,
+  DomainId,
+  FacilityThemeId,
   InternetProviderGroup,
   InternetProviderId,
+  LeadershipSubDomainId,
   ThemeId,
 } from './types';
 
@@ -176,11 +179,158 @@ export const SUB_DOMAINS: readonly SubDomainDef[] = [
   },
 ];
 
-/** The two domains National Coverage reports, in rail order. */
-export const COVERAGE_THEMES = THEMES.filter(
-  (t): t is ThemeDef & { id: CoverageThemeId } =>
-    t.id === 'technical_infrastructure' || t.id === 'workforce_capacity',
-);
+// ---------------------------------------------------------------------------
+// Leadership & Governance
+// ---------------------------------------------------------------------------
+
+/**
+ * The one coverage domain with no facility behind it.
+ *
+ * Declared here rather than added to `THEMES`, because `THEMES` is the facility
+ * instrument's four domains and this is not one of them — it has no question
+ * count, no archetype letter, and no column in the facility dataset. See
+ * `LeadershipThemeId` in types.ts for why that separation is load-bearing.
+ */
+export const LEADERSHIP_THEME = {
+  id: 'leadership_governance',
+  label: 'Leadership & Governance',
+  shortLabel: 'Leadership',
+  icon: 'Landmark',
+} as const;
+
+/**
+ * What sits beneath Leadership: four things a state either has, half has, or
+ * does not — each carrying its own readiness band.
+ *
+ * A different shape from `SubDomainDef` above, and deliberately so. Those
+ * sub-domains hold *measures* — a percentage, a headcount — and carry no band.
+ * These hold a classification. Forcing both through one type would mean a
+ * `format: 'percent'` on a governance policy, which is how a table starts lying
+ * about what it holds. See `LeadershipBands` in types.ts for why these are the
+ * one banded sub-domains in the model.
+ *
+ * The `note` says what a Ready reading on this row actually asserts, because
+ * "Governance Structure · Ready" alone does not tell a reader what the state
+ * was found to have.
+ */
+export interface LeadershipSubDomainDef {
+  id: LeadershipSubDomainId;
+  label: string;
+  /** What a "Yes" against this row actually asserts. */
+  note: string;
+  /** Icon name from lucide-react, resolved in `CoveragePane`. */
+  icon: string;
+}
+
+export const LEADERSHIP_SUB_DOMAINS: readonly LeadershipSubDomainDef[] = [
+  {
+    id: 'governance_structure',
+    label: 'Governance structure',
+    note: 'Ready where a body owns digital health in the state.',
+    icon: 'Landmark',
+  },
+  {
+    id: 'data_governance_policy',
+    label: 'Data governance policy',
+    note: 'Ready where a state-specific policy covers health data.',
+    icon: 'ShieldCheck',
+  },
+  {
+    id: 'digital_health_strategy',
+    label: 'Digital health strategy',
+    note: 'Ready where a state-specific strategy an EMR sits under exists.',
+    icon: 'Map',
+  },
+  {
+    id: 'financial_commitment',
+    label: 'Financial commitment',
+    note: 'Ready where budget is committed to EMR, not only to digital health.',
+    icon: 'Wallet',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// The coverage rail
+// ---------------------------------------------------------------------------
+
+/** The shape National Coverage's Domain control and pane need. A subset of
+ *  `ThemeDef`'s fields, so a facility domain satisfies it unchanged. */
+export interface CoverageThemeDef {
+  id: CoverageThemeId;
+  label: string;
+  shortLabel: string;
+  icon: string;
+}
+
+/**
+ * The three domains National Coverage reports, in rail order.
+ *
+ * Two are facility domains that also carry a desk reading; the third has no
+ * facility behind it at all. They are listed in the order the page reads them —
+ * what a state has, who can run it, and who is accountable for it.
+ */
+export const COVERAGE_THEMES: readonly CoverageThemeDef[] = [
+  ...THEMES.filter(
+    (t): t is ThemeDef & { id: CoverageThemeId } =>
+      t.id === 'technical_infrastructure' || t.id === 'workforce_capacity',
+  ).map(({ id, label, shortLabel, icon }) => ({ id, label, shortLabel, icon })),
+  LEADERSHIP_THEME,
+];
+
+export const COVERAGE_THEME_BY_ID: Record<CoverageThemeId, CoverageThemeDef> =
+  Object.fromEntries(COVERAGE_THEMES.map((t) => [t.id, t])) as Record<
+    CoverageThemeId,
+    CoverageThemeDef
+  >;
+
+/**
+ * Every domain the Domain control can name, spoken.
+ *
+ * The one lookup that covers the whole union — `THEME_BY_ID` covers the four
+ * facility domains and `COVERAGE_THEME_BY_ID` the three coverage ones, and a
+ * surface that reports *the selection itself* (the "also filtered by" chips)
+ * has to be able to name any of them without knowing which page set it.
+ */
+export const DOMAIN_LABEL: Record<DomainId, string> = {
+  ...(Object.fromEntries(THEMES.map((t) => [t.id, t.label])) as Record<ThemeId, string>),
+  leadership_governance: LEADERSHIP_THEME.label,
+};
+
+/**
+ * A domain selection narrowed to the domains the *facility* survey has columns
+ * for.
+ *
+ * The mirror of `coverageLens`, and it exists for the same reason: the Domain
+ * control is shared, and its selection can now name Leadership & Governance,
+ * which no facility carries a reading for. Everything on Assessed States reads
+ * `facility.themeBands`, so a leadership id has to fall out here rather than
+ * arrive there as an unknown key — and `THEME_BY_ID[id].label` would throw on
+ * it outright.
+ *
+ * Narrowing, never clearing. A reader who ticks Leadership on National Coverage
+ * and then opens Assessed States sees the selection they had *minus* the domain
+ * that page cannot answer, and the tick survives in the store to be there when
+ * they go back.
+ */
+export function facilityLens(domains: readonly DomainId[]): FacilityThemeId[] {
+  return domains.filter((id): id is FacilityThemeId => id in THEME_BY_ID);
+}
+
+/**
+ * Fold a facility-domain selection back into a full one, keeping the domains
+ * the facility control never offered.
+ *
+ * The write half of `facilityLens`. Assessed States' Domain dropdown lists four
+ * items and hands back a selection of those four; writing it to the store
+ * verbatim would silently drop a Leadership tick the reader set on the other
+ * page and cannot see from here. This keeps it.
+ */
+export function withFacilityDomains(
+  current: readonly DomainId[],
+  next: readonly FacilityThemeId[],
+): DomainId[] {
+  return [...next, ...current.filter((id) => !(id in THEME_BY_ID))];
+}
 
 export function subDomainsFor(themeId: CoverageThemeId): SubDomainDef[] {
   return SUB_DOMAINS.filter((s) => s.themeId === themeId);

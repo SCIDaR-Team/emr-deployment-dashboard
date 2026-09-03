@@ -550,7 +550,7 @@ function investmentsFor(deployment) {
  * Assessed States reports it. Staff headcount is absent from this dataset
  * entirely.
  */
-function coverageFor(desk = null) {
+function coverageFor(desk = null, leadership = null) {
   return {
     /**
      * The band arrives classified, from the coverage workbook, and is copied
@@ -572,10 +572,17 @@ function coverageFor(desk = null) {
      * two numbers. Saying so lets the Domain lens paint Technical
      * Infrastructure honestly. Workforce is a question this source never asks,
      * and a null there is the truthful answer — the lens drops it.
+     *
+     * Leadership & Governance comes from a *second* desk source, the leadership
+     * scoring workbook, and is a genuinely independent reading: it is scored
+     * from four governance answers and knows nothing about electricity. It
+     * covers 27 states, so ten carry a null here — not measured, which the page
+     * paints as no-data rather than as Not ready.
      */
     themeBands: {
       technical_infrastructure: desk?.band ?? null,
       workforce_capacity: null,
+      leadership_governance: leadership?.band ?? null,
     },
     measures: {
       staffCount: null,
@@ -597,6 +604,27 @@ function coverageFor(desk = null) {
           byProvider: desk.byProvider,
         }
       : null,
+
+    /**
+     * The four answers the Leadership band was scored from.
+     *
+     * The same relationship `internet` has to the internet rate: this is the
+     * arithmetic behind the band directly above it, so a reader told a state is
+     * Not ready for leadership can read down and find which of the four things
+     * it is missing.
+     *
+     * Null on the ten unscored states and at every level but the state — the
+     * workbook has no LGA rows and makes no national claim. Null is *not
+     * measured*, and the pane says so rather than printing four "No"s nobody
+     * wrote.
+     *
+     * A band per sub-domain, already classified in `build-leadership.mjs` by
+     * the sheet's own cut points — see `LeadershipBands`. The workbook's mean
+     * is validated there and deliberately left there: "bands, not scores" is a
+     * type-level invariant, and this is the one source that could have broken
+     * it.
+     */
+    leadership: leadership ? leadership.subDomains : null,
   };
 }
 
@@ -610,6 +638,7 @@ function profileFor({
   catalogueById,
   extra,
   desk,
+  leadership,
 }) {
   const assessed = facilities.length > 0;
   const deployment = assessed ? deploymentFor(facilities, catalogueById) : null;
@@ -647,7 +676,7 @@ function profileFor({
     ),
     themeDistribution: themeDistributionOf(facilities),
 
-    coverage: coverageFor(desk),
+    coverage: coverageFor(desk, leadership),
     investments: deployment ? investmentsFor(deployment) : [],
     deployment,
   };
@@ -767,6 +796,34 @@ async function main() {
   }
   process.stderr.write(`Read desk coverage readings for ${deskByState.size} states\n`);
 
+  // --- The leadership workbook's desk readings ------------------------------
+  //
+  // The second desk source, read the same way: committed JSON, extracted and
+  // validated by `npm run data:leadership`.
+  //
+  // Unlike coverage, this one is **deliberately partial**. It scores 27 of the
+  // 37 states, so there is no every-state-or-none check here — a state missing
+  // from this file is a state nobody has assessed for leadership yet, which is
+  // the ordinary case rather than a broken build. What *is* checked is the
+  // other direction: a reading for a state the geography does not have would be
+  // dropped on the floor at merge time with nothing to show it happened.
+  const deskLeadership = readJSON('scripts/source-data/national-leadership.json');
+  const leadershipByState = new Map(deskLeadership.states.map((s) => [s.id, s]));
+
+  const misplaced = [...leadershipByState.keys()].filter((id) => !stateMeta.has(id));
+  if (misplaced.length) {
+    throw new Error(
+      `Leadership reading for unknown state(s): ${misplaced.join(', ')}.\n` +
+        `Re-run \`npm run data:leadership\`; if that succeeds, the geography ` +
+        `and the leadership workbook disagree about the state list.`,
+    );
+  }
+
+  process.stderr.write(
+    `Read desk leadership readings for ${leadershipByState.size} of ` +
+      `${stateMeta.size} states (${stateMeta.size - leadershipByState.size} unscored)\n`,
+  );
+
   // --- Facilities -----------------------------------------------------------
 
   const facilities = [];
@@ -845,6 +902,7 @@ async function main() {
         facilities: stateFacilities,
         catalogueById,
         desk: deskByState.get(stateId),
+        leadership: leadershipByState.get(stateId),
         extra: { lgaCount: lgas.length, assessedLgaCount: byLga.size },
       }),
     );

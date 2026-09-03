@@ -16,7 +16,7 @@ import { useFilterStore } from '@/store/filterStore';
 import { archetypeDistribution, facilityBandUnder } from '@/lib/archetype';
 import { dominantBand } from '@/lib/bands';
 import { hasGapInAreas } from '@/lib/gapCatalogue';
-import { FACILITY_THEMES } from '@/lib/themes';
+import { FACILITY_THEMES, facilityLens } from '@/lib/themes';
 import type {
   Band,
   FacilitySummary,
@@ -53,7 +53,7 @@ export function filterFacilities(
     if (f.gapAreas.length && !hasGapInAreas(fac.gaps ?? [], f.gapAreas)) return false;
 
     if (f.archetypes.length) {
-      const band = facilityBandUnder(fac, f.domains);
+      const band = facilityBandUnder(fac, facilityLens(f.domains));
       if (!band || !f.archetypes.includes(band)) return false;
     }
 

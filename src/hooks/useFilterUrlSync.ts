@@ -16,11 +16,11 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFilterStore } from '@/store/filterStore';
-import { THEMES, FACILITY_THEMES } from '@/lib/themes';
+import { THEMES, DOMAIN_LABEL } from '@/lib/themes';
 import { GAP_AREA_BY_ID } from '@/lib/gapCatalogue';
 import type {
   Band,
-  FacilityThemeId,
+  DomainId,
   FilterState,
   FunctionalityLevel,
   ThemeId,
@@ -50,7 +50,9 @@ const ARRAY_KEYS = Object.keys(KEYS).filter((k) => k !== 'search') as ArrayKey[]
 /** Per-theme band filters ride as `band.<themeId>`. */
 const BAND_PREFIX = 'band.';
 const THEME_IDS = THEMES.map((t) => t.id);
-const FACILITY_THEME_IDS = FACILITY_THEMES.map((t) => t.id) as FacilityThemeId[];
+/** Every id `?domain=` may legally carry — the four facility domains plus
+ *  Leadership & Governance, which only National Coverage can paint. */
+const DOMAIN_IDS = Object.keys(DOMAIN_LABEL) as DomainId[];
 
 function serialise(f: FilterState): URLSearchParams {
   const p = new URLSearchParams();
@@ -111,12 +113,15 @@ function parse(params: URLSearchParams): Partial<FilterState> {
   }
   if (Object.keys(bandByTheme).length) patch.bandByTheme = bandByTheme;
 
-  // Filtered rather than cast, because this one is also read raw by National
-  // Coverage as its map lens — anything that is not a facility domain has to
-  // fall out here rather than reach the Gap control as a theme id.
+  // Filtered rather than cast, because a `?domain=` in a hand-edited or stale
+  // link can say anything, and an unrecognised id would reach a band lookup as
+  // an unknown key. The *union* is accepted here — the two pages narrow it
+  // themselves, through `facilityLens` and `coverageLens` — so a link carrying
+  // `?domain=leadership_governance` survives the round trip rather than being
+  // silently emptied on the page that set it.
   if (params.has(KEYS.domains)) {
-    patch.domains = list(KEYS.domains).filter((v): v is FacilityThemeId =>
-      FACILITY_THEME_IDS.includes(v as FacilityThemeId),
+    patch.domains = list(KEYS.domains).filter((v): v is DomainId =>
+      DOMAIN_IDS.includes(v as DomainId),
     );
   }
 

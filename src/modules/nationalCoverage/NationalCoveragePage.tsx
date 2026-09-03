@@ -14,12 +14,18 @@ import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
 import { formatCount, formatPercent } from '@/lib/format';
-import { THEME_BY_ID } from '@/lib/themes';
+import { COVERAGE_THEME_BY_ID } from '@/lib/themes';
 import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
 import { CoverageFilters } from './CoverageFilters';
 import { CoveragePane } from './CoveragePane';
-import { bandUnderLens, coverageLens, resolveScope, type DomainLens } from './coverageScope';
+import {
+  bandUnderLens,
+  coverageLens,
+  hasUnbanded,
+  resolveScope,
+  type DomainLens,
+} from './coverageScope';
 
 /**
  * National Coverage — the map *is* the page.
@@ -209,9 +215,24 @@ export default function NationalCoveragePage() {
    * no longer see. Handed to the layer instead, which draws it within the
    * element that goes full screen.
    */
+  /*
+   * The no-data key appears only when the map actually has grey on it.
+   *
+   * It used to be off unconditionally, and that was right while every domain
+   * was classified on all 37 states or none of them. Leadership & Governance
+   * covers 27, so ticking it turns ten polygons grey — and an unexplained grey
+   * on a readiness map reads as the worst band rather than as an absent one,
+   * which is the single misreading the null band exists to prevent. Read off
+   * the states under the current lens, so the key is present exactly when
+   * there is something for it to name.
+   *
+   * Left off inside a state, where it was off before: an LGA map carries no
+   * coverage reading at any lens, and a key naming the whole map would explain
+   * nothing.
+   */
   const legend = (
     <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-      <MapLegend showNoData={false} />
+      <MapLegend showNoData={!scope.state && hasUnbanded(states.data, lens)} />
     </div>
   );
 
@@ -353,7 +374,7 @@ function coverageRates(area: AreaProfile): string | null {
 /** What the fills mean right now — the lens named, or the absence of one. */
 function lensLabel(lens: DomainLens): string {
   if (!lens.length) return 'Overall readiness';
-  if (lens.length === 1) return THEME_BY_ID[lens[0]!].label;
+  if (lens.length === 1) return COVERAGE_THEME_BY_ID[lens[0]!].label;
   return `The weakest of ${lens.length} domains`;
 }
 

@@ -2,18 +2,28 @@ import { useMemo, useState } from 'react';
 import {
   Globe,
   Info,
+  Landmark,
+  Map as MapIcon,
   Router,
   Search,
+  ShieldCheck,
   Smartphone,
   Users,
+  Wallet,
   Wifi,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
+import { BAND_CLASSES, BAND_CSS_INK, BAND_LABEL, BAND_RANK } from '@/lib/bands';
 import { cn } from '@/lib/cn';
-import { formatCompactCount, formatCount, formatPercent } from '@/lib/format';
-import { COVERAGE_THEMES, INTERNET_GROUPS, subDomainsFor, type ProviderDef } from '@/lib/themes';
+import { formatCompactCount, formatCount, formatPercent, percentOf } from '@/lib/format';
+import {
+  COVERAGE_THEMES,
+  INTERNET_GROUPS,
+  LEADERSHIP_SUB_DOMAINS,
+  subDomainsFor,
+  type ProviderDef,
+} from '@/lib/themes';
 import { BandBadge, BandCards, BandIcon } from '@/components/ui';
 import type {
   AreaProfile,
@@ -22,11 +32,13 @@ import type {
   CoverageThemeId,
   InternetProviderGroup,
   InternetSubscriptions,
+  LeadershipBands,
 } from '@/lib/types';
 import {
   bandUnderLens,
   countByBand,
   countByDomain,
+  countLeadershipBands,
   totalOf,
   type DomainLens,
   type Scope,
@@ -98,7 +110,7 @@ export function CoveragePane({
         {lens.length !== 1 && (
           <Block title={lens.length ? `The weakest of ${lens.length} domains` : 'Overall readiness'}>
             {isNational ? (
-              <CountRows counts={countByBand(states, lens)} unit="states" />
+              <CountRows counts={countByBand(states, lens)} unit="states" of={states.length} />
             ) : (
               <Reading band={bandUnderLens(area, lens)} />
             )}
@@ -108,7 +120,11 @@ export function CoveragePane({
         {themes.map((theme) => (
           <Block key={theme.id} title={theme.label}>
             {isNational ? (
-              <CountRows counts={countByDomain(states, theme.id)} unit="states" />
+              <CountRows
+                counts={countByDomain(states, theme.id)}
+                unit="states"
+                of={states.length}
+              />
             ) : (
               <Reading band={area.coverage.themeBands[theme.id] ?? null} />
             )}
@@ -120,6 +136,16 @@ export function CoveragePane({
             {theme.id === 'technical_infrastructure' && (
               <InternetProviders internet={area.coverage.internet} />
             )}
+            {/* The same move one domain down: Leadership's band is scored from
+                four answers and nothing else, so the four sit directly beneath
+                it. Renders nothing where there is no reading — the ten unscored
+                states, every LGA, and the nation. */}
+            {theme.id === 'leadership_governance' &&
+              (isNational ? (
+                <LeadershipSpread states={states} />
+              ) : (
+                <LeadershipBandRows bands={area.coverage.leadership} />
+              ))}
           </Block>
         ))}
 
@@ -203,14 +229,43 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
  * below its own card and that one card grew taller than the two beside it.
  * Said once underneath, it covers all three.
  */
-function CountRows({ counts, unit }: { counts: Record<Band, number>; unit: string }) {
+function CountRows({
+  counts,
+  unit,
+  of,
+}: {
+  counts: Record<Band, number>;
+  unit: string;
+  /** The population the counts were taken over, where it is larger than the
+   *  classified total — see below. */
+  of?: number;
+}) {
   const total = totalOf(counts);
+  const unclassified = of != null && of > total ? of - total : 0;
 
   return (
     <div>
       <BandCards counts={counts} showPercent />
       <p className="mono mt-2.5 text-[10px] text-muted-foreground">
         {formatCount(total)} {unit} classified
+        {/*
+          The remainder, named rather than left to subtraction.
+
+          Newly load-bearing. Every domain used to be classified on all 37
+          states or on none, so "37 states classified" was the only line this
+          ever printed and the shares beside it were shares of the country.
+          Leadership covers 27, and three shares adding to 100% of a figure the
+          reader has not been given the denominator for is precisely how a
+          two-thirds finding gets read as a national one. Ten states are grey on
+          the map for the same reason, and this is the sentence that explains
+          them.
+        */}
+        {unclassified > 0 && (
+          <span className="text-muted-foreground">
+            {' · '}
+            {formatCount(unclassified)} not yet assessed
+          </span>
+        )}
       </p>
     </div>
   );
@@ -669,6 +724,355 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
         </p>
       </div>
     </section>
+  );
+}
+
+/* Leadership sub-domain icons. Same split as MEASURE_ICONS above: the names
+   live in the table in themes.ts, the components they resolve to live here. */
+const LEADERSHIP_ICONS: Record<string, LucideIcon> = {
+  Landmark,
+  ShieldCheck,
+  Map: MapIcon,
+  Wallet,
+};
+
+/**
+ * The sentence every leadership sub-domain block carries, in both scopes.
+ *
+ * Said rather than left to be inferred, because the four rows beneath a band do
+ * *not* roll up to it the way the rest of this page's bands do. The domain lens
+ * takes the weaker of two domains (`bandUnderLens`); this source takes the
+ * average of four sub-domains, and the two rules disagree on 7 of the 27 —
+ * Rivers is Ready over a Not-ready row, Kano and Lagos are Ready over
+ * Moderately-ready ones.
+ *
+ * A reader who has learnt worst-wins on the Domain filter would read those as a
+ * mistake. One line fixes it, and the line is worth more than the space: that a
+ * state can be ready overall and still be missing the policy that governs the
+ * record is the finding, not an artefact. See `LeadershipBands` in types.ts.
+ */
+const LEADERSHIP_ROLLUP_NOTE = 'The source averages these four';
+
+/**
+ * A state's four leadership sub-domains, each with its own band.
+ *
+ * The only sub-domains in the app that carry one, and the exception is the
+ * source's own rather than this page's — it scores Yes 5 / Partial 3 / No 1 and
+ * cuts its bands on that same 1–5 scale, so a single answer lands exactly on a
+ * band name. `LeadershipBands` in types.ts has the full argument, including why
+ * this does not reopen the door for electricity access.
+ *
+ * What that buys is one vocabulary. A reader learns the three bands on the map
+ * and reads them unchanged down to the last row of the pane, instead of meeting
+ * a second three-way scale (Yes / Partial / No) that means the same thing in
+ * different words. The Yes/Partial/No wording is gone entirely: carrying both
+ * would only raise the question of which one is authoritative.
+ *
+ * Ordered weakest first, so the row a reader most needs is the row they land
+ * on. `AreaList` sorts the same way, for the same reason.
+ */
+function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
+  const rows = useMemo(() => {
+    if (!bands) return [];
+    return [...LEADERSHIP_SUB_DOMAINS].sort((a, b) => {
+      const ra = BAND_RANK[bands[a.id]];
+      const rb = BAND_RANK[bands[b.id]];
+      return ra === rb ? a.label.localeCompare(b.label) : ra - rb;
+    });
+  }, [bands]);
+
+  if (!bands) return null;
+
+  return (
+    <section className="mt-3.5 border-t border-border pt-3.5">
+      <p className="eyebrow">Governance readiness</p>
+      <h4 className="mt-1 text-[13px] font-semibold leading-snug tracking-tight text-foreground">
+        Four state-level commitments, weakest first.
+      </h4>
+
+      <ul className="mt-2.5 divide-y divide-border border-y border-border">
+        {rows.map((sub) => {
+          const Icon = LEADERSHIP_ICONS[sub.icon] ?? Landmark;
+          return (
+            <li key={sub.id} className="flex items-start gap-2.5 py-2">
+              <span
+                aria-hidden
+                className="mt-px flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunk"
+              >
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12.5px] font-medium text-foreground">
+                  {sub.label}
+                </span>
+                <span className="block text-[10px] leading-snug text-muted-foreground">
+                  {sub.note}
+                </span>
+              </span>
+              {/* The same pill the pane's own header wears, one size down. The
+                  band on a row and the band on a polygon are the same claim in
+                  the same colours — which is the whole point of the mapping. */}
+              <BandBadge band={bands[sub.id]} size="sm" className="mt-px shrink-0" />
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mt-2.5 flex gap-2 rounded-card bg-surface-sunk/60 px-2.5 py-2">
+        <Info aria-hidden className="mt-px h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <p className="text-[10px] leading-snug text-muted-foreground">
+          <span className="font-medium text-foreground">{LEADERSHIP_ROLLUP_NOTE}</span> to reach the
+          band above — it is not the weakest of them, so a state can read Ready
+          with a Not-ready row beneath it.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/** Best first, matching the three cards at the top of this pane — a reader
+ *  meets the same order twice on one screen. */
+const BAND_ORDER: Band[] = ['ready', 'moderately_ready', 'not_ready'];
+
+/**
+ * The four sub-domains across the country: how the scored states band on each.
+ *
+ * The national shape of `LeadershipBandRows`, and the block that made this
+ * domain worth a national reading at all. A state's own four rows say what *it*
+ * is missing; these say what the country is missing, and the two halves of the
+ * finding are nothing like each other:
+ *
+ *   governance structure     16 of 27 have it      a body that owns it
+ *   financial commitment     15 of 27              money against it
+ *   digital health strategy   6 of 27              a strategy to sit under
+ *   data governance policy    5 of 27              a policy for the record
+ *
+ * Roughly half the scored states have built the institution and put money
+ * behind it; almost none have written down what either is for. That is a
+ * different intervention from "leadership is weak", which is all the band above
+ * can say, and it is invisible at the band.
+ *
+ * ## One bar per sub-domain, ranked
+ *
+ * Each row is a single 100% bar cut three ways, so the four sit on a common
+ * scale and can be read down the column against each other — Not ready runs
+ * three-quarters of the track on the top two and under half on the bottom one,
+ * which is the finding, visible before a figure is read.
+ *
+ * The count sits *inside* its own segment and the share directly under it, so
+ * neither has to be traced back to a key. The dotted legend beneath repeats
+ * both, and the repetition is deliberate: a segment too narrow to hold its own
+ * digits still has to state its count somewhere, and a row where only the wide
+ * segments are labelled would read as though the narrow ones were unmeasured.
+ *
+ * The rank badge is now the *only* statement that these four are ordered — the
+ * heading and the foot note that used to say so have both come out at the
+ * client's direction. It carries that on its own well enough: four numerals
+ * down the left edge read as a ranking, and the `n of 27` beside each row is
+ * the quantity they are ranked on, sitting in plain sight one line up.
+ *
+ * The denominator survives the same way. It was said once at the foot and is
+ * now said four times, once per row, which is where a reader looking at a bar
+ * actually needs it.
+ */
+function LeadershipSpread({ states }: { states: AreaProfile[] }) {
+  const { scored, bySubDomain } = useMemo(() => countLeadershipBands(states), [states]);
+
+  const rows = useMemo(
+    () =>
+      LEADERSHIP_SUB_DOMAINS.map((sub) => {
+        const counts = bySubDomain[sub.id] ?? { not_ready: 0, moderately_ready: 0, ready: 0 };
+        return { sub, counts, inPlace: counts.ready + counts.moderately_ready };
+      })
+        // Weakest first, on the states that have the thing *at all* — Ready
+        // plus Moderately ready. Ranking on Ready alone would put financial
+        // commitment last despite 15 of 27 having some budget, because almost
+        // all of that 15 is partial.
+        .sort((a, b) =>
+          a.inPlace === b.inPlace
+            ? a.sub.label.localeCompare(b.sub.label)
+            : a.inPlace - b.inPlace,
+        ),
+    [bySubDomain],
+  );
+
+  if (!scored) return null;
+
+  return (
+    <section className="mt-3.5 border-t border-border pt-3.5">
+      {/* Four rows and nothing else — no heading, no band key, no sentence
+          defining the three bands, no note at the foot. All of it came out at
+          the client's direction, and the block survives it because every piece
+          was restating something already on screen: the parent Block is titled
+          Leadership & Governance, the three cards above these rows carry the
+          band names and colours, and the denominator now sits on each row as
+          `n of 27` rather than once underneath. */}
+      <ul className="divide-y divide-border">
+        {rows.map(({ sub, counts, inPlace }, rank) => (
+          <li key={sub.id} className="py-3">
+            <div className="flex items-start gap-2.5">
+              {/* Zero-padded, so 01–04 read as a rank rather than as counts. */}
+              <span
+                aria-hidden
+                className="mono mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded bg-surface-sunk text-[9.5px] font-bold text-muted-foreground"
+              >
+                {String(rank + 1).padStart(2, '0')}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold tracking-tight text-foreground">
+                    {sub.label}
+                  </span>
+                  <span className="mono shrink-0 text-[10px] text-muted-foreground">
+                    <span className="text-[13px] font-bold text-foreground">
+                      {formatCount(inPlace)}
+                    </span>{' '}
+                    of {formatCount(scored)}
+                  </span>
+                </div>
+                <p className="mono mt-0.5 text-right text-[9px] text-muted-foreground">
+                  have the foundation in place ({percentOf(inPlace, scored, 1)})
+                </p>
+              </div>
+            </div>
+
+            <BandSplitBar counts={counts} total={scored} className="mt-2" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * One 100% bar cut three ways: the count inside each segment, its share
+ * directly beneath, and a dotted key under both.
+ *
+ * ## Every segment carries its own count, and nothing is widened to fit it
+ *
+ * The two used to be in tension — a one-state segment is 3.7% of the track, and
+ * an earlier version hid its figure rather than distort the bar. It turns out
+ * neither has to give, because of an arithmetic accident of this particular
+ * denominator: with 27 states, any count needing two digits is at least 10 and
+ * therefore at least 37% of the track, while a single digit needs about 5px and
+ * the narrowest possible segment is 14px at this pane's width. Every figure
+ * fits inside its own true width, so the bar stays honest and no count is
+ * hidden. Worth knowing that this is a property of the data and not a
+ * guarantee: a much larger denominator would put a two-digit count in a sliver
+ * again, and then the figure moves out rather than the segment growing.
+ *
+ * ## Flat fills, no textures
+ *
+ * `BAND_CLASSES[band].texture` is deliberately not applied — the segments are
+ * plain colour, at the client's direction, where `BandStack` and
+ * `DistributionBar` keep their dotted and hatched fills.
+ *
+ * It is safe because the non-colour carrier moved rather than went: every
+ * segment states its own count, its share sits beneath it, and the key below
+ * names each band in words beside its figure. Colour is never alone on this
+ * block — it simply is not the fill doing the carrying.
+ *
+ * A band with no states gets no segment and no share; a minimum-width sliver
+ * would draw a band that nothing is in, which is the one thing a proportional
+ * bar must never do. Its `0` is stated in the key instead, so the absence is
+ * still said out loud.
+ */
+function BandSplitBar({
+  counts,
+  total,
+  className,
+}: {
+  counts: Record<Band, number>;
+  total: number;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <div
+        className="flex h-[18px] gap-[2px]"
+        role="img"
+        aria-label={BAND_ORDER.map(
+          (b) => `${BAND_LABEL[b]} ${counts[b]} of ${total}`,
+        ).join(', ')}
+      >
+        {BAND_ORDER.map((band) => {
+          const count = counts[band];
+          if (!count) return null;
+          return (
+            <span
+              key={band}
+              title={`${BAND_LABEL[band]}: ${formatCount(count)} (${percentOf(count, total, 1)})`}
+              className={cn(
+                'flex items-center justify-center rounded-full',
+                BAND_CLASSES[band].bg,
+              )}
+              style={{ width: `${(count / total) * 100}%` }}
+            >
+              <span className="mono text-[9.5px] font-bold leading-none text-onband">
+                {count}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+
+      {/* The shares, cut to the same widths as the segments above so each sits
+          under its own fill without being positioned absolutely.
+          
+          Centred and allowed to overflow their cell rather than clipped: at
+          3.7% the cell is 14px and "3.7%" is 17px, so it runs 2px past each
+          edge — into a neighbour that has 16px of slack, so nothing collides.
+          Clipping it instead would drop the one share a reader is most likely
+          to be squinting at.
+          
+          Set in the band's ink. This and the key below are the only places on
+          the block where a figure takes a band colour, and it holds because the
+          figure *is* that band's share sitting directly under that band's own
+          fill. */}
+      <div className="mt-1 flex gap-[2px]">
+        {BAND_ORDER.map((band) => {
+          const count = counts[band];
+          if (!count) return null;
+          return (
+            <span
+              key={band}
+              className={cn(
+                'mono whitespace-nowrap text-center text-[8.5px] font-semibold leading-none',
+                BAND_CLASSES[band].text,
+              )}
+              style={{ width: `${(count / total) * 100}%` }}
+            >
+              {percentOf(count, total, 1)}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* The key: a dot, the count, the band. Every band, including the ones
+          with no states — "0 Moderately ready" is a real finding here
+          (Governance structure has no partial answers at all) and it has
+          nowhere else to be said, since a zero draws no segment above.
+          
+          The dot takes the band's *ink*, not its fill. At 6px the pastel fills
+          the bar is drawn in are barely visible against the surface, and the
+          ink is the same hue at a weight that reads small — which is the
+          distinction `BAND_CSS_INK` exists to draw. */}
+      <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {BAND_ORDER.map((band) => (
+          <li key={band} className="flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="block h-[5px] w-[5px] shrink-0 rounded-full"
+              style={{ backgroundColor: BAND_CSS_INK[band] }}
+            />
+            <span className="text-[9.5px] leading-none text-muted-foreground">
+              <span className="mono font-bold text-foreground">{counts[band]}</span>{' '}
+              {BAND_LABEL[band]}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

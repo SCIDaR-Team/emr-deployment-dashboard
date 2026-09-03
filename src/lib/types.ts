@@ -167,7 +167,40 @@ export interface DeploymentPlan {
  * Use describe how well a facility runs once it has, which is a question for a
  * different page.
  */
-export type CoverageThemeId = 'technical_infrastructure' | 'workforce_capacity';
+export type CoverageThemeId =
+  | 'technical_infrastructure'
+  | 'workforce_capacity'
+  | 'leadership_governance';
+
+/**
+ * Leadership & Governance — the one coverage domain that is *not* a facility
+ * domain.
+ *
+ * It is deliberately absent from `ThemeId`. The facility survey has no
+ * leadership column and never will: a clinic cannot be asked whether its state
+ * has a digital health strategy. This is a state-level judgement from a
+ * state-level source, which is exactly why it belongs on National Coverage and
+ * nowhere on Assessed States.
+ *
+ * That asymmetry is the reason `CoverageThemeId` is no longer a subset of
+ * `ThemeId`, and the reason the shared Domain filter now carries `DomainId`
+ * below rather than `ThemeId`.
+ */
+export type LeadershipThemeId = 'leadership_governance';
+
+/**
+ * Every id the Domain control can hold — the four facility domains plus
+ * Leadership.
+ *
+ * The control is shared between Assessed States and National Coverage, and the
+ * two pages have readings for overlapping but different sets. Rather than give
+ * them separate controls (and separate URLs, and a selection that vanishes when
+ * you move between them), the *store* holds the union and each page narrows to
+ * what it can actually paint: `coverageLens` on one side, `facilityLens` on the
+ * other. Anything a page has no reading for drops out at its own boundary
+ * rather than arriving at a map as an unknown key.
+ */
+export type DomainId = ThemeId | LeadershipThemeId;
 
 // ---------------------------------------------------------------------------
 // Readiness bands
@@ -265,7 +298,75 @@ export interface CoverageProfile {
   /** The subscription counts behind `internetSubscriptionPct`, where the source
    *  has them. Null on every area it does not — see `InternetSubscriptions`. */
   internet: InternetSubscriptions | null;
+  /** A band per leadership sub-domain. Null wherever the Leadership band is
+   *  null — see `LeadershipBands`. */
+  leadership: LeadershipBands | null;
 }
+
+// ---------------------------------------------------------------------------
+// Leadership & Governance
+// ---------------------------------------------------------------------------
+
+/** The four things the leadership workbook asks of a state. */
+export type LeadershipSubDomainId =
+  | 'governance_structure'
+  | 'data_governance_policy'
+  | 'digital_health_strategy'
+  | 'financial_commitment';
+
+
+
+/**
+ * A readiness band per leadership sub-domain — **the one place in this model
+ * where a sub-domain carries a band**, and the exception is the source's own.
+ *
+ * ## Why this is not the violation it looks like
+ *
+ * `CoverageMeasures` states the rule these break: a sub-domain reports figures,
+ * a band is a judgement made one level up, and band colour must never touch a
+ * measure. That rule holds for electricity access and staff headcount, which
+ * are *measurements* — 45% is a quantity, and calling it Not ready would be
+ * inventing a threshold the source never set.
+ *
+ * These are not measurements. The leadership workbook scores each answer Yes 5
+ * / Partial 3 / No 1 and bands a state by cutting the mean of the four at >= 4
+ * and >= 3 — on that same 1-5 scale. So a single answer put through the sheet's
+ * own cut points lands exactly on a band name:
+ *
+ *     Yes -> 5 -> Ready     Partial -> 3 -> Moderately ready     No -> 1 -> Not ready
+ *
+ * The band is therefore the source's own classification of that sub-domain, not
+ * a reading this codebase has invented, and `build-leadership.mjs` derives it
+ * by calling the sheet's banding function rather than by writing a table. The
+ * Yes/Partial/No wording is dropped entirely: carrying both would leave the
+ * reader wondering which is authoritative, and the page can now speak one
+ * vocabulary from the map down to the last row.
+ *
+ * ## The four do not roll up to the fifth, and the pane must say so
+ *
+ * The state's own band is the *average* of these four, which is neither of this
+ * codebase's rollup rules. `worstBand` disagrees with the sheet on 7 of 27
+ * states: Rivers is Ready with a Not-ready data governance policy, Kano and
+ * Lagos are Ready over Moderately-ready rows. That is a finding, not a
+ * contradiction — a state can be ready overall and still be missing the policy
+ * that governs the record — but it only reads that way if the block says the
+ * source averages them. Nothing may rebuild the state band from these.
+ *
+ * What *is* guaranteed, and asserted at build time in 27 of 27 rows, is
+ * containment: the state's band always sits between the weakest and strongest
+ * of its four. A badge outside its own rows would be a broken source.
+ *
+ * ## Still no score
+ *
+ * The mean the workbook bands is checked in the build script and dropped there.
+ * "Bands, not scores" is a type-level invariant — there is no `number` in
+ * `AreaProfile` to average — so nothing downstream can rank states by 2.5
+ * against 2.0, a distance four answers cannot support.
+ *
+ * Null on every area with no reading: the ten unscored states, every LGA, and
+ * the nation. Null is *not measured*, which is not Not ready.
+ */
+export type LeadershipBands = Record<LeadershipSubDomainId, Band>;
 
 /**
  * The eleven operators the coverage workbook counts subscriptions for, grouped
@@ -581,7 +682,10 @@ export interface FilterState {
    * the same way two ticked functionality levels do. See `filterFacilities`,
    * which is where that grouping is applied.
    */
-  domains: FacilityThemeId[];
+  /** The Domain control's selection. Holds `DomainId`, not `ThemeId`: the
+   *  control is shared with National Coverage, which offers Leadership &
+   *  Governance. Each page narrows this to what it can read — see `DomainId`. */
+  domains: DomainId[];
   /**
    * Gap area ids the Gap area control has ticked.
    *
