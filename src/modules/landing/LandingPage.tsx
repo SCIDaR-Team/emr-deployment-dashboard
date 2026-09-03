@@ -37,10 +37,11 @@ import type { Band } from '@/lib/types';
  * `h-screen`, so a genuinely short viewport scrolls instead of clipping: never
  * hide content to protect a layout.
  *
- * **Percentages lead, counts support.** The three band blocks read 22 / 30 / 48
- * before they read 624 / 842 / 1,340. A share is the figure a reader can hold
- * and compare; the absolute is what they want once they believe it, so it sits
- * under the share rather than instead of it.
+ * **Counts lead, percentages support.** The three band blocks read 624 / 842 /
+ * 1,340 before they read 22 / 30 / 48. Facilities are the unit the programme
+ * acts in — a rollout is planned, costed and staffed per facility, not per
+ * percentage point — so the absolute is the headline and the share is what
+ * gives it scale, on the line beneath.
  *
  * **One reading, and it is deployment.** The source carries two overall bands
  * per facility — readiness to *use* an EMR and readiness to *deploy* one — and
@@ -326,14 +327,27 @@ export default function LandingPage() {
                       i > 0 && 'sm:border-l sm:border-border sm:pl-7',
                     )}
                   >
+                    {/*
+                      The count leads and the share supports. "1,340 FACILITIES"
+                      set on one line does not fit a third of the evidence
+                      column at any width the page targets — it needs ~183px and
+                      gets 161px at 1280 — so the unit sits under the figure
+                      rather than beside it, and does so for all three blocks
+                      whether or not that one would have fitted. A suffix that
+                      wraps on the widest block alone would misalign the row.
+                    */}
                     <p
                       className={cn(
-                        'mono text-[31px] font-semibold leading-none tracking-tight',
+                        'mono font-semibold tracking-tight',
                         BAND_CLASSES[band].text,
                       )}
                     >
-                      {Math.round((count / SCORED_TOTAL) * 100)}
-                      <span className="text-[16px]">%</span>
+                      <span className="block text-[31px] leading-none">
+                        {formatCount(count)}
+                      </span>
+                      <span className="mt-1.5 block text-[11px] uppercase leading-none tracking-[0.09em]">
+                        Facilities
+                      </span>
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <span
@@ -354,7 +368,7 @@ export default function LandingPage() {
                       </p>
                     </div>
                     <p className="mono mt-1.5 text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">
-                      {formatCount(count)} facilities
+                      {Math.round((count / SCORED_TOTAL) * 100)}% of those assessed
                     </p>
                     <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
                       {BAND_RULE[band]}
