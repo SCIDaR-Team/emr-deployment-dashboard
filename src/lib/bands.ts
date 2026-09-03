@@ -10,7 +10,7 @@
  * without reaching for an average.
  */
 
-import type { Band } from './types';
+import type { Band, Horizon } from './types';
 
 export const BANDS: readonly Band[] = ['not_ready', 'moderately_ready', 'ready'] as const;
 
@@ -123,6 +123,53 @@ export const BAND_CLASSES: Record<
     fill: 'fill-ready',
     texture: 'band-texture-ready',
   },
+};
+
+// ---------------------------------------------------------------------------
+// Urgency — the other scale
+// ---------------------------------------------------------------------------
+//
+// Horizons live in the generated `gapCatalogue.ts`, which owns their ids and
+// their labels because the sheet does. What they *look like* is a presentation
+// decision and belongs here, beside the bands, for one reason: these are the
+// only two scales in the app that carry status colour, and the whole job of
+// this pair of tables is to keep them from being mistaken for each other.
+//
+// Bands run red → amber → green and answer "how ready is this".
+// Urgencies run red → orange → blue → grey and answer "when must this happen".
+// Blue is what makes the second scale legible as a different one: nothing on
+// the readiness scale is blue, so a blue chip cannot be a band.
+//
+// Colour is never alone. Every call site prints the word — Critical, Major,
+// Minor, Optional — and `URGENCY_MARKER` adds a shape, so the scale survives a
+// colour-vision deficiency, a greyscale print and a chip too small for either.
+
+/** Tailwind ink classes per horizon. Ink only: an urgency colours a word or a
+ *  glyph, never a fill, so there is no `bg`/`wash` half the way a band has one. */
+export const HORIZON_CLASSES: Record<Horizon, { text: string; border: string }> = {
+  critical: { text: 'text-urgency-critical', border: 'border-urgency-critical' },
+  major: { text: 'text-urgency-major', border: 'border-urgency-major' },
+  minor: { text: 'text-urgency-minor', border: 'border-urgency-minor' },
+  long_term: { text: 'text-urgency-optional', border: 'border-urgency-optional' },
+};
+
+/**
+ * The non-colour carrier for urgency: one glyph per horizon.
+ *
+ * A weight ramp, so the four separate in greyscale and in the order they
+ * matter — solid diamond, solid triangle, solid dot, hollow dot. Geometric
+ * rather than pictorial: the rest of this interface is hairlines and mono type,
+ * and an emoji bolt beside a naira figure reads as a different product.
+ *
+ * The same discipline as `BAND_MARKER`, and deliberately a *different* shape
+ * vocabulary from it — a reader who has learned the band shapes must not meet
+ * them again meaning something else.
+ */
+export const URGENCY_MARKER: Record<Horizon, string> = {
+  critical: '\u25c6',
+  major: '\u25b2',
+  minor: '\u25cf',
+  long_term: '\u25cb',
 };
 
 // ---------------------------------------------------------------------------

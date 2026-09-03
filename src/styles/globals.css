@@ -129,6 +129,41 @@
     --no-data: 130 6% 74%;
 
     /*
+     * Urgency — the four horizons, a different scale from the three bands.
+     *
+     * A band says how ready a facility is; a horizon says when an action has to
+     * happen. They are not the same question and a reader must be able to see
+     * that, so this scale runs red → orange → blue → grey where the bands run
+     * red → amber → green. Blue is the tell: nothing on the readiness scale is
+     * blue, so a blue chip is unambiguously an urgency.
+     *
+     * Critical sits close to the not-ready ink on purpose. A facility is Not
+     * ready to deploy *because* it carries a critical action — exactly 1,340
+     * facilities under both readings — so the echo states a fact rather than
+     * confusing two scales.
+     *
+     * Grey for Optional, never green: green means passed everywhere else here,
+     * and a deferred task painted green reads as a finished one. Deferred work
+     * should recede, which is what grey does.
+     *
+     * Ink weights, not fills — these only ever carry text or a glyph. Lifted in
+     * the dark scheme the same way the band inks are.
+     *
+     * Hues are #D32F2F / #ED6C02 / #0288D1 / #757575 exactly. Lightness is not:
+     * as *text* on this near-white surface those four measure 4.54, 2.86, 3.59
+     * and 4.22 against it, and the last three fail the 4.5:1 WCAG AA floor for
+     * text this size — badly, in Major's case. Those values are drawn for a
+     * badge with a tinted fill behind it, which is not how they are used here.
+     * So the hue and saturation are the client's and the lightness is whatever
+     * clears 4.5:1: Major 47% → 36%, Minor 41% → 35%, Optional 46% → 44%.
+     * Critical already passed and did not move.
+     */
+    --urgency-critical: 0 65% 51%;
+    --urgency-major: 27 98% 36%;
+    --urgency-minor: 201 98% 35%;
+    --urgency-optional: 0 0% 44%;
+
+    /*
      * Text sitting ON a band fill — the readiness cards in both panes.
      *
      * A pair rather than a single value, because those cards carry a figure
@@ -227,6 +262,13 @@
     --not-ready-ink: 0 88% 71%;
     --not-ready-wash: 0 32% 16%;
     --no-data: 150 6% 28%;
+
+    /* The urgency scale, lifted for a dark ground. Same four hues; the
+       lightness is what moves, exactly as it does for the band inks above. */
+    --urgency-critical: 0 78% 68%;
+    --urgency-major: 27 92% 62%;
+    --urgency-minor: 201 85% 63%;
+    --urgency-optional: 0 0% 62%;
 
     /* Deliberately the same as the light scheme — see above. The band fills do
        not move between schemes, so neither can the ink on top of them. */

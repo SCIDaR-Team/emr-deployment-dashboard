@@ -184,7 +184,7 @@ function PaneHeader({
     <div className="shrink-0 border-b border-border px-4 py-3">
       <p className="eyebrow">{level}</p>
       <div className="mt-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-[17px] font-semibold tracking-tight text-foreground">{name}</h2>
+        <h2 className="text-[20px] font-semibold tracking-tight text-foreground">{name}</h2>
         {/* The national scope shows counts rather than a badge: a single band
             for the whole country would flatten 37 readings into one word. */}
         {scope.level !== 'national' && area && (
@@ -198,7 +198,7 @@ function PaneHeader({
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="border-b border-border px-4 py-3.5">
-      <h3 className="mono mb-2.5 text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
+      <h3 className="mono mb-2.5 text-[11px] font-bold uppercase tracking-[0.11em] text-foreground">
         {title}
       </h3>
       {children}
@@ -246,7 +246,7 @@ function CountRows({
   return (
     <div>
       <BandCards counts={counts} showPercent />
-      <p className="mono mt-2.5 text-[10px] text-muted-foreground">
+      <p className="mono mt-2.5 text-[11px] text-muted-foreground">
         {formatCount(total)} {unit} classified
         {/*
           The remainder, named rather than left to subtraction.
@@ -284,7 +284,7 @@ function Reading({ band }: { band: Band | null }) {
   if (!band) {
     return (
       <div className="border border-border bg-surface-sunk px-2.5 py-2.5">
-        <p className="text-[13px] text-muted-foreground">Not assessed.</p>
+        <p className="text-[14px] text-muted-foreground">Not assessed.</p>
       </div>
     );
   }
@@ -296,7 +296,7 @@ function Reading({ band }: { band: Band | null }) {
       )}
     >
       <BandIcon band={band} className="h-4 w-4 shrink-0" />
-      <span className="text-[15px] font-bold tracking-tight">{BAND_LABEL[band]}</span>
+      <span className="text-[18px] font-bold tracking-tight">{BAND_LABEL[band]}</span>
     </div>
   );
 }
@@ -344,7 +344,7 @@ function SubDomains({
           {/* The note is promoted from a grey gloss to the block's own
               headline. It is the sentence that says what the figures are, and
               at 11.5px grey it was read as boilerplate and skipped. */}
-          <h4 className="mt-1 text-[13px] font-semibold leading-snug tracking-tight text-foreground">
+          <h4 className="mt-1 text-[14px] font-semibold leading-snug tracking-tight text-foreground">
             {sub.note}
           </h4>
           <div
@@ -408,18 +408,18 @@ function MeasureCard({
           <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="mono truncate text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="mono truncate text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
             {label}
           </p>
           {/* One decimal always: these are read as a pair, and an exact 45
               printed as "45%" beside "50.5%" breaks the alignment. */}
-          <p className="mono mt-0.5 text-[19px] font-semibold leading-none tracking-tight text-foreground">
+          <p className="mono mt-0.5 text-[22px] font-semibold leading-none tracking-tight text-foreground">
             {value == null ? (
               '—'
             ) : isPercent ? (
               <>
                 {value.toFixed(1)}
-                <span className="text-[11px] font-medium text-muted-foreground">%</span>
+                <span className="text-[12px] font-medium text-muted-foreground">%</span>
               </>
             ) : (
               formatCount(value)
@@ -440,7 +440,7 @@ function MeasureCard({
         </span>
       )}
 
-      <p className="mt-1.5 text-[9.5px] leading-snug text-muted-foreground">
+      <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground">
         {over ? 'more than one per head' : caption}
       </p>
     </div>
@@ -521,7 +521,7 @@ function ProviderMark({ provider }: { provider: ProviderDef }) {
     <span
       aria-hidden
       className={cn(
-        'mono flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] text-[8px] font-bold leading-none',
+        'mono flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] text-[9px] font-bold leading-none',
         !provider.brand && 'bg-surface-sunk text-muted-foreground',
       )}
       style={
@@ -576,10 +576,10 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
   return (
     <section className="mt-4 border-t border-border pt-3.5">
       <p className="eyebrow">Internet subscriptions</p>
-      <h4 className="mt-1 text-[15px] font-semibold leading-tight tracking-tight text-foreground">
+      <h4 className="mt-1 text-[18px] font-semibold leading-tight tracking-tight text-foreground">
         {formatCompactCount(total)} active subscriptions
       </h4>
-      <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
+      <p className="mt-0.5 text-[12.5px] leading-snug text-muted-foreground">
         across a population of {formatCompactCount(population)} (NBS 2025).
       </p>
 
@@ -587,7 +587,7 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
           finding is the shape of this row — mobile carries all of it — and a
           reader who stops here has still been told the thing that matters. */}
       <div className="mt-2.5 rounded-card border border-border bg-surface-sunk/45 px-2.5 py-2">
-        <p className="text-[10px] font-medium text-muted-foreground">
+        <p className="text-[11px] font-medium text-muted-foreground">
           Total subscriptions by category
         </p>
         <div className="mt-2 grid grid-cols-3 divide-x divide-border">
@@ -600,13 +600,13 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
                   className="h-3.5 w-3.5 text-muted-foreground"
                   strokeWidth={1.75}
                 />
-                <p className="mono mt-1 text-[13px] font-semibold leading-none tracking-tight text-foreground">
+                <p className="mono mt-1 text-[14px] font-semibold leading-none tracking-tight text-foreground">
                   {group.subtotal == null ? '—' : formatCompactCount(group.subtotal)}
                 </p>
-                <p className="mt-1 truncate text-[9.5px] leading-none text-muted-foreground">
+                <p className="mt-1 truncate text-[10.5px] leading-none text-muted-foreground">
                   {group.label}
                 </p>
-                <p className="mono mt-1 text-[9.5px] leading-none text-muted-foreground">
+                <p className="mono mt-1 text-[10.5px] leading-none text-muted-foreground">
                   {group.subtotal == null ? '—' : shareOfSubs(group.subtotal, total)}
                 </p>
               </div>
@@ -628,18 +628,18 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
                 <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="mono truncate text-[10.5px] font-bold uppercase tracking-[0.09em] text-foreground">
+                <p className="mono truncate text-[11.5px] font-bold uppercase tracking-[0.09em] text-foreground">
                   {group.label}
                 </p>
-                <p className="mono truncate text-[9.5px] leading-tight text-muted-foreground">
+                <p className="mono truncate text-[10.5px] leading-tight text-muted-foreground">
                   {group.subtotal == null ? '—' : formatCount(group.subtotal)} subscriptions
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="mono text-[13px] font-semibold leading-none tracking-tight text-foreground">
+                <p className="mono text-[14px] font-semibold leading-none tracking-tight text-foreground">
                   {group.subtotal == null ? '—' : shareOfSubs(group.subtotal, total)}
                 </p>
-                <p className="mt-1 text-[9px] leading-none text-muted-foreground">
+                <p className="mt-1 text-[10px] leading-none text-muted-foreground">
                   of total subscriptions
                 </p>
               </div>
@@ -651,19 +651,19 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
                   <tr className="border-b border-border">
                     <th
                       scope="col"
-                      className="mono pb-1 text-left text-[8.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
+                      className="mono pb-1 text-left text-[9.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
                     >
                       Provider
                     </th>
                     <th
                       scope="col"
-                      className="mono w-[76px] pb-1 text-right text-[8.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
+                      className="mono w-[92px] pb-1 text-right text-[9.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
                     >
                       Subscriptions
                     </th>
                     <th
                       scope="col"
-                      className="mono w-[40px] pb-1 text-right text-[8.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
+                      className="mono w-[46px] pb-1 text-right text-[9.5px] font-normal uppercase tracking-[0.1em] text-muted-foreground"
                     >
                       Share
                     </th>
@@ -677,7 +677,7 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
                         <td className="py-1.5 pr-2">
                           <div className="flex items-center gap-2">
                             <ProviderMark provider={provider} />
-                            <span className="w-[68px] shrink-0 truncate text-[11px] text-foreground">
+                            <span className="w-[78px] shrink-0 truncate text-[12px] text-foreground">
                               {provider.label}
                             </span>
                             {group.leader != null && (
@@ -690,10 +690,10 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
                             )}
                           </div>
                         </td>
-                        <td className="mono py-1.5 text-right text-[11px] text-foreground">
+                        <td className="mono py-1.5 text-right text-[12px] text-foreground">
                           {formatCount(count)}
                         </td>
-                        <td className="mono py-1.5 text-right text-[10px] text-muted-foreground">
+                        <td className="mono py-1.5 text-right text-[11px] text-muted-foreground">
                           {shareOfSubs(count, total)}
                         </td>
                       </tr>
@@ -707,7 +707,7 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
       })}
 
       {unreported.length > 0 && (
-        <p className="mt-3 text-[10.5px] leading-snug text-muted-foreground">
+        <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
           Not reported here:{' '}
           <span className="text-foreground">{unreported.map((p) => p.label).join(', ')}</span>. The
           source leaves these blank, which is not the same as none.
@@ -718,7 +718,7 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
           in every caption above. */}
       <div className="mt-2.5 flex gap-2 rounded-card bg-surface-sunk/60 px-2.5 py-2">
         <Info aria-hidden className="mt-px h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <p className="text-[11px] leading-snug text-muted-foreground">
           <span className="font-medium text-foreground">Access rates are per head</span> (population
           level). Subscription counts may exceed the population, as some people hold more than one.
         </p>
@@ -786,7 +786,7 @@ function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
   return (
     <section className="mt-3.5 border-t border-border pt-3.5">
       <p className="eyebrow">Governance readiness</p>
-      <h4 className="mt-1 text-[13px] font-semibold leading-snug tracking-tight text-foreground">
+      <h4 className="mt-1 text-[14px] font-semibold leading-snug tracking-tight text-foreground">
         Four state-level commitments, weakest first.
       </h4>
 
@@ -802,10 +802,10 @@ function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
                 <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12.5px] font-medium text-foreground">
+                <span className="block truncate text-[13.5px] font-medium text-foreground">
                   {sub.label}
                 </span>
-                <span className="block text-[10px] leading-snug text-muted-foreground">
+                <span className="block text-[11px] leading-snug text-muted-foreground">
                   {sub.note}
                 </span>
               </span>
@@ -820,7 +820,7 @@ function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
 
       <div className="mt-2.5 flex gap-2 rounded-card bg-surface-sunk/60 px-2.5 py-2">
         <Info aria-hidden className="mt-px h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <p className="text-[10px] leading-snug text-muted-foreground">
+        <p className="text-[11px] leading-snug text-muted-foreground">
           <span className="font-medium text-foreground">{LEADERSHIP_ROLLUP_NOTE}</span> to reach the
           band above — it is not the weakest of them, so a state can read Ready
           with a Not-ready row beneath it.
@@ -914,23 +914,23 @@ function LeadershipSpread({ states }: { states: AreaProfile[] }) {
               {/* Zero-padded, so 01–04 read as a rank rather than as counts. */}
               <span
                 aria-hidden
-                className="mono mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded bg-surface-sunk text-[9.5px] font-bold text-muted-foreground"
+                className="mono mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded bg-surface-sunk text-[10.5px] font-bold text-muted-foreground"
               >
                 {String(rank + 1).padStart(2, '0')}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold tracking-tight text-foreground">
+                  <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold tracking-tight text-foreground">
                     {sub.label}
                   </span>
-                  <span className="mono shrink-0 text-[10px] text-muted-foreground">
-                    <span className="text-[13px] font-bold text-foreground">
+                  <span className="mono shrink-0 text-[11px] text-muted-foreground">
+                    <span className="text-[14px] font-bold text-foreground">
                       {formatCount(inPlace)}
                     </span>{' '}
                     of {formatCount(scored)}
                   </span>
                 </div>
-                <p className="mono mt-0.5 text-right text-[9px] text-muted-foreground">
+                <p className="mono mt-0.5 text-right text-[10px] text-muted-foreground">
                   have the foundation in place ({percentOf(inPlace, scored, 1)})
                 </p>
               </div>
@@ -1008,7 +1008,7 @@ function BandSplitBar({
               )}
               style={{ width: `${(count / total) * 100}%` }}
             >
-              <span className="mono text-[9.5px] font-bold leading-none text-onband">
+              <span className="mono text-[10.5px] font-bold leading-none text-onband">
                 {count}
               </span>
             </span>
@@ -1020,8 +1020,8 @@ function BandSplitBar({
           under its own fill without being positioned absolutely.
           
           Centred and allowed to overflow their cell rather than clipped: at
-          3.7% the cell is 14px and "3.7%" is 17px, so it runs 2px past each
-          edge — into a neighbour that has 16px of slack, so nothing collides.
+          3.7% the cell is 17px and "3.7%" is 23px, so it runs 3px past each
+          edge — into a neighbour with room to spare, so nothing collides.
           Clipping it instead would drop the one share a reader is most likely
           to be squinting at.
           
@@ -1037,7 +1037,7 @@ function BandSplitBar({
             <span
               key={band}
               className={cn(
-                'mono whitespace-nowrap text-center text-[8.5px] font-semibold leading-none',
+                'mono whitespace-nowrap text-center text-[9.5px] font-semibold leading-none',
                 BAND_CLASSES[band].text,
               )}
               style={{ width: `${(count / total) * 100}%` }}
@@ -1065,7 +1065,7 @@ function BandSplitBar({
               className="block h-[5px] w-[5px] shrink-0 rounded-full"
               style={{ backgroundColor: BAND_CSS_INK[band] }}
             />
-            <span className="text-[9.5px] leading-none text-muted-foreground">
+            <span className="text-[10.5px] leading-none text-muted-foreground">
               <span className="mono font-bold text-foreground">{counts[band]}</span>{' '}
               {BAND_LABEL[band]}
             </span>
@@ -1118,10 +1118,10 @@ function AreaList({
   return (
     <section className="px-4 py-3.5">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="mono text-[10px] font-bold uppercase tracking-[0.11em] text-foreground">
+        <h3 className="mono text-[11px] font-bold uppercase tracking-[0.11em] text-foreground">
           {label}
         </h3>
-        <span className="mono text-[10px] text-muted-foreground">{formatCount(rows.length)}</span>
+        <span className="mono text-[11px] text-muted-foreground">{formatCount(rows.length)}</span>
       </div>
 
       <label className="relative mb-2 block">
@@ -1134,7 +1134,7 @@ function AreaList({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={`Find a ${label.toLowerCase().replace(/s$/, '')}`}
-          className="w-full rounded border border-input bg-surface py-1.5 pl-7 pr-2 text-[12.5px] text-foreground placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+          className="w-full rounded border border-input bg-surface py-1.5 pl-7 pr-2 text-[13.5px] text-foreground placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
         />
       </label>
 
@@ -1160,12 +1160,12 @@ function AreaList({
                     band ? cn(BAND_CLASSES[band].bg, BAND_CLASSES[band].texture) : 'bg-nodata',
                   )}
                 />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">
+                <span className="min-w-0 flex-1 truncate text-[13.5px] text-foreground">
                   {area.name}
                 </span>
                 <span
                   className={cn(
-                    'mono shrink-0 text-[9.5px] font-semibold uppercase tracking-[0.08em]',
+                    'mono shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.08em]',
                     band ? BAND_CLASSES[band].text : 'text-muted-foreground',
                   )}
                 >
@@ -1176,7 +1176,7 @@ function AreaList({
           );
         })}
         {!rows.length && (
-          <li className="py-3 text-[12.5px] text-muted-foreground">Nothing matches “{query}”.</li>
+          <li className="py-3 text-[13.5px] text-muted-foreground">Nothing matches “{query}”.</li>
         )}
       </ul>
     </section>

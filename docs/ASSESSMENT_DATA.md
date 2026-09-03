@@ -851,6 +851,7 @@ and its facilities' split must not answer different questions.
 |---|---|
 | State & LGA fill | Total intervention cost, sequential ramp. Already the behaviour; `costed` fallback removed. |
 | State & LGA pane | **Both** band distributions — use and deployment, count and share. |
+| National, state & LGA pane | One **Gaps and interventions** block: four figures on a line (gaps · interventions · facilities · cost), four horizon cards (what blocks deployment, what waits for it), then the source's own chain as one tree — **domain → sub-domain → gap → intervention**. The tree carries facilities and cost only: below the domain row an intervention count equals the facility count by construction, so it would print the figure beside it twice. An intervention row carries its urgency and its **unit** price, marked `each` — the one figure in the tree that does not roll up. Computed from the facilities in scope, never from `deployment.lines`, which are unfiltered. |
 | Facility card | **Both** overall bands, labelled, above the four domain bands. |
 | Facility map points | Use band (a point is one colour; use is the scale the domains are on). |
 | Domain selected | Everything collapses to that domain's **EMR-use** band — map and pane alike. |

@@ -323,7 +323,7 @@ export default function NationalCoveragePage() {
 
         {/* Fixed width, wide enough for a full LGA name and a band label on one
             line without the count rows wrapping. */}
-        <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[420px] lg:border-l lg:border-t-0">
+        <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[480px] lg:border-l lg:border-t-0">
           <CoveragePane
             scope={scope}
             lens={lens}

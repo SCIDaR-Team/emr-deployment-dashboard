@@ -41,7 +41,7 @@ export const HORIZON_SHORT: Record<Horizon, string> = {
   critical: "Critical",
   major: "Major",
   minor: "Minor",
-  long_term: "Long-term",
+  long_term: "Optional",
 };
 
 /** What an intervention's urgency does to its domain's band. */

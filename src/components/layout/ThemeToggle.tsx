@@ -9,16 +9,18 @@ const OPTIONS: { value: ColorScheme; label: string; Icon: typeof Sun }[] = [
 ];
 
 /**
- * Three-state colour scheme switch, in the sidebar footer.
+ * Three-state colour scheme switch, in the page header.
  *
  * `system` is a distinct option rather than the absence of a choice: without it
  * a user who wants to follow the OS has no way back once they have picked.
  *
- * `vertical` is for the collapsed rail. Three segments side by side inside a
- * 76px column leave each button narrower than its own 16px icon, so the row
- * turns into a column rather than shrinking below its hit target.
+ * It sat in the rail's footer until the rail was narrowed. A three-segment
+ * control is the widest thing a 192px column would have had to hold, and it is
+ * a global setting rather than a place to navigate to — so it moved to the
+ * header, into the slot the next-module arrow used to occupy. Neutral tokens
+ * rather than the `sidebar-*` pair, because it now sits on `bg-surface`.
  */
-export function ThemeToggle({ vertical = false }: { vertical?: boolean }) {
+export function ThemeToggle() {
   const scheme = useThemeStore((s) => s.scheme);
   const setScheme = useThemeStore((s) => s.setScheme);
 
@@ -31,10 +33,7 @@ export function ThemeToggle({ vertical = false }: { vertical?: boolean }) {
     <div
       role="radiogroup"
       aria-label="Colour scheme"
-      className={cn(
-        'flex gap-1 rounded-lg bg-sidebar-foreground/10 p-1',
-        vertical && 'flex-col',
-      )}
+      className="flex gap-0.5 rounded-md border border-input p-0.5"
     >
       {OPTIONS.map(({ value, label, Icon }) => (
         <button
@@ -45,14 +44,14 @@ export function ThemeToggle({ vertical = false }: { vertical?: boolean }) {
           onClick={() => select(value)}
           title={label}
           className={cn(
-            'flex flex-1 items-center justify-center rounded-md py-1.5 transition-colors',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-foreground/60',
+            'flex items-center justify-center rounded px-1.5 py-1 transition-colors',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
             scheme === value
-              ? 'bg-sidebar-foreground/20 text-sidebar-foreground'
-              : 'text-sidebar-foreground/60 hover:text-sidebar-foreground',
+              ? 'bg-surface-sunk text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          <Icon className="h-4 w-4" aria-hidden />
+          <Icon className="h-3.5 w-3.5" aria-hidden />
           <span className="sr-only">{label}</span>
         </button>
       ))}

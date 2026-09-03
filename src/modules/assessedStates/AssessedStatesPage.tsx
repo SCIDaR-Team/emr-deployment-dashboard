@@ -106,6 +106,30 @@ export default function AssessedStatesPage() {
     [states.data, lgas.data, facilities, stateId, lgaId, facilityId],
   );
 
+  /**
+   * The population the filter row counts against: the path scope, and nothing
+   * else.
+   *
+   * Not `allFacilities`, which is what it used to be — every option carried its
+   * national tally, so drilling into Demsa left the row reading "Functional
+   * L1 · 1,462" beside a pane reading 10 facilities. A count that does not move
+   * when the reader moves is not a count of anything they are looking at.
+   *
+   * Not `facilities` either, which has the filter row already applied. Counts
+   * taken from that answer "how many survive what you have already picked",
+   * so every option collapses toward zero as the reader ticks and an option
+   * reading 0 would still return rows once a competing tick is cleared.
+   *
+   * Path scope only. Then a count says how many facilities *here* an option
+   * would offer, and it changes on every drill-down.
+   */
+  const inScope = useMemo(() => {
+    let rows = allFacilities;
+    if (scope.state) rows = rows.filter((f) => f.stateId === scope.state!.id);
+    if (scope.lga) rows = rows.filter((f) => f.lgaId === bareLgaId(scope.lga!.id));
+    return rows;
+  }, [allFacilities, scope.state, scope.lga]);
+
   /** Facilities inside the path scope, on top of the filter row. Everything the
    *  pane counts comes from here, so a count and the map beside it agree. */
   const scoped = useMemo(() => {
@@ -475,8 +499,11 @@ export default function AssessedStatesPage() {
 
   const loading = isLoading && !allFacilities.length;
 
+  // "All 12", not "All 12 assessed states": the field's own label reads
+  // State directly above it, and on one row the trigger has 67px of text to
+  // spend — enough for the count, which is the part the label does not say.
   const stateOptions = [
-    { value: ALL, label: 'All 12 assessed states' },
+    { value: ALL, label: 'All 12' },
     ...[...surveyed]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((s) => ({ value: s.id, label: s.name, hint: s.zone ?? undefined })),
@@ -559,7 +586,11 @@ export default function AssessedStatesPage() {
         }
       >
         <FilterBar
-          facilities={allFacilities}
+          facilities={inScope}
+          // Nine controls. Left to wrap they take two lines at every width the
+          // page is actually used at, and the break lands on a different
+          // control on every screen.
+          singleRow
           // Readiness is back beside Gap, because the two stopped being the
           // same question. Gap used to be the readiness band relabelled as a
           // deficiency — "Foundational gap" was Not ready in other words — and
@@ -579,16 +610,16 @@ export default function AssessedStatesPage() {
           }}
           leading={
             <>
-              <Field label="State">
+              <Field label="State" className="min-w-0 flex-1 basis-0 lg:max-w-[172px]">
                 <Combobox
                   value={scope.state?.id ?? ALL}
                   onChange={(value) => selectState(value === ALL ? '' : value)}
                   options={stateOptions}
-                  className="w-[140px]"
+                  className="w-full"
                   searchPlaceholder="Search states…"
                 />
               </Field>
-              <Field label="LGA">
+              <Field label="LGA" className="min-w-0 flex-1 basis-0 lg:max-w-[172px]">
                 <Combobox
                   value={scope.lga ? bareLgaId(scope.lga.id) : ALL}
                   onChange={(value) =>
@@ -596,7 +627,7 @@ export default function AssessedStatesPage() {
                   }
                   options={lgaOptions}
                   disabled={!scope.state}
-                  className="w-[140px]"
+                  className="w-full"
                   searchPlaceholder="Search LGAs…"
                 />
               </Field>
@@ -660,7 +691,7 @@ export default function AssessedStatesPage() {
           )}
         </div>
 
-        <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[420px] lg:border-l lg:border-t-0">
+        <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[480px] lg:border-l lg:border-t-0">
           <AssessmentPane
             scope={scope}
             facilities={scoped}
