@@ -38,10 +38,10 @@ import type { Band } from '@/lib/types';
  * hide content to protect a layout.
  *
  * **Counts lead, percentages support.** The three band blocks read 624 / 842 /
- * 1,340 before they read 22 / 30 / 48. Facilities are the unit the programme
- * acts in — a rollout is planned, costed and staffed per facility, not per
- * percentage point — so the absolute is the headline and the share is what
- * gives it scale, on the line beneath.
+ * 1,340 before they read 22.2 / 30.0 / 47.8. Facilities are the unit the
+ * programme acts in — a rollout is planned, costed and staffed per facility,
+ * not per percentage point — so the absolute is the headline, carrying the band
+ * name beside it, and the share is what gives it scale on the line beneath.
  *
  * **One reading, and it is deployment.** The source carries two overall bands
  * per facility — readiness to *use* an EMR and readiness to *deploy* one — and
@@ -328,13 +328,23 @@ export default function LandingPage() {
                     )}
                   >
                     {/*
-                      The count leads and the share supports. "1,340 FACILITIES"
-                      set on one line does not fit a third of the evidence
-                      column at any width the page targets — it needs ~183px and
-                      gets 161px at 1280 — so the unit sits under the figure
-                      rather than beside it, and does so for all three blocks
-                      whether or not that one would have fitted. A suffix that
-                      wraps on the widest block alone would misalign the row.
+                      Count and band name on one line, and no swatch before it.
+                      The swatch was the non-colour carrier for the band, but
+                      that job is done here by the word itself — `BAND_LABEL` is
+                      set in the band's own colour immediately beside the
+                      figure, so the reading survives greyscale and colour-vision
+                      deficiency on the text alone. Dropping it also returns the
+                      row of vertical space that lets the share keep its
+                      "of those assessed" qualifier.
+
+                      The label stacks under the figure below `xl`. "1,340 NOT
+                      READY" needs about 164px inline and a third of the
+                      evidence column is 161px at 1280 and 114px at 1024 — so
+                      inline is a promise this layout cannot keep at every
+                      width. Stacking is chosen by *width* rather than by
+                      content, which is what keeps the three blocks in register:
+                      a label that wrapped on the longest band alone would drop
+                      that block's remaining lines below its neighbours'.
                     */}
                     <p
                       className={cn(
@@ -342,33 +352,13 @@ export default function LandingPage() {
                         BAND_CLASSES[band].text,
                       )}
                     >
-                      <span className="block text-[31px] leading-none">
-                        {formatCount(count)}
-                      </span>
-                      <span className="mt-1.5 block text-[11px] uppercase leading-none tracking-[0.09em]">
-                        Facilities
+                      <span className="text-[31px] leading-none">{formatCount(count)}</span>
+                      <span className="mt-1.5 block whitespace-nowrap text-[11px] uppercase leading-none tracking-[0.09em] xl:ml-2 xl:mt-0 xl:inline">
+                        {BAND_LABEL[band]}
                       </span>
                     </p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'band-swatch block h-2.5 w-5 shrink-0 rounded-[1px]',
-                          BAND_CLASSES[band].bg,
-                          BAND_CLASSES[band].texture,
-                        )}
-                      />
-                      <p
-                        className={cn(
-                          'mono text-[11px] font-semibold uppercase tracking-[0.09em]',
-                          BAND_CLASSES[band].text,
-                        )}
-                      >
-                        {BAND_LABEL[band]}
-                      </p>
-                    </div>
-                    <p className="mono mt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
-                      {((count / SCORED_TOTAL) * 100).toFixed(1)}%
+                    <p className="mono mt-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+                      {((count / SCORED_TOTAL) * 100).toFixed(1)}% of those assessed
                     </p>
                     <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
                       {BAND_RULE[band]}
