@@ -271,7 +271,7 @@ export default function LandingPage() {
                   heading's baseline at the far right, which the shared
                   component's own flex row cannot do. Same swatches, same
                   textures, same labels. */}
-              <ul className="mono flex flex-wrap items-center gap-x-5 gap-y-1 text-[10.5px] text-muted-foreground">
+              <ul className="mono ml-auto flex flex-wrap items-center gap-x-5 gap-y-1 text-[10.5px] text-muted-foreground">
                 {BAND_ORDER.map((band) => (
                   <li key={band} className="flex items-center gap-1.5">
                     <span
@@ -288,7 +288,7 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <div className="mt-3 grid max-w-[580px] grid-cols-[repeat(20,minmax(0,1fr))] gap-[3px]">
+            <div className="mt-3 grid grid-cols-[repeat(20,minmax(0,1fr))] gap-[3px]">
               {tiles.map((band, i) => (
                 <span
                   key={i}
