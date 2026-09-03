@@ -367,8 +367,8 @@ export default function LandingPage() {
                         {BAND_LABEL[band]}
                       </p>
                     </div>
-                    <p className="mono mt-1.5 text-[10.5px] uppercase tracking-[0.09em] text-muted-foreground">
-                      {Math.round((count / SCORED_TOTAL) * 100)}% of those assessed
+                    <p className="mono mt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
+                      {((count / SCORED_TOTAL) * 100).toFixed(1)}%
                     </p>
                     <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
                       {BAND_RULE[band]}
