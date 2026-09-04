@@ -1,58 +1,25 @@
 /**
- * Scope and lens for National Coverage.
+ * Scope for National Coverage.
  *
  * Scope lives in the URL and nowhere else — the path carries where you are
  * (`/states/kano/dala`). That is a deliberate constraint rather than a
- * shortcut. This page has two controls that set the same scope — the filter row
- * and the map itself — and a store would let them disagree. With the URL as the
- * single source, clicking Kano on the map and picking Kano from the dropdown
- * are the same act, and every view a reader reaches is a link they can send to
- * someone else.
+ * shortcut. This page has two controls that set the same scope — the State
+ * dropdown and the map itself — and a store would let them disagree. With the
+ * URL as the single source, clicking Kano on the map and picking Kano from the
+ * dropdown are the same act, and every view a reader reaches is a link they can
+ * send to someone else.
  *
- * The lens is the one thing held in the filter store, which mirrors it into
- * `?domain=workforce_capacity` — so it is still in the link, and it is still
- * one value with one owner. See the note in `NationalCoveragePage` for why it
- * cannot be written here directly.
+ * Scope is now the *whole* of the page's state. There was a second setting, a
+ * domain lens held in the filter store and mirrored into `?domain=`, which
+ * re-read every band under one or more domains; its control has come out at the
+ * client's direction and the lens came out with it. Nothing else could set it,
+ * and leaving it live would have let the Domain filter on Assessed States
+ * silently re-paint this map with no control here to name or undo it. Every
+ * band on this page is now the area's own overall reading.
  */
 
 import { BANDS } from '@/lib/bands';
-import { COVERAGE_THEMES } from '@/lib/themes';
-import { worstBand } from '@/lib/archetype';
-import type {
-  AreaProfile,
-  Band,
-  CoverageThemeId,
-  LeadershipSubDomainId,
-} from '@/lib/types';
-
-/**
- * The domain lens: the domains ticked, in the order the page understands them.
- *
- * Empty is not a domain of its own — it is the absence of one, and it is what
- * the page opens on. Under it the map paints each area's overall band and the
- * pane shows every block; under one or more domains, both narrow to those.
- */
-export type DomainLens = CoverageThemeId[];
-
-const COVERAGE_IDS: CoverageThemeId[] = COVERAGE_THEMES.map((t) => t.id);
-
-/**
- * The filter store's domains, narrowed to the ones this page has a reading for.
- *
- * The Domain control is shared with Assessed States, which offers four domains
- * against the facility survey. This page reads `AreaProfile.coverage`, and a
- * state profile carries bands for three — Technical Infrastructure and
- * Workforce Capacity, which the facility instrument also asks about, plus
- * Leadership & Governance, which only a desk source can answer. Workflow &
- * Transition and Data Use & Reporting are questions the facility instrument
- * asks and the coverage model does not. Anything this page cannot paint drops
- * out here rather than arriving at a map as an unknown key.
- *
- * `facilityLens` in `lib/themes.ts` is the mirror of this, on the other page.
- */
-export function coverageLens(domains: readonly string[]): DomainLens {
-  return COVERAGE_IDS.filter((id) => domains.includes(id));
-}
+import type { AreaProfile, Band, LeadershipSubDomainId } from '@/lib/types';
 
 export type Scope =
   | { level: 'national'; state: null; lga: null }
@@ -88,53 +55,44 @@ export function scopedArea(scope: Scope): AreaProfile | null {
 }
 
 /**
- * The band an area shows under the current lens.
+ * The band an area shows.
  *
- * The one place the lens is applied to a band. Everything that paints — map
- * fills, list rows, the pane's own badge — goes through here, so the colour on
- * a polygon and the colour on its row in the list cannot disagree.
+ * A one-line read of `coverage.band`, and it stays a named function because it
+ * is the one place a band is resolved for painting — map fills, list rows, the
+ * pane's own badge all go through here, so the colour on a polygon and the
+ * colour on its row in the list cannot disagree.
  *
- * Two domains roll up to the weaker of them, the same rule the facility page
- * uses: a state that cannot power a clinic is not ready to deploy into it,
- * however well staffed it is. That is what lets one polygon keep one fill while
- * the control behind it takes more than one answer.
+ * It used to apply the domain lens, rolling two ticked domains up to the weaker
+ * of them. With the Domain control gone there is one reading to resolve, and
+ * this is it.
  */
-export function bandUnderLens(area: AreaProfile, lens: DomainLens): Band | null {
-  if (!lens.length) return area.coverage.band;
-  return worstBand(lens.map((id) => area.coverage.themeBands[id] ?? null));
+export function bandOf(area: AreaProfile): Band | null {
+  return area.coverage.band;
 }
 
 /**
- * Whether anything in this population is unclassified under the lens.
+ * Whether anything in this population is unclassified.
  *
- * Worth asking because it is newly *normal*. Under the overall lens every state
- * carries a band, so no-data was a case that never arose here; Leadership
- * covers 27 of 37, so ten polygons go grey the moment it is ticked. The legend
- * and the pane both read this so that grey is explained rather than left to be
- * guessed at — see the note on `Band` in types.ts about null being a fourth
- * state.
+ * Asked rather than assumed. Every one of the 37 states carries an overall
+ * band, so today this is false at national level and the no-data key stays off
+ * — but a state arriving unclassified would turn a polygon grey, and an
+ * unexplained grey on a readiness map reads as the worst band rather than as an
+ * absent one. The legend reads this so that grey is explained the moment it
+ * appears, rather than left to be guessed at — see the note on `Band` in
+ * types.ts about null being a fourth state.
  */
-export function hasUnbanded(areas: AreaProfile[], lens: DomainLens): boolean {
-  return areas.some((area) => bandUnderLens(area, lens) === null);
+export function hasUnbanded(areas: AreaProfile[]): boolean {
+  return areas.some((area) => bandOf(area) === null);
 }
 
-/** Count areas by the band they show under the lens. */
-export function countByBand(areas: AreaProfile[], lens: DomainLens): Record<Band, number> {
+/** Count areas by the band they show. */
+export function countByBand(areas: AreaProfile[]): Record<Band, number> {
   const counts: Record<Band, number> = { not_ready: 0, moderately_ready: 0, ready: 0 };
   for (const area of areas) {
-    const band = bandUnderLens(area, lens);
+    const band = bandOf(area);
     if (band) counts[band] += 1;
   }
   return counts;
-}
-
-/** Counts by a specific domain, regardless of the active lens — the pane shows
- *  a block per domain, and each one reads only itself. */
-export function countByDomain(
-  areas: AreaProfile[],
-  themeId: CoverageThemeId,
-): Record<Band, number> {
-  return countByBand(areas, [themeId]);
 }
 
 export function totalOf(counts: Record<Band, number>): number {
@@ -146,8 +104,8 @@ export function totalOf(counts: Record<Band, number>): number {
  *
  * The national counterpart of the four rows a state shows: one state reads Not
  * ready on data governance, and this says twenty-two of twenty-seven do. It is
- * the same move `countByDomain` makes one level up — a band per state becomes a
- * count of states per band — applied to the sub-domains beneath the band.
+ * the same move `countByBand` makes one level up — a band per area becomes a
+ * count of areas per band — applied to the sub-domains rather than the band.
  *
  * Computed from the state profiles rather than carried in the data, for the
  * same reason the band counts are: the pane's denominator has to be whatever

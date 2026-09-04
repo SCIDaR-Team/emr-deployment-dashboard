@@ -8,6 +8,7 @@
  */
 
 import type {
+  Band,
   CoverageThemeId,
   DomainId,
   FacilityThemeId,
@@ -200,18 +201,18 @@ export const LEADERSHIP_THEME = {
 
 /**
  * What sits beneath Leadership: four things a state either has, half has, or
- * does not — each carrying its own readiness band.
+ * does not.
  *
  * A different shape from `SubDomainDef` above, and deliberately so. Those
- * sub-domains hold *measures* — a percentage, a headcount — and carry no band.
- * These hold a classification. Forcing both through one type would mean a
+ * sub-domains hold *measures* — a percentage, a headcount — and carry no
+ * classification. These hold one. Forcing both through one type would mean a
  * `format: 'percent'` on a governance policy, which is how a table starts lying
- * about what it holds. See `LeadershipBands` in types.ts for why these are the
- * one banded sub-domains in the model.
+ * about what it holds.
  *
- * The `note` says what a Ready reading on this row actually asserts, because
- * "Governance Structure · Ready" alone does not tell a reader what the state
- * was found to have.
+ * Labels are the source's own, "State-specific" prefix included — it is the
+ * whole of the claim on two of these rows, and a row reading "Data governance
+ * policy · Yes" would otherwise be read as crediting a state for the national
+ * one.
  */
 export interface LeadershipSubDomainDef {
   id: LeadershipSubDomainId;
@@ -226,28 +227,56 @@ export const LEADERSHIP_SUB_DOMAINS: readonly LeadershipSubDomainDef[] = [
   {
     id: 'governance_structure',
     label: 'Governance structure',
-    note: 'Ready where a body owns digital health in the state.',
+    note: 'A body owns digital health in the state.',
     icon: 'Landmark',
   },
   {
     id: 'data_governance_policy',
-    label: 'Data governance policy',
-    note: 'Ready where a state-specific policy covers health data.',
+    label: 'State-specific data governance policy',
+    note: 'A state policy of its own covers health data.',
     icon: 'ShieldCheck',
   },
   {
     id: 'digital_health_strategy',
-    label: 'Digital health strategy',
-    note: 'Ready where a state-specific strategy an EMR sits under exists.',
+    label: 'State-specific digital health strategy',
+    note: 'A state strategy of its own exists for an EMR to sit under.',
     icon: 'Map',
   },
   {
     id: 'financial_commitment',
-    label: 'Financial commitment',
-    note: 'Ready where budget is committed to EMR, not only to digital health.',
+    label: 'Financial commitment for EMR',
+    note: 'Budget is committed to EMR, not only to digital health.',
     icon: 'Wallet',
   },
 ];
+
+/**
+ * The three answers a leadership row carries, spoken as the source speaks them.
+ *
+ * The field is stored as a `Band`, because the source scores Yes 5 / Partial 3
+ * / No 1 and cuts its bands on that same 1–5 scale — so the value is a band and
+ * the storage is right. What was wrong was reading it out that way: this is a
+ * state answering whether it has a policy, and "Moderately ready" is not an
+ * answer to that question. The four rows are now spoken Yes / Partial / No, at
+ * the client's direction, and this is the only place the two vocabularies meet.
+ *
+ * Deliberately *not* in `bands.ts` beside `BAND_LABEL`. That table is the
+ * readiness scale the whole app is built on and it means the same thing on
+ * every surface; this one is a relabelling local to four rows, and putting it
+ * next to the other would invite it onto a map.
+ */
+export const LEADERSHIP_ANSWER_LABEL: Record<Band, string> = {
+  ready: 'Yes',
+  moderately_ready: 'Partial',
+  not_ready: 'No',
+};
+
+/** Column order for the four rows: Yes, Partial, No — the source's own. */
+export const LEADERSHIP_ANSWER_ORDER: readonly Band[] = [
+  'ready',
+  'moderately_ready',
+  'not_ready',
+] as const;
 
 // ---------------------------------------------------------------------------
 // The coverage rail
