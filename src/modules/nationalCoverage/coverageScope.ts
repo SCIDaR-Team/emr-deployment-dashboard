@@ -16,42 +16,52 @@
  * and leaving it live would have let the Domain filter on Assessed States
  * silently re-paint this map with no control here to name or undo it. Every
  * band on this page is now the area's own overall reading.
+ *
+ * ## Two levels, and the LGA is not one of them
+ *
+ * The page went national → state → LGA. It now stops at the state, at the
+ * client's direction, and the level did not merely lose its map: it is gone as
+ * a *place*. There is no `/states/kano/dala`, no LGA in the scope union, no LGA
+ * geometry in the state view, no LGA in the locator or the pane.
+ *
+ * The reason is that an LGA never had a reading of its own here. The coverage
+ * model classifies states — electricity access, internet subscription and the
+ * governance answers are all state figures — and the LGA layer inherited its
+ * parent's band, which is a map that looks like 44 findings and carries one. A
+ * reader was being invited to compare Dala against Nassarawa on a difference
+ * the data does not contain. Two levels say exactly what the model knows: how
+ * the country stands, and how one state stands.
+ *
+ * `lgas.json` is still loaded and still real — Assessed States drills into an
+ * LGA, because a facility survey visited facilities inside one. This page
+ * simply no longer has an opinion about them.
  */
 
 import { BANDS } from '@/lib/bands';
 import type { AreaProfile, Band, LeadershipSubDomainId } from '@/lib/types';
 
 export type Scope =
-  | { level: 'national'; state: null; lga: null }
-  | { level: 'state'; state: AreaProfile; lga: null }
-  | { level: 'lga'; state: AreaProfile; lga: AreaProfile };
+  | { level: 'national'; state: null }
+  | { level: 'state'; state: AreaProfile };
 
 /**
  * Resolve the path into a scope.
  *
- * Falls back rather than erroring: an unknown state id resolves to national, an
- * unknown LGA to its state. A stale link should land somewhere sensible, not on
- * a blank page.
+ * Falls back rather than erroring: an unknown state id resolves to national. A
+ * stale link should land somewhere sensible, not on a blank page — and every
+ * `/states/kano/dala` in someone's history is now such a link, which the page
+ * rewrites to `/states/kano` rather than resolving a level that no longer
+ * exists.
  */
-export function resolveScope(
-  states: AreaProfile[],
-  lgas: AreaProfile[],
-  stateId?: string,
-  lgaId?: string,
-): Scope {
+export function resolveScope(states: AreaProfile[], stateId?: string): Scope {
   const state = stateId ? states.find((s) => s.id === stateId) : undefined;
-  if (!state) return { level: 'national', state: null, lga: null };
-
-  const lga = lgaId ? lgas.find((l) => l.id === `${state.id}.${lgaId}`) : undefined;
-  if (!lga) return { level: 'state', state, lga: null };
-
-  return { level: 'lga', state, lga };
+  return state ? { level: 'state', state } : { level: 'national', state: null };
 }
 
 /** The area whose figures the pane is showing. Null at national level, where
  *  the caller reads the national profile instead. */
 export function scopedArea(scope: Scope): AreaProfile | null {
-  return scope.level === 'lga' ? scope.lga : scope.level === 'state' ? scope.state : null;
+  return scope.level === 'state' ? scope.state : null;
 }
 
 /**
@@ -74,7 +84,7 @@ export function bandOf(area: AreaProfile): Band | null {
  * Whether anything in this population is unclassified.
  *
  * Asked rather than assumed. Every one of the 37 states carries an overall
- * band, so today this is false at national level and the no-data key stays off
+ * band, so today this is false and the no-data key stays off
  * — but a state arriving unclassified would turn a polygon grey, and an
  * unexplained grey on a readiness map reads as the worst band rather than as an
  * absent one. The legend reads this so that grey is explained the moment it

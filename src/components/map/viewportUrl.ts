@@ -2,7 +2,7 @@
  * The camera, in the address bar.
  *
  * This dashboard's stated principle is that every view is a link — scope lives
- * in the path and nowhere else, so `/states/kano/dala?domain=workforce_capacity`
+ * in the path and nowhere else, so `/states/kano?domain=workforce_capacity`
  * is a whole sentence someone can paste to a colleague. The map broke that
  * promise the moment it learned to pan and zoom: a reader who framed one
  * compound on satellite imagery and sent the link handed over a URL that

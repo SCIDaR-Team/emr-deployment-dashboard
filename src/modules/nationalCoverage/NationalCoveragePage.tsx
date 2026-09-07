@@ -1,18 +1,18 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
   MapLegend,
   NigeriaChoropleth,
-  StateLGAMap,
+  StateOutlineMap,
   rankByName,
   type Crumb,
   type MapSearchResult,
 } from '@/components/map';
 import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
-import { formatCount, formatPercent } from '@/lib/format';
+import { formatPercent } from '@/lib/format';
 import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
 import { CoverageFilters } from './CoverageFilters';
@@ -24,10 +24,24 @@ import { bandOf, hasUnbanded, resolveScope } from './coverageScope';
  *
  * One screen, not a stack of panels: filters across the top, a full-bleed map,
  * and a pane down the side that always says something about whatever is
- * selected. Clicking a state drills the map into its LGAs and re-scopes the
- * pane; clicking an LGA goes one level further. The pane is never empty — with
- * nothing selected it holds the national picture — so there is no "choose
- * something to begin" state to get past.
+ * selected. Clicking a state opens that state on its own and re-scopes the
+ * pane. The pane is never empty — with nothing selected it holds the national
+ * picture — so there is no "choose something to begin" state to get past.
+ *
+ * ## Two levels: the country, and one state
+ *
+ * There was a third. Clicking a state drilled into its 44 LGAs, and clicking
+ * one of those went further still. Both are gone at the client's direction,
+ * and the page is better for it, because the LGA level was drawing a
+ * distinction the data does not make: the coverage model classifies *states*,
+ * an LGA inherited its parent's band, and 44 polygons in one colour with 44
+ * names on them look like 44 findings. See the note in `coverageScope`.
+ *
+ * So the state view is one silhouette — `StateOutlineMap`, no internal
+ * boundaries, no LGA names, nothing to click into — filled with the state's own
+ * band, which is the same colour the state had on the national map a click
+ * earlier. Going in changes the extent and the detail around it; it does not
+ * change what is being said.
  *
  * ## The unit here is the state, not the facility
  *
@@ -42,7 +56,7 @@ import { bandOf, hasUnbanded, resolveScope } from './coverageScope';
  *
  * The State dropdown and the map both write the URL, and the URL is the only
  * place scope lives. That is what stops the two disagreeing, and it makes every
- * view a link — `/states/kano/dala` is a whole sentence.
+ * view a link — `/states/kano` is a whole sentence.
  *
  * It is now the *only* thing they write. There was a domain lens alongside it,
  * held in the filter store and mirrored into `?domain=`, which re-read every
@@ -57,12 +71,9 @@ export default function NationalCoveragePage() {
   const { stateId, lgaId } = useParams();
   const [search] = useSearchParams();
   const navigate = useNavigate();
-  const { states, lgas, national } = useDataContext();
+  const { states, national } = useDataContext();
 
-  const scope = useMemo(
-    () => resolveScope(states.data, lgas.data, stateId, lgaId),
-    [states.data, lgas.data, stateId, lgaId],
-  );
+  const scope = useMemo(() => resolveScope(states.data, stateId), [states.data, stateId]);
 
   /** Navigation that carries the querystring with it — changing scope must
    *  never silently drop whatever else is in the link. */
@@ -74,10 +85,19 @@ export default function NationalCoveragePage() {
     [navigate, search],
   );
 
-  const stateLgas = useMemo(
-    () => (scope.state ? lgas.data.filter((l) => l.parentId === scope.state!.id) : []),
-    [lgas.data, scope.state],
-  );
+  /**
+   * Old LGA links land on the state, and say so in the address bar.
+   *
+   * `/states/kano/dala` is in people's history, in sent messages and in decks.
+   * The route still matches — dropping it would bounce those to the landing
+   * page — and the level behind it is gone, so the link resolves to the nearest
+   * thing that still exists and rewrites itself to `/states/kano`. Replace, not
+   * push: Back should return to wherever the reader came from, not to a URL
+   * this page just redirected away from.
+   */
+  useEffect(() => {
+    if (lgaId && stateId) navigate(`/states/${stateId}`, { replace: true });
+  }, [lgaId, stateId, navigate]);
 
   /**
    * The national map's data.
@@ -94,40 +114,43 @@ export default function NationalCoveragePage() {
     for (const state of states.data) {
       data[state.id] = {
         band: bandOf(state),
-        n: state.lgaCount ?? 0,
+        n: 0,
         evidenceGrade: 'primary',
         label: state.name,
-        valueLabel: coverageRates(state) ?? `${formatCount(state.lgaCount ?? 0)} LGAs`,
+        // The two rates the band was classified from, or the band's own name
+        // where a state carries neither. It used to fall back to an LGA count,
+        // which is a fact about a level this page no longer has and was
+        // answering a question nobody hovering a readiness map is asking.
+        valueLabel: coverageRates(state) ?? READINESS_LABEL,
       };
     }
     return data;
   }, [states.data]);
 
-  const lgaMapData = useMemo(() => {
-    const data: Record<string, GeoDatum> = {};
-    for (const lga of stateLgas) {
-      data[lga.id.split('.')[1] ?? lga.id] = {
-        band: bandOf(lga),
+  /**
+   * The state view's one shape.
+   *
+   * Deliberately the same datum the state carries on the national map — same
+   * band, same hover line — because drilling in is a change of extent and not
+   * a change of claim. If these two ever disagreed, one of the two maps would
+   * be lying about the same state.
+   */
+  const stateDatum = useMemo<GeoDatum | null>(() => {
+    if (!scope.state) return null;
+    return (
+      nationalMapData[scope.state.id] ?? {
+        band: bandOf(scope.state),
         n: 0,
         evidenceGrade: 'primary',
-        label: lga.name,
-        valueLabel: READINESS_LABEL,
-      };
-    }
-    return data;
-  }, [stateLgas]);
+        label: scope.state.name,
+        valueLabel: coverageRates(scope.state) ?? READINESS_LABEL,
+      }
+    );
+  }, [nationalMapData, scope.state]);
 
   const selectState = useCallback(
     (id: string) => go(id === scope.state?.id ? '/states' : `/states/${id}`),
     [go, scope.state],
-  );
-
-  const selectLga = useCallback(
-    (id: string) => {
-      if (!scope.state) return;
-      go(id === scope.lga?.id.split('.')[1] ? `/states/${scope.state.id}` : `/states/${scope.state.id}/${id}`);
-    },
-    [go, scope.state, scope.lga],
   );
 
   /**
@@ -151,43 +174,28 @@ export default function NationalCoveragePage() {
         onSelect: () => go(`/states/${scope.state!.id}`),
       });
     }
-    if (scope.lga) out.push({ id: scope.lga.id, label: scope.lga.name, kind: 'LGA' });
     return out;
-  }, [scope.state, scope.lga, go]);
+  }, [scope.state, go]);
 
   /**
    * The map's locator: a name in, a place out.
    *
-   * Stops at the LGA, because that is where this page's claims stop — it
-   * classifies areas from a desk model and has nothing to say about an
-   * individual facility. Assessed States can resolve one level deeper, and its
-   * locator does.
+   * States, and only states, because a state is the only place this page has.
+   * It offered LGAs as well while there was a level for them to lead to; with
+   * that level gone every LGA hit would resolve to its parent state, which is a
+   * list of 774 names for 37 destinations. Assessed States, which does drill
+   * into an LGA and into a facility, still searches all three.
    */
   const searchPlaces = useCallback(
-    (query: string): MapSearchResult[] => {
-      const stateName = new Map(states.data.map((st) => [st.id, st.name]));
-
-      const stateHits = rankByName(states.data, query, (st) => st.name).map((st) => ({
+    (query: string): MapSearchResult[] =>
+      rankByName(states.data, query, (st) => st.name).map((st) => ({
         id: `state:${st.id}`,
         label: st.name,
         kind: 'State' as const,
         hint: st.zone ?? undefined,
         onSelect: () => go(`/states/${st.id}`),
-      }));
-
-      const lgaHits = rankByName(lgas.data, query, (l) => l.name).map((l) => ({
-        id: `lga:${l.id}`,
-        label: l.name,
-        kind: 'LGA' as const,
-        hint: l.parentId ? stateName.get(l.parentId) : undefined,
-        onSelect: () => go(`/states/${l.parentId}/${l.id.split('.')[1] ?? l.id}`),
-      }));
-
-      // Broadest first: a reader typing "kano" almost always wants the state,
-      // not one of its LGAs whose name contains it.
-      return [...stateHits, ...lgaHits];
-    },
-    [states.data, lgas.data, go],
+      })),
+    [states.data, go],
   );
 
   /**
@@ -210,12 +218,15 @@ export default function NationalCoveragePage() {
    * prevent, so the check earns its keep the moment a state arrives
    * unclassified.
    *
-   * Left off inside a state: an LGA map carries no coverage reading at all, and
-   * a key naming the whole map would explain nothing.
+   * On at both levels now, and that is the change the state view brings: the
+   * silhouette a reader drills into is painted from the same three-band scale
+   * the country was, so the key that explained the country explains it too. It
+   * was left off inside a state while that view drew LGAs, which carried no
+   * coverage reading of their own for a key to name.
    */
   const legend = (
     <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-      <MapLegend showNoData={!scope.state && hasUnbanded(states.data)} />
+      <MapLegend showNoData={hasUnbanded(states.data)} />
     </div>
   );
 
@@ -234,9 +245,7 @@ export default function NationalCoveragePage() {
           scope.level !== 'national' ? (
             <button
               type="button"
-              onClick={() =>
-                go(scope.level === 'lga' ? `/states/${scope.state!.id}` : '/states')
-              }
+              onClick={() => go('/states')}
               aria-label="Up one level"
               className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
@@ -261,15 +270,16 @@ export default function NationalCoveragePage() {
         <div className="relative h-[52vh] shrink-0 bg-page lg:h-auto lg:min-h-0 lg:flex-1">
           {loading ? (
             <Skeleton className="h-full w-full" />
-          ) : scope.state ? (
-            <StateLGAMap
+          ) : scope.state && stateDatum ? (
+            // One shape, in the band it had on the map the reader just came
+            // from — no LGA polygons, no LGA names, nothing under it to click
+            // into. See `StateOutlineMap`.
+            <StateOutlineMap
               key={scope.state.id}
               fit="fill"
               stateId={scope.state.id}
               stateName={scope.state.name}
-              data={lgaMapData}
-              selectedLgaId={scope.lga?.id.split('.')[1] ?? null}
-              onSelect={selectLga}
+              datum={stateDatum}
               onZoomOut={() => go('/states')}
               crumbs={crumbs}
               overlay={legend}
@@ -292,21 +302,21 @@ export default function NationalCoveragePage() {
           )}
         </div>
 
-        {/* Fixed width, wide enough for a full LGA name and a band label on one
-            line without the count rows wrapping. */}
+        {/* Fixed width, wide enough for a full state name and a band label on
+            one line without the count rows wrapping. */}
         <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[480px] lg:border-l lg:border-t-0">
           <CoveragePane
             scope={scope}
             national={national.data}
             states={states.data}
-            listAreas={scope.state ? stateLgas : states.data}
-            listLabel={scope.state ? 'LGAs' : 'States'}
-            selectedListId={scope.lga?.id ?? scope.state?.id ?? null}
-            onSelectListItem={(area: AreaProfile) =>
-              area.level === 'state'
-                ? selectState(area.id)
-                : selectLga(area.id.split('.')[1] ?? area.id)
-            }
+            // Read at national level only — the pane drops the list once a
+            // state is open. Handed over unconditionally because the rows are
+            // the same 37 either way and the decision about whether to draw
+            // them belongs with the pane that draws them.
+            listAreas={states.data}
+            listLabel="States"
+            selectedListId={scope.state?.id ?? null}
+            onSelectListItem={(area: AreaProfile) => selectState(area.id)}
           />
         </aside>
       </div>
@@ -350,10 +360,8 @@ function coverageRates(area: AreaProfile): string | null {
  */
 const READINESS_LABEL = 'Overall readiness';
 
-function subtitleFor(level: 'national' | 'state' | 'lga'): string {
+function subtitleFor(level: 'national' | 'state'): string {
   return level === 'national'
     ? 'All 37 states, by readiness band'
-    : level === 'state'
-      ? 'Local government areas, by readiness band'
-      : 'One local government area';
+    : 'One state, by readiness band';
 }
