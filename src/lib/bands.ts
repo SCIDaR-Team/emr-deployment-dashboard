@@ -136,12 +136,13 @@ export const BAND_CLASSES: Record<
 // this pair of tables is to keep them from being mistaken for each other.
 //
 // Bands run red → amber → green and answer "how ready is this".
-// Urgencies run red → orange → blue → grey and answer "when must this happen".
-// Blue is what makes the second scale legible as a different one: nothing on
-// the readiness scale is blue, so a blue chip cannot be a band.
+// Urgencies run red → orange → blue → purple and answer "when must this
+// happen". The cool end is what makes the second scale legible as a different
+// one: nothing on the readiness scale is blue or purple, so a cool chip cannot
+// be a band.
 //
 // Colour is never alone. Every call site prints the word — Critical, Major,
-// Minor, Optional — and `URGENCY_MARKER` adds a shape, so the scale survives a
+// Minor, Long-term — and `URGENCY_MARKER` adds a shape, so the scale survives a
 // colour-vision deficiency, a greyscale print and a chip too small for either.
 
 /** Tailwind ink classes per horizon. Ink only: an urgency colours a word or a
@@ -150,7 +151,7 @@ export const HORIZON_CLASSES: Record<Horizon, { text: string; border: string }> 
   critical: { text: 'text-urgency-critical', border: 'border-urgency-critical' },
   major: { text: 'text-urgency-major', border: 'border-urgency-major' },
   minor: { text: 'text-urgency-minor', border: 'border-urgency-minor' },
-  long_term: { text: 'text-urgency-optional', border: 'border-urgency-optional' },
+  long_term: { text: 'text-urgency-longterm', border: 'border-urgency-longterm' },
 };
 
 /**

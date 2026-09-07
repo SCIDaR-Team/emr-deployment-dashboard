@@ -1013,7 +1013,7 @@ export const HORIZON_LABEL: Record<Horizon, string> = {
   critical: "Critical — before deployment",
   major: "Major — before deployment",
   minor: "Minor — during deployment",
-  long_term: "Optional — after deployment",
+  long_term: "Long-term — after deployment",
 };
 
 /** The short form, for a chip beside a gap. */
@@ -1021,7 +1021,7 @@ export const HORIZON_SHORT: Record<Horizon, string> = {
   critical: "Critical",
   major: "Major",
   minor: "Minor",
-  long_term: "Optional",
+  long_term: "Long-term",
 };
 
 /** What an intervention's urgency does to its domain's band. */
