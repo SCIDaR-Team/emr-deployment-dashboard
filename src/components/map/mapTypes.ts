@@ -13,6 +13,34 @@ import type { BaseMapId } from '@/store/basemapStore';
 export const BOUNDARY_STROKE = 'hsl(var(--map-boundary) / 0.9)';
 
 /**
+ * The boundary ink for a polygon with **no fill**, chosen from the base map.
+ *
+ * Which stroke a shape wants is decided by what is behind it, not by which
+ * layer it is on:
+ *
+ *   filled   `CHOROPLETH_STROKE` — white, cutting a gap between two colours
+ *   unfilled `adminStrokeFor()`  — read against whatever the base map painted
+ *
+ * Getting this wrong is not a subtle miss. An invisible administrative
+ * boundary does not read as "no boundary drawn" — it reads as *the base map's*
+ * boundary being ours, and since OpenStreetMap's Nigerian LGA geometry differs
+ * from the COD-AB set this dashboard is built on, that silently shows the
+ * reader the wrong shape for the name in the tooltip.
+ *
+ * **The ground, not the scheme.** Satellite imagery is dark whichever theme the
+ * page is in, so keying this to light/dark alone puts a dark line over dark
+ * aerial photography — which is how the first version of this fix broke Lagos
+ * while looking correct everywhere else. The rule is one line long: the ground
+ * is dark if the reader is on satellite, or the page is in its dark scheme.
+ */
+export function adminStrokeFor(baseMap: BaseMapId, isDark = false): string {
+  const groundIsDark = baseMap === 'satellite' || isDark;
+  return groundIsDark
+    ? 'hsl(var(--map-admin-paper) / 0.85)'
+    : 'hsl(var(--map-admin-ink) / 0.8)';
+}
+
+/**
  * Every clickable shape on every layer carries this.
  *
  * A focusable SVG element gets the browser's default focus ring, and an SVG
@@ -30,23 +58,50 @@ export const BOUNDARY_STROKE = 'hsl(var(--map-boundary) / 0.9)';
 export const UNIT_FOCUS_CLASS = 'outline-none';
 
 /**
- * How opaque a readiness fill is over the current base map.
+ * How opaque a thematic fill is over the current base map.
  *
- * Over tiles the fill has to let the imagery through or the base map is
- * pointless — but not so far that the three bands stop being distinguishable
- * from each other, which is the fill's actual job.
+ * Down from a flat 0.8, and the change is the point of the base-map rework
+ * rather than a tweak to it. 0.8 was chosen so a polygon would composite to the
+ * same colour as the matching chip in the pane — which it did, at the cost of
+ * burying whatever was underneath. That trade only looked acceptable because
+ * the tiles had already been scrimmed to a sixth of their strength and there
+ * was nothing left down there worth seeing. With Positron underneath there is:
+ * a state's roads, its towns and its neighbours' names all read through.
  *
- * Raised from 0.55, which was tuned against the old saturated palette: at any
- * higher value those hues buried the roads and place names outright. The
- * client's fills are pastels and do not, so the same headroom now buys colour
- * fidelity instead. At 0.55 a Not-ready polygon composited to about #FAC7C5
- * against the pane card's #FFA3A3, and a reader looking from the map to the
- * pane saw two different reds for one band. At 0.8 it lands within a couple of
- * counts of the card and the tile detail still reads through.
+ * ## Two values, because we have two scales and they fail differently
+ *
+ * The **bands** are categorical and separated by *hue* — red, amber, green. Cut
+ * their opacity and they get paler together; which band a polygon is in is
+ * still obvious, because nothing about hue is lost. 0.38 is comfortable, and it
+ * is what ecat's coverage map uses for exactly this kind of scale.
+ *
+ * The **ramp** is sequential and separated by *lightness alone* — one blue at
+ * five steps from 73% down to 28%. Transparency compresses lightness directly:
+ * over Positron's near-white land, 0.38 puts the five steps 4.2 points of
+ * lightness apart, which is not a difference a reader can hold across two
+ * polygons on opposite sides of the map. At 0.6 the gaps are ~6.7 and the ramp
+ * is legible again, and the tiles still come through at 40% — against the 17%
+ * the old scrim-plus-0.8 stack left them.
+ *
+ * So a categorical scale can afford to be thin and a sequential one cannot.
+ * That is a property of the encoding, not a preference, which is why this is a
+ * parameter and not a number someone can nudge.
+ *
+ * **Higher again in dark mode**, because a translucent fill over a dark ground
+ * composites towards black and goes muddy rather than merely darker.
+ *
+ * `plain` stays fully opaque: there is nothing under it to see.
  */
-export function fillOpacityFor(baseMap: BaseMapId): number {
-  return baseMap === 'plain' ? 1 : 0.8;
+export function fillOpacityFor(
+  baseMap: BaseMapId,
+  { isDark = false, sequential = false }: { isDark?: boolean; sequential?: boolean } = {},
+): number {
+  if (baseMap === 'plain') return 1;
+  if (sequential) return isDark ? 0.68 : 0.6;
+  return isDark ? 0.48 : 0.38;
 }
+
+export const CHOROPLETH_STROKE = 'rgb(255 255 255 / 0.85)';
 
 /**
  * Sizing.

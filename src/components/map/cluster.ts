@@ -65,21 +65,34 @@ export interface Cluster<P extends ClusterablePoint> {
 const BAND_RANK: Record<Band, number> = { not_ready: 0, moderately_ready: 1, ready: 2 };
 
 /**
- * How much room one marker needs to itself, in CSS pixels.
+ * How much room one marker needs to itself, in CSS pixels, given its radius.
  *
  * Two points closer than this on screen are drawn on top of each other, which
  * is the condition being detected — so the cell is the marker's own footprint
  * plus a little separation, not an arbitrary radius.
+ *
+ * **Proportional to the mark, not fixed**, because a layer that draws smaller
+ * markers should merge them less eagerly: crowding is a property of the
+ * picture, and marks half the size reach the same spacing at half the
+ * distance. A fixed cell would mean shrinking the marker bought nothing — the
+ * same points would go on collapsing into the same clusters, just with more
+ * white space inside them.
+ *
+ * The multiple is written as the ratio it came from, so the LGA layer's 5.5px
+ * marker keeps the 26px cell it was tuned with.
  */
-const CELL_PX = 26;
+export const cellForMarker = (radiusPx: number) => radiusPx * (26 / 5.5);
 
 export function clusterPoints<P extends ClusterablePoint>(
   points: P[],
   /** viewBox units per CSS pixel at the current zoom — the caller has both
    *  numbers and this keeps the conversion in one place. */
   unitsPerPx: number,
+  /** Cell width in CSS pixels — see `cellForMarker`, which the caller uses to
+   *  derive it from whatever size it is drawing its marks at. */
+  cellPx: number,
 ): Cluster<P>[] {
-  const cell = CELL_PX * unitsPerPx;
+  const cell = cellPx * unitsPerPx;
   if (!Number.isFinite(cell) || cell <= 0) {
     return points.map((p) => ({ key: p.uuid, x: p.x, y: p.y, members: [p], band: p.band }));
   }

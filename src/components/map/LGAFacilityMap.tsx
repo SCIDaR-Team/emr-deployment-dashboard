@@ -21,7 +21,7 @@ import {
   type Box,
   type GeoCollection,
 } from '@/lib/mapProjection';
-import { BOUNDARY_STROKE } from './mapTypes';
+import { adminStrokeFor } from './mapTypes';
 import { MapPinOff } from 'lucide-react';
 import { TileLayer, MapAttribution, MapCorner, BaseMapNotice } from './TileLayer';
 import { MapNotice } from './MapNotice';
@@ -39,6 +39,7 @@ import { useFullscreen } from '@/hooks/useFullscreen';
 import { useGeolocate, geolocateMessage } from '@/hooks/useGeolocate';
 import { useMapExport } from '@/hooks/useMapExport';
 import { useBaseMapStore } from '@/store/basemapStore';
+import { useIsDark } from '@/store/themeStore';
 import { useMapLayers } from '@/store/mapLayerStore';
 import type { MapFit } from './mapTypes';
 import { LoadError, Skeleton } from '@/components/ui';
@@ -180,6 +181,7 @@ export function LGAFacilityMap({
    *  whenever the pointer is off the map — see `PointerCoordinates`. */
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
+  const isDark = useIsDark();
   const layers = useMapLayers();
   const [frameRef, renderPx, renderPxH] = useRenderSize<HTMLDivElement>();
   const fullscreen = useFullscreen<HTMLDivElement>();
@@ -422,6 +424,13 @@ export function LGAFacilityMap({
    */
   const neighbourStroke = unitsPerPx * 1;
 
+  /** Boundary ink for this layer — nothing here is filled, so both the subject
+   *  outline and its neighbours read against the base map. See
+   *  `adminStrokeFor`. */
+  const adminStroke = adminStrokeFor(baseMap, isDark);
+  /** The same ink, taken well back: neighbours are context, not the subject. */
+  const neighbourInk = adminStroke.replace(/\/ 0\.\d+\)$/, '/ 0.32)');
+
   return (
     <div
       ref={(el) => {
@@ -470,13 +479,6 @@ export function LGAFacilityMap({
             renderPxH={renderPxH}
             zoomCap={imagery.zoomCap}
             focusPath={outline?.path}
-            scrim={0.08}
-            // The lightest surround on any layer. This is where the reader is
-            // asking a question *about the ground* — which road is that, is
-            // there a compound there — and the LGA boundary is the least
-            // interesting line on the screen for answering it. Enough to keep
-            // the subject legible as the subject, and no more.
-            surroundScrim={0.3}
           />
         )}
 
@@ -489,7 +491,7 @@ export function LGAFacilityMap({
                 key={n.lgaId}
                 d={n.path}
                 fill="none"
-                stroke="hsl(var(--map-boundary) / 0.4)"
+                stroke={neighbourInk}
                 strokeWidth={neighbourStroke}
                 strokeLinejoin="round"
               />
@@ -506,7 +508,11 @@ export function LGAFacilityMap({
             // but disappears over tiles rather than merely thinning — there is
             // no readiness band at this level for it to be encoding.
             fillOpacity={baseMap === 'plain' ? 1 : 0.06}
-            stroke={BOUNDARY_STROKE}
+            // Dark ink, not surface colour. Nothing is filled at this level —
+            // the wash is 0.06 over tiles — so the outline is drawn against
+            // whatever the base map put there, and a near-white line vanishes
+            // on Positron. See `ADMIN_STROKE`.
+            stroke={adminStroke}
             // Twice the neighbours' width, and at 0.9 alpha against their 0.4.
             // With the base map now drawn across the whole frame and the
             // neighbouring LGAs outlined beside it, one boundary among many at

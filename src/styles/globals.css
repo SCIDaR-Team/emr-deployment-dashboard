@@ -223,6 +223,28 @@
      */
     --map-boundary: 80 20% 99%;
 
+    /*
+     * The boundary ink for polygons that carry NO fill — two of them, and
+     * **neither flips with the colour scheme**.
+     *
+     * `--map-boundary` above solves only half the problem. Cutting a gap in
+     * surface colour works beautifully *between two fills*; over a base map
+     * with nothing painted on it, a 99%-lightness stroke on a 97%-lightness
+     * canvas is invisible. That is not hypothetical — it is what left the
+     * state map showing only OpenStreetMap's own LGA lines, which trace
+     * different geometry from ours, so the boundary a reader could see never
+     * matched the LGA the tooltip named.
+     *
+     * The first fix keyed the ink to light/dark *scheme*, which is wrong for
+     * the same reason at one remove: what the line is drawn against is the
+     * **base map**, not the page. Satellite imagery is dark in either scheme,
+     * so a scheme-dark ink vanished over Lagos exactly as the white one had
+     * vanished over the canvas. These two are therefore fixed values, and
+     * `adminStrokeFor` picks between them from the base map — see mapTypes.ts.
+     */
+    --map-admin-ink: 156 10% 26%;
+    --map-admin-paper: 80 16% 92%;
+
     --radius: 0.25rem;
     --radius-card: 0.25rem;
   }

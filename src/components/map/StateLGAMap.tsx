@@ -19,7 +19,8 @@ import {
   type GeoCollection,
 } from '@/lib/mapProjection';
 import {
-  BOUNDARY_STROKE,
+  adminStrokeFor,
+  CHOROPLETH_STROKE,
   UNIT_FOCUS_CLASS,
   fillOpacityFor,
   bandFlatFill,
@@ -27,6 +28,8 @@ import {
   type GeoDatum,
 } from './mapTypes';
 import { MapLabel } from './MapLabel';
+import { FacilityLayer, FacilityTooltip, type FacilityHover } from './FacilityLayer';
+import { projectFacilities, type FacilityPoint } from './facilityPoints';
 import {
   TileLayer,
   MapAttribution,
@@ -46,6 +49,7 @@ import { useFullscreen } from '@/hooks/useFullscreen';
 import { useGeolocate, geolocateMessage } from '@/hooks/useGeolocate';
 import { useMapExport } from '@/hooks/useMapExport';
 import { useBaseMapStore } from '@/store/basemapStore';
+import { useIsDark } from '@/store/themeStore';
 import { useMapLayers } from '@/store/mapLayerStore';
 import type { MapFit } from './mapTypes';
 import { Skeleton, EmptyState, LoadError } from '@/components/ui';
@@ -68,6 +72,24 @@ interface StateLGAMapProps {
   stateName: string;
   /** Keyed by bare LGA slug (`dala`, `orumba_south`, ...). */
   data: Record<string, GeoDatum>;
+  /**
+   * The facilities inside this state, plotted over the LGAs.
+   *
+   * **Supplying this changes what the layer is.** Omitted, the LGAs are a
+   * choropleth and `data` paints them — which is what National Coverage wants,
+   * because an LGA there *is* the unit of analysis. Supplied, the polygons stop
+   * carrying a value and go transparent, and the facilities become the marks:
+   * the state view then shows the same points, in the same silhouettes, that
+   * drilling into a single LGA shows, only across all of them at once.
+   *
+   * The two are exclusive on purpose. Points over a filled choropleth is two
+   * readiness encodings in one frame — a pastel underneath a marker of a
+   * different band — and the reader has no way to know which one the colour
+   * under a triangle belongs to.
+   */
+  facilities?: FacilityPoint[];
+  selectedFacilityId?: string | null;
+  onSelectFacility?: (uuid: string) => void;
   selectedLgaId?: string | null;
   onSelect?: (lgaId: string) => void;
   /** Zooming back out past the whole state returns to the national map. */
@@ -119,6 +141,48 @@ const STATE_MIN_VIEW_M = 500;
 const LGA_LABEL_PX = 10;
 const LGA_LABEL_MIN_PX = 6.5;
 
+/**
+ * How narrow the frame has to get before facility markers are named, in metres
+ * of ground.
+ *
+ * A distance rather than a zoom ratio, because a ratio here would mean twelve
+ * different thresholds: a state's extent varies fivefold, so 20x into Lagos and
+ * 20x into Niger are not the same view. Ten kilometres is roughly the window
+ * `LGAFacilityMap`'s own 4.5x threshold works out to, so a name appears at the
+ * same ground scale on both layers.
+ *
+ * Most readers never see this. The drill hands them down to the LGA layer at
+ * 4x, long before the frame is this tight — the way here is expanding a
+ * cluster, which flies straight past the drill without triggering it.
+ */
+const FACILITY_LABEL_VIEW_M = 10_000;
+
+/**
+ * Marker radius here, in CSS pixels, against the LGA layer's 5.5.
+ *
+ * This layer draws a whole state at once — 438 facilities in Kano, 275 in
+ * Anambra — where the LGA layer draws the few dozen inside one boundary. At the
+ * LGA's size that many marks over a state-sized frame stop being points and
+ * become a smear: the dots touch, the clusters swallow their neighbours, and
+ * the thing the reader came for — where in this state the facilities actually
+ * are — is the one thing the picture cannot show. Smaller marks separate, and
+ * the cluster cell shrinks with them (see `cellForMarker`), so more of them
+ * resolve individually rather than merging.
+ *
+ * Four is a floor, not a preference. It is the size the LGA layer was raised
+ * *from*, because the band is carried by the marker's silhouette and a triangle
+ * needs pixels to read as a triangle. That trade is acceptable at this level
+ * and not at the one below: here the marks answer "where are they, and roughly
+ * how do they band across the state", and a reader who needs to tell one
+ * facility's shape from its neighbour's is one click from the layer that draws
+ * it at full size. Do not take this below 4.
+ */
+const STATE_MARKER_R_PX = 4;
+
+/** What a hovered polygon's fill rises to — see the twin of this constant in
+ *  `NigeriaChoropleth`, which carries the reasoning. */
+const HOVER_FILL_OPACITY = 0.7;
+
 interface HoverInfo {
   lgaId: string;
   x: number;
@@ -126,11 +190,29 @@ interface HoverInfo {
 }
 
 /**
- * LGA choropleth within one state.
+ * The middle layer: one state, its LGAs, and — where the caller asks for them —
+ * the facilities inside them.
  *
  * Reuses the same projection as `NigeriaChoropleth`, but fits its viewBox to
  * the state's own bounds, so drilling in is a viewBox change and never a
  * reprojection — the two layers agree on where a coordinate lands.
+ *
+ * ## Two modes, and only ever one at a time
+ *
+ * **Choropleth.** No `facilities` prop: the LGAs fill from `data` and the layer
+ * is what it has always been. National Coverage stays here, because there an
+ * LGA is genuinely the unit being classified.
+ *
+ * **Facility.** Pass `facilities` and the polygons go transparent — they keep
+ * their outlines, their names and their click target, but stop carrying a
+ * value — and the points take over, drawn by the same `FacilityLayer`, in the
+ * same band silhouettes and the same clusters, that `LGAFacilityMap` uses one
+ * level down. So a reader looking at Kano sees every surveyed facility in Kano
+ * at once, and drilling into Dala changes the extent rather than the encoding.
+ *
+ * They are exclusive because two readiness encodings in one frame cannot be
+ * read: a pastel polygon under a marker of a different band gives the reader no
+ * way to tell which of the two a colour belongs to. See the `facilities` prop.
  *
  * All 37 states have LGA polygons: the boundary set is COD-AB ADM2, all 774 of
  * them, split one file per state. The empty state below is a real failure
@@ -140,6 +222,9 @@ export function StateLGAMap({
   stateId,
   stateName,
   data,
+  facilities,
+  selectedFacilityId,
+  onSelectFacility,
   selectedLgaId,
   onSelect,
   onZoomOut,
@@ -150,6 +235,17 @@ export function StateLGAMap({
   fit = 'aspect',
   className,
 }: StateLGAMapProps) {
+  /**
+   * Facility mode: the caller handed us points, so the polygons give up the
+   * fill and the points carry the reading. See the note on the prop.
+   *
+   * Keyed off the prop being *present* rather than non-empty — a state whose
+   * filter row has excluded every facility must still show empty LGAs, not
+   * silently fall back to a choropleth the legend beside it is not explaining.
+   */
+  const facilityMode = facilities !== undefined;
+  const points = useMemo(() => projectFacilities(facilities ?? []), [facilities]);
+
   // One file per state — see scripts/build-boundaries.mjs. Switching states
   // switches the request, so drilling into Kano fetches ~50 kB rather than the
   // 927 kB every state's polygons would come to.
@@ -158,15 +254,17 @@ export function StateLGAMap({
     fallback: null,
   });
   const [hover, setHover] = useState<HoverInfo | null>(null);
+  const [facilityHover, setFacilityHover] = useState<FacilityHover | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   /** Live position under the pointer, for the coordinate readout. */
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const baseMap = useBaseMapStore((s) => s.baseMap);
+  const isDark = useIsDark();
   const layers = useMapLayers();
   const fullscreen = useFullscreen<HTMLDivElement>();
   const [frameRef, renderPx, renderPxH] = useRenderSize<HTMLDivElement>();
   const mapExport = useMapExport(fullscreen.ref, {
-    name: ['lgas', stateId, exportScope],
+    name: [facilityMode ? 'facilities' : 'lgas', stateId, exportScope],
     scope: crumbs?.map((c) => c.label).join(' / ') ?? stateName,
     encoding: exportScope,
     baseMap,
@@ -288,7 +386,35 @@ export function StateLGAMap({
   const unitPerPx = Math.max(vbW / renderPx, vbH / renderPxH);
   const labelSize = (LGA_LABEL_PX * unitPerPx) / view.scale;
   const labelFloor = (LGA_LABEL_MIN_PX * unitPerPx) / view.scale;
-  const fillOpacity = fillOpacityFor(baseMap);
+  // Two scales reach this layer too — the LGA need ramp on Assessed States and
+  // the coverage bands on National Coverage. See `fillOpacityFor`.
+  /** Boundary ink for the unfilled case — see `adminStrokeFor`. */
+  const adminStroke = adminStrokeFor(baseMap, isDark);
+  const bandOpacity = fillOpacityFor(baseMap, { isDark });
+  const rampOpacity = fillOpacityFor(baseMap, { isDark, sequential: true });
+  /**
+   * viewBox units per CSS pixel at the live zoom — the facility layer sizes its
+   * markers and its cluster cell from this, so both hold a constant size on
+   * screen as the reader zooms.
+   *
+   * `unitPerPx` above is the *base* viewBox per pixel; the live frame is that
+   * divided by the zoom, which is the same correction the label sizes make one
+   * line up.
+   */
+  const facilityUnitsPerPx = unitPerPx / view.scale;
+  /** Names on the marks, once there is ground for them — see the constant. */
+  const showFacilityLabels =
+    layers.labels &&
+    view.rect.w <= unitsForMetres(FACILITY_LABEL_VIEW_M, latAtY(view.rect.y + view.rect.h / 2));
+  /**
+   * Whether the polygons paint a value.
+   *
+   * Off in facility mode, and that is the whole of the "uncolour the LGAs"
+   * half of this layer: the shapes stay — they are the geography, and they are
+   * still what a reader clicks to drill in — but they stop being a choropleth,
+   * so the only colour left in the frame is the band on a facility marker.
+   */
+  const paintFill = layers.indicator && !facilityMode;
   /** A constant on-screen size for the location dot, in viewBox units. */
   const locatePx = (view.rect.w / Math.max(1, renderPx)) * 6;
   /**
@@ -335,14 +461,21 @@ export function StateLGAMap({
           cursor: view.panning ? 'grabbing' : view.isZoomed ? 'grab' : undefined,
         }}
         role="img"
-        aria-label={`${stateName} LGA readiness map`}
+        aria-label={
+          facilityMode
+            ? `${stateName} facility readiness map`
+            : `${stateName} LGA readiness map`
+        }
         {...view.bind}
         onPointerMove={(e) => {
           view.bind.onPointerMove(e);
           const pt = view.toViewport(e.clientX, e.clientY);
           setCursor({ lat: latAtY(pt.y), lon: lonAtX(pt.x) });
         }}
-        onPointerLeave={() => setCursor(null)}
+        onPointerLeave={() => {
+          setCursor(null);
+          setFacilityHover(null);
+        }}
       >
         {baseMap === 'plain' ? (
           <path d={outlinePath} className="fill-brand-50" />
@@ -354,12 +487,6 @@ export function StateLGAMap({
             renderPxH={renderPxH}
             zoomCap={imagery.zoomCap}
             focusPath={outlinePath}
-            // Lighter than the national layer's: the neighbouring *states* are
-            // somewhere a reader can actually go from here — one drill-out and
-            // a click — and at this extent their roads and towns are the
-            // context that makes the subject state a place rather than a
-            // silhouette.
-            surroundScrim={0.45}
           />
         )}
 
@@ -388,13 +515,16 @@ export function StateLGAMap({
             // colour; the textures these fills used to carry were dropped at
             // the client's direction — see `bandFlatFill`.
             //
-            // With the thematic layer switched off the polygons stay — they
-            // are the geography, not the finding — but they stop carrying a
-            // value and go transparent, so whatever base map is underneath
-            // reads at full strength. This is the toggle's whole purpose.
-            const bandFill = layers.indicator
+            // With the thematic layer switched off — or in facility mode,
+            // where the points carry the reading — the polygons stay, because
+            // they are the geography and not the finding, but they stop
+            // carrying a value and go transparent, so whatever base map is
+            // underneath reads at full strength.
+            const bandFill = paintFill
               ? (scoreStepFill(datum?.step) ?? bandFlatFill(datum?.band))
               : undefined;
+            const isHovered = hover?.lgaId === shape.lgaId;
+            const restOpacity = datum?.step != null ? rampOpacity : bandOpacity;
 
             return (
               <path
@@ -402,24 +532,47 @@ export function StateLGAMap({
                 d={shape.path}
                 data-unit-id={shape.lgaId}
                 fill={bandFill}
-                fillOpacity={layers.indicator ? fillOpacity : 0}
+                // Zero rather than `fill="none"`: a transparent fill still
+                // hit-tests, so an uncoloured LGA is as hoverable and as
+                // clickable as a painted one.
+                fillOpacity={
+                  !paintFill
+                    ? 0
+                    : isHovered
+                      ? Math.max(HOVER_FILL_OPACITY, restOpacity)
+                      : restOpacity
+                }
                 className={cn(
-                  layers.indicator && !bandFill ? 'fill-nodata' : undefined,
+                  paintFill && !bandFill ? 'fill-nodata' : undefined,
                   UNIT_FOCUS_CLASS,
                   'transition-opacity duration-150',
                 )}
                 stroke={
-                  outlined
+                  outlined || isHovered
                     ? 'hsl(var(--brand-500))'
-                    : layers.boundaries
-                      ? BOUNDARY_STROKE
-                      : 'transparent'
+                    : !layers.boundaries
+                      ? 'transparent'
+                      : // White cuts a gap between two fills; dark ink is what
+                        // reads against a bare base map. See `ADMIN_STROKE`.
+                        bandFill
+                        ? CHOROPLETH_STROKE
+                        : adminStroke
                 }
-                strokeWidth={outlined ? outlineWidth : hairline}
+                // Unfilled boundaries are drawn heavier, because then the line
+                // is the only thing saying where the LGA is — and it has to be
+                // the most legible administrative line on screen, or the
+                // reader takes the base map's (different) one for ours.
+                strokeWidth={
+                  outlined || isHovered ? outlineWidth : bandFill ? hairline : hairline * 2.2
+                }
                 strokeLinejoin="round"
                 tabIndex={interactive ? 0 : -1}
                 role={interactive ? 'button' : undefined}
-                aria-label={`${shape.name}${datum?.band ? `, ${BAND_LABEL[datum.band]}` : ', no data'}`}
+                aria-label={
+                  facilityMode
+                    ? `${shape.name}, ${formatCount(datum?.n ?? 0)} facilities`
+                    : `${shape.name}${datum?.band ? `, ${BAND_LABEL[datum.band]}` : ', no data'}`
+                }
                 style={{ cursor: interactive ? 'pointer' : 'default' }}
                 onFocus={() => setFocused(shape.lgaId)}
                 onBlur={() => setFocused(null)}
@@ -466,6 +619,23 @@ export function StateLGAMap({
           />
         ))}
 
+        {/* Above the LGA names, not under them: a facility marker is the
+            finding at this level and a place name is orientation, so the name
+            is what gives way where the two collide. */}
+        {facilityMode && layers.facilities && (
+          <FacilityLayer
+            points={points}
+            unitsPerPx={facilityUnitsPerPx}
+            cluster={layers.cluster}
+            selectedId={selectedFacilityId}
+            onSelect={onSelectFacility}
+            onExpand={(box) => view.fitTo(box, 0.35)}
+            markerPx={STATE_MARKER_R_PX}
+            showLabels={showFacilityLabels}
+            onHover={setFacilityHover}
+          />
+        )}
+
         {myLocation && (
           <g pointerEvents="none">
             <circle cx={myLocation.x} cy={myLocation.y} r={locatePx * 2} className="fill-brand-500/20" />
@@ -498,7 +668,14 @@ export function StateLGAMap({
         onSearch={onSearch}
         onLocate={geolocate.supported ? geolocate.locate : undefined}
         locating={geolocate.status === 'locating'}
-        layers={['boundaries', 'labels', 'indicator']}
+        // Facility mode has no thematic fill for the indicator toggle to
+        // switch, and gains the two point layers instead — the panel offers
+        // what this level actually draws, never a toggle that does nothing.
+        layers={
+          facilityMode
+            ? ['boundaries', 'labels', 'facilities', 'cluster']
+            : ['boundaries', 'labels', 'indicator']
+        }
       />
 
       <MapStatusBar
@@ -517,13 +694,23 @@ export function StateLGAMap({
         <MapAttribution baseMap={baseMap} />
       </MapCorner>
 
-      {hover && hoverShape && (
+      {/* One tooltip at a time. A marker sits inside an LGA, so hovering it
+          leaves the polygon hovered too, and both cards would stack on the same
+          few pixels — the mark is the more specific answer, so it wins. */}
+      {hover && hoverShape && !facilityHover && (
         <div
           className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-pop"
           style={{ left: hover.x, top: hover.y - 10 }}
         >
           <div className="font-semibold text-foreground">{hoverShape.name}</div>
-          {hoverDatum?.band ? (
+          {facilityMode ? (
+            // No band to report: in facility mode the polygon carries no
+            // reading, so the honest line is how many marks are inside it.
+            <p className="mt-0.5 text-muted-foreground">
+              {formatCount(hoverDatum?.n ?? 0)}{' '}
+              {hoverDatum?.n === 1 ? 'facility' : 'facilities'}
+            </p>
+          ) : hoverDatum?.band ? (
             <p className="mt-0.5 text-muted-foreground">
               {BAND_LABEL[hoverDatum.band]} · {formatCount(hoverDatum.n)} facilities
             </p>
@@ -533,6 +720,12 @@ export function StateLGAMap({
           {onSelect && <p className="mt-1 text-[11px] font-medium text-brand-600">Click to drill in</p>}
         </div>
       )}
+
+      <FacilityTooltip
+        hover={facilityHover}
+        selectedId={selectedFacilityId}
+        selectable={!!onSelectFacility}
+      />
     </div>
   );
 }

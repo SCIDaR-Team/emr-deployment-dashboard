@@ -20,12 +20,14 @@ import {
   useHatchPatternId,
   bandFlatFill,
   scoreStepFill,
-  BOUNDARY_STROKE,
+  adminStrokeFor,
+  CHOROPLETH_STROKE,
   UNIT_FOCUS_CLASS,
   fillOpacityFor,
   type GeoDatum,
 } from './mapTypes';
 import { useBaseMapStore } from '@/store/basemapStore';
+import { useIsDark } from '@/store/themeStore';
 import { useMapLayers } from '@/store/mapLayerStore';
 import type { MapFit } from './mapTypes';
 import { MapToolbar } from './MapToolbar';
@@ -110,6 +112,17 @@ const NATIONAL_DRILL_SCALE = 5;
  */
 const NATIONAL_MIN_VIEW_M = 2_000;
 
+/**
+ * What a hovered polygon's fill rises to.
+ *
+ * Well above the resting 0.38/0.48 — a hover has to be unmistakable at a
+ * glance, and the polygon is momentarily the subject rather than one of
+ * thirty-seven. Deliberately short of 1: even hovered, the town under the
+ * pointer should still be readable, which is half of why the reader is
+ * hovering it.
+ */
+const HOVER_FILL_OPACITY = 0.7;
+
 interface HoverInfo {
   stateId: string;
   x: number;
@@ -142,6 +155,7 @@ export function NigeriaChoropleth({
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const hatchId = useHatchPatternId();
   const baseMap = useBaseMapStore((s) => s.baseMap);
+  const isDark = useIsDark();
   const layers = useMapLayers();
   const fullscreen = useFullscreen<HTMLDivElement>();
   const [frameRef, renderPx, renderPxH] = useRenderSize<HTMLDivElement>();
@@ -250,7 +264,15 @@ export function NigeriaChoropleth({
 
   const hoverDatum = hover ? data[hover.stateId] : null;
   const outlinePath = shapes.map((s) => s.path).join(' ');
-  const fillOpacity = fillOpacityFor(baseMap);
+  // Per *polygon* rather than per layer: this component paints the sequential
+  // need ramp on Assessed States and the categorical readiness bands on
+  // National Coverage, and the two want different opacities — see
+  // `fillOpacityFor`. Which one a shape is carrying is decided by whether the
+  // caller supplied a `step`.
+  /** Boundary ink for the unfilled case — see `adminStrokeFor`. */
+  const adminStroke = adminStrokeFor(baseMap, isDark);
+  const bandOpacity = fillOpacityFor(baseMap, { isDark });
+  const rampOpacity = fillOpacityFor(baseMap, { isDark, sequential: true });
   /** How wide "my location" is drawn, in viewBox units — a constant size on
    *  screen, like every other marker on these maps. */
   const locatePx = (view.rect.w / Math.max(1, renderPx)) * 6;
@@ -314,12 +336,12 @@ export function NigeriaChoropleth({
             renderPx={renderPx}
             renderPxH={renderPxH}
             zoomCap={imagery.zoomCap}
+            // Still handed the outline, though nothing is masked with it any
+            // more: it is what the tile layer would need if a scrim were ever
+            // reinstated, and passing it costs nothing. Neighbouring countries
+            // now read as edge because they carry no fill, not because they
+            // have been faded out.
             focusPath={outlinePath}
-            // Heavier than the layers below, because the neighbouring countries
-            // are pure orientation here — nothing on this page has anything to
-            // say about Niger or Cameroon, and they should read as edge rather
-            // than as content.
-            surroundScrim={0.6}
           />
         )}
 
@@ -347,6 +369,16 @@ export function NigeriaChoropleth({
                 ? hatchFill(hatchId)
                 : (scoreStepFill(datum?.step) ?? bandFlatFill(datum?.band));
             const fillClass = layers.indicator && !bandFill ? 'fill-nodata' : undefined;
+            // Hover lifts the fill rather than only opening a tooltip — the
+            // polygon under the pointer is the one being asked about, and it
+            // should look like it. Same move on the LGA layer.
+            const isHovered = hover?.stateId === shape.stateId;
+            const restOpacity = datum?.step != null ? rampOpacity : bandOpacity;
+            const paintedFill = !layers.indicator
+              ? 0
+              : isHovered
+                ? Math.max(HOVER_FILL_OPACITY, restOpacity)
+                : restOpacity;
 
             return (
               <path
@@ -354,19 +386,25 @@ export function NigeriaChoropleth({
                 d={shape.path}
                 data-unit-id={shape.stateId}
                 fill={bandFill}
-                fillOpacity={layers.indicator ? fillOpacity : 0}
+                fillOpacity={paintedFill}
                 className={cn(fillClass, UNIT_FOCUS_CLASS, 'transition-opacity duration-150')}
                 stroke={
-                  outlined
+                  outlined || isHovered
                     ? 'hsl(var(--brand-500))'
-                    : layers.boundaries
-                      ? BOUNDARY_STROKE
-                      : 'transparent'
+                    : !layers.boundaries
+                      ? 'transparent'
+                      : // A white hairline between two filled polygons, dark
+                        // ink where there is no fill — see `ADMIN_STROKE`.
+                        bandFill
+                        ? CHOROPLETH_STROKE
+                        : adminStroke
                 }
                 // Divided by the zoom: stroke width is in viewBox units, so
                 // without this every boundary thickens as the reader zooms in,
                 // and the map ends up more line than fill.
-                strokeWidth={(outlined ? 2.2 : 1) / view.scale}
+                strokeWidth={
+                  (outlined || isHovered ? 2.2 : bandFill ? 1 : 1.8) / view.scale
+                }
                 strokeLinejoin="round"
                 tabIndex={interactive ? 0 : -1}
                 role={interactive ? 'button' : undefined}

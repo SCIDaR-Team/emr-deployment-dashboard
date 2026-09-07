@@ -54,16 +54,25 @@ import {
  *
  * ## What each level paints
  *
- * **States and LGAs carry money, facilities carry a band.** An area is a
- * population rather than a thing with a readiness level, and what a programme
- * allocates against it is investment need — so both area levels fill from total
- * intervention cost on the sequential ramp, fitted to the features actually
- * drawn rather than anchored at zero. A facility *is* one thing with a reading,
- * so it takes a band.
+ * **The national map carries money; below it, facilities carry a band.** A
+ * country of states is a set of populations rather than a set of things with a
+ * readiness level, and what a programme allocates against a population is
+ * investment need — so the top level fills from total intervention cost on a
+ * sequential ramp, fitted to the twelve surveyed states rather than anchored at
+ * zero. A band choropleth would say nothing there in any case: the twelve
+ * classify to one or two values between them — see the note on `GeoDatum.step`.
  *
- * A band choropleth over the states would say nothing in any case: they
- * classify to one or two values between the twelve — see the note on
- * `GeoDatum.step`.
+ * From the state level down the map stops classifying areas and starts drawing
+ * the things that were actually surveyed. The LGAs keep their outlines, their
+ * names and their click target but take no fill, and every facility in the
+ * state is plotted in its band silhouette — the same marks, from the same
+ * `FacilityLayer`, that the LGA level draws. So drilling from a state into one
+ * of its LGAs changes the extent and nothing else, and the reader never has to
+ * relearn the encoding on the way down.
+ *
+ * The two are never stacked. A pastel polygon under a marker of a different
+ * band is two readiness scales in one frame with no way to tell which a colour
+ * belongs to — see the `facilities` prop on `StateLGAMap`.
  *
  * Every domain in the dataset carries money, including data use at ₦36.8m, so
  * the map never has to fall back to counting gaps. It did once, when two
@@ -185,6 +194,24 @@ export default function AssessedStatesPage() {
   );
 
   /**
+   * The same selection, made from the state map — where there is no LGA in the
+   * path yet to build the facility's URL from.
+   *
+   * So it comes off the record instead. A marker clicked in Kano lands on
+   * `/kano/dala/<uuid>`, which is the URL drilling in by hand would have
+   * produced: the reader skips a level, and the pane, the breadcrumb and the
+   * back button all find the state they expect underneath them.
+   */
+  const selectFacilityFromState = useCallback(
+    (uuid: string) => {
+      const f = scoped.find((row) => row.uuid === uuid);
+      if (!f) return;
+      go(assessmentPath(f.stateId, f.lgaId, uuid));
+    },
+    [go, scoped],
+  );
+
+  /**
    * What an area needs, under whatever the Domain filter has selected.
    *
    * Cost and quantity together, because the programme prioritises on both and
@@ -299,17 +326,23 @@ export default function AssessedStatesPage() {
     return data;
   }, [stateLgas, scoped, needOf]);
 
-  /** The bounds the ramp was fitted to, so the legend prints the same numbers
-   *  the polygons were coloured from. */
+  /**
+   * The bounds the ramp was fitted to, so the legend prints the same numbers
+   * the polygons were coloured from.
+   *
+   * National only, because that is the only level still painting a ramp. It
+   * used to read from `lgaMapData` whenever a state was in scope; those
+   * polygons now take no fill, so fitting a scale to them would be sizing a
+   * legend nothing renders.
+   */
   const mapScale = useMemo(() => {
-    const rows = scope.state ? Object.values(lgaMapData) : Object.values(nationalMapData);
-    const values = rows
+    const values = Object.values(nationalMapData)
       .filter((d) => d.step != null)
       .map((d) => d.rawValue ?? 0);
     return values.length
       ? { lo: Math.min(...values), hi: Math.max(...values) }
       : { lo: 0, hi: 0 };
-  }, [scope.state, lgaMapData, nationalMapData]);
+  }, [nationalMapData]);
 
   /** The facility layer plots what the filter row left standing, not every
    *  facility in the LGA — a Readiness filter has to remove dots or it is
@@ -524,10 +557,11 @@ export default function AssessedStatesPage() {
    * its sibling because the frame is what goes full screen, and a legend
    * outside it disappears exactly when the reader has committed to the map.
    *
-   * One encoding at both polygon levels, so one legend: they carry investment
+   * The national level's key, and now only its own: the states carry investment
    * need rather than readiness — a budget is allocated against what a place
    * needs, not against how it is classified, and the classification is in the
-   * pane beside it.
+   * pane beside it. The state map moved to the facility key below, because that
+   * is the encoding actually on screen there.
    */
   const scaleLegend = (
     <div className="w-[210px] rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
@@ -667,12 +701,23 @@ export default function AssessedStatesPage() {
               stateId={scope.state.id}
               stateName={scope.state.name}
               data={lgaMapData}
+              // Passing facilities puts the layer in facility mode: the LGAs
+              // keep their outlines and their names but give up the need ramp,
+              // and every surveyed facility in the state is drawn in the same
+              // band silhouette the LGA level draws it in. Drilling into one
+              // LGA now changes the extent rather than the encoding.
+              facilities={facilityPoints}
+              selectedFacilityId={null}
+              onSelectFacility={selectFacilityFromState}
               selectedLgaId={null}
               onSelect={selectLga}
               onZoomOut={() => go(assessmentPath())}
               crumbs={crumbs}
-              overlay={scaleLegend}
-              exportScope="Investment need"
+              // The points' key, not the ramp's — the ramp is no longer on
+              // screen at this level, and a legend explaining an encoding that
+              // is not drawn sends the reader hunting for it.
+              overlay={facilityLegend}
+              exportScope="Facility readiness band"
               onSearch={searchPlaces}
               className="h-full"
             />

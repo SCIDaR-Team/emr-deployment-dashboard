@@ -70,6 +70,11 @@ export interface MapTile {
   x: number;
   y: number;
   size: number;
+  /** The slippy coordinates this tile was cut at, kept so a second layer can be
+   *  built on exactly the same grid — see `overlayTilesFrom`. */
+  z: number;
+  tx: number;
+  ty: number;
 }
 
 export function parseViewBox(viewBox: string): ViewBoxRect {
@@ -92,8 +97,33 @@ export function zoomForRect(rect: ViewBoxRect, renderPx: number): number {
   return Math.log2((renderPx / TILE_PX) * (WORLD_SIZE / rect.w));
 }
 
-function tileUrl(template: string, z: number, x: number, y: number): string {
-  return template.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y));
+/** Retina suffix for `{r}` — `@2x` where the screen can show it. */
+function retinaSuffix(): string {
+  if (typeof window === 'undefined') return '';
+  return (window.devicePixelRatio || 1) >= 2 ? '@2x' : '';
+}
+
+function tileUrl(
+  template: string,
+  z: number,
+  x: number,
+  y: number,
+  subdomains?: string,
+): string {
+  let url = template
+    .replace('{z}', String(z))
+    .replace('{x}', String(x))
+    .replace('{y}', String(y))
+    .replace('{r}', retinaSuffix());
+
+  if (subdomains) {
+    // Deterministic from the tile's own coordinates, not random or
+    // round-robin: the same tile must resolve to the same host on every
+    // render, or panning back and forth re-requests everything from a
+    // different subdomain and the browser cache is worth nothing.
+    url = url.replace('{s}', subdomains[(x + y) % subdomains.length]!);
+  }
+  return url;
 }
 
 /**
@@ -109,10 +139,14 @@ export function tilesForRect(
   rect: ViewBoxRect,
   source: BaseMapSource,
   renderPx: number,
-  options: { zoomBias?: number; zoomCap?: number } = {},
+  options: { zoomBias?: number; zoomCap?: number; dark?: boolean } = {},
 ): MapTile[] {
   const tile = source.tile;
   if (!tile || rect.w <= 0 || rect.h <= 0) return [];
+
+  // A separate tile set rather than a filtered one where the provider has one —
+  // see `BaseMapSource.tile.dark`.
+  const template = options.dark && tile.dark ? tile.dark : tile.url;
 
   const dpr = typeof window !== 'undefined' ? Math.min(2, window.devicePixelRatio || 1) : 1;
   const ideal =
@@ -145,10 +179,13 @@ export function tilesForRect(
       for (let ty = ty0; ty <= ty1; ty++) {
         out.push({
           key: `${z}/${tx}/${ty}`,
-          href: tileUrl(tile.url, z, tx, ty),
+          href: tileUrl(template, z, tx, ty, tile.subdomains),
           x: (tx / n) * WORLD_SIZE - WORLD_X0,
           y: (ty / n) * WORLD_SIZE - WORLD_Y0,
           size,
+          z,
+          tx,
+          ty,
         });
       }
     }
@@ -169,10 +206,12 @@ export function fallbackTilesForRect(
   rect: ViewBoxRect,
   source: BaseMapSource,
   renderPx: number,
+  options: { dark?: boolean } = {},
 ): MapTile[] {
   return tilesForRect(rect, source, renderPx, {
     zoomBias: FALLBACK_ZOOM_BIAS,
     zoomCap: FALLBACK_MAX_ZOOM,
+    dark: options.dark,
   });
 }
 
@@ -204,4 +243,28 @@ export function centreTile(rect: ViewBoxRect, z: number): { x: number; y: number
     x: Math.max(0, Math.min(n - 1, Math.floor(u * n))),
     y: Math.max(0, Math.min(n - 1, Math.floor(v * n))),
   };
+}
+
+/**
+ * The reference layer for a set of base tiles — same grid, different URL.
+ *
+ * Derived from the tiles already chosen rather than computed afresh, so the
+ * labels cannot land a level off the photography they are naming. That is not a
+ * theoretical risk: the two layers would otherwise each round `ideal` on their
+ * own `maxZoom`, and Esri's reference layer and its imagery do not stop at the
+ * same level everywhere.
+ */
+export function overlayTilesFrom(
+  tiles: MapTile[],
+  source: BaseMapSource,
+  options: { dark?: boolean } = {},
+): MapTile[] {
+  const tile = source.tile;
+  const template = (options.dark && tile?.overlayDark) || tile?.overlay;
+  if (!template) return [];
+  return tiles.map((t) => ({
+    ...t,
+    key: `ov-${t.key}`,
+    href: tileUrl(template, t.z, t.tx, t.ty, tile?.subdomains),
+  }));
 }
