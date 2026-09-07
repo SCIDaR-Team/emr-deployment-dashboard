@@ -543,8 +543,6 @@ export interface FacilitySummary {
 // Deployment and investment
 // ---------------------------------------------------------------------------
 
-export type InvestmentPriority = 'high' | 'medium' | 'low';
-
 export type InvestmentCategory =
   | 'infrastructure'
   | 'workforce'
@@ -557,7 +555,19 @@ export interface InvestmentItem {
   label: string;
   themeId: ThemeId;
   category: InvestmentCategory;
-  priority: InvestmentPriority;
+  /**
+   * When the source says the action has to happen — the sheet's own four-level
+   * "when action is needed", carried through rather than reduced.
+   *
+   * This used to be a three-level `priority` of our own invention, mapping
+   * critical *and* major onto "high". That threw away the one distinction the
+   * deployment band is computed from (`critical > 0` is Not ready; `major > 0`
+   * alone is Moderately ready), and it labelled `minor` — 24 of the 30 national
+   * lines and the largest cost bucket — "medium", which reads as discretionary.
+   * The plan is phased by this field, so the plan states it in the source's
+   * vocabulary.
+   */
+  horizon: Horizon;
   /** Units required across the geography this item belongs to. */
   quantity: number;
   unitCostNGN: number | null;

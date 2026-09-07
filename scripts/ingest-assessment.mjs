@@ -442,13 +442,6 @@ const DOMAIN_CATEGORY = {
   data_use_reporting: 'data_use',
 };
 
-const HORIZON_PRIORITY = {
-  critical: 'high',
-  major: 'high',
-  minor: 'medium',
-  long_term: 'low',
-};
-
 /**
  * Roll a facility population up into what deploying into it takes.
  *
@@ -533,7 +526,10 @@ function investmentsFor(deployment) {
     label: l.label,
     themeId: l.domain,
     category: DOMAIN_CATEGORY[l.domain],
-    priority: HORIZON_PRIORITY[l.horizon],
+    /** The sheet's urgency, carried straight through. It used to be collapsed
+     *  onto a three-level high/medium/low here, which merged critical with
+     *  major — the exact pair the deployment band distinguishes. */
+    horizon: l.horizon,
     quantity: l.quantity,
     unitCostNGN: l.unitCostNGN,
     totalCostNGN: l.priced ? l.totalCostNGN : null,

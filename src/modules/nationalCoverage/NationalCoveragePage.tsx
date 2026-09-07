@@ -12,20 +12,12 @@ import {
 } from '@/components/map';
 import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
-import { useFilterStore } from '@/store/filterStore';
 import { formatCount, formatPercent } from '@/lib/format';
-import { COVERAGE_THEME_BY_ID } from '@/lib/themes';
 import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
 import { CoverageFilters } from './CoverageFilters';
 import { CoveragePane } from './CoveragePane';
-import {
-  bandUnderLens,
-  coverageLens,
-  hasUnbanded,
-  resolveScope,
-  type DomainLens,
-} from './coverageScope';
+import { bandOf, hasUnbanded, resolveScope } from './coverageScope';
 
 /**
  * National Coverage — the map *is* the page.
@@ -48,17 +40,17 @@ import {
  *
  * ## Two ways to select, one selection
  *
- * The filter row and the map both write the URL, and the URL is the only place
- * scope lives. That is what stops the two disagreeing, and it makes every view
- * a link — `/states/kano/dala?domain=workforce_capacity` is a whole sentence.
+ * The State dropdown and the map both write the URL, and the URL is the only
+ * place scope lives. That is what stops the two disagreeing, and it makes every
+ * view a link — `/states/kano/dala` is a whole sentence.
  *
- * The lens is the exception: it lives in the filter store, which mirrors itself
- * into `?domain=` for exactly the same link. It has to, because Assessed States
- * has a Domain control writing that same parameter through the store — and with
- * two owners the mirror won every time, so picking a lens here wrote the
- * querystring and the store overwrote it a tick later. Reading the lens back
- * out of the store is what makes the two pages one selection; the sentence in
- * the URL is unchanged.
+ * It is now the *only* thing they write. There was a domain lens alongside it,
+ * held in the filter store and mirrored into `?domain=`, which re-read every
+ * band on the page under one or more coverage domains and rolled two of them up
+ * to the weaker. Its control has come out at the client's direction, and with
+ * nothing left able to set it the lens came out too — see `CoverageFilters`.
+ * Every band here is the area's own overall reading, and the page has one piece
+ * of state again.
  */
 
 export default function NationalCoveragePage() {
@@ -67,19 +59,13 @@ export default function NationalCoveragePage() {
   const navigate = useNavigate();
   const { states, lgas, national } = useDataContext();
 
-  // The Domain control is shared with Assessed States, which offers four
-  // domains against the facility survey; this page has readings for two. The
-  // rest drop out in `coverageLens` — see the note there.
-  const domains = useFilterStore((s) => s.domains);
-  const setDomains = useFilterStore((s) => s.setDomains);
-  const lens = useMemo(() => coverageLens(domains), [domains]);
   const scope = useMemo(
     () => resolveScope(states.data, lgas.data, stateId, lgaId),
     [states.data, lgas.data, stateId, lgaId],
   );
 
-  /** Navigation that carries the lens with it — changing scope must never
-   *  silently reset what the reader is looking at. */
+  /** Navigation that carries the querystring with it — changing scope must
+   *  never silently drop whatever else is in the link. */
   const go = useCallback(
     (path: string) => {
       const query = search.toString();
@@ -87,8 +73,6 @@ export default function NationalCoveragePage() {
     },
     [navigate, search],
   );
-
-  const setLens = useCallback((next: DomainLens) => setDomains(next), [setDomains]);
 
   const stateLgas = useMemo(
     () => (scope.state ? lgas.data.filter((l) => l.parentId === scope.state!.id) : []),
@@ -109,7 +93,7 @@ export default function NationalCoveragePage() {
     const data: Record<string, GeoDatum> = {};
     for (const state of states.data) {
       data[state.id] = {
-        band: bandUnderLens(state, lens),
+        band: bandOf(state),
         n: state.lgaCount ?? 0,
         evidenceGrade: 'primary',
         label: state.name,
@@ -117,21 +101,21 @@ export default function NationalCoveragePage() {
       };
     }
     return data;
-  }, [states.data, lens]);
+  }, [states.data]);
 
   const lgaMapData = useMemo(() => {
     const data: Record<string, GeoDatum> = {};
     for (const lga of stateLgas) {
       data[lga.id.split('.')[1] ?? lga.id] = {
-        band: bandUnderLens(lga, lens),
+        band: bandOf(lga),
         n: 0,
         evidenceGrade: 'primary',
         label: lga.name,
-        valueLabel: lensLabel(lens),
+        valueLabel: READINESS_LABEL,
       };
     }
     return data;
-  }, [stateLgas, lens]);
+  }, [stateLgas]);
 
   const selectState = useCallback(
     (id: string) => go(id === scope.state?.id ? '/states' : `/states/${id}`),
@@ -218,21 +202,20 @@ export default function NationalCoveragePage() {
   /*
    * The no-data key appears only when the map actually has grey on it.
    *
-   * It used to be off unconditionally, and that was right while every domain
-   * was classified on all 37 states or none of them. Leadership & Governance
-   * covers 27, so ticking it turns ten polygons grey — and an unexplained grey
-   * on a readiness map reads as the worst band rather than as an absent one,
-   * which is the single misreading the null band exists to prevent. Read off
-   * the states under the current lens, so the key is present exactly when
-   * there is something for it to name.
+   * Read off the states rather than hardcoded, so the key is present exactly
+   * when there is something for it to name. With the domain lens gone every
+   * state carries its overall band and today that is never — but an
+   * unexplained grey on a readiness map reads as the worst band rather than as
+   * an absent one, which is the single misreading the null band exists to
+   * prevent, so the check earns its keep the moment a state arrives
+   * unclassified.
    *
-   * Left off inside a state, where it was off before: an LGA map carries no
-   * coverage reading at any lens, and a key naming the whole map would explain
-   * nothing.
+   * Left off inside a state: an LGA map carries no coverage reading at all, and
+   * a key naming the whole map would explain nothing.
    */
   const legend = (
     <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-      <MapLegend showNoData={!scope.state && hasUnbanded(states.data, lens)} />
+      <MapLegend showNoData={!scope.state && hasUnbanded(states.data)} />
     </div>
   );
 
@@ -246,7 +229,7 @@ export default function NationalCoveragePage() {
     <div className="flex min-h-0 flex-col lg:h-full">
       <PageHeader
         title="National Coverage"
-        subtitle={subtitleFor(scope.level, lens)}
+        subtitle={subtitleFor(scope.level)}
         back={
           scope.level !== 'national' ? (
             <button
@@ -264,21 +247,9 @@ export default function NationalCoveragePage() {
       >
         <CoverageFilters
           states={states.data}
-          lgas={lgas.data}
           stateId={scope.state?.id ?? null}
-          lgaId={scope.lga?.id.split('.')[1] ?? null}
-          lens={lens}
           onStateChange={(id) => go(id ? `/states/${id}` : '/states')}
-          onLgaChange={(id) =>
-            go(id ? `/states/${scope.state!.id}/${id}` : `/states/${scope.state!.id}`)
-          }
-          onLensChange={setLens}
-          onReset={() => {
-            // Scope is in the path and the lens is in the store, so clearing
-            // the path is only half of it.
-            setDomains([]);
-            navigate('/states');
-          }}
+          onReset={() => navigate('/states')}
         />
       </PageHeader>
 
@@ -302,7 +273,7 @@ export default function NationalCoveragePage() {
               onZoomOut={() => go('/states')}
               crumbs={crumbs}
               overlay={legend}
-              exportScope={lensLabel(lens)}
+              exportScope={READINESS_LABEL}
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -314,7 +285,7 @@ export default function NationalCoveragePage() {
               onSelect={selectState}
               crumbs={crumbs}
               overlay={legend}
-              exportScope={lensLabel(lens)}
+              exportScope={READINESS_LABEL}
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -326,7 +297,6 @@ export default function NationalCoveragePage() {
         <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[480px] lg:border-l lg:border-t-0">
           <CoveragePane
             scope={scope}
-            lens={lens}
             national={national.data}
             states={states.data}
             listAreas={scope.state ? stateLgas : states.data}
@@ -371,19 +341,19 @@ function coverageRates(area: AreaProfile): string | null {
   );
 }
 
-/** What the fills mean right now — the lens named, or the absence of one. */
-function lensLabel(lens: DomainLens): string {
-  if (!lens.length) return 'Overall readiness';
-  if (lens.length === 1) return COVERAGE_THEME_BY_ID[lens[0]!].label;
-  return `The weakest of ${lens.length} domains`;
-}
+/**
+ * What the fills mean — a constant now, where it was a function of the lens.
+ *
+ * The Domain control could name a single domain or "the weakest of two", and
+ * this label followed it onto the map's export. With one reading on the page
+ * there is one thing for it to say.
+ */
+const READINESS_LABEL = 'Overall readiness';
 
-function subtitleFor(level: 'national' | 'state' | 'lga', lens: DomainLens): string {
-  const scope =
-    level === 'national'
-      ? 'All 37 states, by readiness band'
-      : level === 'state'
-        ? 'Local government areas, by readiness band'
-        : 'One local government area';
-  return lens.length ? `${scope} · ${lensLabel(lens)}` : scope;
+function subtitleFor(level: 'national' | 'state' | 'lga'): string {
+  return level === 'national'
+    ? 'All 37 states, by readiness band'
+    : level === 'state'
+      ? 'Local government areas, by readiness band'
+      : 'One local government area';
 }
