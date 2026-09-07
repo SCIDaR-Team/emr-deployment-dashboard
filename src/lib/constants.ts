@@ -172,6 +172,18 @@ export const DATA_PATHS = {
    * 927 kB to render 50 kB of it.
    */
   lgaGeo: (stateId: string) => `/geo/lgas/${stateId}.json`,
+  /**
+   * One state's own ADM1 outline, one file per state — built by
+   * `npm run geo:outlines`.
+   *
+   * The same geometry as `statesGeo` above, split the way `lgaGeo` is split:
+   * National Coverage's state view draws the state as a single silhouette, and
+   * fetching 2.0 MB of all 37 outlines to paint one of them is the failure the
+   * LGA split exists to avoid. Not `stateContextGeo` either — that is
+   * simplified for a hairline drawn behind the subject, and a kilometre of
+   * tolerance is visible the moment the same outline *is* the subject.
+   */
+  stateGeo: (stateId: string) => `/geo/states/${stateId}.json`,
   /** stateId → [{ lgaId, name }], for the LGA filter's options. */
   lgaIndex: '/geo/lga-index.json',
 } as const;

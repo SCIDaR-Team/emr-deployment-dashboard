@@ -1,14 +1,16 @@
 import { MapHatchDefs } from './MapHatch';
-import { bandMarkerPath, bandFlatFill, useHatchPatternId } from './mapTypes';
+import { bandMarkerPath, bandFlatFill, fillOpacityFor, useHatchPatternId } from './mapTypes';
 import { BAND_LABEL } from '@/lib/bands';
+import { useBaseMapStore } from '@/store/basemapStore';
+import { useIsDark } from '@/store/themeStore';
 import type { Band } from '@/lib/types';
 
 const BAND_ORDER: Band[] = ['ready', 'moderately_ready', 'not_ready'];
 
 const BAND_SWATCH_CLASS: Record<Band, string> = {
-  ready: 'fill-ready',
-  moderately_ready: 'fill-moderate',
-  not_ready: 'fill-notready',
+  ready: 'fill-ready-map',
+  moderately_ready: 'fill-moderate-map',
+  not_ready: 'fill-notready-map',
 };
 
 interface MapLegendProps {
@@ -34,6 +36,15 @@ interface MapLegendProps {
  * point marks are drawn with `bandMarkerPath` rather than as squares in the
  * right colour. A legend that teaches a vocabulary the map does not speak is
  * worse than no legend.
+ *
+ * That extends to *opacity*, which is why this component reaches the base-map
+ * and theme stores rather than taking a prop. A polygon is composited over the
+ * tiles at `fillOpacityFor`; the same colour painted opaque in a 14px square
+ * is a visibly stronger green than anything on the map, and the reader is
+ * being asked to match one against the other. So the area swatches take the
+ * band's map opacity over the legend's own near-white (or near-black) ground,
+ * which lands within a shade of what the polygons composite to. Point marks
+ * stay opaque, because that is how `FacilityLayer` draws a lone facility.
  */
 export function MapLegend({
   showSecondary = false,
@@ -42,6 +53,9 @@ export function MapLegend({
   className,
 }: MapLegendProps) {
   const hatchId = useHatchPatternId();
+  const baseMap = useBaseMapStore((s) => s.baseMap);
+  const isDark = useIsDark();
+  const areaOpacity = fillOpacityFor(baseMap, { isDark });
 
   return (
     <div
@@ -58,6 +72,7 @@ export function MapLegend({
                 height={13}
                 rx={2.5}
                 fill={bandFlatFill(band)}
+                fillOpacity={areaOpacity}
                 stroke="rgb(0 0 0 / 0.12)"
               />
             ) : (
@@ -77,6 +92,7 @@ export function MapLegend({
               height={13}
               rx={2.5}
               className="fill-nodata"
+              fillOpacity={areaOpacity}
               stroke="rgb(0 0 0 / 0.12)"
             />
           </svg>
@@ -87,7 +103,13 @@ export function MapLegend({
         <span className="flex items-center gap-1.5">
           <svg width={14} height={14} aria-hidden>
             <MapHatchDefs id={hatchId} />
-            <rect width={14} height={14} rx={3} fill={`url(#${hatchId})`} />
+            <rect
+              width={14}
+              height={14}
+              rx={3}
+              fill={`url(#${hatchId})`}
+              fillOpacity={areaOpacity}
+            />
           </svg>
           Secondary evidence (desk review only)
         </span>

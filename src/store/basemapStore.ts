@@ -61,7 +61,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type BaseMapId = 'plain' | 'osm' | 'satellite';
+export type BaseMapId = 'plain' | 'canvas' | 'osm' | 'satellite';
 
 export interface BaseMapSource {
   id: BaseMapId;
@@ -69,8 +69,39 @@ export interface BaseMapSource {
   hint: string;
   /** Absent for `plain`, which draws no tiles at all. */
   tile?: {
-    /** `{z}`, `{x}`, `{y}` are substituted per tile. */
+    /**
+     * `{z}`, `{x}`, `{y}` are substituted per tile, and two optional
+     * placeholders with them: `{s}` picks a subdomain from `subdomains`, and
+     * `{r}` becomes `@2x` on a retina screen and empty otherwise.
+     */
     url: string;
+    /**
+     * The same template for dark mode, where the provider publishes a separate
+     * build rather than something a CSS filter can fake.
+     *
+     * Only the canvas basemap has one. Inverting a light basemap in CSS turns
+     * its land fill dark but also inverts every label to white-on-white and
+     * flips the water to its complement, which is why providers ship a dark
+     * build as its own tile set rather than telling you to filter the light
+     * one.
+     */
+    dark?: string;
+    /** Hosts `{s}` cycles through, as one character each. */
+    subdomains?: string;
+    /**
+     * A transparent layer drawn *over* the imagery, same tiling scheme.
+     *
+     * Only photography needs one, and it needs one badly. A satellite tile has
+     * no place names on it, so the previous way of making a map readable over
+     * imagery was to fade the imagery until our own labels could sit on it —
+     * which threw away the detail the reader chose satellite to see. A
+     * reference layer answers it the other way round: the photograph stays at
+     * full strength and the names are drawn on top of it, which is how every
+     * hybrid map has ever worked.
+     */
+    overlay?: string;
+    /** The overlay's own dark build, where the provider ships one. */
+    overlayDark?: string;
     /** The deepest level this source will ever be *asked* for. A ceiling on the
      *  request, not a promise that the imagery is there — see `coverage`. */
     maxZoom: number;
@@ -95,6 +126,55 @@ export interface BaseMapSource {
 }
 
 export const BASE_MAPS: BaseMapSource[] = [
+  {
+    id: 'canvas',
+    label: 'Light',
+    hint: 'Esri Light Gray Canvas — a neutral backdrop drawn to sit under data',
+    tile: {
+      // Esri's Light/Dark Gray Canvas, and the reason it is the default is
+      // worth stating plainly: it is the only source here that was *designed
+      // to be underneath something*. OSM and World Imagery are both drawn to
+      // be looked at — full saturation, heavy labels, every road class
+      // distinguished — and a choropleth over either of them is two maps
+      // competing for the same pixels. The app's previous answer to that was
+      // to knock the tiles back with a scrim and then again outside the
+      // subject, which is three corrections for one wrong choice; the tiles
+      // ended up at about a sixth of their strength and the base map stopped
+      // being worth requesting at all.
+      //
+      // Canvas is that correction made once, upstream, by a cartographer: grey
+      // land, hairline roads, almost no administrative line work, and *no
+      // labels at all* — those live in the Reference layer below, drawn over
+      // whatever we paint. Nothing here has to be dimmed, so nothing is.
+      //
+      // **Not CARTO Positron**, which is the obvious pick and was the first
+      // thing tried. Positron's public tiles are unauthenticated-but-
+      // watermarked: they serve fine and stamp "API KEY REQUIRED" diagonally
+      // across every tile, which is invisible in a small screenshot and
+      // unmissable on a real screen. A key is free, but it would be a
+      // deployment secret this dashboard does not otherwise need, embedded in
+      // client-side JavaScript where it is not secret at all. Esri Canvas
+      // needs no key, and we already talk to this host for the satellite
+      // layer, so it adds no new third party.
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      // Place names as a layer of their own — see `overlay`. Canvas ships no
+      // labels in its base at all, which is exactly what a data backdrop
+      // should do: it lets the names sit *above* the choropleth instead of
+      // being buried under it.
+      overlay:
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+      overlayDark:
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+      // Canvas stops here. Past z16 Esri answers with its 2,521-byte "Map data
+      // not yet available" placeholder rather than a 404 — see the note on
+      // `coverage` below — so the cap is a hard limit, not a preference. The
+      // zoom-cap machinery upscales z16 beyond it, which line art tolerates,
+      // and a reader who wants real detail at that depth is on satellite.
+      maxZoom: 16,
+      attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors',
+    },
+  },
   {
     id: 'osm',
     label: 'Streets',
@@ -122,6 +202,12 @@ export const BASE_MAPS: BaseMapSource[] = [
       // through `coverage` below rather than guessed at here.
       maxZoom: 19,
       attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
+      // Esri's own reference layer for World Imagery: transparent PNG carrying
+      // place names, admin boundaries and major roads, cut on the same grid, so
+      // it lines up with the photography by construction rather than by our
+      // arithmetic agreeing with theirs.
+      overlay:
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
       coverage:
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tilemap/{z}/{y}/{x}/1/1',
     },
@@ -145,15 +231,21 @@ interface BaseMapStore {
 export const useBaseMapStore = create<BaseMapStore>()(
   persist(
     (set) => ({
-      // Streets by default — see the note above for why this is no longer
-      // `plain`, and what replaced the caution that default was carrying.
-      baseMap: 'osm',
+      // Canvas by default — see the note on its entry in `BASE_MAPS`. It
+      // replaces `osm`, which was the right call when the choice was between
+      // "a real base map" and "none", and the wrong one once the question
+      // became which base map a choropleth should sit on.
+      baseMap: 'canvas',
       setBaseMap: (baseMap) => set({ baseMap }),
     }),
     // Version 2: v1 persisted a `plain` that most readers never chose, and
     // inheriting it would hide the change behind whatever is already in their
     // browser. A reader who deliberately picked Plain re-picks it once.
-    { name: 'emr-map-basemap', version: 2 },
+    // Version 4: v3 shipped a `carto` id that no longer exists, and v2 an
+    // `osm` that would hide the new default behind whatever is already in a
+    // reader's browser. A reader who deliberately picked Streets or Satellite
+    // re-picks it once.
+    { name: 'emr-map-basemap', version: 4 },
   ),
 );
 

@@ -1,5 +1,6 @@
 export { NigeriaChoropleth } from './NigeriaChoropleth';
 export { StateLGAMap } from './StateLGAMap';
+export { StateOutlineMap } from './StateOutlineMap';
 export { LGAFacilityMap } from './LGAFacilityMap';
 export { FacilityLayer, FacilityTooltip } from './FacilityLayer';
 export { projectFacilities } from './facilityPoints';

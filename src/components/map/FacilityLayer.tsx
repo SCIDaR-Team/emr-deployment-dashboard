@@ -3,7 +3,7 @@ import { formatScore } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { boundsOfPoints, type Box } from '@/lib/mapProjection';
 import { bandMarkerPath, UNIT_FOCUS_CLASS } from './mapTypes';
-import { clusterPoints } from './cluster';
+import { clusterPoints, cellForMarker } from './cluster';
 import { formatLatLon } from './coordinates';
 import type { FacilityPoint, PlottedFacility } from './facilityPoints';
 import type { Band } from '@/lib/types';
@@ -13,14 +13,18 @@ export type { FacilityPoint, PlottedFacility };
 /**
  * Facility point features — the deepest layer's marks.
  *
- * Drawn only inside one LGA, and that is the design rather than a limitation.
- * The map is a progressive drill-down: the country resolves into states, a
- * state into its LGAs, an LGA into the facilities inside it. Scattering
- * facility points across the state and national views would collapse that
- * hierarchy into a single dense plot, and at national extent it also lies —
- * 2,825 points cluster into groups of eighty, and a group has no readiness to
- * report that is not either misleading or vacuous. Facilities appear when the
- * reader has drilled to the level facilities belong to.
+ * Drawn from the **state** level down, and the floor is where it is for a
+ * reason. The map is a progressive drill-down: the country resolves into
+ * states, a state into its LGAs and the facilities inside them, an LGA into
+ * those same facilities at walking scale. A state is a frame a few hundred
+ * points can actually be read in — Kano, the largest, is 438 — so plotting
+ * them there shows the reader where the surveyed facilities of a state
+ * physically are, which no roll-up of them can.
+ *
+ * The national extent is the one that is still refused, and not for want of
+ * effort: 2,806 points across Nigeria cluster into groups of eighty, and a
+ * group of eighty has no readiness to report that is not either misleading or
+ * vacuous. Above a state, the choropleth is the honest picture.
  *
  * Kept as its own component so the markers, the clustering and the tooltip are
  * one implementation rather than inline in the layer that happens to use them.
@@ -42,24 +46,30 @@ export interface FacilityHover {
   members: PlottedFacility[];
 }
 
+// The map variants, not the pastels — a facility dot is 5px of colour on a
+// grey canvas and the pale fills disappeared into it. See globals.css.
 const BAND_FILL_CLASS: Record<Band, string> = {
-  ready: 'fill-ready',
-  moderately_ready: 'fill-moderate',
-  not_ready: 'fill-notready',
+  ready: 'fill-ready-map',
+  moderately_ready: 'fill-moderate-map',
+  not_ready: 'fill-notready-map',
 };
 
 /**
- * Marker radius in CSS pixels — see the note above on why this is not a
+ * Default marker radius in CSS pixels — see the note above on why this is not a
  * fraction of the viewBox.
  *
  * Raised from 4 at the client's request. The band is carried by the marker's
  * *silhouette* here — circle, square, triangle — and at a 4px radius the three
  * were near enough indistinguishable until the reader zoomed; a triangle needs
- * more pixels to read as a triangle than a dot needs to read as a dot. The
- * cluster cell in `cluster.ts` is 26px and still comfortably clears the wider
- * mark, so grouping behaviour is unchanged.
+ * more pixels to read as a triangle than a dot needs to read as a dot.
+ *
+ * This is the size for the LGA layer, where one facility is the subject and its
+ * shape has to be readable without zooming. A layer covering more ground can
+ * ask for less through `markerPx` — see the state level's own constant — and
+ * the cluster cell follows it down, because `cellForMarker` derives the cell
+ * from whatever radius is actually being drawn.
  */
-const MARKER_R_PX = 5.5;
+export const MARKER_R_PX = 5.5;
 
 export function FacilityLayer({
   points,
@@ -69,6 +79,7 @@ export function FacilityLayer({
   onSelect,
   onExpand,
   showLabels = false,
+  markerPx = MARKER_R_PX,
   onHover,
 }: {
   points: PlottedFacility[];
@@ -85,11 +96,20 @@ export function FacilityLayer({
   /** Whether points have room for their names. The caller decides, because the
    *  threshold is a property of the level — see `LGAFacilityMap`. */
   showLabels?: boolean;
+  /**
+   * Marker radius in CSS pixels. Defaults to `MARKER_R_PX`, the size the LGA
+   * layer draws at; a layer covering more ground passes something smaller.
+   *
+   * The cluster cell is derived from it rather than fixed, so a smaller mark
+   * genuinely resolves more individual facilities instead of drawing the same
+   * clusters with more air inside them.
+   */
+  markerPx?: number;
   onHover?: (hover: FacilityHover | null) => void;
 }) {
-  const r0 = MARKER_R_PX * unitsPerPx;
+  const r0 = markerPx * unitsPerPx;
   const groups = cluster
-    ? clusterPoints(points, unitsPerPx)
+    ? clusterPoints(points, unitsPerPx, cellForMarker(markerPx))
     : points.map((p) => ({ key: p.uuid, x: p.x, y: p.y, members: [p], band: p.band }));
 
   const report = (e: React.MouseEvent, members: PlottedFacility[]) => {
@@ -159,9 +179,10 @@ export function FacilityLayer({
                 states the number the overlapping dots could not. Not
                 interactive — the marker under it takes the click.
 
-                Ink, not surface: the band fills are the client's pastels and
-                are lighter than --surface in both schemes, so a knocked-out
-                numeral would be white on near-white. */}
+                Ink, not surface: a knocked-out numeral would be white on
+                amber at 1.7:1. Black clears 5.3:1 on the weakest of the three
+                map fills (Not ready) and 12:1 on the strongest, so it is the
+                one choice that holds on all of them. */}
             {!lone && (
               <text
                 x={c.x}

@@ -44,9 +44,16 @@ export default function App() {
             */}
             <Route path="/" element={page(<LandingPage />)} />
             <Route element={<AppShell />}>
-              {/* Three levels, one page: national → state → LGA. The path is
-                  the scope, so a link to any level is a link to what the reader
-                  was looking at. */}
+              {/* Two levels, one page: national → state. The path is the
+                  scope, so a link to either level is a link to what the reader
+                  was looking at.
+                  
+                  The third route is a doormat, not a level. This page had an
+                  LGA view and no longer does — see `coverageScope` — and
+                  `/states/kano/dala` is in people's history and in sent links.
+                  Matching it here and letting the page rewrite it to
+                  `/states/kano` lands those on the state; dropping the route
+                  would send them to the landing page via the catch-all. */}
               <Route path="/states" element={page(<NationalCoveragePage />)} />
               <Route path="/states/:stateId" element={page(<NationalCoveragePage />)} />
               <Route

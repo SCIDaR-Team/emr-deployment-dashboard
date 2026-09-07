@@ -43,8 +43,28 @@ const SRC = resolve(ROOT, 'scripts/source-data/nga_admin2.geojson');
 const OUT_DIR = resolve(ROOT, 'public/geo/lgas');
 const INDEX = resolve(ROOT, 'public/geo/lga-index.json');
 
-/** ~150 m at Nigeria's latitudes. */
-const TOLERANCE = 0.0015;
+/**
+ * ~45 m at Nigeria's latitudes.
+ *
+ * Was 0.0015 (~167 m), set when the deepest view this dashboard offered was a
+ * whole state and anything finer than about 150 m was subpixel. The facility
+ * layer now bottoms out at a 500 m frame, where 167 m is not a rounded corner
+ * — it is a straight segment running most of the way across the screen, and a
+ * boundary drawn that way reads as careless even though the geometry behind it
+ * is sound.
+ *
+ * The cost is per *state*, not for the country: the layer fetches one state's
+ * file and never more (see the note on splitting, above). Kano goes 48 kB to
+ * 80 kB, about 10 kB more over the wire once compressed, which is well inside
+ * the budget that split was made to protect.
+ *
+ * This does **not** bring our boundaries closer to the ones drawn on the base
+ * map. Those come from OpenStreetMap and differ from the COD-AB set by far more
+ * than any tolerance here; see `--map-admin` in globals.css for how that is
+ * handled. Finer geometry makes our own line crisper and, if anything, makes
+ * the disagreement slightly easier to see.
+ */
+const TOLERANCE = 0.0004;
 /** 4 dp ≈ 11 m. Below the simplification tolerance, so it costs no shape. */
 const PRECISION = 4;
 

@@ -18,12 +18,12 @@ import type { AreaProfile } from '@/lib/types';
  * a lens that re-read every band on the page under one or more coverage
  * domains. Both are gone at the client's direction.
  *
- * Neither leaves a hole. An LGA is still reachable — the map drills into one on
- * a click, the pane's list finds one by name, and `/states/kano/dala` still
- * resolves — so the dropdown was the third way to do a thing the map does
- * better. The lens went further than its control: with nothing able to set it,
- * every band on this page is now the area's own overall reading, which is what
- * `bandOf` says and what the map has always opened on.
+ * Neither leaves a hole, and the LGA one has since stopped being a question at
+ * all: the level itself is gone from this page, so there is nothing for a
+ * dropdown to select — see `coverageScope`. The lens went further than its
+ * control: with nothing able to set it, every band on this page is now the
+ * area's own overall reading, which is what `bandOf` says and what the map has
+ * always opened on.
  */
 
 interface CoverageFiltersProps {
@@ -44,8 +44,7 @@ export function CoverageFilters({
 }: CoverageFiltersProps) {
   // Reset sits immediately after the control it undoes rather than pushed to
   // the far edge, and appears only when there is something to undo. It clears
-  // the path, which is now the whole of this page's state — including an LGA,
-  // which the map can still select even though the dropdown for it has gone.
+  // the path, which is the whole of this page's state.
   const active = Boolean(stateId);
   const stateOptions = [
     { value: ALL, label: 'All 37 states' },

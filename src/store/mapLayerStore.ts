@@ -21,9 +21,11 @@
  *
  * Which layers are **available** at a given zoom is not a preference and is not
  * stored — it is a property of the level. LGA boundaries do not exist on the
- * national map and facility points do not exist above an LGA, so those toggles
- * are absent from the panel there rather than present and inert. See
- * `MapLayerPanel`, which takes the available set from its caller.
+ * national map, facility points do not exist above a state, and where the
+ * points *are* drawn the polygons under them carry no thematic fill for the
+ * indicator toggle to switch — so those toggles are absent from the panel
+ * there rather than present and inert. See `MapLayerPanel`, which takes the
+ * available set from its caller.
  */
 
 import { create } from 'zustand';
@@ -39,7 +41,7 @@ export interface MapLayerVisibility {
   labels: boolean;
   /** The thematic fill: readiness band, or the sequential need ramp. */
   indicator: boolean;
-  /** PHC/facility point features. Only exists at LGA level. */
+  /** PHC/facility point features. Drawn at state and LGA level, not above. */
   facilities: boolean;
   /**
    * Collapse facilities that fall within a marker's width of each other into a

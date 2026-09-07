@@ -15,7 +15,7 @@ import {
   type MapSearchResult,
 } from '@/components/map';
 import { stepFor } from '@/components/map/mapTypes';
-import { Combobox, LoadError, ScaleLegend, Skeleton } from '@/components/ui';
+import { Combobox, LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
 import { useFilteredData } from '@/hooks/useFilteredData';
@@ -24,6 +24,11 @@ import { GAP_BY_ID, gapCostNGN, offeredGapIds } from '@/lib/gapCatalogue';
 import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
 import { THEME_BY_ID, facilityLens } from '@/lib/themes';
 import type { FacilitySummary, FacilityThemeId } from '@/lib/types';
+// Reached across module folders on purpose: this map's twelve states have to
+// paint in the colours National Coverage gives them, and the only way to
+// guarantee that is to resolve the band through the same function rather than
+// to keep a second copy of the rule in step by hand.
+import { bandOf } from '@/modules/nationalCoverage/coverageScope';
 import { AssessmentPane, type PaneList, type PaneRow } from './AssessmentPane';
 import {
   assessedStates,
@@ -54,16 +59,32 @@ import {
  *
  * ## What each level paints
  *
- * **States and LGAs carry money, facilities carry a band.** An area is a
- * population rather than a thing with a readiness level, and what a programme
- * allocates against it is investment need — so both area levels fill from total
- * intervention cost on the sequential ramp, fitted to the features actually
- * drawn rather than anchored at zero. A facility *is* one thing with a reading,
- * so it takes a band.
+ * **The national map carries the coverage band; below it, facilities carry
+ * their own.** The twelve surveyed states are filled from exactly the reading
+ * National Coverage paints them with — `bandOf` off `AreaProfile.coverage`,
+ * the same function that page's polygons go through — so Kano is the same red
+ * on both maps and a reader crossing between them never has to work out
+ * whether two pictures of the same country disagree. The other twenty-five
+ * keep the desk-review hatch, because this page still has no facility survey
+ * for them.
  *
- * A band choropleth over the states would say nothing in any case: they
- * classify to one or two values between the twelve — see the note on
- * `GeoDatum.step`.
+ * That fill was a sequential ramp fitted to total intervention cost. The money
+ * has not left the level — it is in the hover on every polygon and it is what
+ * the pane's list is ranked by — but it is read there as a figure rather than
+ * guessed off a five-step ramp, and the fill is now saying the one thing two
+ * maps of the same states have to agree on.
+ *
+ * From the state level down the map stops classifying areas and starts drawing
+ * the things that were actually surveyed. The LGAs keep their outlines, their
+ * names and their click target but take no fill, and every facility in the
+ * state is plotted in its band silhouette — the same marks, from the same
+ * `FacilityLayer`, that the LGA level draws. So drilling from a state into one
+ * of its LGAs changes the extent and nothing else, and the reader never has to
+ * relearn the encoding on the way down.
+ *
+ * The two are never stacked. A pastel polygon under a marker of a different
+ * band is two readiness scales in one frame with no way to tell which a colour
+ * belongs to — see the `facilities` prop on `StateLGAMap`.
  *
  * Every domain in the dataset carries money, including data use at ₦36.8m, so
  * the map never has to fall back to counting gaps. It did once, when two
@@ -185,6 +206,24 @@ export default function AssessedStatesPage() {
   );
 
   /**
+   * The same selection, made from the state map — where there is no LGA in the
+   * path yet to build the facility's URL from.
+   *
+   * So it comes off the record instead. A marker clicked in Kano lands on
+   * `/kano/dala/<uuid>`, which is the URL drilling in by hand would have
+   * produced: the reader skips a level, and the pane, the breadcrumb and the
+   * back button all find the state they expect underneath them.
+   */
+  const selectFacilityFromState = useCallback(
+    (uuid: string) => {
+      const f = scoped.find((row) => row.uuid === uuid);
+      if (!f) return;
+      go(assessmentPath(f.stateId, f.lgaId, uuid));
+    },
+    [go, scoped],
+  );
+
+  /**
    * What an area needs, under whatever the Domain filter has selected.
    *
    * Cost and quantity together, because the programme prioritises on both and
@@ -219,9 +258,19 @@ export default function AssessedStatesPage() {
    * The top-level map.
    *
    * All 37 states are drawn, because the country is the shape of the country —
-   * but only the 12 surveyed ones carry a value and only they are clickable.
-   * The other 25 fall through to the no-data fill, which is the honest reading:
-   * this page has nothing to say about them.
+   * but only the 12 surveyed ones carry a fill and only they are clickable.
+   * The other 25 take the desk-review hatch, which is the honest reading: this
+   * page has no facility-level evidence for them.
+   *
+   * The fill is the state's coverage band and nothing else, resolved through
+   * the same `bandOf` National Coverage paints its own polygons with. Reading
+   * the field directly would give the same colour today and would be free to
+   * drift the day that page changes how it resolves a band; going through the
+   * one function is what makes "the exact colours from National Coverage" a
+   * property of the code rather than a coincidence.
+   *
+   * Cost still travels with every state — `valueLabel` puts it in the hover
+   * and the pane ranks its list by it — it just no longer decides the fill.
    */
   const nationalMapData = useMemo(() => {
     const byState = new Map<string, FacilitySummary[]>();
@@ -231,33 +280,20 @@ export default function AssessedStatesPage() {
       else byState.set(f.stateId, [f]);
     }
 
-    const need = new Map<string, { gaps: number; costNGN: number; affected: number }>();
-    for (const state of states.data) {
-      if (state.evidenceGrade !== 'primary') continue;
-      need.set(state.id, needOf(byState.get(state.id) ?? []));
-    }
-
-    // The ramp is fitted to the states actually drawn, not to zero. Investment
-    // need spans roughly a threefold range across the twelve, and a scale
-    // anchored at zero would drop all of them into the darkest two steps and
-    // stop discriminating between the ones a budget has to choose between.
-    const values = [...need.values()].map((v) => v.costNGN);
-    const lo = values.length ? Math.min(...values) : 0;
-    const hi = values.length ? Math.max(...values) : 0;
-
     const data: Record<string, GeoDatum> = {};
     for (const state of states.data) {
       const rows = byState.get(state.id) ?? [];
       const surveyed = state.evidenceGrade === 'primary';
-      const n = need.get(state.id);
-      const value = n ? n.costNGN : null;
+      const n = surveyed ? needOf(rows) : undefined;
       data[state.id] = {
-        band: null,
+        // Null off the survey, not "no reading": an unsurveyed state has a
+        // coverage band, but painting it here would put a state this page
+        // cannot speak for into the same key as the twelve it can. The layer
+        // hatches it on `evidenceGrade` in any case.
+        band: surveyed ? bandOf(state) : null,
         n: rows.length,
         evidenceGrade: state.evidenceGrade,
         label: state.name,
-        step: stepFor(value, lo, hi),
-        rawValue: value,
         valueLabel: !surveyed ? 'Not surveyed' : needLabel(n, n?.affected ?? 0),
       };
     }
@@ -298,18 +334,6 @@ export default function AssessedStatesPage() {
     }
     return data;
   }, [stateLgas, scoped, needOf]);
-
-  /** The bounds the ramp was fitted to, so the legend prints the same numbers
-   *  the polygons were coloured from. */
-  const mapScale = useMemo(() => {
-    const rows = scope.state ? Object.values(lgaMapData) : Object.values(nationalMapData);
-    const values = rows
-      .filter((d) => d.step != null)
-      .map((d) => d.rawValue ?? 0);
-    return values.length
-      ? { lo: Math.min(...values), hi: Math.max(...values) }
-      : { lo: 0, hi: 0 };
-  }, [scope.state, lgaMapData, nationalMapData]);
 
   /** The facility layer plots what the filter row left standing, not every
    *  facility in the LGA — a Readiness filter has to remove dots or it is
@@ -524,20 +548,22 @@ export default function AssessedStatesPage() {
    * its sibling because the frame is what goes full screen, and a legend
    * outside it disappears exactly when the reader has committed to the map.
    *
-   * One encoding at both polygon levels, so one legend: they carry investment
-   * need rather than readiness — a budget is allocated against what a place
-   * needs, not against how it is classified, and the classification is in the
-   * pane beside it.
+   * The national level's key, and now only its own — the state map moved to
+   * the facility key below, because that is the encoding actually on screen
+   * there. It is `MapLegend` rather than a scale, and deliberately the very
+   * same component National Coverage hands its own map: the two levels are
+   * painting one vocabulary now, and a second key describing it in other words
+   * would be the place they drift apart.
+   *
+   * The hatch swatch is on, because 25 of the 37 polygons carry it here. The
+   * no-data swatch is asked for rather than assumed: every surveyed state
+   * carries a band today, so it stays off, and it turns itself on the day one
+   * arrives unclassified — grey on a readiness map otherwise reads as the
+   * worst band rather than as an absent one.
    */
   const scaleLegend = (
-    <div className="w-[210px] rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-      <ScaleLegend
-        lo={mapScale.lo}
-        hi={mapScale.hi}
-        format={(v) => formatNaira(v, true)}
-        caption="Investment need"
-        noDataLabel={scope.state ? 'no facilities' : 'not surveyed'}
-      />
+    <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
+      <MapLegend showSecondary showNoData={surveyed.some((s) => bandOf(s) == null)} />
     </div>
   );
 
@@ -667,12 +693,23 @@ export default function AssessedStatesPage() {
               stateId={scope.state.id}
               stateName={scope.state.name}
               data={lgaMapData}
+              // Passing facilities puts the layer in facility mode: the LGAs
+              // keep their outlines and their names but give up the need ramp,
+              // and every surveyed facility in the state is drawn in the same
+              // band silhouette the LGA level draws it in. Drilling into one
+              // LGA now changes the extent rather than the encoding.
+              facilities={facilityPoints}
+              selectedFacilityId={null}
+              onSelectFacility={selectFacilityFromState}
               selectedLgaId={null}
               onSelect={selectLga}
               onZoomOut={() => go(assessmentPath())}
               crumbs={crumbs}
-              overlay={scaleLegend}
-              exportScope="Investment need"
+              // The points' key, not the ramp's — the ramp is no longer on
+              // screen at this level, and a legend explaining an encoding that
+              // is not drawn sends the reader hunting for it.
+              overlay={facilityLegend}
+              exportScope="Facility readiness band"
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -684,7 +721,9 @@ export default function AssessedStatesPage() {
               onSelect={selectState}
               crumbs={crumbs}
               overlay={scaleLegend}
-              exportScope="Investment need"
+              // The same words National Coverage stamps under its export, for
+              // the same fills — see `READINESS_LABEL` there.
+              exportScope="Overall readiness"
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -728,11 +767,12 @@ function needLabel(
 }
 
 function subtitleFor(level: AssessmentLevel, domains: FacilityThemeId[]): string {
-  // The subtitle names the encoding, and the encoding is the same at both map
-  // levels now: what a place needs, not how it is classified.
+  // The subtitle names the encoding, and the two map levels no longer share
+  // one: the states are filled by their coverage band, the LGAs beneath them
+  // by what they need.
   const scope =
     level === 'all'
-      ? 'The 12 states visited, by investment need'
+      ? 'The 12 states visited, by readiness band'
       : level === 'state'
         ? 'Local government areas, by investment need'
         : level === 'lga'

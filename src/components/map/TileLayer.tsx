@@ -7,7 +7,14 @@ import {
   useTileHealthStore,
   type BaseMapId,
 } from '@/store/basemapStore';
-import { tilesForRect, fallbackTilesForRect, parseViewBox, type ViewBoxRect } from './tiles';
+import { useIsDark } from '@/store/themeStore';
+import {
+  tilesForRect,
+  fallbackTilesForRect,
+  overlayTilesFrom,
+  parseViewBox,
+  type ViewBoxRect,
+} from './tiles';
 
 /**
  * Raster base map drawn behind the boundaries.
@@ -45,8 +52,9 @@ export function TileLayer({
   renderPxH,
   zoomCap,
   focusPath,
-  scrim = 0.15,
-  surroundScrim = 0.55,
+  scrim = 0,
+  surroundScrim = 0,
+  labelsInsideOnly = false,
 }: {
   baseMap: BaseMapId;
   /** The SVG's own viewBox string, so this layer and the polygons can never
@@ -89,31 +97,64 @@ export function TileLayer({
   focusPath?: string;
   /**
    * How far the base map is knocked back towards the page colour, 0–1, *inside*
-   * the subject.
+   * the subject. **Zero, and nothing passes anything else.**
    *
-   * The default suits a layer that carries a choropleth on top, where the base
-   * map is context and the bands are the message. The facility layer passes a
-   * much smaller value: there the imagery *is* the message — where a clinic
-   * physically sits — and nothing is competing with it for the same pixels.
+   * This and `surroundScrim` below are kept as knobs rather than deleted, but
+   * they should stay at zero, and the history is the reason why.
    *
-   * Halved from 0.3 when the band fills went to 0.8 (`fillOpacityFor`). The
-   * two were doing the same job from opposite sides — the scrim lightening the
-   * ground, the fill's own transparency letting that lightened ground back
-   * through — and stacking both put the map a visible step away from the
-   * colour the pane was showing for the same band. The fill now does the
-   * knocking back; this only has to keep the tiles from competing outside it.
+   * They existed to stop the base map competing with the readiness colour. It
+   * genuinely did compete — OSM and Esri are drawn at full saturation to be
+   * read on their own. But the fix was applied at the wrong end. A scrim of
+   * 0.15 inside, another of 0.45–0.60 outside, and a band fill of 0.8 on top
+   * compounded to about a sixth of the tile surviving where the reader was
+   * looking: the map went beige, the imagery stopped being worth requesting,
+   * and each of the three numbers had been tuned in isolation against the
+   * other two.
+   *
+   * The actual fix is upstream — a base map drawn to sit underneath data, so
+   * there is nothing to knock back. See the `carto` entry in `basemapStore`.
+   * Reaching for a scrim again is a sign the base map is wrong for the layer,
+   * not that it needs dimming.
    */
   scrim?: number;
   /**
-   * And how far it is knocked back *outside* it.
+   * And how far it is knocked back *outside* the subject. Zero, for the same
+   * reason.
    *
-   * Always the heavier of the two: this is what replaced clipping, and it has
-   * to do the same job — make the subject legible as the subject — without
-   * doing the thing clipping did, which was to make everything else disappear.
+   * This one also cost something the scrim inside did not: it is what made the
+   * map look like two maps, one laid over the other. A hard mask edge along an
+   * administrative boundary, with full-strength tiles on one side and
+   * washed-out tiles on the other, reads as a cut-out rather than as emphasis.
+   * The subject is distinguished by what is *drawn* on it — its fill, its
+   * marks, its heavier outline — which is how every other map does it.
    */
   surroundScrim?: number;
+  /**
+   * Clip the base map's *place names* to the subject, leaving its terrain
+   * alone. Needs a `focusPath`.
+   *
+   * The targeted version of what the scrims above were reaching for, and the
+   * only one that costs nothing. A blur over the surround was built and tried
+   * first; it worked, but a blurred map reads as emphasis on screen and as a
+   * rendering fault in the PNG export these maps are stamped into for reports,
+   * so it was removed rather than left as an unused knob. What competes with a choropleth
+   * at national extent is not the neighbouring countries' land — it is the
+   * hundred-odd settlement names printed across them, which are the densest
+   * and highest-contrast marks on screen and say nothing this page is about.
+   * Their coastline, their rivers and their tone are the context that makes
+   * Nigeria a country rather than a shape, and all of that stays.
+   *
+   * Only possible because the canvas base map ships no labels at all — they
+   * arrive as a separate Reference layer (see `BaseMapSource.tile.overlay`),
+   * so there is a distinct thing to mask. On a source whose labels are baked
+   * into the tile this flag can do nothing, which is why it is opt-in per
+   * layer rather than always on.
+   */
+  labelsInsideOnly?: boolean;
 }) {
   const source = baseMapSource(baseMap);
+  const isDark = useIsDark();
+  const insideId = `tile-inside-${useId().replace(/:/g, '')}`;
   const maskId = `tile-focus-${useId().replace(/:/g, '')}`;
   const reportTileError = useTileHealthStore((s) => s.reportTileError);
   const reportTileLoad = useTileHealthStore((s) => s.reportTileLoad);
@@ -126,10 +167,13 @@ export function TileLayer({
   // `renderPxH`. Everything below is drawn against this rather than against the
   // viewBox, so the base map reaches the edge of the frame in both axes.
   const rect = visibleRect(parseViewBox(viewBox), renderPx, renderPxH);
-  const tiles = tilesForRect(rect, source, renderPx, { zoomCap });
+  const tiles = tilesForRect(rect, source, renderPx, { zoomCap, dark: isDark });
   // Coarser imagery underneath, for the depths where the provider has none —
   // see `FALLBACK_MAX_ZOOM`. Skipped when it would be the same request twice.
-  const fallback = fallbackTilesForRect(rect, source, renderPx);
+  const fallback = fallbackTilesForRect(rect, source, renderPx, { dark: isDark });
+  // Place names over the photography — see `BaseMapSource.tile.overlay`. Built
+  // from `tiles` so the two layers are on one grid by construction.
+  const overlay = overlayTilesFrom(tiles, source, { dark: isDark });
   const sameLevel = fallback.length > 0 && tiles.length > 0 && fallback[0]!.size === tiles[0]!.size;
 
   return (
@@ -165,16 +209,41 @@ export function TileLayer({
           </mask>
         </defs>
       )}
+
+      {/* And its inverse, for the layers that belong *inside* the subject. Same
+          explicit region, for the same reason. */}
+      {focusPath && labelsInsideOnly && (
+        <defs>
+          <mask
+            id={insideId}
+            maskUnits="userSpaceOnUse"
+            x={rect.x}
+            y={rect.y}
+            width={rect.w}
+            height={rect.h}
+          >
+            <path d={focusPath} fill="#fff" />
+          </mask>
+        </defs>
+      )}
       <g
-        // Both sources are drawn at full saturation for their own sake; under a
-        // three-colour readiness scale they compete with it. Pulling saturation
-        // and contrast down keeps the base map doing its job — orientation —
-        // without arguing with the band colours. OSM additionally needs
-        // darkening in the dark scheme, where its white page glares.
+        // No filter on the default source, and that is deliberate.
+        //
+        // Positron is already desaturated by the people who drew it, and it
+        // publishes its own dark build rather than asking to be inverted — so
+        // there is nothing here for a filter to fix. The two entries below are
+        // for the sources that *are* drawn to be looked at on their own: OSM's
+        // white page glares in the dark scheme, and Esri's photography is a
+        // photograph. Both are opt-in choices from the layer panel, and a
+        // reader who picks one has asked to see it, so the correction is the
+        // minimum that keeps the scheme coherent rather than the old
+        // knock-back.
         className={
           baseMap === 'osm'
             ? 'dark:[filter:brightness(0.62)_saturate(0.7)]'
-            : 'dark:[filter:brightness(0.9)]'
+            : baseMap === 'satellite'
+              ? 'dark:[filter:brightness(0.9)]'
+              : undefined
         }
       >
         <rect x={rect.x} y={rect.y} width={rect.w} height={rect.h} className="fill-muted" />
@@ -214,7 +283,40 @@ export function TileLayer({
             {...(sameLevel ? { onError, onLoad } : {})}
           />
         ))}
+
       </g>
+      {/* The reference layer — place names — as a group of its own rather than
+          inside the tiles above, so it can be masked independently of the
+          ground it names. That is what `labelsInsideOnly` switches: the
+          neighbouring countries keep their terrain and lose their labels,
+          which is the only part of them that was competing.
+
+          Reports no tile health: a missing label tile is not a broken base
+          map, and counting it as one would put a notice on screen over ground
+          that is drawing perfectly well. */}
+      {overlay.length > 0 && (
+        <g mask={labelsInsideOnly && focusPath ? `url(#${insideId})` : undefined}>
+          {overlay.map((t) => (
+            <image
+              key={t.key}
+              href={t.href}
+              x={t.x}
+              y={t.y}
+              width={t.size * 1.004}
+              height={t.size * 1.004}
+              preserveAspectRatio="none"
+              // Full strength on the canvas base map, where this layer is the
+              // *only* source of place names and there is no photograph for it
+              // to compete with. Held back a little over imagery, where at 1
+              // the labels become a solid graphic layer and the photograph
+              // reads as their background — inverting which of the two the
+              // reader chose satellite for.
+              opacity={baseMap === 'satellite' ? 0.85 : 1}
+            />
+          ))}
+        </g>
+      )}
+
       {/* One flat knock-back over the tiles rather than a per-source colour
           filter: it works the same on a photo and on a drawn street map, and
           it moves the base map towards the page's own colour in both schemes

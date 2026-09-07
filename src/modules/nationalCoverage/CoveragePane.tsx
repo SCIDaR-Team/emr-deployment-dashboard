@@ -46,9 +46,10 @@ import { bandOf, countByBand, countLeadershipBands, totalOf, type Scope } from '
  *
  *   national   counts. "12 states ready, 14 moderately, 11 not ready", and the
  *              national figures beneath.
- *   state/LGA  one band, and this area's own figures. No counts of LGAs — a
- *              state's pane answers "how is this state", not "how are its
- *              parts", and the map already shows the parts.
+ *   state      one band, and that state's own figures — and nothing else. No
+ *              counts of LGAs, because an LGA is not a thing this page has a
+ *              reading for; and no list of the other states, because the pane
+ *              at this level answers "how is this state" and stops there.
  *
  * ## Readiness is stated once, at the top
  *
@@ -62,15 +63,16 @@ import { bandOf, countByBand, countLeadershipBands, totalOf, type Scope } from '
  * clearer one.
  *
  * The one domain that can render no block at all is Leadership & Governance,
- * whose only content is the governance rows — inside an unscored state or any
- * LGA there are none, and a heading over nothing is worse than silence.
+ * whose only content is the governance rows — inside one of the ten unscored
+ * states there are none, and a heading over nothing is worse than silence.
  */
 
 interface CoveragePaneProps {
   scope: Scope;
   national: AreaProfile | null;
   states: AreaProfile[];
-  /** The rows for the list at the bottom — states nationally, LGAs in a state. */
+  /** The rows for the list at the bottom — the 37 states. Read at national
+   *  level only; inside a state the pane draws no list. */
   listAreas: AreaProfile[];
   listLabel: string;
   selectedListId: string | null;
@@ -86,7 +88,7 @@ export function CoveragePane({
   selectedListId,
   onSelectListItem,
 }: CoveragePaneProps) {
-  const area = scope.level === 'lga' ? scope.lga : scope.level === 'state' ? scope.state : national;
+  const area = scope.level === 'state' ? scope.state : national;
   const isNational = scope.level === 'national';
 
   if (!area) return null;
@@ -99,8 +101,8 @@ export function CoveragePane({
    * Leadership & Governance is the only domain with no rows in `SUB_DOMAINS` —
    * its whole content is the governance rows, and those exist only where the
    * source scored the area. Nationally that is 27 states, so the block shows;
-   * inside one of the ten unscored states, or inside any LGA, it would be a
-   * heading over nothing, so it is dropped.
+   * inside one of the ten unscored states it would be a heading over nothing,
+   * so it is dropped.
    *
    * The other two always show. Note that `staffCount` is null throughout the
    * workbook as it stands, so Workforce Capacity's one figure reads as an em
@@ -160,12 +162,23 @@ export function CoveragePane({
           </Block>
         ))}
 
-        <AreaList
-          label={listLabel}
-          areas={listAreas}
-          selectedId={selectedListId}
-          onSelect={onSelectListItem}
-        />
+        {/* The list is the national view's, and only its own.
+            
+            Nationally it is the other half of the map: 37 rows, worst first,
+            saying in names what the polygons say in colour. Inside a state
+            there is one area on screen and the pane is already about it, so a
+            list of the other 36 is a second navigation control sitting under
+            the answer the reader drilled in for — and the filter row's State
+            dropdown, the map's locator and the breadcrumb are all still there
+            to move with. */}
+        {isNational && (
+          <AreaList
+            label={listLabel}
+            areas={listAreas}
+            selectedId={selectedListId}
+            onSelect={onSelectListItem}
+          />
+        )}
       </div>
     </div>
   );
@@ -179,14 +192,16 @@ function PaneHeader({
   scope: Scope;
   national: AreaProfile | null;
 }) {
-  const area = scope.level === 'lga' ? scope.lga : scope.level === 'state' ? scope.state : national;
+  const area = scope.level === 'state' ? scope.state : national;
   const name = scope.level === 'national' ? 'Nigeria' : (area?.name ?? '');
+  // The eyebrow used to count the state's LGAs. They are not a level this page
+  // has any more, and the count was the last place one appeared in the pane —
+  // the zone is what a reader actually places a state by, and it is the same
+  // hint the State dropdown shows beside the name.
   const level =
     scope.level === 'national'
       ? `${formatCount(37)} states & FCT`
-      : scope.level === 'state'
-        ? `State · ${formatCount(scope.state.lgaCount ?? 0)} LGAs`
-        : `LGA · ${scope.state.name}`;
+      : `State · ${scope.state.zone ?? 'Nigeria'}`;
 
   return (
     <div className="shrink-0 border-b border-border px-4 py-3">
@@ -278,7 +293,7 @@ function CountRows({
 }
 
 /**
- * The state/LGA shape: one band, stated plainly.
+ * The state shape: one band, stated plainly.
  *
  * A filled card rather than a swatch beside a line of coloured type, so that
  * dropping from national into a state does not drop the colour out of the
