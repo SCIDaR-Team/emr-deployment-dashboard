@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { BAND_CLASSES, BAND_LABEL, HORIZON_CLASSES, URGENCY_MARKER } from '@/lib/bands';
+import {
+  BAND_CLASSES,
+  BAND_LABEL,
+  HORIZON_CLASSES,
+  HORIZON_WHEN,
+  URGENCY_MARKER,
+} from '@/lib/bands';
 import {
   GAP_BY_ID,
   GAP_DOMAINS,
@@ -525,21 +531,6 @@ function ConnectivityBlock({ facility }: { facility: FacilitySummary }) {
     </Block>
   );
 }
-
-/**
- * The when-phrase on its own, for the horizon cards.
- *
- * `HORIZON_LABEL` carries the urgency and the phrase in one string — "Critical
- * — before deployment" — which is right for a row that has no other heading.
- * A card prints the urgency as its own heading, so the full label would set the
- * same word twice, one line apart.
- */
-const HORIZON_WHEN: Record<Horizon, string> = {
-  critical: 'Before deployment',
-  major: 'Before deployment',
-  minor: 'During deployment',
-  long_term: 'After deployment',
-};
 
 /** A gap's place in the urgency order, for sorting. Most urgent first. */
 function gapUrgency(id: string): number {

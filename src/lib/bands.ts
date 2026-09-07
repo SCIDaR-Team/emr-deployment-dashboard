@@ -172,6 +172,57 @@ export const URGENCY_MARKER: Record<Horizon, string> = {
   long_term: '\u25cb',
 };
 
+/**
+ * Deployment phase — the four urgencies collapsed onto the three moments the
+ * sheet's own wording names: before, during, after.
+ *
+ * This is a *coarsening* of the urgency scale, and the only one we allow. It is
+ * legitimate where the old `priority` was not, for one reason: Critical and
+ * Major are two urgencies but one budget — both read "to fix before EMR
+ * deployment" in the source, and a programme deciding what it must buy to go
+ * live at all needs them added together. What the old scale did wrong was
+ * collapse them and then *lose* the finer reading; here both survive, in two
+ * views of the same rows.
+ *
+ * Ordered chronologically, not by size. The sequence is the reading.
+ */
+export const HORIZON_PHASES = ['before', 'during', 'after'] as const;
+
+export type HorizonPhase = (typeof HORIZON_PHASES)[number];
+
+export const PHASE_LABEL: Record<HorizonPhase, string> = {
+  before: 'Before deployment',
+  during: 'During deployment',
+  after: 'After deployment',
+};
+
+/** Which phase each urgency falls in. The one place the mapping is written. */
+export const PHASE_OF: Record<Horizon, HorizonPhase> = {
+  critical: 'before',
+  major: 'before',
+  minor: 'during',
+  long_term: 'after',
+};
+
+/**
+ * When an urgency has to happen, as a phrase rather than a level — the phase
+ * label, reached from the urgency.
+ *
+ * This is the when-phrase *on its own*, which is why it exists alongside
+ * `HORIZON_LABEL`. That one carries the urgency and the phrase in a single
+ * string — "Critical — before deployment" — which is right for a row with no
+ * other heading. A card or a group band prints the urgency as its own heading,
+ * so the full label would set the same word twice, one line apart.
+ *
+ * Derived from `PHASE_OF` rather than restated, so that a phase can never
+ * disagree with the note beside an urgency it contains. Kept here rather than
+ * beside `HORIZON_LABEL` because `gapCatalogue.ts` is generated from the sheet
+ * and this phrasing is ours.
+ */
+export const HORIZON_WHEN = Object.fromEntries(
+  (Object.keys(PHASE_OF) as Horizon[]).map((h) => [h, PHASE_LABEL[PHASE_OF[h]]]),
+) as Record<Horizon, string>;
+
 // ---------------------------------------------------------------------------
 // The non-colour carrier
 // ---------------------------------------------------------------------------
