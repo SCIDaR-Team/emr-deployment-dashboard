@@ -126,12 +126,14 @@ export interface GeoDatum {
    * Optional sequential step, 0–4, on the score ramp (`--s1` … `--s5`).
    *
    * When present the polygon is filled from the ramp instead of from its
-   * readiness band, and the layer becomes a magnitude choropleth. This is the
-   * default for the national map now, because every one of the 12 assessed
-   * states classifies to the *same* state-level band — a band choropleth there
-   * paints twelve identical polygons and encodes exactly one value. A share or
-   * a score varies, so the ramp has something to say. The band fill is still
-   * the right choice wherever the units genuinely differ in band.
+   * readiness band, and the layer becomes a magnitude choropleth. Reach for it
+   * where the units barely differ in band and a band choropleth would paint
+   * one colour across the whole map — a share or a score varies, so the ramp
+   * has something to say. The band fill is the right choice wherever the units
+   * genuinely differ in band, and it is what both national maps use: Assessed
+   * States carried the ramp over investment need for a while and has gone back
+   * to the band, so that its twelve states read in the same colours National
+   * Coverage gives them.
    *
    * Callers must ship a scale legend with it: a sequential encoding is
    * unreadable without one.

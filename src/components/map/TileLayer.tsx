@@ -54,6 +54,7 @@ export function TileLayer({
   focusPath,
   scrim = 0,
   surroundScrim = 0,
+  labelsInsideOnly = false,
 }: {
   baseMap: BaseMapId;
   /** The SVG's own viewBox string, so this layer and the polygons can never
@@ -128,9 +129,32 @@ export function TileLayer({
    * marks, its heavier outline — which is how every other map does it.
    */
   surroundScrim?: number;
+  /**
+   * Clip the base map's *place names* to the subject, leaving its terrain
+   * alone. Needs a `focusPath`.
+   *
+   * The targeted version of what the scrims above were reaching for, and the
+   * only one that costs nothing. A blur over the surround was built and tried
+   * first; it worked, but a blurred map reads as emphasis on screen and as a
+   * rendering fault in the PNG export these maps are stamped into for reports,
+   * so it was removed rather than left as an unused knob. What competes with a choropleth
+   * at national extent is not the neighbouring countries' land — it is the
+   * hundred-odd settlement names printed across them, which are the densest
+   * and highest-contrast marks on screen and say nothing this page is about.
+   * Their coastline, their rivers and their tone are the context that makes
+   * Nigeria a country rather than a shape, and all of that stays.
+   *
+   * Only possible because the canvas base map ships no labels at all — they
+   * arrive as a separate Reference layer (see `BaseMapSource.tile.overlay`),
+   * so there is a distinct thing to mask. On a source whose labels are baked
+   * into the tile this flag can do nothing, which is why it is opt-in per
+   * layer rather than always on.
+   */
+  labelsInsideOnly?: boolean;
 }) {
   const source = baseMapSource(baseMap);
   const isDark = useIsDark();
+  const insideId = `tile-inside-${useId().replace(/:/g, '')}`;
   const maskId = `tile-focus-${useId().replace(/:/g, '')}`;
   const reportTileError = useTileHealthStore((s) => s.reportTileError);
   const reportTileLoad = useTileHealthStore((s) => s.reportTileLoad);
@@ -182,6 +206,23 @@ export function TileLayer({
           >
             <rect x={rect.x} y={rect.y} width={rect.w} height={rect.h} fill="#fff" />
             <path d={focusPath} fill="#000" />
+          </mask>
+        </defs>
+      )}
+
+      {/* And its inverse, for the layers that belong *inside* the subject. Same
+          explicit region, for the same reason. */}
+      {focusPath && labelsInsideOnly && (
+        <defs>
+          <mask
+            id={insideId}
+            maskUnits="userSpaceOnUse"
+            x={rect.x}
+            y={rect.y}
+            width={rect.w}
+            height={rect.h}
+          >
+            <path d={focusPath} fill="#fff" />
           </mask>
         </defs>
       )}
@@ -243,32 +284,39 @@ export function TileLayer({
           />
         ))}
 
-        {/* The reference layer, last so it sits on the photography.
-            Slightly under full strength: at 1 the labels are a solid graphic
-            layer and the imagery reads as their background, which inverts
-            which of the two the reader picked satellite for. Reports no health
-            — a missing label tile is not a broken base map, and counting it as
-            one would put a notice on screen over ground that is drawing
-            perfectly well. */}
-        {overlay.map((t) => (
-          <image
-            key={t.key}
-            href={t.href}
-            x={t.x}
-            y={t.y}
-            width={t.size * 1.004}
-            height={t.size * 1.004}
-            preserveAspectRatio="none"
-            // Full strength on the canvas basemap, where this layer is the
-            // *only* source of place names and there is no photograph for it
-            // to compete with. Held back a little over imagery, where at 1 the
-            // labels become a solid graphic layer and the photograph reads as
-            // their background — inverting which of the two the reader chose
-            // satellite for.
-            opacity={baseMap === 'satellite' ? 0.85 : 1}
-          />
-        ))}
       </g>
+      {/* The reference layer — place names — as a group of its own rather than
+          inside the tiles above, so it can be masked independently of the
+          ground it names. That is what `labelsInsideOnly` switches: the
+          neighbouring countries keep their terrain and lose their labels,
+          which is the only part of them that was competing.
+
+          Reports no tile health: a missing label tile is not a broken base
+          map, and counting it as one would put a notice on screen over ground
+          that is drawing perfectly well. */}
+      {overlay.length > 0 && (
+        <g mask={labelsInsideOnly && focusPath ? `url(#${insideId})` : undefined}>
+          {overlay.map((t) => (
+            <image
+              key={t.key}
+              href={t.href}
+              x={t.x}
+              y={t.y}
+              width={t.size * 1.004}
+              height={t.size * 1.004}
+              preserveAspectRatio="none"
+              // Full strength on the canvas base map, where this layer is the
+              // *only* source of place names and there is no photograph for it
+              // to compete with. Held back a little over imagery, where at 1
+              // the labels become a solid graphic layer and the photograph
+              // reads as their background — inverting which of the two the
+              // reader chose satellite for.
+              opacity={baseMap === 'satellite' ? 0.85 : 1}
+            />
+          ))}
+        </g>
+      )}
+
       {/* One flat knock-back over the tiles rather than a per-source colour
           filter: it works the same on a photo and on a drawn street map, and
           it moves the base map towards the page's own colour in both schemes

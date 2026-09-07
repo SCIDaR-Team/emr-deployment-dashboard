@@ -342,6 +342,41 @@ export function NigeriaChoropleth({
             // now read as edge because they carry no fill, not because they
             // have been faded out.
             focusPath={outlinePath}
+            // The neighbours keep their ground and lose their names. At this
+            // extent it is the labels, not the land, that compete: a hundred
+            // settlement names across Niger, Chad, Cameroon and Benin are the
+            // densest and highest-contrast marks on screen, and none of them
+            // is anything this page has something to say about. Their
+            // coastline, rivers and tone stay, because that is what makes
+            // Nigeria read as a country rather than a shape on a card.
+            //
+            // Preferred over blurring the surround, which was tried: a blur
+            // reads as emphasis on screen and as a rendering fault in the PNG
+            // export these maps are stamped into for reports.
+            labelsInsideOnly
+          />
+        )}
+
+        {/* Nigeria lifted off the ground behind it.
+            
+            A shadow cast by the national outline rather than anything done *to*
+            the surroundings — the cheapest way to say "this is the subject" is
+            to put it on top, which the eye reads without being taught.
+            
+            **Stroked, never filled.** A filled silhouette casts the same shadow
+            and also paints over the base map inside the country, which is only
+            invisible where a choropleth fill covers it again — so it read fine
+            across the twelve surveyed states and quietly blanked the terrain
+            under the twenty-five hatched ones. `fill="none"` casts the shadow
+            from the border line alone and touches nothing inside it. */}
+        {layers.boundaries && (
+          <path
+            d={outlinePath}
+            fill="none"
+            stroke="hsl(var(--surface))"
+            strokeWidth={1.6 / view.scale}
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 1px 5px rgb(0 0 0 / 0.30))' }}
           />
         )}
 
