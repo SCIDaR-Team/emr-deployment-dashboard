@@ -14,6 +14,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { NAV_ITEMS, moduleFor } from '@/app/navigation';
+import { InstitutionMark } from '@/components/layout/InstitutionMark';
+import { INSTITUTION } from '@/lib/constants';
 import { cn } from '@/lib/cn';
 import { useDismissable, useScrollLock } from '@/hooks/useDismissable';
 import { useSidebarStore } from '@/store/sidebarStore';
@@ -33,6 +35,13 @@ const ICONS: Record<string, LucideIcon> = {
  *
  * Collapsed, it drops to the mark alone — the `title` carries the name, the way
  * the nav links below do.
+ *
+ * The name is stacked, agency over product, and that is a width decision rather
+ * than a hierarchy one: the rail is 192px, which leaves about 124px beside the
+ * mark, and "NPHCDA EMR Readiness" set inline needs every pixel of it before
+ * truncating on the narrower mobile panel. Two lines read top-down as the same
+ * name and neither line is ever cut. The landing page's header has the room to
+ * set it inline and does.
  */
 function BrandBlock({
   collapsed = false,
@@ -45,21 +54,24 @@ function BrandBlock({
     <Link
       to="/"
       onClick={onNavigate}
-      title="EMR Readiness Assessment — landing page"
+      title={`${INSTITUTION.abbr} EMR Readiness Assessment — landing page`}
       className={cn(
         'flex min-h-[58px] items-center gap-2.5 border-b border-border px-4 transition-colors',
         'hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
         collapsed && 'justify-center px-0',
       )}
     >
-      <span className="mono grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[3px] border-[1.5px] border-foreground text-[11px] font-bold tracking-tighter text-foreground">
-        ER
-      </span>
+      <InstitutionMark size="sm" />
       {collapsed ? (
-        <span className="sr-only">EMR Readiness Assessment</span>
+        <span className="sr-only">{INSTITUTION.abbr} EMR Readiness Assessment</span>
       ) : (
-        <span className="min-w-0 truncate text-[12.5px] font-semibold leading-tight text-foreground">
-          EMR Readiness
+        <span className="flex min-w-0 flex-col leading-none">
+          <span className="mono truncate text-[9px] uppercase tracking-[0.13em] text-muted-foreground">
+            {INSTITUTION.abbr}
+          </span>
+          <span className="mt-1 truncate text-[12px] font-semibold leading-tight text-foreground">
+            EMR Readiness
+          </span>
         </span>
       )}
     </Link>
@@ -216,8 +228,11 @@ export function MobileNavBar() {
           <p className="truncate text-sm font-semibold leading-tight text-foreground">
             {current?.label ?? 'EMR Readiness Assessment'}
           </p>
+          {/* The product name carries the agency here too. One surface still
+              saying "EMR readiness" while the rail and the landing page say
+              "NPHCDA EMR Readiness" is the inconsistency, not the length. */}
           <p className="mono truncate text-[9.5px] uppercase tracking-[0.1em] leading-tight text-muted-foreground">
-            EMR readiness
+            {INSTITUTION.abbr} EMR readiness
           </p>
         </div>
       </div>

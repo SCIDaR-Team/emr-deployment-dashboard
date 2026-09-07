@@ -12,10 +12,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { NAV_ITEMS } from '@/app/navigation';
+import { InstitutionMark } from '@/components/layout/InstitutionMark';
 import { useDataContext } from '@/state/dataContext';
 import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
-import { COVERAGE } from '@/lib/constants';
+import { COVERAGE, INSTITUTION } from '@/lib/constants';
 import { formatCount } from '@/lib/format';
 import { NATIONAL_DEPLOYMENT_SPLIT, NATIONAL_TOTAL } from '@/lib/nationalSplit';
 import type { Band } from '@/lib/types';
@@ -57,9 +58,9 @@ import type { Band } from '@/lib/types';
  * way, and the reason is the rule at the top of `globals.css`: green, amber and
  * red are *status*, and green is Ready. Spending it on furniture is exactly how
  * the previous design lost the ability to mean anything by it. So the mark is
- * ink, the primary control is `brand-500` blue like every other control in the
- * product, and the only saturated colour here is the three bands and the
- * figures reporting them.
+ * ink, the three module cards are `brand-500` blue on a `brand-50` ground like
+ * every other control in the product, and the only *status* colour here is the
+ * three bands and the figures reporting them.
  */
 
 const ICONS: Record<string, LucideIcon> = {
@@ -165,6 +166,16 @@ export default function LandingPage() {
         page with no scroll, the header is the only place the modules can live,
         so each card carries the label *and* the line saying what that module
         has that the others do not. Below `md` they stack under the wordmark.
+
+        **They are filled, not outlined.** Drawn as bordered cards on the
+        surface they were the same weight as every rule and box further down the
+        page, and the one thing a reader arrives to do read as chrome — three
+        pale rectangles in a top bar are furniture until they are hovered. A
+        `brand-50` ground with a `brand-500` hairline and a blue glyph makes
+        them the only saturated cool block above the fold, which is what
+        separates "these are the doors" from "this is a header". Blue is the
+        colour that can be spent this way: green, amber and red are readiness
+        bands, and `brand-500` is already what every control in the product is.
       */}
       <header className="border-b border-border bg-surface">
         <div
@@ -177,15 +188,22 @@ export default function LandingPage() {
             to="/"
             className="flex shrink-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            {/* Ink, not brand blue and not green: the mark is identity, and
-                identity is the one thing on this page that should not look
-                like either a control or a readiness band. */}
-            <span className="mono grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[4px] bg-foreground text-[12px] font-bold tracking-tighter text-surface">
-              ER
-            </span>
+            <InstitutionMark />
             <span className="flex flex-col leading-none">
-              <span className="mono text-[13px] font-semibold uppercase tracking-[0.09em] text-foreground">
-                EMR readiness
+              {/*
+                The agency leads the name. Ink, not brand blue and not green:
+                the mark is identity, and identity is the one thing on this page
+                that should not look like either a control or a readiness band.
+
+                A step down from 13px, and `whitespace-nowrap`: "NPHCDA EMR
+                READINESS" is 20 mono characters at this tracking, and the
+                header is a single `shrink-0` mark against three module cards
+                that have to keep their descriptions legible at `md`. The name
+                buys its extra width back out of its own size rather than out of
+                theirs.
+              */}
+              <span className="mono whitespace-nowrap text-[12px] font-semibold uppercase tracking-[0.08em] text-foreground">
+                {INSTITUTION.abbr} EMR readiness
               </span>
               <span className="mono mt-1 text-[9.5px] uppercase tracking-[0.13em] text-muted-foreground">
                 Nigeria
@@ -197,16 +215,16 @@ export default function LandingPage() {
             aria-label="Dashboard modules"
             className="grid min-w-0 gap-2.5 sm:grid-cols-3 md:flex md:items-stretch"
           >
-            {NAV_ITEMS.map((mod) => {
+            {NAV_ITEMS.filter((mod) => mod.showOnHome).map((mod) => {
               const Icon = ICONS[mod.icon] ?? Map;
               return (
                 <NavLink
                   key={mod.path}
                   to={mod.path}
-                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-border bg-surface px-3.5 py-1.5 transition-colors hover:border-brand-500 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-brand-500 bg-brand-50 px-3.5 py-2 transition-colors hover:bg-brand-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <Icon
-                    className="h-[18px] w-[18px] shrink-0 text-muted-foreground transition-colors group-hover:text-brand-500"
+                    className="h-[18px] w-[18px] shrink-0 text-brand-500"
                     aria-hidden
                   />
                   <span className="flex min-w-0 flex-col leading-tight">
@@ -218,7 +236,7 @@ export default function LandingPage() {
                     </span>
                   </span>
                   <ArrowRight
-                    className="ml-3 block h-4 w-4 shrink-0 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-brand-500 md:hidden xl:block"
+                    className="ml-3 block h-4 w-4 shrink-0 text-brand-500 transition-transform group-hover:translate-x-0.5 md:hidden xl:block"
                     aria-hidden
                   />
                 </NavLink>
@@ -245,22 +263,17 @@ export default function LandingPage() {
               bands is the work still outstanding.
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                to="/states"
-                className="inline-flex items-center gap-2 rounded-[5px] bg-brand-500 px-4 py-2.5 text-[13px] font-semibold text-surface transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                Explore the assessment
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-              <Link
-                to="/assessment"
-                className="inline-flex items-center gap-2 rounded-[5px] border border-input px-4 py-2.5 text-[13px] font-semibold text-foreground transition-colors hover:border-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                <BarChart3 className="h-4 w-4" aria-hidden />
-                View assessed states
-              </Link>
-            </div>
+            {/*
+              No buttons under the paragraph. There were two — "Explore the
+              assessment" to National Coverage and "View assessed states" to
+              Assessed States — and they said the same thing twice over: both
+              are "go and look at the assessment", neither names its
+              destination the way the rail does, and the second is the name of a
+              module sitting in the header three inches above it. A reader who
+              met all four controls had to work out which pairs went to the same
+              page. The header cards are the routes, now coloured to be seen as
+              such, so the hero states the finding and gets out of the way.
+            */}
           </div>
 
           <div className="flex flex-col">

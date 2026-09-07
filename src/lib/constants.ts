@@ -18,6 +18,29 @@ export const PROGRAMME = {
 } as const;
 
 /**
+ * The owning institution, and where its artwork lives.
+ *
+ * The dashboard is NPHCDA's, and the front door says so: the wordmark reads
+ * "NPHCDA EMR readiness" rather than "EMR readiness", because a reader who
+ * lands on a national readiness figure needs to know whose figure it is before
+ * they need anything else on the page.
+ *
+ * `logo` is served straight from `public/`, which Vite copies to `dist/`
+ * verbatim — so the file belongs in `public/brand/`, never in `dist/`, which is
+ * gitignored build output and is wiped by the next `npm run build`. See the
+ * README in that directory. The path is stated once, here, so replacing the
+ * artwork with a different file type is a one-line change and every mark that
+ * draws it follows. Nothing breaks if the file is absent — the mark falls back
+ * to the `ER` monogram tile on the image's own error, so the page is correct
+ * with or without it.
+ */
+export const INSTITUTION = {
+  abbr: 'NPHCDA',
+  name: 'National Primary Health Care Development Agency',
+  logo: '/brand/nphcda-logo.webp',
+} as const;
+
+/**
  * Programme coverage.
  *
  * 36 states plus the FCT; the 12 primary states were surveyed facility by
