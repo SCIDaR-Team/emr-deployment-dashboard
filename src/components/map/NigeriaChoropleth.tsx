@@ -115,7 +115,7 @@ const NATIONAL_MIN_VIEW_M = 2_000;
 /**
  * What a hovered polygon's fill rises to.
  *
- * Well above the resting 0.38/0.48 — a hover has to be unmistakable at a
+ * Well above the resting 0.5/0.6 — a hover has to be unmistakable at a
  * glance, and the polygon is momentarily the subject rather than one of
  * thirty-seven. Deliberately short of 1: even hovered, the town under the
  * pointer should still be readable, which is half of why the reader is

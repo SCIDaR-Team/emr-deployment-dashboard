@@ -41,25 +41,30 @@ export default {
         // donuts, badges, choropleth, checklists, roadmap. Never hand-pick a
         // status colour; go through BAND_CLASSES in src/lib/bands.ts.
         //
-        // Two halves per band, and the split is load-bearing: DEFAULT is the
-        // client's pastel and is for FILLS ONLY — a polygon, a swatch, a bar
-        // segment, a badge ground. `ink` is the same band at a text weight and
-        // is what any label, figure, icon or border uses. `text-ready` would
-        // put pale sage on near-white; `text-ready-ink` is the one you want.
+        // Three parts per band, and the split is load-bearing. DEFAULT is the
+        // client's pastel and is for FLAT FILLS — a swatch, a bar segment, a
+        // badge ground, anything sitting opaque on the page. `ink` is the same
+        // band at a text weight and is what any label, figure, icon or border
+        // uses. `text-ready` would put pale sage on near-white; `text-ready-ink`
+        // is the one you want. `map` is the pastel's brighter twin, for marks
+        // painted over a base map — see the note in globals.css.
         ready: {
           DEFAULT: 'hsl(var(--ready) / <alpha-value>)',
           ink: 'hsl(var(--ready-ink) / <alpha-value>)',
           wash: 'hsl(var(--ready-wash) / <alpha-value>)',
+          map: 'hsl(var(--ready-map) / <alpha-value>)',
         },
         moderate: {
           DEFAULT: 'hsl(var(--moderate) / <alpha-value>)',
           ink: 'hsl(var(--moderate-ink) / <alpha-value>)',
           wash: 'hsl(var(--moderate-wash) / <alpha-value>)',
+          map: 'hsl(var(--moderate-map) / <alpha-value>)',
         },
         notready: {
           DEFAULT: 'hsl(var(--not-ready) / <alpha-value>)',
           ink: 'hsl(var(--not-ready-ink) / <alpha-value>)',
           wash: 'hsl(var(--not-ready-wash) / <alpha-value>)',
+          map: 'hsl(var(--not-ready-map) / <alpha-value>)',
         },
         // Urgency, not readiness — see the note in globals.css. Ink only: these
         // four never fill a shape, they colour a word or a glyph beside one.

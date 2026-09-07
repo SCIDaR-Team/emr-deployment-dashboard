@@ -72,8 +72,17 @@ export const UNIT_FOCUS_CLASS = 'outline-none';
  *
  * The **bands** are categorical and separated by *hue* — red, amber, green. Cut
  * their opacity and they get paler together; which band a polygon is in is
- * still obvious, because nothing about hue is lost. 0.38 is comfortable, and it
- * is what ecat's coverage map uses for exactly this kind of scale.
+ * still obvious, because nothing about hue is lost. That was the argument for
+ * 0.38, which is what ecat's coverage map uses for this kind of scale.
+ *
+ * It holds for the *hue* and it failed for everything else. At 0.38 over Esri's
+ * grey canvas the three bands composited to #f7d3d2, #f7eed6 and #e5edde —
+ * which are, in order, a pink, a cream and an off-white, and they are 1.03 and
+ * 1.06 apart in contrast. Nothing about hue was lost and the map still read as
+ * blank paper, because the reader is not comparing two polygons side by side;
+ * they are looking at Kano and remembering Lagos. So the bands sit at 0.5, and
+ * they are painted in the brighter `--*-map` variants — the two changes are one
+ * change, and neither is sufficient alone (see globals.css).
  *
  * The **ramp** is sequential and separated by *lightness alone* — one blue at
  * five steps from 73% down to 28%. Transparency compresses lightness directly:
@@ -83,9 +92,11 @@ export const UNIT_FOCUS_CLASS = 'outline-none';
  * is legible again, and the tiles still come through at 40% — against the 17%
  * the old scrim-plus-0.8 stack left them.
  *
- * So a categorical scale can afford to be thin and a sequential one cannot.
- * That is a property of the encoding, not a preference, which is why this is a
- * parameter and not a number someone can nudge.
+ * The two ended up close together — 0.5 and 0.6 — but they are still two
+ * numbers, because they answer to different failures: the ramp is thin the
+ * moment its lightness steps compress, and the bands are thin the moment the
+ * whole scale drifts towards the paper. Keep them a parameter for that reason,
+ * not because the gap between them is large.
  *
  * **Higher again in dark mode**, because a translucent fill over a dark ground
  * composites towards black and goes muddy rather than merely darker.
@@ -98,7 +109,7 @@ export function fillOpacityFor(
 ): number {
   if (baseMap === 'plain') return 1;
   if (sequential) return isDark ? 0.68 : 0.6;
-  return isDark ? 0.48 : 0.38;
+  return isDark ? 0.6 : 0.5;
 }
 
 export const CHOROPLETH_STROKE = 'rgb(255 255 255 / 0.85)';
@@ -188,11 +199,20 @@ export function hatchFill(id: string): string {
 // Band fills for map polygons
 // ---------------------------------------------------------------------------
 
-/** CSS custom property carrying each band's colour. */
+/**
+ * CSS custom property carrying each band's colour *on a map*.
+ *
+ * The `-map` variants, not the pastels the rest of the app fills with. A map
+ * fill is composited at partial opacity over a base map and arrives as a tint
+ * of the canvas; these are the same three hues taken bright enough to survive
+ * that. The full argument, and the values, are in globals.css — the short
+ * version is that a colour picked to be read flat and a colour picked to be
+ * read through 50% of itself cannot be the same colour.
+ */
 const BAND_VAR: Record<Band, string> = {
-  ready: 'ready',
-  moderately_ready: 'moderate',
-  not_ready: 'not-ready',
+  ready: 'ready-map',
+  moderately_ready: 'moderate-map',
+  not_ready: 'not-ready-map',
 };
 
 /**
@@ -218,6 +238,11 @@ const BAND_VAR: Record<Band, string> = {
  * Returned as a colour string rather than a Tailwind class so it can be set as
  * the `fill` attribute, the same way `scoreStepFill` is — the two are
  * alternatives for the same slot and must be interchangeable.
+ *
+ * The colour is the band's map variant — see `BAND_VAR`. Callers painting a
+ * swatch of this fill *off* the map (a legend key) must composite it the way
+ * the polygons do, at `fillOpacityFor`, or the key will be a stronger colour
+ * than anything it is explaining.
  */
 export function bandFlatFill(band: Band | null | undefined): string | undefined {
   return band ? `hsl(var(--${BAND_VAR[band]}))` : undefined;

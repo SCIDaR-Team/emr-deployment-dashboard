@@ -46,10 +46,12 @@ export interface FacilityHover {
   members: PlottedFacility[];
 }
 
+// The map variants, not the pastels — a facility dot is 5px of colour on a
+// grey canvas and the pale fills disappeared into it. See globals.css.
 const BAND_FILL_CLASS: Record<Band, string> = {
-  ready: 'fill-ready',
-  moderately_ready: 'fill-moderate',
-  not_ready: 'fill-notready',
+  ready: 'fill-ready-map',
+  moderately_ready: 'fill-moderate-map',
+  not_ready: 'fill-notready-map',
 };
 
 /**
@@ -177,9 +179,10 @@ export function FacilityLayer({
                 states the number the overlapping dots could not. Not
                 interactive — the marker under it takes the click.
 
-                Ink, not surface: the band fills are the client's pastels and
-                are lighter than --surface in both schemes, so a knocked-out
-                numeral would be white on near-white. */}
+                Ink, not surface: a knocked-out numeral would be white on
+                amber at 1.7:1. Black clears 5.3:1 on the weakest of the three
+                map fills (Not ready) and 12:1 on the strongest, so it is the
+                one choice that holds on all of them. */}
             {!lone && (
               <text
                 x={c.x}

@@ -129,6 +129,39 @@
     --no-data: 130 6% 74%;
 
     /*
+     * `--*-map`: the same three bands, brighter, for map polygons and facility
+     * points only.
+     *
+     * The client's fills are pale because they were chosen to be looked at
+     * flat — a swatch, a bar segment, a badge ground, all of them sitting
+     * opaque on white. A map fill is not looked at flat. It is composited at
+     * partial opacity over Esri's grey canvas so the roads and towns beneath
+     * still read, and that composite eats most of the colour: Not ready at
+     * 0.38 over the canvas lands on #f7d3d2, which is a hint of pink rather
+     * than a red, and Ready on #e5edde, which is barely distinguishable from
+     * unfilled land. Three bands that are obvious in the pane arrive on the
+     * map as three tints of off-white.
+     *
+     * So these are the *same hues* — 96.7, 44.3 and 0, unchanged, because the
+     * hue is the band's identity and a green that is not the client's green is
+     * a different scale — taken to a saturation and lightness that survive
+     * being composited. Over the canvas at the band opacity they land on
+     * roughly #afd694, #f6d77e and #f29492: a green, an amber and a red at a
+     * glance, from across a room, on a projector.
+     *
+     * They do not replace `--ready` and friends anywhere else, and must not.
+     * Everything with words on it or beside it — pills, distribution bars,
+     * badges — keeps the pale fill, which is what the client picked it for and
+     * what `--on-band` was contrast-checked against.
+     *
+     * Same values in both schemes, for the reason the fills above are: a band
+     * colour identifies a band and cannot move when the page does.
+     */
+    --ready-map: 96.7 52% 48%;
+    --moderate-map: 44.3 96% 52%;
+    --not-ready-map: 0 88% 58%;
+
+    /*
      * Urgency — the four horizons, a different scale from the three bands.
      *
      * A band says how ready a facility is; a horizon says when an action has to
@@ -286,6 +319,15 @@
     --not-ready-ink: 0 88% 71%;
     --not-ready-wash: 0 32% 16%;
     --no-data: 150 6% 28%;
+
+    /* Restated rather than inherited, and deliberately identical to the light
+       scheme — see the note there. These carry more of their own weight in
+       dark mode than the pale fills ever did: over the dark canvas the pastels
+       composited to #7b8674, #91876b and #916565, which are three greys with a
+       tint, and the map had effectively no scale on it at night. */
+    --ready-map: 96.7 52% 48%;
+    --moderate-map: 44.3 96% 52%;
+    --not-ready-map: 0 88% 58%;
 
     /* The urgency scale, lifted for a dark ground. Same four hues; the
        lightness is what moves, exactly as it does for the band inks above. */
