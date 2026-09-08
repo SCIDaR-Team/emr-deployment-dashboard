@@ -355,14 +355,20 @@ export default function LandingPage() {
                       row of vertical space that lets the share keep its
                       "of those assessed" qualifier.
 
-                      The label stacks under the figure below `xl`. "1,892
-                      MODERATELY READY" needs well over 164px inline and a third of the
-                      evidence column is 161px at 1280 and 114px at 1024 — so
-                      inline is a promise this layout cannot keep at every
-                      width. Stacking is chosen by *width* rather than by
-                      content, which is what keeps the three blocks in register:
-                      a label that wrapped on the longest band alone would drop
-                      that block's remaining lines below its neighbours'.
+                      The label always stacks under the figure. It used to go
+                      inline at `xl`, which the revised data made impossible:
+                      "1,892 MODERATELY READY" needs about 218px and the middle
+                      block has 155px at 1280 and 177px at the widest layout the
+                      1400px shell allows. The column stops growing before the
+                      label does, so there is no breakpoint at which inline
+                      fits — this is a removal, not a retuned threshold.
+
+                      Stacking all three rather than only the one that overflows
+                      is what keeps the blocks in register: a label that wrapped
+                      on the longest band alone would drop that block's
+                      remaining lines below its neighbours'. "170 READY" and
+                      "744 NOT READY" would both still fit inline, and that is
+                      exactly why they must not.
                     */}
                     <p
                       className={cn(
@@ -371,7 +377,7 @@ export default function LandingPage() {
                       )}
                     >
                       <span className="text-[31px] leading-none">{formatCount(count)}</span>
-                      <span className="mt-1.5 block whitespace-nowrap text-[11px] uppercase leading-none tracking-[0.09em] xl:ml-2 xl:mt-0 xl:inline">
+                      <span className="mt-1.5 block whitespace-nowrap text-[11px] uppercase leading-none tracking-[0.09em]">
                         {BAND_LABEL[band]}
                       </span>
                     </p>
