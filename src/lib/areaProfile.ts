@@ -64,11 +64,9 @@ function pooledThemeBand(profiles: AreaProfile[], themeId: ThemeId): Band | null
  */
 export interface AggregatedProfile {
   facilityCount: number;
-  /** Both overall readings, pooled — never one standing in for the other. */
-  useBand: Band | null;
+  /** The overall reading, pooled across the profiles. */
   deploymentBand: Band | null;
   themeBands: Record<ThemeId, Band | null>;
-  useDistribution: Record<Band, number>;
   deploymentDistribution: Record<Band, number>;
   investments: InvestmentItem[];
 }
@@ -76,7 +74,7 @@ export interface AggregatedProfile {
 /** Pool one distribution across profiles. A sum, like everything else here. */
 function pooledDistribution(
   profiles: AreaProfile[],
-  key: 'useDistribution' | 'deploymentDistribution',
+  key: 'deploymentDistribution',
 ): Record<Band, number> {
   const dist: Record<Band, number> = { ready: 0, moderately_ready: 0, not_ready: 0 };
   for (const p of profiles) {
@@ -88,7 +86,6 @@ function pooledDistribution(
 export function aggregateAreaProfiles(profiles: AreaProfile[]): AggregatedProfile {
   const facilityCount = profiles.reduce((sum, p) => sum + p.facilityCount, 0);
 
-  const useDistribution = pooledDistribution(profiles, 'useDistribution');
   const deploymentDistribution = pooledDistribution(profiles, 'deploymentDistribution');
 
   const themeBands = Object.fromEntries(
@@ -97,10 +94,8 @@ export function aggregateAreaProfiles(profiles: AreaProfile[]): AggregatedProfil
 
   return {
     facilityCount,
-    useBand: dominantBand(useDistribution),
     deploymentBand: dominantBand(deploymentDistribution),
     themeBands,
-    useDistribution,
     deploymentDistribution,
     investments: sumInvestments(profiles),
   };

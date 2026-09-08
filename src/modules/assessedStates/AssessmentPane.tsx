@@ -17,7 +17,9 @@ import {
   HORIZONS,
   HORIZON_LABEL,
   HORIZON_SHORT,
+  gapAllInterventions,
   gapCostNGN,
+  gapInterventions,
   gapsInArea,
   offeredGapIds,
 } from '@/lib/gapCatalogue';
@@ -323,16 +325,19 @@ function FacilityBlocks({
       cost: number;
       unpriced: number;
       urgency: number;
-      interventions: (typeof GAP_BY_ID)[string]['interventions'];
+      interventions: ReturnType<typeof gapInterventions>;
     };
     const rows: Row[] = [];
 
     for (const id of mine) {
       const gap = GAP_BY_ID[id]!;
-      const c = gapCostNGN(gap);
+      /** This facility's own costing of the gap — see `FacilitySummary.gapVariants`. */
+      const variant = facility.gapVariants[id] ?? 0;
+      const actions = gapInterventions(gap, variant);
+      const c = gapCostNGN(gap, variant);
       cost += c.costNGN;
       unpriced += c.unpriced;
-      for (const iv of gap.interventions) {
+      for (const iv of actions) {
         const h = byHorizon.get(iv.horizon) ?? { actions: 0, cost: 0, unpriced: 0 };
         h.actions += 1;
         if (iv.costNGN === null) h.unpriced += 1;
@@ -346,8 +351,8 @@ function FacilityBlocks({
         condition: gap.label,
         cost: c.costNGN,
         unpriced: c.unpriced,
-        urgency: gapUrgency(id),
-        interventions: gap.interventions,
+        urgency: gapUrgency(id, variant),
+        interventions: actions,
       };
       rows.push(row);
       const acc = per.get(gap.domain) ?? { cost: 0, unpriced: 0, gaps: [] as Row[] };
@@ -398,14 +403,12 @@ function FacilityBlocks({
         }
       >
         <div className="space-y-2">
-          {/* Both overall readings, and only when no domain is ticked. The
-              source has no per-domain deployment band, so under a domain the
-              question the pair answers is not one this facility can be asked —
-              the domain's own band stands alone instead, matching what the map
-              is painting. */}
+          {/* The overall reading, and only when no domain is ticked: under a
+              domain it is that domain's band the map is painting, and printing
+              the overall figure above it would invite the two to be read as a
+              comparison. */}
           {!picked.length && (
             <>
-              <BandLine label="EMR use" band={facility.useBand} />
               <BandLine label="EMR deployment" band={facility.deploymentBand} />
               <div className="my-2.5 border-t border-border" />
             </>
@@ -532,12 +535,21 @@ function ConnectivityBlock({ facility }: { facility: FacilitySummary }) {
   );
 }
 
-/** A gap's place in the urgency order, for sorting. Most urgent first. */
-function gapUrgency(id: string): number {
+/**
+ * A gap's place in the urgency order, for sorting. Most urgent first.
+ *
+ * Takes a variant because a condition can be costed more than one way, and the
+ * cheaper branch of a power gap can carry a different set of horizons. Defaults
+ * to the first, which is right wherever the subject is the condition rather
+ * than a facility.
+ */
+function gapUrgency(id: string, variant = 0): number {
   const gap = GAP_BY_ID[id];
   if (!gap) return HORIZONS.length;
   let worst = HORIZONS.length;
-  for (const iv of gap.interventions) worst = Math.min(worst, HORIZONS.indexOf(iv.horizon));
+  for (const iv of gapInterventions(gap, variant)) {
+    worst = Math.min(worst, HORIZONS.indexOf(iv.horizon));
+  }
   return worst;
 }
 
@@ -685,20 +697,13 @@ function BandCounts({
          * One reading, in cards, whether a domain is selected or not.
          *
          * `distribution` is already the right column either way — the domain's
-         * own band under a selection, the overall EMR-use band without one —
-         * because `facilityBandUnder` decides that once for the whole page.
+         * own band under a selection, the overall band without one — because
+         * `facilityBandUnder` decides that once for the whole page.
          *
-         * The EMR-deployment split used to sit beside it here, and its removal
-         * is deliberate: all four domain readings are *readiness for EMR use*,
-         * so pairing the overall view with a deployment row put the block on a
-         * different footing from every other state of itself. Selecting a
-         * domain then silently changed which question the block was answering.
-         * One scale throughout means ticking a domain narrows the reading
-         * rather than swapping it.
-         *
-         * The deployment reading is not lost — it is a facility-level fact and
-         * the facility card still carries it beside the use band, which is
-         * where the distance between the two is worth reading.
+         * A second row used to sit beside this one, when the source reported
+         * every facility twice. It reports it once now, and the four domain
+         * readings sit on the same scale as the overall one, so ticking a
+         * domain narrows the reading rather than swapping it.
          */
         <BandCards counts={distribution} showPercent className="mt-3.5" />
       )}
@@ -826,7 +831,7 @@ function PerDomainSplit({
  * ## What is collapsed
  *
  * Domains and sub-domains always show; gaps and their interventions sit behind
- * the sub-domain's toggle. Twenty sub-domains over seventy-three conditions and
+ * the sub-domain's toggle. Twenty sub-domains over seventy-one conditions and
  * their actions is a wall in a 420px column, and the sub-domain is the level a
  * reader scans for. One exception: filter to a single gap area and it opens
  * itself, because asking for one area is asking what is wrong inside it.
@@ -849,8 +854,8 @@ function GapBlocks({
      * A gap area selection narrows the population *and* the gaps counted
      * within it. Ticking the nine Technical Infrastructure areas asks what
      * those nine cost; answering with every gap those facilities carry returns
-     * the national total instead — 30,557 gaps and ₦16.3bn against Technical
-     * Infrastructure's own 18,667 and ₦12.9bn, printed two rows below in the
+     * the national total instead — 30,200 gaps and ₦6.0bn against Technical
+     * Infrastructure's own 18,310 and ₦5.9bn, printed two rows below in the
      * same card.
      */
     const offered = offeredGapIds(domains, gapAreas);
@@ -859,11 +864,20 @@ function GapBlocks({
     type Acc = { facs: Set<string>; cost: number; unpriced: number };
     const blank = (): Acc => ({ facs: new Set<string>(), cost: 0, unpriced: 0 });
 
-    /** Facilities carrying each condition. Everything below a sub-domain is
-     *  derived from this one number: a gap column holds a single value, so a
-     *  facility carries at most one condition per area and the condition's
-     *  cost is that count times a constant. */
-    const perCondition = new Map<string, number>();
+    /**
+     * Facilities carrying each condition, and what it costs them.
+     *
+     * The cost is **accumulated, not derived**. It used to be this facility
+     * count times one per-gap price, which the revised costing model makes
+     * ill-defined: four conditions are priced more than one way — a ₦3,000,000
+     * solar install or a ₦1,200,000 top-up, each with or without a ₦500,000
+     * grid connection — so there is no constant to multiply by and the money
+     * has to be summed as the facilities are walked.
+     *
+     * The count itself is unchanged. A gap column still holds a single value,
+     * so a facility carries at most one condition per area.
+     */
+    const perCondition = new Map<string, { facs: number; cost: number; unpriced: number }>();
     const perArea = new Map<string, Acc>();
     const perDomain = new Map<string, Acc>();
     /** The one place an action count *is* the subject, so the only accumulator
@@ -885,14 +899,21 @@ function GapBlocks({
         const gap = GAP_BY_ID[id]!;
         gapCount += 1;
         hit = true;
-        perCondition.set(id, (perCondition.get(id) ?? 0) + 1);
+
+        /** The actions this facility's own row asks for — which, for four
+         *  conditions, is not the set every facility carrying them gets. */
+        const actions = gapInterventions(gap, f.gapVariants[id] ?? 0);
+
+        const condition = perCondition.get(id) ?? { facs: 0, cost: 0, unpriced: 0 };
+        condition.facs += 1;
+        perCondition.set(id, condition);
 
         const area = perArea.get(gap.area) ?? blank();
         const domain = perDomain.get(gap.domain) ?? blank();
         area.facs.add(f.uuid);
         domain.facs.add(f.uuid);
 
-        for (const iv of gap.interventions) {
+        for (const iv of actions) {
           const horizon = byHorizon.get(iv.horizon) ?? { ...blank(), acts: 0 };
           horizon.acts += 1;
           horizon.facs.add(f.uuid);
@@ -902,6 +923,11 @@ function GapBlocks({
             else acc.cost += iv.costNGN;
           }
           byHorizon.set(iv.horizon, horizon);
+
+          // The condition rung is summed here for the same reason as the rungs
+          // above it, so the tree still adds up under a priced-two-ways gap.
+          if (iv.costNGN === null) condition.unpriced += 1;
+          else condition.cost += iv.costNGN;
 
           actCount += 1;
           if (iv.costNGN === null) unpriced += 1;
@@ -939,19 +965,26 @@ function GapBlocks({
               conditions: gapsInArea(a.id)
                 .filter((g) => perCondition.has(g.id))
                 .map((g) => {
-                  const n = perCondition.get(g.id)!;
-                  const c = gapCostNGN(g);
+                  const pc = perCondition.get(g.id)!;
                   return {
                     id: g.id,
                     label: g.label,
-                    facs: n,
-                    cost: n * c.costNGN,
-                    unpriced: n * c.unpriced,
-                    /** Most urgent first, not costliest. There are at most two,
-                     *  they are a sequence rather than a ranking — install now,
-                     *  connect to the grid later — and printing them out of
-                     *  order would misstate the plan. */
-                    interventions: [...g.interventions].sort(
+                    facs: pc.facs,
+                    cost: pc.cost,
+                    unpriced: pc.unpriced,
+                    /**
+                     * Most urgent first, not costliest. They are a sequence
+                     * rather than a ranking — install now, connect to the grid
+                     * later — and printing them out of order would misstate the
+                     * plan.
+                     *
+                     * Every action the condition can fire, across all the ways
+                     * it is costed. For the four priced two ways this lists
+                     * alternatives, so the `each` prices under such a condition
+                     * are the branches a facility takes one of — they do not
+                     * multiply out to the total beside them. Hence the label.
+                     */
+                    interventions: [...gapAllInterventions(g)].sort(
                       (x, y) =>
                         HORIZONS.indexOf(x.horizon) - HORIZONS.indexOf(y.horizon) ||
                         (y.costNGN ?? 0) - (x.costNGN ?? 0),
@@ -1087,7 +1120,7 @@ function GapBlocks({
           read against each other on any selection.
 
           Two across rather than four: the figures read beside their labels
-          rather than under them, and "Interventions 2,355" does not fit in a
+          rather than under them, and "Interventions 17,555" does not fit in a
           quarter of 420px. */}
       <div className="mt-3.5 grid grid-cols-2 gap-px border border-border bg-border">
         {schedule.map((row) => (
@@ -1360,7 +1393,7 @@ function Row({
     horizon !== undefined ? (
       <span className={text}>
         {/* Inline, not on its own line under the label: four urgencies over
-            seventy-three conditions is a lot of rows to spend a line each on. */}
+            seventy-one conditions is a lot of rows to spend a line each on. */}
         <HorizonChip horizon={horizon} inline />
         {label}
       </span>
@@ -1638,8 +1671,8 @@ function HorizonChip({ horizon, inline }: { horizon: Horizon; inline?: boolean }
       {/* Shape before word before colour, so the chip ranks itself in
           greyscale too. Weight no longer carries the blocking/partial split —
           hue does it better, and leaving the two blocking urgencies bold and
-          the other two grey made Minor look like a footnote when it is 27,347
-          actions and ₦7.3bn. */}
+          the other two grey made Minor look like a footnote when it is 17,555
+          actions and ₦1.3bn. */}
       <span aria-hidden className="mr-1">
         {URGENCY_MARKER[horizon]}
       </span>

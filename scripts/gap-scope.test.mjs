@@ -3,9 +3,9 @@
  *
  * The Gap area filter narrows *which gaps are counted*, not only which
  * facilities are in scope. Get that wrong and the pane prints the national
- * total under a Technical Infrastructure heading — which it did: 30,557 gaps
- * and ₦16.3bn where the domain's own row two lines below read 18,667 and
- * ₦12.9bn.
+ * total under a Technical Infrastructure heading — which it did: 30,200 gaps
+ * and ₦6.0bn where the domain's own row two lines below read 18,310 and
+ * ₦5.9bn.
  *
  * So these are not unit tests of a helper. They assert the arithmetic the
  * screen shows, at every level the screen shows it — national, state, LGA and
@@ -62,8 +62,18 @@ const DOMAIN_IDS = [
   'data_use_reporting',
 ];
 
-const gapCost = (g) =>
-  g.interventions.reduce((sum, iv) => sum + (iv.costNGN ?? 0), 0);
+/**
+ * What a gap costs *at one facility*.
+ *
+ * The variant matters: four conditions are costed more than one way, so a
+ * price read off the catalogue alone would under-count every facility on a
+ * later variant — which is exactly the drift these tests exist to catch.
+ */
+const gapCost = (g, variant = 0) =>
+  (g.variants[variant] ?? g.variants[0] ?? []).reduce(
+    (sum, iv) => sum + (iv.costNGN ?? 0),
+    0,
+  );
 
 /** `offeredGapIds`, reimplemented from the catalogue the app ships. */
 function offeredGapIds(domains, gapAreas) {
@@ -88,7 +98,7 @@ function scopeTotals(rows, domains, gapAreas) {
     for (const id of f.gaps) {
       if (!offered.has(id)) continue;
       gaps += 1;
-      costNGN += gapCost(GAP_BY_ID.get(id));
+      costNGN += gapCost(GAP_BY_ID.get(id), f.gapVariants[id] ?? 0);
       hit = true;
     }
     if (hit) affected += 1;

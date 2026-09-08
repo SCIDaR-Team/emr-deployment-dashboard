@@ -38,20 +38,19 @@ import type { Band } from '@/lib/types';
  * `h-screen`, so a genuinely short viewport scrolls instead of clipping: never
  * hide content to protect a layout.
  *
- * **Counts lead, percentages support.** The three band blocks read 624 / 842 /
- * 1,340 before they read 22.2 / 30.0 / 47.8. Facilities are the unit the
+ * **Counts lead, percentages support.** The three band blocks read 170 / 1,892 /
+ * 744 before they read 6.1 / 67.4 / 26.5. Facilities are the unit the
  * programme acts in — a rollout is planned, costed and staffed per facility,
  * not per percentage point — so the absolute is the headline, carrying the band
  * name beside it, and the share is what gives it scale on the line beneath.
  *
- * **One reading, and it is deployment.** The source carries two overall bands
- * per facility — readiness to *use* an EMR and readiness to *deploy* one — and
- * the pages behind this one show both, because the distance between them is the
- * interesting fact. The front door does not: a landing page that reported the
- * use split gave a Ready count (71) that no module behind it agreed with, and
- * the question this dashboard exists to answer is what deployment takes. Every
- * figure here is `NATIONAL_DEPLOYMENT_SPLIT`; the footer says the other reading
- * exists and where to find it.
+ * **One reading, and it is deployment.** The source used to carry two overall
+ * bands per facility — readiness to *use* an EMR beside readiness to *deploy*
+ * one — and this page led with deployment because that is the question the
+ * dashboard exists to answer. The revised costing model withdrew the second
+ * column, so the choice has become the only reading there is. Every figure here
+ * is `NATIONAL_DEPLOYMENT_SPLIT`, and every module behind the door reports the
+ * same one.
  *
  * **On the palette.** This page follows a mockup drawn with a dark-green
  * wordmark, green eyebrows and a green primary button. It is not built that
@@ -88,11 +87,11 @@ const SCORED_TOTAL = NATIONAL_TOTAL;
  * What each band means, in the terms the band is actually computed from.
  *
  * Kept here rather than taken from `BAND_DESCRIPTION` in `bands.ts`, which
- * glosses the *use* reading. Deployment banding is mechanical and worth stating
- * exactly: critical gaps outstanding → Not ready, else major gaps outstanding →
- * Moderately ready, else Ready. Note Ready requires *both* to be clear — "no
- * critical gap", which is how the mockup put it, describes the top two bands
- * rather than the top one.
+ * names the band rather than explaining it. The banding is mechanical and worth
+ * stating exactly: critical gaps outstanding → Not ready, else major gaps
+ * outstanding → Moderately ready, else Ready. Note Ready requires *both* to be
+ * clear — "no critical gap", which is how the mockup put it, describes the top
+ * two bands rather than the top one.
  */
 const BAND_RULE: Record<Band, string> = {
   ready: 'Nothing critical or major outstanding',
@@ -251,10 +250,16 @@ export default function LandingPage() {
         <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12">
           <div className="flex flex-col">
             <p className="eyebrow">National assessment</p>
+            {/* Two figures, not three: the middle band is two thirds of the
+                country and is the reason the plan is affordable, but a headline
+                that led with it would say "most facilities need work", which is
+                true of every health system and tells a reader nothing. The
+                pair that carries the finding is how few are ready now and how
+                many are blocked outright. */}
             <h1 className="mt-3 text-[clamp(1.7rem,2.9vw,2.7rem)] font-semibold leading-[1.08] tracking-tight text-balance text-foreground">
-              One in five facilities could deploy an EMR tomorrow.{' '}
+              Two in three facilities need only major work before an EMR.{' '}
               <em className="not-italic text-notready-ink">
-                Nearly half need foundational infrastructure first.
+                One in four is blocked on power or connectivity.
               </em>
             </h1>
             <p className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-muted-foreground">
@@ -350,8 +355,8 @@ export default function LandingPage() {
                       row of vertical space that lets the share keep its
                       "of those assessed" qualifier.
 
-                      The label stacks under the figure below `xl`. "1,340 NOT
-                      READY" needs about 164px inline and a third of the
+                      The label stacks under the figure below `xl`. "1,892
+                      MODERATELY READY" needs well over 164px inline and a third of the
                       evidence column is 161px at 1280 and 114px at 1024 — so
                       inline is a promise this layout cannot keep at every
                       width. Stacking is chosen by *width* rather than by
@@ -425,10 +430,10 @@ export default function LandingPage() {
             </p>
             <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
               A facility&rsquo;s band is a count of the work still outstanding, never a
-              score. Critical gaps — overwhelmingly electricity, connectivity and backup
-              power — put it in Not ready on their own; major gaps alone pull it to
-              Moderately ready. The two lower bands are different problems, and each takes
-              a different response.
+              score. Critical gaps — electricity and connectivity, and nothing else — put
+              it in Not ready on their own; major gaps alone pull it to Moderately ready.
+              The two lower bands are different problems, and each takes a different
+              response.
             </p>
           </div>
         </div>
@@ -439,9 +444,7 @@ export default function LandingPage() {
           <p className="mono text-[9.5px] leading-relaxed text-muted-foreground">
             NPHCDA, with NTBLCP, The Global Fund and Solina · {COVERAGE.statesPrimary}{' '}
             states by facility survey; {COVERAGE.statesSecondary} states and the FCT by
-            desk review, which yields state-level findings only · Each facility also
-            carries a stricter <em>readiness-to-use</em> band, shown inside the dashboard
-            ·{' '}
+            desk review, which yields state-level findings only ·{' '}
             {/* What replaced the blanket "everything here is synthetic" notice.
                 The figures are sourced now, so a global disclaimer would be
                 false — but the one thing the dataset does not carry is worth

@@ -46,7 +46,13 @@ import {
   HORIZON_SUMMARY_COL,
   extractCatalogue,
   extractGapAreas,
-  gapCost,
+  BLANK_GAP_AREA,
+  BLANK_GAP_VALUE,
+  DEFAULT_HORIZON,
+  DEFAULT_HORIZON_AREA,
+  catalogueInterventions,
+  interventionsCost,
+  interventionsInRow,
   gapValueInRow,
   parseAssessmentCsv,
   parseMoney,
@@ -59,7 +65,10 @@ import { lookupFor, nameKey, parseFacilityWorkbook } from './facility-workbook.m
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'public/data');
 const CACHE = resolve(ROOT, 'scripts/source-data/assessment.csv');
-const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv');
+const COMMITTED = resolve(
+  ROOT,
+  'Revised costing model and roadmap - List of gaps and interventions per facility.csv',
+);
 /**
  * The raw ODK export, joined on top of the gaps CSV.
  *
@@ -90,7 +99,7 @@ const BANDS = ['not_ready', 'moderately_ready', 'ready'];
  * subtotals and keeps them in the grand total, so the two differ by exactly ₦1.
  *
  * It happens in precisely the 1,263 of 2,806 facilities that carry both, and
- * nowhere else: ₦1,263 nationally against ₦16.26bn, or 0.000008%.
+ * nowhere else: ₦1,263 nationally against ₦6.02bn, or 0.00002%.
  *
  * The dashboard sums the *cells*, not the grand total, because the cells are
  * what the gap catalogue is built from and a facility's cost has to be the sum
@@ -254,6 +263,19 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
   const record = workbook.find(uuid, nameKey(row[COL.state], row[COL.lga], row[COL.name]));
 
   const gaps = [];
+  /**
+   * The actions this facility's own row asks for.
+   *
+   * Read from the row rather than looked up from the catalogue, because the
+   * revised costing model gives one condition more than one answer: a facility
+   * with no power draws a ₦3,000,000 solar install, and only the 474 of 571
+   * that are off-grid also draw the ₦500,000 connection. Costing from the
+   * catalogue would charge every one of them the same, and the domain subtotals
+   * would stop reconciling against the sheet — which is precisely how this was
+   * caught.
+   */
+  const interventions = [];
+  const gapVariants = {};
   const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let costNGN = 0;
   let unpricedInterventions = 0;
@@ -264,7 +286,28 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
     const gap = catalogueById.get(gapIdOf(block, value));
     if (!gap) throw new Error(`Facility ${uuid} carries uncatalogued gap "${value}"`);
     gaps.push(gap.id);
-    const { costNGN: c, unpriced } = gapCost(gap);
+
+    const actions = interventionsInRow(row, block);
+    for (const iv of actions) interventions.push({ ...iv, domain: gap.domain });
+
+    /**
+     * Which of the condition's variants this facility is on.
+     *
+     * Only recorded where the condition has more than one — four of the 71, all
+     * power — so the map is empty for most facilities and never larger than two
+     * entries. Omitted means variant 0, which keeps the published JSON the size
+     * it was while letting the app cost a facility the way the sheet does.
+     */
+    if (gap.variants.length > 1) {
+      const shape = actions.map((iv) => iv.id).join('+');
+      const index = gap.variants.findIndex((v) => v.map((iv) => iv.id).join('+') === shape);
+      if (index < 0) {
+        throw new Error(`Facility ${uuid} carries an uncatalogued variant of "${gap.label}"`);
+      }
+      if (index > 0) gapVariants[gap.id] = index;
+    }
+
+    const { costNGN: c, unpriced } = interventionsCost(actions);
     costByDomain[gap.domain] += c;
     costNGN += c;
     unpricedInterventions += unpriced;
@@ -305,26 +348,34 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
     geography: record?.geography ?? null,
 
     /**
-     * Two overall readings, both carried.
+     * The one overall reading the dataset carries.
      *
-     * They disagree for 553 facilities, and deployment is never the worse of
-     * the two — the pair is nested, not crossing. Showing one and hiding the
-     * other would suppress the more interesting half of the finding: a facility
-     * can be clear to deploy into and still not be in shape to run an EMR.
+     * An earlier revision reported every facility twice — readiness to *use* an
+     * EMR beside readiness to *deploy* one — and the dashboard showed the pair
+     * because the distance between them was the interesting part. The revised
+     * costing model withdrew the use column and made the deployment band equal
+     * to the technical infrastructure reading, so there is one reading here
+     * now and showing it twice would say nothing.
      */
-    useBand: band(row[COL.useBand], 'EMR-use', uuid),
     deploymentBand: band(row[COL.deploymentBand], 'EMR-deployment', uuid),
     themeBands: Object.fromEntries(
       DOMAINS.map((d) => [d.id, band(row[d.bandCol], d.label, uuid)]),
     ),
 
     gaps,
+    /** Gap id → variant index, for the four conditions the revised model costs
+     *  more than one way. Absent means the first variant. */
+    gapVariants,
     gapCount: gaps.length,
+    /** This facility's own actions, for the rollups. Not published: the
+     *  per-facility JSON carries `gaps`, `gapVariants` and the costs, and the
+     *  plan lines are aggregated in `deploymentFor`. */
+    interventions,
     costNGN,
     costByDomain,
     /** Interventions this facility needs whose price the sheet does not carry.
-     *  Query B — 332 facilities, all of them a critical connectivity blocker.
-     *  Counted so a total can say what it excludes. */
+     *  Query A — 2,274 device-maintenance actions. Counted so a total can say
+     *  what it excludes. */
     unpricedInterventions,
 
     dailyClientLoad: optionalText(row[COL.dailyClientLoad]),
@@ -363,18 +414,23 @@ function gapIdOf(block, value) {
  * means what `docs/ASSESSMENT_DATA.md` says it means. Every one of these held
  * in all 2,806 rows when the dataset was reviewed.
  */
-function validateRow(row, facility, catalogueById, problems) {
+function validateRow(row, facility, blocks, problems) {
   const uuid = facility.uuid;
   const fail = (msg) => problems.push(`${uuid}: ${msg}`);
   let drift = 0;
 
-  // 1. Total gaps = the number of gap columns that fired.
+  // 1. Total gaps = the gap columns that fired, plus the sheet's own overcount.
+  //    See SHEET_GAP_OVERCOUNT.
   const statedGaps = Number(row[COL.totalGaps]);
-  if (statedGaps !== facility.gapCount) {
-    fail(`sheet says ${statedGaps} gaps, ${facility.gapCount} columns carry one`);
+  const expectedGaps = facility.gapCount + sheetGapOvercount(row, blocks);
+  if (statedGaps !== expectedGaps) {
+    fail(
+      `sheet says ${statedGaps} gaps; ${facility.gapCount} columns carry one ` +
+        `and the sheet's overcount is ${sheetGapOvercount(row, blocks)}`,
+    );
   }
 
-  // 2. Each domain subtotal = the sum of that domain's own cost cells.
+  // 2. Each domain subtotal = the sum of that facility's own cost cells.
   for (const d of DOMAINS) {
     const stated = parseMoney(row[d.costTotalCol]) ?? 0;
     if (Math.round(stated) !== Math.round(facility.costByDomain[d.id])) {
@@ -391,23 +447,27 @@ function validateRow(row, facility, catalogueById, problems) {
   }
 
   // 4. The severity columns count *interventions* by horizon — not gaps, which
-  //    is why they do not sum to `Total gaps`.
+  //    is why they do not sum to `Total gaps`. Two artefacts of the revised
+  //    sheet stand between its minor count and ours; both are named and
+  //    counted rather than tolerated. See sheetMinorOffset.
   const byHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
-  for (const id of facility.gaps) {
-    for (const iv of catalogueById.get(id).interventions) byHorizon[iv.horizon] += 1;
-  }
+  for (const iv of facility.interventions) byHorizon[iv.horizon] += 1;
+
   for (const [horizon, col] of Object.entries(HORIZON_SUMMARY_COL)) {
     const stated = Number(row[col]);
-    if (stated !== byHorizon[horizon]) {
-      fail(`${horizon} count: sheet ${stated}, catalogue implies ${byHorizon[horizon]}`);
+    const expected =
+      horizon === DEFAULT_HORIZON
+        ? byHorizon[horizon] + sheetMinorOffset(row, blocks)
+        : byHorizon[horizon];
+    if (stated !== expected) {
+      fail(`${horizon} count: sheet ${stated}, this row's actions imply ${expected}`);
     }
   }
 
   // 5. Deployment readiness is a function of the blocker counts, exactly.
   const critical = byHorizon.critical;
   const major = byHorizon.major;
-  const expected =
-    critical > 0 ? 'not_ready' : major > 0 ? 'moderately_ready' : 'ready';
+  const expected = critical > 0 ? 'not_ready' : major > 0 ? 'moderately_ready' : 'ready';
   if (facility.deploymentBand !== expected) {
     fail(
       `deployment band is ${facility.deploymentBand}; ` +
@@ -415,20 +475,79 @@ function validateRow(row, facility, catalogueById, problems) {
     );
   }
 
-  // 6. EMR-use readiness is the technical infrastructure reading, copied.
-  if (facility.useBand !== facility.themeBands.technical_infrastructure) {
+  // 6. The overall reading is the technical infrastructure reading. It was the
+  //    *use* band that was defined this way before the revision; the revised
+  //    model brought the deployment band onto the same footing, which is what
+  //    collapsed the two readings into one. Checked, not assumed — if the two
+  //    ever come apart again the dataset has grown a second reading back and
+  //    the dashboard needs to know before it prints one of them as both.
+  if (facility.deploymentBand !== facility.themeBands.technical_infrastructure) {
     fail(
-      `use band ${facility.useBand} ≠ technical infrastructure band ` +
+      `overall band ${facility.deploymentBand} ≠ technical infrastructure band ` +
         `${facility.themeBands.technical_infrastructure}`,
     );
   }
 
-  // 7. Deployment is never worse than use — the two readings are nested.
-  if (BANDS.indexOf(facility.deploymentBand) < BANDS.indexOf(facility.useBand)) {
-    fail(`deployment band ${facility.deploymentBand} is worse than use band ${facility.useBand}`);
-  }
-
   return drift;
+}
+
+/**
+ * How many gaps the sheet counts that this row does not carry.
+ *
+ * Two, both structural, both uniform across all 2,806 rows — which is what
+ * makes them an identity to assert rather than a tolerance to allow:
+ *
+ * **One everywhere.** `Total gaps` is exactly one higher than the number of gap
+ * columns that fired, in every row without exception. A formula in the revised
+ * sheet counts a range one wider than it means to; it does not vary, it does
+ * not depend on the facility, and no gap is missing behind it.
+ *
+ * **One more where Backup-connectivity reads `0`.** The sheet counted those 199
+ * cells as gaps. This ingest reads them as no gap — see `BLANK_GAP_VALUE` — so
+ * for those facilities the difference is two.
+ *
+ * Written as a function of the row rather than a constant so the check stays a
+ * check: if the overcount ever moves, every row says so.
+ */
+function sheetGapOvercount(row, blocks) {
+  const backupConnectivity = blocks.find((b) => b.subDomain === BLANK_GAP_AREA);
+  const repaired =
+    backupConnectivity && String(row[backupConnectivity.col] ?? '').trim() === BLANK_GAP_VALUE;
+  return SHEET_GAP_OVERCOUNT + (repaired ? 1 : 0);
+}
+
+/** The sheet's constant, facility-independent overcount of `Total gaps`. */
+const SHEET_GAP_OVERCOUNT = 1;
+
+/**
+ * How far the sheet's own Minor count sits from this row's minor actions.
+ *
+ * Two artefacts, pulling opposite ways, and between them they account for the
+ * difference exactly in all 2,806 rows:
+ *
+ * **Minus one per Physical service-point action.** The sheet leaves the urgency
+ * cell blank for all 2,066 of them and does not count them. This ingest reads
+ * the blank as `minor` — see `DEFAULT_HORIZON_AREA` — so ours is the higher
+ * number, by one per action.
+ *
+ * **Plus one per actionless Device-maintenance row.** 160 facilities on a
+ * formal quarterly or annual maintenance schedule carry a Device-maintenance
+ * gap whose urgency cell is filled and whose intervention cell is empty. The
+ * sheet counts the urgency; there is no action to count, so we do not.
+ */
+function sheetMinorOffset(row, blocks) {
+  let offset = 0;
+  for (const block of blocks) {
+    const value = gapValueInRow(row, block);
+    if (value === null) continue;
+    for (const slot of block.slots) {
+      const label = String(row[slot.label] ?? '').trim();
+      const when = String(row[slot.when] ?? '').trim();
+      if (label && !when && block.subDomain === DEFAULT_HORIZON_AREA) offset -= 1;
+      if (!label && when) offset += 1;
+    }
+  }
+  return offset;
 }
 
 // ---------------------------------------------------------------------------
@@ -457,35 +576,42 @@ function deploymentFor(facilities, catalogueById) {
   let unpriced = 0;
 
   for (const f of facilities) {
-    for (const id of f.gaps) {
-      gapCounts.set(id, (gapCounts.get(id) ?? 0) + 1);
-      const gap = catalogueById.get(id);
-      for (const iv of gap.interventions) {
-        const line = lines.get(iv.id) ?? {
-          id: iv.id,
-          label: iv.label,
-          domain: gap.domain,
-          horizon: iv.horizon,
-          unitCostNGN: iv.costNGN,
-          quantity: 0,
-          facilityCount: 0,
-          totalCostNGN: 0,
-          /** Lines the sheet does not price. Kept as a flag on the line rather
-           *  than folded into a zero, so a reader can see which of them the
-           *  total is silent about. */
-          priced: iv.costNGN !== null,
-        };
-        line.quantity += 1;
-        line.facilityCount += 1;
-        if (iv.costNGN === null) {
-          unpriced += 1;
-        } else {
-          line.totalCostNGN += iv.costNGN;
-          costByHorizon[iv.horizon] += iv.costNGN;
-          costByDomain[gap.domain] += iv.costNGN;
-        }
-        lines.set(iv.id, line);
+    for (const id of f.gaps) gapCounts.set(id, (gapCounts.get(id) ?? 0) + 1);
+
+    /**
+     * Lines come from the facilities, not from their gaps.
+     *
+     * The distinction only started to matter with the revised costing model,
+     * which lets one condition fire different actions at different facilities.
+     * Walking the catalogue would give every facility with a power gap the same
+     * line; walking the facility gives it the line its own row asks for, and a
+     * plan that adds up to the sheet's own total.
+     */
+    for (const iv of f.interventions) {
+      const line = lines.get(iv.id) ?? {
+        id: iv.id,
+        label: iv.label,
+        domain: iv.domain,
+        horizon: iv.horizon,
+        unitCostNGN: iv.costNGN,
+        quantity: 0,
+        facilityCount: 0,
+        totalCostNGN: 0,
+        /** Lines the sheet does not price. Kept as a flag on the line rather
+         *  than folded into a zero, so a reader can see which of them the
+         *  total is silent about. */
+        priced: iv.costNGN !== null,
+      };
+      line.quantity += 1;
+      line.facilityCount += 1;
+      if (iv.costNGN === null) {
+        unpriced += 1;
+      } else {
+        line.totalCostNGN += iv.costNGN;
+        costByHorizon[iv.horizon] += iv.costNGN;
+        costByDomain[iv.domain] += iv.costNGN;
       }
+      lines.set(iv.id, line);
     }
   }
 
@@ -649,16 +775,8 @@ function profileFor({
     facilityCount: facilities.length,
     ...extra,
 
-    /**
-     * Both readings, side by side, at every level.
-     *
-     * The pane shows the pair rather than switching between them: the
-     * interesting fact about this dataset is the *distance* between the two,
-     * and distance is only visible when both are on screen.
-     */
-    useDistribution: distributionOf(facilities, 'useBand'),
+    /** The one overall reading, as a distribution and as a rolled-up band. */
     deploymentDistribution: distributionOf(facilities, 'deploymentBand'),
-    useBand: assessed ? dominantBand(distributionOf(facilities, 'useBand')) : null,
     deploymentBand: assessed
       ? dominantBand(distributionOf(facilities, 'deploymentBand'))
       : null,
@@ -725,7 +843,9 @@ async function main() {
   const catalogueById = new Map(catalogue.map((g) => [g.id, g]));
   process.stderr.write(
     `Extracted ${gapAreas.length} gap areas, ${catalogue.length} conditions, ` +
-      `${new Set(catalogue.flatMap((g) => g.interventions.map((i) => i.id))).size} interventions\n`,
+      `${new Set(catalogue.flatMap((g) => catalogueInterventions(g).map((i) => i.id))).size} ` +
+      `interventions, ${catalogue.filter((g) => g.variants.length > 1).length} conditions ` +
+      `costed more than one way\n`,
   );
 
   // --- The raw workbook -----------------------------------------------------
@@ -828,7 +948,7 @@ async function main() {
   let roundedRows = 0;
   for (const row of rows) {
     const facility = buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook);
-    const drift = validateRow(row, facility, catalogueById, problems);
+    const drift = validateRow(row, facility, blocks, problems);
     if (drift) {
       roundingDrift += drift;
       roundedRows += 1;
@@ -942,7 +1062,7 @@ async function main() {
      * only thing that moved, and no diff would tell you that.
      */
     builtAt: previousBuiltAt(contentHash) ?? new Date().toISOString(),
-    source: 'assessment — List of gaps and interventions per facility',
+    source: 'assessment — revised costing model and roadmap',
     sourceUrl: sourceUrl(),
     contentHash,
     facilityCount: facilities.length,
@@ -957,7 +1077,14 @@ async function main() {
   const write = (name, value) =>
     writeFileSync(resolve(OUT, name), `${JSON.stringify(value)}\n`);
 
-  write('facilities-summary.json', facilities);
+  /** `interventions` is working state for the rollups, not part of the
+   *  published contract — a facility's actions are recoverable from its gaps
+   *  and variants, and carrying them per facility would roughly double the
+   *  file for nothing the app reads. */
+  write(
+    'facilities-summary.json',
+    facilities.map(({ interventions: _actions, ...published }) => published),
+  );
   write('states.json', stateProfiles);
   write('lgas.json', lgaProfiles);
   write('national.json', national);
@@ -1091,7 +1218,16 @@ export interface GapDef {
   /** The condition the survey recorded, verbatim. */
   label: string;
   severity: GapSeverity;
-  interventions: GapInterventionDef[];
+  /**
+   * The action sets this condition fires, one per way the sheet costs it.
+   *
+   * Almost always one. Four conditions have more, all of them power: the
+   * revised costing model chooses between a ₦3,000,000 solar install and a
+   * ₦1,200,000 top-up, and adds a ₦500,000 grid connection only where the
+   * facility is not already connected. A facility says which one it is on
+   * through \`FacilitySummary.gapVariants\`; absent means the first.
+   */
+  variants: GapInterventionDef[][];
 }
 
 export const GAPS: GapDef[] = ${JSON.stringify(catalogue, null, 2)};
@@ -1169,21 +1305,58 @@ export function hasGapInAreas(gapIds: readonly string[], areas: readonly string[
 }
 
 /**
- * What a gap costs.
+ * The actions one facility's gap asks for.
  *
- * No facility argument: nothing in the source is quantity-scaled, so a gap
- * costs the same wherever it appears. Unpriced interventions are reported
- * separately rather than counted as zero, so a total never silently absorbs a
- * missing price.
+ * \`variant\` comes from \`FacilitySummary.gapVariants[gapId]\`, and defaults to
+ * the first — which is the whole story for 67 of the 71 conditions. Pass it
+ * wherever the reading is about a *facility*; omit it only where the subject is
+ * the condition itself.
  */
-export function gapCostNGN(gap: GapDef): { costNGN: number; unpriced: number } {
+export function gapInterventions(gap: GapDef, variant = 0): GapInterventionDef[] {
+  return gap.variants[variant] ?? gap.variants[0] ?? [];
+}
+
+/**
+ * What a gap costs at one facility.
+ *
+ * Nothing in the source is quantity-scaled, so an action costs the same
+ * wherever it appears — but which actions a gap fires is no longer the same
+ * everywhere, which is what \`variant\` carries. Unpriced interventions are
+ * reported separately rather than counted as zero, so a total never silently
+ * absorbs a missing price.
+ */
+export function gapCostNGN(
+  gap: GapDef,
+  variant = 0,
+): { costNGN: number; unpriced: number } {
   let costNGN = 0;
   let unpriced = 0;
-  for (const iv of gap.interventions) {
+  for (const iv of gapInterventions(gap, variant)) {
     if (iv.costNGN === null) unpriced += 1;
     else costNGN += iv.costNGN;
   }
   return { costNGN, unpriced };
+}
+
+/**
+ * Every action a condition can trigger, across all the ways it is costed.
+ *
+ * The union, not a sum — the ₦3,000,000 install and the ₦1,200,000 top-up are
+ * alternatives, and a reader looking at the condition rather than at a facility
+ * wants to see both. Never use this to cost anything.
+ */
+export function gapAllInterventions(gap: GapDef): GapInterventionDef[] {
+  if (gap.variants.length < 2) return gapInterventions(gap);
+  const seen = new Set<string>();
+  const out: GapInterventionDef[] = [];
+  for (const variant of gap.variants) {
+    for (const iv of variant) {
+      if (seen.has(iv.id)) continue;
+      seen.add(iv.id);
+      out.push(iv);
+    }
+  }
+  return out;
 }
 
 /** Band ranks, so a caller can order gap severity beside a readiness band. */
@@ -1207,9 +1380,8 @@ function writeNationalSplit(distribution, total) {
  * The national EMR-deployment readiness split, available synchronously so the
  * landing page can paint before \`DataProvider\` has fetched anything.
  *
- * Deployment, not use: this dashboard's question is what it takes to *deploy*
- * an EMR, and a front door that led with the use split reported a different
- * Ready count from every page behind it.
+ * The one overall reading the dataset carries — the same figures every page
+ * behind the front door is working from.
  */
 
 import type { Band } from './types';
@@ -1217,8 +1389,8 @@ import type { Band } from './types';
 export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = ${JSON.stringify(distribution)};
 
 /** Facilities carrying a band — the denominator every share on the landing
- *  page is taken over. Every assessed facility carries both overall bands, so
- *  this is simply the survey size. */
+ *  page is taken over. Every assessed facility carries one, so this is simply
+ *  the survey size. */
 export const NATIONAL_TOTAL = ${total};
 `,
   );
@@ -1261,7 +1433,6 @@ function report(facilities, catalogue, national, stateProfiles, rounding) {
     `  ${label.padEnd(16)}${String(d.not_ready).padStart(10)}${String(
       d.moderately_ready,
     ).padStart(13)}${String(d.ready).padStart(12)}`;
-  out.push(line('EMR use', national.useDistribution));
   out.push(line('EMR deployment', national.deploymentDistribution));
   out.push('');
   out.push('  investment by state');

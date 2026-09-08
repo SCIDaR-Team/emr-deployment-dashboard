@@ -105,11 +105,10 @@ export default function AssessedStatesPage() {
    * It removes no facility — all 2,806 are scored in all four domains — but it
    * changes what every band on the page *means*, through `facilityBandUnder`.
    *
-   * Nothing ticked, a facility shows both overall readings: how ready it is to
-   * *use* an EMR and whether anything blocks *deploying* one. Tick a domain and
-   * both collapse to that domain's band — which is always a use band, since the
-   * source has no per-domain deployment reading. So the page has two modes, and
-   * which one it is in is decided here.
+   * Nothing ticked, a facility shows its overall reading: whether anything
+   * blocks deploying an EMR into it. Tick a domain and it shows that domain's
+   * band instead. Both are on the same scale, so ticking a domain narrows the
+   * question rather than swapping it — which is the point of the lens.
    */
   const storeDomains = useFilterStore((s) => s.domains);
   // Narrowed to the four the facility survey scores. The store's Domain
@@ -172,7 +171,9 @@ export default function AssessedStatesPage() {
       scope.state
         ? lgas.data
             .filter((l) => l.parentId === scope.state!.id)
-            .sort((a, b) => b.useDistribution.not_ready - a.useDistribution.not_ready)
+            .sort(
+              (a, b) => b.deploymentDistribution.not_ready - a.deploymentDistribution.not_ready,
+            )
         : [],
     [lgas.data, scope.state],
   );
@@ -242,7 +243,7 @@ export default function AssessedStatesPage() {
         for (const id of f.gaps) {
           if (!offered.has(id)) continue;
           gaps += 1;
-          costNGN += gapCostNGN(GAP_BY_ID[id]!).costNGN;
+          costNGN += gapCostNGN(GAP_BY_ID[id]!, f.gapVariants[id] ?? 0).costNGN;
           hit = true;
         }
         if (hit) affected += 1;

@@ -1,19 +1,27 @@
 # The assessment dataset
 
-`List of gaps and interventions per facility.csv` — 2,806 assessed facilities
-across 12 states, every gap they carry, the intervention each gap calls for,
-when it is needed and what it costs.
+`Revised costing model and roadmap - List of gaps and interventions per
+facility.csv` — 2,806 assessed facilities across 12 states, every gap they
+carry, the intervention each gap calls for, when it is needed and what it costs.
 
 This is the dataset behind `public/data/`. It replaced a synthetic stand-in,
 whose generator and documentation were retired once the ingest landed — both are
 in git history if the invented population is ever wanted again.
 
-**Two sources.** The published Google Sheet in `.env` (`facility gaps and
-intervention`) is the primary one; the local CSV is a byte-identical export of
-it, verified on 2026-08-26. `ERA dataset_v4 (1).xlsx` — the raw ODK export the
-gaps CSV was summarised from — is joined on top of it for the rural/urban
-setting and each facility's coordinate. See
+**Two sources.** The revised costing sheet is the primary one, verified on
+2026-09-08. `ERA dataset_v4 (1).xlsx` — the raw ODK export the gaps CSV was
+summarised from — is joined on top of it for the rural/urban setting and each
+facility's coordinate. See
 [Part 2 §7](#7-the-raw-odk-workbook--the-second-source).
+
+> **This is the revised costing model, and it supersedes an earlier one.** Same
+> 2,806 facilities, same geography, same four domain readings — and a different
+> answer to almost every question about money. The national total fell from
+> ₦16.26bn to ₦6.02bn, six of the twenty gap areas stopped being funded, the
+> second overall reading was withdrawn, and one condition can now be costed more
+> than one way. The superseded file is gone from the repository; where this doc
+> refers to it, it is explaining why something is shaped the way it is, never
+> sourcing a figure from it.
 
 ---
 
@@ -21,7 +29,7 @@ setting and each facility's coordinate. See
 
 ### Shape
 
-A four-row header over 2,806 data rows and 114 columns:
+A four-row header over 2,806 data rows and 113 columns:
 
 | Row | Contents |
 |---|---|
@@ -69,46 +77,51 @@ Facilities per state:
 Zones: north_west 705 · south_east 502 · south_west 416 · north_central 405 ·
 south_south 399 · north_east 379.
 
-### 2. Readiness — columns 7–12
+### 2. Readiness — columns 7–11
 
-Six band columns, three levels each (`Not Ready` / `Moderately Ready` /
+Five band columns, three levels each (`Not Ready` / `Moderately Ready` /
 `Ready`). No nulls anywhere — every facility carries every band.
 
 | Col | Field | Not | Moderate | Ready |
 |---|---|---|---|---|
-| 7 | Overall readiness for EMR **deployment** | 1,340 | 842 | 624 |
-| 8 | Overall readiness for EMR **use** | 1,340 | 1,395 | 71 |
-| 9 | Technical infrastructure | 1,340 | 1,395 | 71 |
-| 10 | Workforce | 1,013 | 592 | 1,201 |
-| 11 | Workflow | 2,393 | 185 | 228 |
-| 12 | Data use | 349 | 350 | 2,107 |
+| 7 | Overall readiness for EMR **deployment** | 744 | 1,892 | 170 |
+| 8 | Technical infrastructure | 744 | 1,892 | 170 |
+| 9 | Workforce | 1,013 | 592 | 1,201 |
+| 10 | Workflow | 2,393 | 185 | 228 |
+| 11 | Data use | 349 | 350 | 2,107 |
 
-**Two derivations hold exactly, in all 2,806 rows.** Both were verified, and
-both matter for the UI:
+**One overall reading, not two.** The superseded sheet carried a sixth column,
+`Overall readiness for EMR use`, and the dashboard reported the pair because the
+distance between them was the finding. It has been withdrawn. Everything from
+`FacilitySummary` up now carries a single `deploymentBand`.
 
-1. **Overall readiness for EMR use is a copy of technical infrastructure
-   readiness.** Identical in every row — not the minimum of the four domains
-   (that holds in only 1,510 rows). Infrastructure is treated as the binding
-   constraint on EMR *use*, full stop.
+**Two derivations hold exactly, in all 2,806 rows**, and both are asserted by
+`validateRow`:
 
-2. **Overall readiness for EMR deployment is a function of the summary gap
-   counts:**
+1. **Overall readiness is a copy of technical infrastructure readiness.**
+   Identical in every row — not the minimum of the four domains. Infrastructure
+   is treated as the binding constraint, full stop. This was true of the
+   withdrawn *use* column before; what the revision did was bring the deployment
+   band onto the same footing, which is what collapsed the two into one.
+
+2. **Overall readiness is also a function of the summary gap counts:**
 
    ```
-   critical > 0                → Not Ready for EMR deployment       (1,340)
-   critical = 0 and major > 0  → Moderately Ready for EMR deployment  (842)
-   critical = 0 and major = 0  → Ready for EMR deployment             (624)
+   critical > 0                → Not Ready for EMR deployment         (744)
+   critical = 0 and major > 0  → Moderately Ready for EMR deployment (1,892)
+   critical = 0 and major = 0  → Ready for EMR deployment              (170)
    ```
 
-   Zero exceptions. So *deployment* readiness is about blockers, and *use*
-   readiness is about infrastructure quality. They answer different questions
-   and the page should not conflate them.
+   Zero exceptions. The two derivations agreeing is the whole reason one column
+   could go: blockers and infrastructure quality now answer the same question.
 
-Note the consequence for the app's existing model: `FacilitySummary.archetype`
-is currently one band. This dataset has **two** overall bands, and they
-disagree for 553 facilities (Ready to deploy, only Moderately ready to use).
+The revision moved this distribution a long way. Not ready nearly halved, Ready
+fell to a sixth of what it was, and two thirds of the survey is now Moderately
+ready — a consequence of the re-pricing, since the band is read off the horizons
+of the actions a facility's gaps trigger and many of those actions changed
+urgency or disappeared.
 
-### 3. Gaps and interventions — columns 13–106
+### 3. Gaps and interventions — columns 12–105
 
 Four domains. Within each domain, a repeating block:
 
@@ -124,29 +137,49 @@ condition inside it and the facility counts behind both are written out in
 
 | Domain | Gap area columns |
 |---|---|
-| Technical Infrastructure (13–58) | Power · Wiring · Facility-connectivity · Device-sufficiency · Backup-power · Backup-connectivity · Device-maintenance · Data-backup · Mobile-network feasibility |
-| Workforce Capacity (60–75) | Digital-competency · EMR/Data focal-person · Training · Technical-support |
-| Workflow and Transition (77–92) | Duplicate-entry · Workflow-bottleneck · Physical service-point · Staff-willingness support |
-| Data Use and Reporting (94–105) | Routine-data-use · Data-validation · Report-review support |
+| Technical Infrastructure (12–57) | Power · Wiring · Facility-connectivity · Device-sufficiency · Backup-power · Backup-connectivity · Device-maintenance · Data-backup · Mobile-network feasibility |
+| Workforce Capacity (59–74) | Digital-competency · EMR/Data focal-person · Training · Technical-support |
+| Workflow and Transition (76–91) | Duplicate-entry · Workflow-bottleneck · Physical service-point · Staff-willingness support |
+| Data Use and Reporting (93–104) | Routine-data-use · Data-validation · Report-review support |
 
 Each gap column holds either `No gap` or **a named condition** — the gap is
 ordinal, not boolean. `Power gap` for instance carries one of:
 
 - `No functional electricity source or 0 hours/day` (571)
-- `Best usable source provides 1–4 hours/day` (450)
-- `Best usable source provides 5–8 hours/day` (227)
+- `Estimated combined power coverage is 5–8 hours/day` (382)
+- `Estimated combined power coverage is 1–4 hours/day` (375)
 
-Across the 20 columns there are **73 distinct (column, value) gap variants** —
-this is the real gap catalogue, and it is what replaces the 30-odd invented gaps
-in `scripts/gap-catalogue.mjs`.
+Across the 20 columns there are **71 distinct (column, value) conditions** —
+this is the real gap catalogue, extracted rather than hand-maintained.
 
-**The variant → intervention mapping is deterministic.** Verified: the same gap
-value always produces the same interventions, the same horizons and the same
-costs, in every row of the file. That means the catalogue can be *extracted*
-from the data rather than hand-maintained, and the extraction is lossless.
+**A condition no longer implies one set of interventions.** It used to: every
+row carrying a given gap value fired the same actions at the same prices, which
+is what made the extraction lossless in one step. The revised costing model broke
+that deliberately, and four conditions now carry **variants**:
 
-29 distinct intervention labels, 30 distinct (label, horizon, cost) tuples. Only
-`Power gap` has a second intervention slot; every other sub-domain has one.
+| Condition | Facilities | Ways it is costed |
+|---|---:|---:|
+| Power: No functional electricity source or 0 hours/day | 571 | 2 |
+| Power: Estimated combined power coverage is 1–4 hours/day | 375 | 4 |
+| Power: Estimated combined power coverage is 5–8 hours/day | 382 | 4 |
+| Backup-power: Backup is partially functional | 217 | 2 |
+
+The choice is real work rather than an inconsistency: a facility already on the
+grid is not sold a ₦500,000 connection to it, and a facility with some supply
+draws a ₦1,200,000 top-up where one with none draws the full ₦3,000,000 install.
+
+Three consequences run all the way to the UI. **A facility is costed from its own
+row**, never from the catalogue. **`gapCostNGN` takes a variant**, carried per
+facility in `FacilitySummary.gapVariants` — sparse, since 67 of the 71 conditions
+have only one. And **a population cost cannot be a count times a price**; it has
+to be summed as the facilities are walked.
+
+What the extraction still refuses is a condition whose variants disagree about
+**severity**, since severity is what the band is computed from. That holds for
+all 71 today.
+
+24 distinct (label, horizon, cost) interventions. Only `Power gap` has a second
+intervention slot; every other area has one.
 
 **Costs are flat per intervention, not per quantity.** `Give each place where
 staff enter EMR data the number of tablets it is missing` is ₦233,333 in all
@@ -160,28 +193,37 @@ Four values, and they carry the severity:
 
 | Value | Instances |
 |---|---|
-| Minor action to complete during EMR deployment | 27,347 |
-| Critical gap to fix before EMR deployment | 2,355 |
-| Major gap to fix before EMR deployment | 1,477 |
-| Optional long-term improvement after EMR deployment | 571 |
+| Minor action to complete during EMR deployment | 17,715 |
+| Major gap to fix before EMR deployment | 2,970 |
+| Critical gap to fix before EMR deployment | 879 |
+| Optional long-term improvement after EMR deployment | 753 |
 
 This is the file's severity model. There is no separate severity column — a
 gap's weight *is* the horizon of the intervention it triggers.
 
-### 5. Network measurement — columns 48–54
+The counts above are the ingest's, and the Minor one differs from the sheet's own
+Minor column by a known, exact amount. Two artefacts pull opposite ways: the
+sheet leaves the urgency cell blank on all 2,066 Physical service-point actions
+and does not count them, where the ingest reads the blank as `minor`; and 160
+Device-maintenance rows carry an urgency against an empty intervention cell,
+which the sheet counts and the ingest cannot. `validateRow` asserts the identity
+rather than allowing a tolerance. See
+[`data-queries/README.md`](data-queries/README.md).
+
+### 5. Network measurement — columns 47–53
 
 Sitting inside the Technical Infrastructure block, ahead of the mobile-network
 feasibility gap that is derived from them:
 
 | Col | Field | State |
 |---|---|---|
-| 48 | MTN base station | Populated — 863 distinct sites |
-| 49 | MTN base-station distance (km) | Populated · 20 `Not available` |
-| 50 | MTN serviceability | `Not currently serviceable` 1,549 · `Immediately serviceable` 812 · `Serviceable with network extension` 423 · `Not available` 20 · blank 2 |
-| 51 | MTN 4G signal | `Excellent` 1,700 · `Good` 676 · `no signal` 408 · `Not available` 20 · blank 2 |
-| 52 | Average Airtel site distance (m) | Populated · 6 `Not available` |
-| 53 | Airtel nearest site name | **Empty in all 2,806 rows** |
-| 54 | Airtel serviceability | **Empty in all 2,806 rows** |
+| 47 | MTN base station | Populated — 863 distinct sites |
+| 48 | MTN base-station distance (km) | Populated · 20 `Not available` |
+| 49 | MTN serviceability | `Not currently serviceable` 1,549 · `Immediately serviceable` 812 · `Serviceable with network extension` 423 · `Not available` 20 · blank 2 |
+| 50 | MTN 4G signal | `Excellent` 1,700 · `Good` 676 · `no signal` 408 · `Not available` 20 · blank 2 |
+| 51 | Average Airtel site distance (m) | Populated · 8 without a reading |
+| 52 | Airtel nearest site name | **Empty in all 2,806 rows** |
+| 53 | Airtel serviceability | **Empty in all 2,806 rows** |
 
 MTN serviceability aggregates cleanly to state level and is a genuine measure
 for the pane — Lagos is 86.2% immediately serviceable, Jigawa 7.9%, Bauchi 8.4%.
@@ -190,21 +232,26 @@ for the pane — Lagos is 86.2% immediately serviceable, Jigawa 7.9%, Bauchi 8.4
 
 | Col | Field | Notes |
 |---|---|---|
-| 107 | Total gaps | 3–19 per facility, mean 10.9, **30,557 total**. No facility has zero. |
-| 108 | Minor gaps | Count of *minor* interventions |
-| 109 | Major gaps | Count of *major* interventions |
-| 110 | Critical gaps | Count of *critical* interventions |
-| 111 | Long-term gaps | Count of *long-term* interventions |
-| 112 | Typical daily client load | `<10` 797 · `11-30` 1,278 · `31-50` 442 · `>50` 289 |
-| 113 | Total facility intervention cost (₦) | ₦217,000 – ₦13,741,378 · median ₦6,402,666 |
+| 106 | Total gaps | 3–18 per facility, mean 10.8, **30,200 total**. No facility has zero. |
+| 107 | Minor gaps | Count of *minor* interventions |
+| 108 | Major gaps | Count of *major* interventions |
+| 109 | Critical/foundational gaps | Count of *critical* interventions |
+| 110 | Long-term gaps | Count of *long-term* interventions |
+| 111 | Typical daily client load | `<10` 797 · `11-30` 1,278 · `31-50` 442 · `>50` 289 |
+| 112 | Total facility intervention cost (₦) | ₦0 – ₦7,642,378 · median ₦1,254,378 |
 
-**Careful: 108–111 count interventions, not gaps.** They do not sum to column
-107 — they disagree in 1,259 rows, because `Power gap` fires two interventions
-on two different horizons from one gap. Verified: 108–111 match the per-horizon
-intervention counts exactly, in every row.
+**Careful: 107–110 count interventions, not gaps.** They do not sum to column
+106, because `Power gap` fires two interventions on two different horizons from
+one gap while thirteen conditions fire none at all.
 
-So the page has two legitimate but different denominators — "30,557 gaps" and
-"31,750 interventions" — and must not mix them in one sentence.
+**Column 106 is one too high in every row.** Not in some rows — in all 2,806,
+by exactly one, plus one more in the 199 facilities whose Backup-connectivity
+cell reads `0` and is read here as no gap. It looks like a formula covering a
+range one wider than intended. `validateRow` asserts the identity rather than
+tolerating a range, so the day it stops being constant the build stops.
+
+So the page has two legitimate but different denominators — "30,200 gaps" and
+"22,157 interventions" — and must not mix them in one sentence.
 
 ### 7. Money
 
@@ -221,61 +268,69 @@ and rounds once. A facility carrying *both* fractions loses them from the
 subtotals and keeps them in the grand total — so the two differ by exactly ₦1,
 in precisely the 1,263 facilities that carry both, and nowhere else.
 
-₦1,263 nationally against ₦16.26bn: 0.000008%. It is noted rather than fixed
+₦1,263 nationally against ₦6.02bn: 0.00002%. It is noted rather than fixed
 because there is nothing to fix — the underlying figures are fractional and the
 sheet is rounding them, which is the correct thing for it to do.
 
 **What the dashboard sums.** The cost *cells*, not the grand total. The cells
 are what the gap catalogue is built from, and a facility's cost has to be the
 sum of the gaps shown beside it or the card contradicts itself. The national
-total is therefore ₦16,256,516,025 here against the sheet's ₦16,256,517,288 —
-the same ₦1,263. `ingest-assessment.mjs` tolerates exactly ₦1 per facility and
-totals the drift in its build report, so a rounding artefact cannot quietly
-grow into something that is not rounding.
+total is therefore ₦6,016,283,025 here against the sheet's ₦6,016,284,288 — the
+same ₦1,263. `ingest-assessment.mjs` tolerates exactly ₦1 per facility and
+totals the drift in its build report, so a rounding artefact cannot quietly grow
+into something that is not rounding.
 
-The per-domain and per-state figures below are the sheet's own, and so carry
-the ₦1s.
+**Two whole domains now cost nothing.** Every condition in Workforce Capacity
+and Data Use & Reporting still fires an action, and every one of those actions
+is priced ₦0. This is the revised model's largest single move, and it is a real
+₦0 rather than a blank — the work is recorded and not costed here. A further
+2,274 device-maintenance actions carry no price at all, which is a different
+claim again and the subject of
+[Query A](data-queries/README.md#query-a--2274-facilities-with-an-unpriced-device-maintenance-action).
 
 | Domain | Total | Share |
 |---|---|---|
-| Technical infrastructure | ₦12,888,426,077 | 79.3% |
-| Workforce capacity | ₦2,960,130,000 | 18.2% |
-| Workflow and transition | ₦371,119,948 | 2.3% |
-| Data use and reporting | ₦36,840,000 | 0.2% |
-| **National total** | **₦16,256,517,288** | |
+| Technical infrastructure | ₦5,903,938,077 | 98.1% |
+| Workflow and transition | ₦112,344,948 | 1.9% |
+| Workforce capacity | ₦0 | — |
+| Data use and reporting | ₦0 | — |
+| **National total** | **₦6,016,283,025** | |
 
 By state, and this is the ranking the programme allocates against:
 
 | State | Total | Per facility | % Not ready to deploy |
 |---|---|---|---|
-| kano | ₦2,405,048,632 | ₦5,490,979 | 36.5% |
-| niger | ₦2,024,342,661 | ₦8,001,354 | 71.1% |
-| jigawa | ₦1,622,263,896 | ₦6,075,895 | 63.3% |
-| akwa_ibom | ₦1,555,200,576 | ₦6,098,826 | 60.8% |
-| adamawa | ₦1,388,436,196 | ₦6,942,181 | 55.5% |
-| imo | ₦1,352,126,932 | ₦5,956,506 | 37.9% |
-| bauchi | ₦1,247,069,871 | ₦6,966,871 | 67.0% |
-| anambra | ₦1,126,838,026 | ₦4,097,593 | 28.7% |
-| oyo | ₦1,101,667,956 | ₦4,286,646 | 28.8% |
-| nasarawa | ₦1,084,204,007 | ₦7,132,921 | 61.8% |
-| lagos | ₦713,997,775 | ₦4,490,552 | 31.4% |
-| rivers | ₦635,320,760 | ₦4,411,950 | 43.1% |
+| Kano | ₦910,168,402 | ₦2,078,010 | 26.3% |
+| Akwa Ibom | ₦875,928,538 | ₦3,435,014 | 49.8% |
+| Niger | ₦787,072,533 | ₦3,110,959 | 39.1% |
+| Imo | ₦665,867,837 | ₦2,933,338 | 34.8% |
+| Anambra | ₦522,163,893 | ₦1,898,778 | 20.7% |
+| Adamawa | ₦483,622,065 | ₦2,418,110 | 30.0% |
+| Oyo | ₦378,638,824 | ₦1,473,303 | 15.2% |
+| Bauchi | ₦316,971,749 | ₦1,770,792 | 27.4% |
+| Nasarawa | ₦299,394,929 | ₦1,969,703 | 19.7% |
+| Jigawa | ₦283,892,839 | ₦1,063,269 | 13.1% |
+| Rivers | ₦255,231,702 | ₦1,772,442 | 30.6% |
+| Lagos | ₦237,329,714 | ₦1,492,640 | 6.3% |
 
-Kano is the largest bill and Niger the most expensive facility-for-facility —
-two different findings, and the pane should be able to show both.
+Kano is the largest bill and Akwa Ibom the most expensive facility-for-facility —
+two different findings, and the pane shows both.
 
 ### 8. Commonest gaps nationally
 
 | Prevalence | Gap |
 |---|---|
-| 76.1% | Backup-connectivity: no backup internet option confirmed |
+| 69.0% | Backup-connectivity: no backup internet option confirmed |
 | 68.1% | Data-backup: no data-backup capability reported |
 | 54.3% | Physical service-point: 0% of service points meet minimum conditions |
+| 43.9% | Facility-connectivity: individual connection at or above 5 Mbps |
 | 39.7% | Device-sufficiency: usable devices cover <75% of requirement |
 | 38.0% | Device-maintenance: no formal maintenance arrangement |
 | 36.8% | Duplicate-entry: ≥75% of documenting service points affected |
 | 34.5% | Technical-support: no defined technical-support process |
-| 33.4% | Facility-connectivity: individual connection at or above 5 Mbps |
+
+Four of the top eight sit in areas the revised model no longer funds. The
+commonest gap in the country costs nothing to close, on paper.
 
 ---
 
@@ -367,43 +422,61 @@ join. The build must **fail loudly** on any unmatched slug rather than dropping
 facilities — a silent drop is a state quietly losing 13 facilities and its cost
 total going with them.
 
-### 5 & 6. Two data queries — raised with the team, built on as-is
+### 5 & 6. Two data queries, and two cells repaired
 
-Both are documented for the assessment team in
+Documented for the assessment team in
 [`data-queries/README.md`](data-queries/README.md), with the affected facilities
-listed in full, one CSV per query. The two sets do not overlap.
+listed in full, one CSV per query.
 
-**Query A — 55 facilities carry a gap with no intervention.**
-`Facility-connectivity gap: Facility-managed connection at or above 5 Mbps and
-consistently reliable` — the only one of the 73 variants with no intervention
-and no horizon (its cost cell reads a real `₦0`, correctly, since nothing is
-called for). The condition describes a facility that is *fine*, so it
-reads like it belongs under `No gap`. It inflates `Total gaps` by 55 nationally
-and does nothing else — carrying no horizon, it cannot move a band, and 9 of the
-55 are still `Ready for EMR deployment` while holding it. Concentrated in Kano
-(34 of 55).
+> The two queries raised against the superseded costing model are both **closed**.
+> The 55 facilities carrying a connectivity gap with no intervention no longer
+> carry it — the condition is gone. The 332 unpriced critical connectivity
+> interventions are all priced. What follows is new.
 
-**Query B — 332 facilities have a critical intervention with a blank cost.**
-`No internet access or network coverage` → *Check which connection works at the
-facility…* → critical → no price. These are the only empty cost cells in the
-file; genuine zeroes elsewhere are written `₦0`, so a blank is distinguishable
-from free and reads as *not yet priced*. The bands are right — all 332 are
-`Not Ready for EMR deployment` — and only the money is missing. The shortfall is
-between ~₦120m and ~₦996m depending on whether these end up needing a fixed
-connection or satellite, against a national total of ₦16.26bn.
+**Query A — 2,274 facilities have an unpriced device-maintenance action.**
+Three Device-maintenance conditions all fire *Provide routine device maintenance
+and repair support* at `minor` with the cost cell **blank**. These are the only
+empty cost cells in the file; genuine zeroes elsewhere are written `₦0`, so a
+blank is distinguishable from free and reads as *not yet priced*. The action is
+minor, so no band moves — only the money is missing, across 81% of the survey
+and all twelve states. The superseded model priced this at ₦90,000, which would
+put the shortfall at ₦204,660,000 against a national total of ₦6.02bn.
 
-**Decision:** build on the data exactly as it stands. No imputation, no
-correction, no placeholder prices.
+**Query B — 8,796 gaps are recorded with no action behind them.** Thirteen of
+the 71 conditions trigger nothing at all: no intervention, no horizon, no cost.
+Four whole areas are in this state — Backup-connectivity, Data-backup,
+Backup-power and Mobile-network feasibility — plus the two Device-maintenance
+conditions that describe a facility already maintaining its devices. Carrying no
+horizon, none of them can move a band either. They are visible in the gap list
+and invisible everywhere a decision gets made.
 
-- Query A's gap is counted as the sheet counts it, and shown in the facility's
-  gap list with no intervention and no price beneath it — which is what the row
-  says.
-- Query B's intervention shows `Not costed` where the amount goes, and totals
-  covering any of those 332 facilities are annotated so the reader knows a
-  critical item is excluded.
+**Decision:** build on the data as it stands. No imputation, no placeholder
+prices.
 
-Inventing a placeholder would put a made-up number inside a total presented as
-sourced. Rendering the absence is the honest alternative and costs one label.
+- Query A's action shows **unpriced** where the amount goes — a word, not a
+  dash, so it cannot be read as a ₦0 — and the Investment Plan's total tile says
+  how many actions the figure excludes.
+- Query B's gaps are counted as the sheet counts them and shown with no action
+  beneath them. The schedule says how many of its lines are costed at ₦0, so two
+  domains summing to nothing reads as a decision rather than an omission.
+
+**Two cells are repaired, by named rules in `scripts/assessment-source.mjs`.**
+Both are recoverable from this file alone, and each is asserted to stay inside
+the column it was verified against, so an export that spreads either one fails
+the build instead of being patched wider than it was checked:
+
+- **199 Backup-connectivity cells read `0`** where every other row holds a
+  sentence. Their cost is `₦0`, like every row in an area that funds nothing.
+  Read as *no gap*.
+- **2,066 Physical service-point actions have a blank urgency.** The action and
+  its ₦54,378 are present; the urgency is blank in every row that carries the
+  action, so there is no surviving example to read the intended value off. Read
+  as `minor` — desks, chairs, fans and lockable doors are fitted while the EMR
+  goes in.
+
+Inventing a placeholder price would put a made-up number inside a total
+presented as sourced. Rendering the absence is the honest alternative and costs
+one label.
 
 ### 7. The raw ODK workbook — the second source
 
@@ -546,50 +619,51 @@ without running a build:
    walk `Intervention N` triples. No column is ever looked up by header name.
 3. **Normalise** state/LGA/facility slugs and apply the alias table; **throw** on
    any unmatched (state, LGA) pair.
-4. **Extract the catalogue** — 73 variants, asserting determinism as it goes,
-   naming both disagreeing facilities if it ever breaks.
-5. **Validate**, per row, seven relationships (below).
+4. **Extract the catalogue** — 71 conditions and the variants each is costed
+   under, asserting severity agreement as it goes and naming both disagreeing
+   facilities if it ever breaks.
+5. **Validate**, per row, six relationships (below).
 6. **Emit** the five JSON files plus `src/lib/gapCatalogue.ts` and
    `src/lib/nationalSplit.ts`.
 
-**The seven assertions**, all passing on 2,806 of 2,806 rows:
+**The six assertions**, all passing on 2,806 of 2,806 rows:
 
 | | Check |
 |---|---|
-| 1 | `Total gaps` = the number of gap columns that fired |
-| 2 | each domain subtotal = the sum of its own cost cells |
+| 1 | `Total gaps` = the gap columns that fired, plus the sheet's constant overcount |
+| 2 | each domain subtotal = the sum of that facility's own cost cells |
 | 3 | facility total = the four subtotals, within the sheet's ₦1 rounding |
-| 4 | columns 108–111 = the per-horizon intervention counts |
-| 5 | deployment band = the critical/major rule |
-| 6 | use band = the technical infrastructure band |
-| 7 | deployment band is never worse than use band |
+| 4 | columns 107–110 = the per-horizon action counts, allowing for the two named artefacts |
+| 5 | overall band = the critical/major rule |
+| 6 | overall band = the technical infrastructure band |
+
+Assertions 1 and 4 carry an offset rather than a tolerance. Each is a computed
+identity — the overcount is +1 everywhere and +2 where Backup-connectivity reads
+`0`; the Minor offset is −1 per Physical service-point action and +1 per
+actionless Device-maintenance row — so the checks stay checks. Widen either into
+a range and the drift they exist to catch walks straight through.
 
 Plus one cross-source check outside the sheet: **every facility's zone column
 agrees with the boundary layer's** for the state it names. Free, and a real
 signal if a facility is ever filed under the wrong state. It passes on all
 2,806.
 
-Assertion 3 is the only one carrying a tolerance, and it is exactly ₦1 — see
-Part 1 §7. The drift is totalled in the build report rather than swallowed, so a
+Assertion 3 is the only one carrying a true tolerance, and it is exactly ₦1 —
+see Part 1 §7. The drift is totalled in the build report rather than swallowed, so a
 rounding artefact cannot quietly grow into something that is not rounding.
 
 **Build output**, for reference:
 
 ```
-  facilities        2,806        gap variants      73
-  states assessed   12           gap instances     30,557
-  LGAs assessed     305          unpriced actions  332
-  total investment  ₦16,256,516,025
+  facilities        2,806        gap variants      71
+  states assessed   12           gap instances     30,200
+  LGAs assessed     305          unpriced actions  2,274
+  total investment  ₦6,016,283,025
   sheet rounding    ₦1,263 over 1,263 facilities
 
   readiness         not ready   moderately       ready
-  EMR use               1340         1395          71
-  EMR deployment        1340          842         624
+  EMR deployment         744         1892         170
 ```
-
-`--fetch` was verified end to end: it produces the identical content hash
-(`c278e78f95aba37f`) to the committed CSV, so the live sheet and the local file
-are provably the same and the pipeline is reproducible from either.
 
 ### Step 2 — the catalogue
 
@@ -621,20 +695,17 @@ Three of the twenty can; see GAP_TAXONOMY.md.
 
 In `src/lib/types.ts`:
 
-- **Split the overall band.** `archetype` → `useBand` and `deploymentBand`. They
-  disagree for 553 facilities and the page currently has one field for both.
-  Both are shown together wherever a readiness reading appears; neither is
-  hidden behind a control.
-- **`AreaProfile` carries two distributions.** `archetypeDistribution` →
-  `useDistribution` and `deploymentDistribution`, both `BandDistribution`, and
-  `band` → `useBand` / `deploymentBand`. `aggregateAreaProfiles` and
-  `pooledThemeBand` in `areaProfile.ts` sum both the same way they sum one —
-  still counts, never means.
-- **`facilityBandUnder` keeps its signature.** Its domain branch already reads
-  `themeBands` and never touches the overall band, so it needs no change. What
-  changes is its no-domain branch, which returns `useBand` in place of
-  `archetype` — that is the band the map points and the Readiness filter use
-  when no domain is ticked.
+- **Rename the overall band.** `archetype` → `deploymentBand`. This step
+  originally split it in two, for a source that reported every facility twice;
+  the revised model reports it once, and the second field has been removed
+  again.
+- **`AreaProfile` carries one distribution.** `archetypeDistribution` →
+  `deploymentDistribution`, and `band` → `deploymentBand`.
+  `aggregateAreaProfiles` and `pooledThemeBand` in `areaProfile.ts` pool it as
+  counts, never means.
+- **`facilityBandUnder` keeps its signature.** Its domain branch reads
+  `themeBands`; its no-domain branch returns `deploymentBand` — the band the map
+  points and the Readiness filter use when no domain is ticked.
 - **Drop what has no source:** `servicePoints`, `staffCount`, `deviceCount`,
   `deviceShortfall`, `geography`. Removes the `geography` filter from
   `FilterState` and the Setting/Service points/Permanent staff rows from
@@ -662,19 +733,17 @@ This is the "each facility should capture all the information about it" ask.
 1. **Identity** — name, LGA, state, zone, facility group, functionality level,
    typical daily client load, UUID. Coordinates only when present; the row is
    absent rather than blank, since this dataset has none today.
-2. **Readiness** — **both** overall bands, labelled `EMR use` and
-   `EMR deployment`, then the four domain bands beneath. Under a Domain
-   selection the two overall bands give way to the domain in view, so the card
-   answers the same question the map is painting.
+2. **Readiness** — the overall band, labelled `EMR deployment`, then the four
+   domain bands beneath. Under a Domain selection the overall band gives way to
+   the domain in view, so the card answers the same question the map is
+   painting.
 3. **Gaps** — grouped by domain, each row: the gap condition text, its
    intervention(s), the horizon as a severity chip, and the cost. Sorted
-   critical → major → minor → long-term. This is where the file's real value
-   lands and it is currently a bare list of gap labels. A gap with no
-   intervention (Query A) shows the condition alone; an intervention with no
-   price (Query B) shows `Not costed`.
+   critical → major → minor → long-term. A gap with no intervention (Query B)
+   shows the condition alone; an intervention with no price (Query A) shows
+   `unpriced`.
 4. **Cost** — the four domain subtotals and the facility total, matching column
-   113 exactly. Annotated on the 332 Query B facilities to say the total
-   excludes a critical unpriced item.
+   112 exactly. Annotated where the total excludes an unpriced action.
 5. **Connectivity** — MTN base station, distance, serviceability, 4G signal,
    Airtel distance. A distinct block because it is measurement, not judgement,
    and per the model note must never take band colour.
@@ -686,10 +755,10 @@ Every level's figures are sums over the facilities in scope — which is what
 
 | Level | Investment need |
 |---|---|
-| Facility | Column 113 |
+| Facility | Column 112 |
 | LGA | Σ facilities in LGA |
 | State | Σ facilities in state |
-| National | Σ all — ₦16,256,517,288 |
+| National | Σ all — ₦6,016,283,025 |
 
 Same for gap counts, band distributions, per-domain cost splits and horizon
 splits. The one thing that is *not* a sum is a band: bands stay counted, per
@@ -705,8 +774,8 @@ that machinery is in place and just needs real numbers behind it.
 `DataSource.meta.label` changes from `Synthetic dataset` to one naming the sheet
 and its date. The landing page and README banner declaring every figure
 synthetic come down — every figure on Assessed States is then sourced, with the
-one documented exclusion (Query B's unpriced item) stated where it bites rather
-than as a blanket disclaimer. Coordinates were the other, until the ERA workbook
+one documented exclusion (Query A's unpriced actions) stated where it bites
+rather than as a blanket disclaimer. Coordinates were the other, until the ERA workbook
 supplied the latitude the standalone export had dropped — see
 `scripts/facility-workbook.mjs`.
 
@@ -735,103 +804,84 @@ one thing with a reading, so it takes a band — but the file carries two overal
 bands and they disagree for 553 facilities. A toggle at the top of the page
 switches which one is in play.
 
-### Both readings, side by side
+### One reading — what this replaced
 
-The two overall bands are shown **together**, not switched between, everywhere a
-readiness reading appears. A toggle would make the reader hold one number in
-their head while looking at the other; the interesting fact about this dataset
-is the *distance* between the two, and distance is only visible when both are on
-screen at once.
+This section used to argue for showing **two** overall bands together rather
+than switching between them: the source reported every facility twice, once for
+readiness to *use* an EMR and once for readiness to *deploy* one, and the
+distance between the two was the most interesting fact in the dataset.
 
-Two structural facts make this cheap to render and safe to reason about. Both
-verified across all 2,806 rows:
-
-**1. Deployment is never worse than use.** `deploymentBand >= useBand` in every
-single row — 2,253 equal, 553 better, zero worse. The readings are nested, not
-crossing, so "deployment is the more forgiving lens" is a property of the data
-rather than a generalisation from the totals.
-
-**2. The Not-ready set is *identical* under both.** Not merely equal in count —
-literally the same 1,340 facilities, and the same ones state by state. A
-critical gap sinks both readings, so the entire divergence is 553 facilities
-moving from *Moderately ready to use* up to *Ready to deploy*.
-
-That means one shared row and two that differ, which is exactly the compact
-two-row shape to render:
+The revised costing model withdrew the use column, and brought the deployment
+band onto the definition the use band had — the technical infrastructure
+reading. So the two readings are one reading, and the apparatus built to hold
+them apart is gone: `useBand`, `useDistribution`, the paired `BandLine` in the
+facility card, and the second row in the pane's band block.
 
 | | Not ready | Moderately | Ready |
 |---|---|---|---|
-| **EMR use** | 1,340 (47.8%) | 1,395 (49.7%) | 71 (2.5%) |
-| **EMR deployment** | 1,340 (47.8%) | 842 (30.0%) | 624 (22.2%) |
+| **EMR deployment** | 744 (26.5%) | 1,892 (67.4%) | 170 (6.1%) |
+
+What survives from the old argument is the rule it produced: **never show a band
+twice under two names.** The four domain readings sit on the same scale as the
+overall one, so ticking a domain narrows the question rather than swapping it,
+and one swatch of colour means one thing across the whole app.
 
 ### What each level shows
 
-**State and LGA — both distributions, count and percentage.** The fill stays
-cost; the pane carries the readings. `BandCounts` in `AssessmentPane` grows from
-one `BandCards` to the two-row table above — count and share in each cell, since
-the count is what a budget is built from and the share is what makes two states
-comparable.
+**State and LGA — the distribution, count and percentage.** The fill stays cost;
+the pane carries the reading. `BandCards` in `AssessmentPane` shows count and
+share together, since the count is what a budget is built from and the share is
+what makes two states comparable.
 
-This is where showing both earns its keep, because the lens changes the state
-picture drastically:
+The state picture, worst-first by the share of facilities blocked outright:
 
-| State | n | Use: Not / Mod / Ready | Deployment: Not / Mod / Ready |
+| State | n | Not / Mod / Ready | % Not ready |
 |---|---|---|---|
-| niger | 253 | 180 / 73 / **0** | 180 / 52 / 21 |
-| bauchi | 179 | 120 / 59 / **0** | 120 / 38 / 21 |
-| jigawa | 267 | 169 / 98 / **0** | 169 / 79 / 19 |
-| nasarawa | 152 | 94 / 58 / **0** | 94 / 36 / 22 |
-| akwa_ibom | 255 | 155 / 99 / 1 | 155 / 71 / 29 |
-| adamawa | 200 | 111 / 89 / **0** | 111 / 61 / 28 |
-| rivers | 144 | 62 / 71 / 11 | 62 / 37 / 45 |
-| imo | 227 | 86 / 141 / **0** | 86 / 109 / 32 |
-| kano | 438 | 160 / 260 / 18 | 160 / 188 / 90 |
-| lagos | 159 | 50 / 95 / 14 | 50 / 43 / 66 |
-| oyo | 257 | 74 / 181 / 2 | 74 / 59 / 124 |
-| anambra | 275 | 79 / 171 / 25 | 79 / 69 / 127 |
+| Akwa Ibom | 255 | 127 / 127 / 1 | 49.8% |
+| Niger | 253 | 99 / 153 / 1 | 39.1% |
+| Imo | 227 | 79 / 148 / **0** | 34.8% |
+| Rivers | 144 | 44 / 82 / 18 | 30.6% |
+| Adamawa | 200 | 60 / 136 / 4 | 30.0% |
+| Bauchi | 179 | 49 / 127 / 3 | 27.4% |
+| Kano | 438 | 115 / 251 / 72 | 26.3% |
+| Anambra | 275 | 57 / 176 / 42 | 20.7% |
+| Nasarawa | 152 | 30 / 121 / 1 | 19.7% |
+| Oyo | 257 | 39 / 217 / 1 | 15.2% |
+| Jigawa | 267 | 35 / 222 / 10 | 13.1% |
+| Lagos | 159 | 10 / 132 / 17 | 6.3% |
 
-**Six of the twelve states have zero facilities ready for EMR use**, and Oyo has
-2 of 257. The same states show 19–124 ready to *deploy* into. A single-band page
-has to pick one of those two stories and suppress the other. Both together are
-the actual finding: these states can be deployed into, and almost nothing in
-them is currently in shape to run an EMR.
+Ready is scarce almost everywhere: Imo has none, and six more states are in
+single figures. What separates the states is the split between the two lower
+bands — Akwa Ibom is half blocked outright, where Jigawa and Oyo are
+overwhelmingly Moderately ready and therefore deployable after major but not
+foundational work. That is the distinction the ranking is for, and it is why the
+map fills on cost rather than on band.
 
-**Facility — both bands on the card.** `EMR use` and `EMR deployment`, labelled,
-above the four domain bands. Same reasoning at n=1: the useful thing about a
-facility is often that it is clear to deploy into but not ready to run an EMR.
+**Facility — one band on the card.** `EMR deployment`, above the four domain
+bands.
 
-**Under a Domain selection — that domain's EMR-use readiness, everywhere.** The
-moment a domain is ticked, both the map's facility points and the pane collapse
-to a single band: that domain's, which is always a use band, because there is no
-per-domain deployment reading anywhere in the file. The dual table is replaced
-by one distribution, and the card's two overall bands give way to the domain in
-view. This already falls out of `facilityBandUnder`
-([archetype.ts:95](../src/lib/archetype.ts:95)) — its domain branch reads
-`themeBands` and never touches the overall band. It needs no new logic, only the
-pane and the card following the same rule.
+**Under a Domain selection — that domain's readiness, everywhere.** The moment a
+domain is ticked, both the map's facility points and the pane show that domain's
+band instead of the overall one. This falls out of `facilityBandUnder`
+([archetype.ts](../src/lib/archetype.ts)) — its domain branch reads `themeBands`
+and never touches the overall band. The pane and the card follow the same rule.
 
 So the page has exactly two modes, and which one it is in is decided by whether
 the Domain filter is empty:
 
 | Domain filter | Map points | Pane (area) | Pane (facility) |
 |---|---|---|---|
-| Empty | Use band | Both distributions | Both bands |
-| One or more ticked | That domain's use band | That domain's distribution | That domain's band |
+| Empty | Overall band | Overall distribution | Overall band |
+| One or more ticked | That domain's band | That domain's distribution | That domain's band |
 
-**Map points take the use band when no domain is ticked.** A point is one colour
-and cannot show two readings; use is the right one to pick for the same reason
-it was the right default — it is the scale the domain bands are on, so the point
-colour means the same thing whether or not a domain is ticked.
-
-**The Readiness filter is unaffected by the ambiguity.** Because the Not-ready
-sets are identical, a "Not ready" selection returns the same 1,340 facilities
-under either reading. Only Moderately and Ready differ, and there the filter
-follows the map: the use band when no domain is ticked, the domain's band
-otherwise.
+**Map points take the overall band when no domain is ticked**, and the ticked
+domain's band otherwise. Both are on the same scale, so the point colour means
+the same thing either way, and the Readiness filter follows the map exactly —
+`facilityBandUnder` makes that decision once for the whole page.
 
 State-level `AreaProfile` bands and the pooled roll-ups in `areaProfile.ts`
-carry both readings for the same reason the pane shows both — a state's badge
-and its facilities' split must not answer different questions.
+carry the same reading the pane shows: a state's badge and its facilities' split
+must not answer different questions.
 
 ---
 ### Order of work

@@ -14,12 +14,22 @@
  *    meaningful relative to the gap column it follows. A header-name lookup
  *    silently reads the wrong column, so everything here works positionally.
  *
- * 2. **The gap → intervention mapping is deterministic.** The same gap value
- *    always produces the same interventions, horizons and costs, in all 2,806
- *    rows. That is what lets the catalogue be *extracted* rather than
- *    hand-maintained — and `extractCatalogue` asserts it while doing so, so a
- *    future sheet edit that breaks it fails the build instead of being
- *    resolved by whichever row happened to be read last.
+ * 2. **A gap no longer implies one set of interventions.** It used to: every
+ *    row carrying a given gap value fired the same actions at the same prices,
+ *    which is what let the catalogue be *extracted* rather than declared. The
+ *    revised costing model broke that on purpose — the same power gap now
+ *    draws a ₦3,000,000 solar install at one facility and a ₦1,200,000 top-up
+ *    at another, with or without a ₦500,000 grid connection behind it.
+ *
+ *    So a condition carries **variants**, and a facility's actual cost is read
+ *    from its own row rather than looked up. What is still asserted, because
+ *    the dashboard's bands depend on it, is that every variant of a condition
+ *    agrees about **severity** — see `extractCatalogue`.
+ *
+ * 3. **The sheet carries one overall reading.** `Overall readiness for EMR
+ *    deployment`, and nothing beside it. An earlier revision had a second
+ *    column for readiness to *use* an EMR; it was a copy of the technical
+ *    infrastructure band and has been withdrawn.
  */
 
 import Papa from 'papaparse';
@@ -54,17 +64,43 @@ export const HORIZON_BY_LABEL = {
 /**
  * Which summary column counts each horizon.
  *
- * Columns 108–111 count *interventions*, not gaps — a facility whose power gap
+ * Columns 107–110 count *interventions*, not gaps — a facility whose power gap
  * fires two interventions on two horizons contributes to two of these. That is
  * why they do not sum to `Total gaps`, and it is the relationship
  * `validateRow` checks.
  */
 export const HORIZON_SUMMARY_COL = {
-  minor: 108,
-  major: 109,
-  critical: 110,
-  long_term: 111,
+  minor: 107,
+  major: 108,
+  critical: 109,
+  long_term: 110,
 };
+
+/**
+ * Two cells the revised sheet leaves in a state it does not mean, repaired
+ * here by name so the repair is arguable rather than invisible.
+ *
+ * Both are recoverable from the revised file alone — neither reaches back to
+ * the superseded costing model, which is gone. `parseAssessmentCsv` asserts the
+ * scope of each, so a future export that spreads either one fails the build
+ * rather than being quietly patched wider than it was checked.
+ *
+ * **`0` for a Backup-connectivity condition** (199 facilities). The column
+ * holds a sentence everywhere else; these hold the number zero, and their cost
+ * cell is ₦0 like every other row in an area that now funds nothing. Read as
+ * *no gap* — there is no condition here to name and no action behind it.
+ *
+ * **A missing urgency on the Physical service-point action** (2,066
+ * facilities). The action and its ₦54,378 are present; only `When action is
+ * needed` is blank, and it is blank in every row that carries the action, so
+ * there is no surviving example to read the intended value off. Desks, chairs,
+ * fans and lockable doors are fitted while the EMR goes in, which is what
+ * `minor` means, so that is what the blank is read as.
+ */
+export const BLANK_GAP_VALUE = '0';
+export const BLANK_GAP_AREA = 'Backup-connectivity';
+export const DEFAULT_HORIZON_AREA = 'Physical service-point';
+export const DEFAULT_HORIZON = 'minor';
 
 /**
  * What a horizon does to its domain's band.
@@ -80,8 +116,14 @@ export const SEVERITY_BY_HORIZON = {
   long_term: 'partial',
 };
 
-/** The sheet's band phrasing → our id. Both suffixes appear; both mean the
- *  same three levels. */
+/**
+ * The sheet's band phrasing → our id.
+ *
+ * Both suffixes still appear and both mean the same three levels: the overall
+ * column is phrased "for EMR deployment", the four domain columns "for EMR
+ * use". That is the sheet's wording, not two scales — there is one overall
+ * reading in this dataset, and the domain readings sit under it.
+ */
 export const BAND_BY_LABEL = {
   'Not Ready for EMR deployment': 'not_ready',
   'Moderately Ready for EMR deployment': 'moderately_ready',
@@ -105,29 +147,29 @@ export const DOMAINS = [
     id: 'technical_infrastructure',
     label: 'Technical Infrastructure',
     sheetBand: 'Technical Infrastructure',
-    bandCol: 9,
-    costTotalCol: 59,
+    bandCol: 8,
+    costTotalCol: 58,
   },
   {
     id: 'workforce_capacity',
     label: 'Workforce Capacity',
     sheetBand: 'Workforce Capacity',
-    bandCol: 10,
-    costTotalCol: 76,
+    bandCol: 9,
+    costTotalCol: 75,
   },
   {
     id: 'workflow_transition',
     label: 'Workflow & Transition',
     sheetBand: 'Workflow and Transition',
-    bandCol: 11,
-    costTotalCol: 93,
+    bandCol: 10,
+    costTotalCol: 92,
   },
   {
     id: 'data_use_reporting',
     label: 'Data Use & Reporting',
     sheetBand: 'Data Use and Reporting',
-    bandCol: 12,
-    costTotalCol: 106,
+    bandCol: 11,
+    costTotalCol: 105,
   },
 ];
 
@@ -142,16 +184,16 @@ export const COL = {
   facilityGroup: 4,
   functionality: 5,
   zone: 6,
+  /** The one overall reading. There is no second band column. */
   deploymentBand: 7,
-  useBand: 8,
-  mtnBaseStation: 48,
-  mtnDistanceKm: 49,
-  mtnServiceability: 50,
-  mtn4gSignal: 51,
-  airtelDistanceM: 52,
-  totalGaps: 107,
-  dailyClientLoad: 112,
-  totalCost: 113,
+  mtnBaseStation: 47,
+  mtnDistanceKm: 48,
+  mtnServiceability: 49,
+  mtn4gSignal: 50,
+  airtelDistanceM: 51,
+  totalGaps: 106,
+  dailyClientLoad: 111,
+  totalCost: 112,
 };
 
 /** Header rows before the data starts. Title, scope note, domain band, headers. */
@@ -281,39 +323,100 @@ export function parseAssessmentCsv(text) {
     .slice(HEADER_ROWS)
     .filter((r) => r.some((c) => String(c ?? '').trim() !== ''));
 
+  assertRepairsAreScoped(data, blocks);
+
   return { header, blocks, rows: data };
+}
+
+/**
+ * Hold the two source repairs to the columns they were verified against.
+ *
+ * Each is a reading of one specific defect in one specific column. Applied
+ * anywhere else it would be a guess, so a `0` in a gap column that is not
+ * Backup-connectivity, or a missing urgency outside Physical service-point,
+ * stops the build and asks to be looked at rather than being patched by a rule
+ * nobody checked against it. See `BLANK_GAP_VALUE`.
+ */
+function assertRepairsAreScoped(rows, blocks) {
+  for (const block of blocks) {
+    for (const row of rows) {
+      const value = String(row[block.col] ?? '').trim();
+      if (value === BLANK_GAP_VALUE && block.subDomain !== BLANK_GAP_AREA) {
+        throw new Error(
+          `"${BLANK_GAP_VALUE}" appears as a ${block.subDomain} gap value ` +
+            `(facility ${row[COL.uuid]}). It is read as "no gap" in ` +
+            `${BLANK_GAP_AREA} only — see BLANK_GAP_VALUE in ` +
+            `scripts/assessment-source.mjs.`,
+        );
+      }
+      if (value === '' || value === 'No gap') continue;
+      if (block.subDomain === DEFAULT_HORIZON_AREA) continue;
+
+      for (const slot of block.slots) {
+        if (!String(row[slot.label] ?? '').trim()) continue;
+        if (String(row[slot.when] ?? '').trim()) continue;
+        throw new Error(
+          `A ${block.subDomain} intervention at facility ${row[COL.uuid]} has ` +
+            `no "when action is needed" value. The blank is read as ` +
+            `"${DEFAULT_HORIZON}" in ${DEFAULT_HORIZON_AREA} only — see ` +
+            `DEFAULT_HORIZON_AREA in scripts/assessment-source.mjs.`,
+        );
+      }
+    }
+  }
 }
 
 /**
  * Every intervention a row records against one gap block.
  *
- * Empty when the gap column reads `No gap`. Also empty — legitimately — for the
- * one gap variant that carries no intervention at all (Query A, 55 facilities);
- * a gap with no action is still a gap the sheet counted, so it is returned with
- * an empty list rather than dropped.
+ * **This is where a facility's cost comes from**, now that a condition no
+ * longer implies one set of actions. The catalogue says what a gap *can*
+ * trigger; this says what this facility's row actually asks for.
+ *
+ * Empty when the gap column reads `No gap`. Also empty — legitimately — where a
+ * condition carries no action at all: 81 facilities whose backup power is
+ * partly working, and every gap in the six areas the revised model no longer
+ * funds. A gap with no action is still a gap the sheet counted, so it is
+ * returned with an empty list rather than dropped.
  */
-function interventionsInRow(row, block) {
+export function interventionsInRow(row, block) {
   const out = [];
   for (const slot of block.slots) {
     const label = String(row[slot.label] ?? '').trim();
     if (!label) continue;
     const whenLabel = String(row[slot.when] ?? '').trim();
-    const horizon = HORIZON_BY_LABEL[whenLabel];
+    const horizon =
+      whenLabel === '' && block.subDomain === DEFAULT_HORIZON_AREA
+        ? DEFAULT_HORIZON
+        : HORIZON_BY_LABEL[whenLabel];
     if (!horizon) {
       throw new Error(
         `Unknown "when action is needed" value ${JSON.stringify(whenLabel)} ` +
           `for ${block.subDomain} (column ${slot.when})`,
       );
     }
-    out.push({ label, horizon, costNGN: parseMoney(row[slot.cost]) });
+    out.push({
+      id: interventionId({ label, horizon, costNGN: parseMoney(row[slot.cost]) }),
+      label,
+      horizon,
+      costNGN: parseMoney(row[slot.cost]),
+    });
   }
   return out;
 }
 
-/** The gap value in a row for one block, or null where the sheet says none. */
+/**
+ * The gap value in a row for one block, or null where the sheet says none.
+ *
+ * `0` in the Backup-connectivity column is a third way of saying none — see
+ * `BLANK_GAP_VALUE`. Facilities repaired this way therefore carry one gap fewer
+ * than the sheet's own `Total gaps`, which `validateRow` accounts for exactly.
+ */
 export function gapValueInRow(row, block) {
   const v = String(row[block.col] ?? '').trim();
-  return v === '' || v === 'No gap' ? null : v;
+  if (v === '' || v === 'No gap') return null;
+  if (v === BLANK_GAP_VALUE && block.subDomain === BLANK_GAP_AREA) return null;
+  return v;
 }
 
 // ---------------------------------------------------------------------------
@@ -384,16 +487,31 @@ function interventionId(iv) {
 }
 
 /**
- * Extract the gap catalogue from the data, asserting determinism as it goes.
+ * Extract the gap catalogue from the data.
  *
- * Every (sub-domain, gap value) pair becomes one catalogue entry carrying the
- * interventions that pair triggers. If two rows ever disagree about what a
- * given gap value implies, that is a change in the sheet's own logic and this
- * throws rather than silently keeping whichever row came last.
+ * Every (gap area, gap value) pair becomes one catalogue entry. What it carries
+ * is no longer a single list of interventions but a list of **variants** — the
+ * distinct action sets the sheet fires for that condition across the dataset.
+ *
+ * Four of the 71 conditions have more than one. All four are power:
+ * *No functional electricity source* draws a ₦3,000,000 solar install, and for
+ * 474 of its 571 facilities a ₦500,000 grid connection behind it; the two
+ * partial-coverage conditions choose between that ₦3,000,000 install and a
+ * ₦1,200,000 top-up, each again with or without the grid line. This is the
+ * revised costing model doing deliberate work — a facility already on the grid
+ * is not sold a connection to it — so the extraction records the choice rather
+ * than refusing it.
+ *
+ * What the extraction still refuses is a condition whose variants **disagree
+ * about severity**. Severity is what the deployment band keys on, so a
+ * condition that blocks deployment at one facility and not at another would
+ * make the band unreadable rather than merely imprecise. It holds for all 71
+ * conditions today; if it ever stops holding, that is a change in the sheet's
+ * logic and the build should stop.
  */
 export function extractCatalogue(rows, blocks) {
   const byId = new Map();
-  /** gap id → the row that first defined it, for a legible conflict message. */
+  /** gap id → the row that first defined each variant, for a legible message. */
   const provenance = new Map();
 
   for (const row of rows) {
@@ -402,16 +520,12 @@ export function extractCatalogue(rows, blocks) {
       if (value === null) continue;
 
       const id = gapId(block.subDomain, value);
-      const interventions = interventionsInRow(row, block).map((iv) => ({
-        id: interventionId(iv),
-        label: iv.label,
-        horizon: iv.horizon,
-        costNGN: iv.costNGN,
-      }));
+      const interventions = interventionsInRow(row, block);
+      const severity = worstSeverity(interventions);
 
-      const existing = byId.get(id);
-      if (!existing) {
-        byId.set(id, {
+      let entry = byId.get(id);
+      if (!entry) {
+        entry = {
           id,
           domain: block.domain,
           /** The gap area this condition sits in — see `extractGapAreas`. An id
@@ -420,30 +534,34 @@ export function extractCatalogue(rows, blocks) {
           area: gapAreaId(block.subDomain),
           label: value,
           /**
-           * The gap's own weight: the worst urgency among its interventions.
+           * The gap's own weight: the worst urgency among the actions it
+           * triggers, and the same at every facility that carries it.
            *
            * A gap with no intervention is `partial` — it cannot block anything,
            * because there is nothing it asks anyone to do.
            */
-          severity: worstSeverity(interventions),
-          interventions,
-        });
-        provenance.set(id, row[COL.uuid]);
-        continue;
+          severity,
+          variants: [],
+        };
+        byId.set(id, entry);
+        provenance.set(id, new Map());
       }
 
-      const before = JSON.stringify(existing.interventions);
-      const after = JSON.stringify(interventions);
-      if (before !== after) {
+      if (severity !== entry.severity) {
+        const first = provenance.get(id).get(entry.severity);
         throw new Error(
-          `Gap "${block.subDomain}: ${value}" is not deterministic.\n` +
-            `  facility ${provenance.get(id)} → ${before}\n` +
-            `  facility ${row[COL.uuid]} → ${after}\n` +
-            `The sheet's gap → intervention mapping has changed. See ` +
-            `docs/ASSESSMENT_DATA.md; the catalogue can no longer be extracted ` +
-            `until this is resolved.`,
+          `Gap "${block.subDomain}: ${value}" is ${entry.severity} at facility ` +
+            `${first} and ${severity} at facility ${row[COL.uuid]}.\n` +
+            `Severity is what the deployment band is computed from, so a ` +
+            `condition cannot carry two. See docs/ASSESSMENT_DATA.md.`,
         );
       }
+
+      const shape = variantKey(interventions);
+      if (!entry.variants.some((v) => variantKey(v) === shape)) {
+        entry.variants.push(interventions);
+      }
+      if (!provenance.get(id).has(severity)) provenance.get(id).set(severity, row[COL.uuid]);
     }
   }
 
@@ -455,8 +573,8 @@ export function extractCatalogue(rows, blocks) {
     (a, b) =>
       DOMAIN_IDS.indexOf(a.domain) - DOMAIN_IDS.indexOf(b.domain) ||
       areaOrder.get(a.area) - areaOrder.get(b.area) ||
-      HORIZONS.indexOf(worstHorizon(a.interventions)) -
-        HORIZONS.indexOf(worstHorizon(b.interventions)) ||
+      HORIZONS.indexOf(worstHorizon(catalogueInterventions(a))) -
+        HORIZONS.indexOf(worstHorizon(catalogueInterventions(b))) ||
       a.label.localeCompare(b.label),
   );
 
@@ -470,6 +588,30 @@ export function extractCatalogue(rows, blocks) {
   }
 
   return gaps;
+}
+
+/** A variant's identity: which actions, in which order. */
+const variantKey = (interventions) => interventions.map((iv) => iv.id).join('+');
+
+/**
+ * Every distinct action a condition can trigger, across all its variants.
+ *
+ * The union, not a sum: the ₦3,000,000 install and the ₦1,200,000 top-up are
+ * alternatives, and a reader of the taxonomy wants to see both listed against
+ * the condition without either being read as a population cost. Populations are
+ * costed from facilities, in `deploymentFor`.
+ */
+export function catalogueInterventions(gap) {
+  const out = [];
+  const seen = new Set();
+  for (const variant of gap.variants) {
+    for (const iv of variant) {
+      if (seen.has(iv.id)) continue;
+      seen.add(iv.id);
+      out.push(iv);
+    }
+  }
+  return out;
 }
 
 /** The most urgent horizon in a set, or `long_term` for an empty set. */
@@ -486,21 +628,26 @@ function worstSeverity(interventions) {
 }
 
 /**
- * What a gap costs, from the catalogue alone.
+ * What one set of interventions costs.
  *
- * No facility argument, unlike the synthetic model's `gapCostNGN(gap, size)`.
- * Nothing in this file is quantity-scaled — "give each place where staff enter
- * EMR data the number of tablets it is missing" is ₦233,333 in all 1,769 rows
- * that carry it — so a gap costs the same everywhere and the whole
- * `unitBasis`/service-point multiplication layer is gone.
+ * Takes the actions, not a gap — because a gap no longer has one price. Pass a
+ * facility's own `interventionsInRow` to cost that facility, or one variant to
+ * price that branch of a condition. The old signature took a catalogue entry
+ * and could not have expressed either.
  *
- * Unpriced interventions contribute nothing and are reported separately, so a
- * total never quietly absorbs a missing price as a zero.
+ * Nothing here is quantity-scaled: "give each place where staff enter EMR data
+ * the number of tablets it is missing" is ₦233,333 in every row that carries
+ * it, so an action costs the same wherever it appears and the whole
+ * `unitBasis`/service-point multiplication layer stays gone.
+ *
+ * Unpriced interventions contribute nothing and are counted separately, so a
+ * total never quietly absorbs a missing price as a zero. There are 2,274 of
+ * them in the revised sheet, all of them routine device maintenance.
  */
-export function gapCost(gap) {
+export function interventionsCost(interventions) {
   let costNGN = 0;
   let unpriced = 0;
-  for (const iv of gap.interventions) {
+  for (const iv of interventions) {
     if (iv.costNGN === null) unpriced += 1;
     else costNGN += iv.costNGN;
   }

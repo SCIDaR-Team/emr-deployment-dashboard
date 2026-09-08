@@ -160,7 +160,7 @@ export function useFilteredData() {
       ]),
     ) as Record<FacilityThemeId, Band | null>;
 
-    const distribution = archetypeDistribution(filtered.map((f) => f.useBand));
+    const distribution = archetypeDistribution(filtered.map((f) => f.deploymentBand));
 
     return {
       total: filtered.length,

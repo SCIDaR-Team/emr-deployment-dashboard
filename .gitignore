@@ -65,7 +65,8 @@ National coverage leadership domain scoring.xlsx
 # The fetched copy of the assessment sheet (`npm run data:ingest -- --fetch`).
 #
 # Ignored because it is a byte-identical duplicate of the committed
-# `List of gaps and interventions per facility.csv` at the repo root, which is
-# the offline source the ingest falls back to. Committing both is 15 MB to say
-# the same thing twice. Delete it and re-fetch whenever the sheet moves.
+# `Revised costing model and roadmap - List of gaps and interventions per
+# facility.csv` at the repo root, which is the offline source the ingest falls
+# back to. Committing both says the same thing twice. Delete it and re-fetch
+# whenever the sheet moves.
 scripts/source-data/assessment.csv
