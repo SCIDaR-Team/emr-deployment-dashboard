@@ -482,20 +482,19 @@ export interface FacilitySummary {
   geography: 'rural' | 'urban' | null;
 
   /**
-   * The two overall readings, both carried.
+   * The facility's overall readiness — whether anything blocks putting an EMR
+   * in, and the only overall reading this dataset carries.
    *
-   * `useBand` is how ready the facility is to *run* an EMR; `deploymentBand` is
-   * whether anything blocks putting one in. They are different questions and
-   * they disagree for 553 facilities — always in the same direction, since
-   * deployment is never the worse of the two.
+   * An earlier revision reported every facility twice, adding readiness to
+   * *run* an EMR beside readiness to deploy one, and the dashboard showed the
+   * pair because the distance between them was the finding. The revised costing
+   * model withdrew that column and brought this one onto the same definition as
+   * the technical infrastructure reading, so there is one number here now.
    *
-   * Both are shown together wherever a readiness reading appears, rather than
-   * one being chosen and the other hidden: the interesting fact about this
-   * dataset is the *distance* between them, and distance is only visible when
-   * both are on screen. 624 facilities are clear to deploy into; 71 are in
-   * shape to actually run an EMR.
+   * It is a function of the blocking gaps, exactly: any critical gap is Not
+   * ready, any major gap Moderately ready, neither is Ready. The ingest checks
+   * that against the sheet in all 2,806 rows.
    */
-  useBand: Band | null;
   deploymentBand: Band | null;
   /** Band per domain. All four are `readiness for EMR use` — there is no
    *  per-domain deployment reading anywhere in the source. */
@@ -506,11 +505,24 @@ export interface FacilitySummary {
    * they are** — not a separate finding beside them.
    *
    * Every gap is in `GAP_BY_ID`, and the catalogue carries its interventions,
-   * urgencies and prices — so the ids alone are enough to render the facility's
-   * whole gap list. Nothing is quantity-scaled, so a gap costs the same here as
-   * anywhere else it appears.
+   * urgencies and prices — so the ids, with `gapVariants` beside them, are
+   * enough to render the facility's whole gap list. Nothing is quantity-scaled,
+   * so an action costs the same here as anywhere else it appears.
    */
   gaps: string[];
+  /**
+   * Which way each gap is costed here, for the four conditions the sheet costs
+   * more than one way. **Sparse**: a gap absent from this map is on variant 0,
+   * which is every gap at most facilities.
+   *
+   * It exists because the revised costing model stopped pricing a condition
+   * identically everywhere — a facility with no power draws a ₦3,000,000 solar
+   * install, and only one that is also off-grid draws the ₦500,000 connection
+   * behind it. Costing a facility from the catalogue alone would charge both
+   * the same. Pass it to `gapCostNGN` and `gapInterventions` wherever the
+   * subject is a facility.
+   */
+  gapVariants: Record<string, number>;
   gapCount: number;
   /** What closing them costs: the sum of `gaps`, so the figure and the list
    *  beneath it cannot disagree. */
@@ -610,18 +622,10 @@ export interface AreaProfile {
   assessedLgaCount?: number;
 
   /**
-   * How this area's facilities split across the three bands, under each of the
-   * two readings.
+   * How this area's facilities split across the three bands.
    *
-   * Both, for the same reason `FacilitySummary` carries both bands: the pane
-   * shows the pair rather than switching between them. All zeroes for a
-   * desk-reviewed state, which has no facility rows behind it.
-   *
-   * The Not-ready column is identical between them — not merely equal in count
-   * but the same facilities, since a critical gap sinks both readings. The
-   * entire divergence sits in the other two columns.
+   * All zeroes for a desk-reviewed state, which has no facility rows behind it.
    */
-  useDistribution: BandDistribution;
   deploymentDistribution: BandDistribution;
   /** Band per domain. All four are EMR-use readings. */
   themeBands: Record<ThemeId, Band | null>;
@@ -636,9 +640,8 @@ export interface AreaProfile {
    * state-level reading and no facilities under it.
    */
   themeDistribution: Record<ThemeId, BandDistribution>;
-  /** The area's own overall readiness, under each reading — the dominant band
-   *  of the matching distribution above. */
-  useBand: Band | null;
+  /** The area's own overall readiness — the dominant band of the distribution
+   *  above. */
   deploymentBand: Band | null;
 
   /**
@@ -675,10 +678,9 @@ export interface FilterState {
   /**
    * Readiness bands the Readiness control has ticked.
    *
-   * Selects on the EMR-use band when no domain is ticked, and on the ticked
-   * domain's band otherwise — see `facilityBandUnder`, which is the one place
-   * that decision is made. There is no ambiguity at the bottom of the scale:
-   * the Not-ready facilities are the same 1,340 under either overall reading.
+   * Selects on the facility's overall band when no domain is ticked, and on the
+   * ticked domain's band otherwise — see `facilityBandUnder`, which is the one
+   * place that decision is made.
    */
   archetypes: Band[];
   bandByTheme: Partial<Record<ThemeId, Band[]>>;

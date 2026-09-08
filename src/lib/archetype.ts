@@ -135,29 +135,24 @@ export function domainSelectionMode(
  *
  * So the three cases, per `domainSelectionMode`:
  *
- *   overall   the facility's published EMR-use band.
+ *   overall   the facility's published overall band.
  *   single    that domain's published band.
- *   multi     the published EMR-use band again — a fallback, not an answer.
+ *   multi     the published overall band again — a fallback, not an answer.
  *             Two ticked domains ask a question one swatch of colour cannot
  *             carry, and the pane answers it properly, one row per domain.
  *             Callers that can show more than one band should read
  *             `domainSelectionMode` and do so rather than calling this.
  *
- * **Which overall band, and why `useBand`.** The source carries two — how ready
- * the facility is to *run* an EMR, and whether anything blocks putting one in.
- * A map point is one colour and cannot show both, so this picks the use band,
- * because that is the scale the four domain bands are on. Ticking a domain then
- * narrows one question rather than switching to a different one, and a point's
- * colour means the same thing either way.
- *
- * The deployment band is not hidden by this — the pane shows both readings side
- * by side at every level, and the facility card shows both. What this function
- * decides is only what a single swatch of colour stands for.
+ * The overall band and the four domain bands are on the same scale, so ticking
+ * a domain narrows the question rather than switching to a different one, and a
+ * point's colour means the same thing either way. That used to need an argument
+ * — the source carried two overall readings and this had to choose between
+ * them. It carries one now.
  */
 export function facilityBandUnder(
   facility: FacilitySummary,
   domains: readonly FacilityThemeId[],
 ): Band | null {
-  if (domainSelectionMode(domains) !== 'single') return facility.useBand;
+  if (domainSelectionMode(domains) !== 'single') return facility.deploymentBand;
   return facility.themeBands[domains[0]!] ?? null;
 }

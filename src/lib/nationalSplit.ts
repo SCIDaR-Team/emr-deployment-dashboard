@@ -4,16 +4,15 @@
  * The national EMR-deployment readiness split, available synchronously so the
  * landing page can paint before `DataProvider` has fetched anything.
  *
- * Deployment, not use: this dashboard's question is what it takes to *deploy*
- * an EMR, and a front door that led with the use split reported a different
- * Ready count from every page behind it.
+ * The one overall reading the dataset carries — the same figures every page
+ * behind the front door is working from.
  */
 
 import type { Band } from './types';
 
-export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = {"not_ready":1340,"moderately_ready":842,"ready":624};
+export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = {"not_ready":744,"moderately_ready":1892,"ready":170};
 
 /** Facilities carrying a band — the denominator every share on the landing
- *  page is taken over. Every assessed facility carries both overall bands, so
- *  this is simply the survey size. */
+ *  page is taken over. Every assessed facility carries one, so this is simply
+ *  the survey size. */
 export const NATIONAL_TOTAL = 2806;

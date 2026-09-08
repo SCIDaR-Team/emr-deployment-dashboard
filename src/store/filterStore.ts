@@ -141,7 +141,7 @@ export const useFilterStore = create<FilterState & FilterActions>()(
     {
       name: 'emr-filters',
       version: 3,
-      // v3 replaced `gaps` — a flat list of the 73 conditions — with
+      // v3 replaced `gaps` — a flat list of the conditions — with
       // `gapAreas`, the twenty areas above them. A v2 payload holds condition
       // ids, and mapping them up to their areas would silently widen the
       // reader's saved filter: three ticked power conditions would come back as
