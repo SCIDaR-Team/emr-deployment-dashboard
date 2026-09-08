@@ -18,7 +18,11 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { COVERAGE, INSTITUTION } from '@/lib/constants';
 import { formatCount } from '@/lib/format';
-import { NATIONAL_DEPLOYMENT_SPLIT, NATIONAL_TOTAL } from '@/lib/nationalSplit';
+import {
+  NATIONAL_DEPLOYMENT_SPLIT,
+  NATIONAL_TOTAL,
+  NATIONAL_UNPRICED_ACTIONS,
+} from '@/lib/nationalSplit';
 import type { Band } from '@/lib/types';
 
 /**
@@ -454,9 +458,16 @@ export default function LandingPage() {
             {/* What replaced the blanket "everything here is synthetic" notice.
                 The figures are sourced now, so a global disclaimer would be
                 false — but the one thing the dataset does not carry is worth
-                stating once rather than leaving a reader to infer it. */}
+                stating once rather than leaving a reader to infer it.
+
+                The count is generated, not written. This read "a few critical
+                actions" against a figure of 332; the revised costing model made
+                it 2,274, and minor rather than critical, so the sentence was
+                wrong twice over. An adjective cannot be kept in step with a
+                dataset — a number read from the ingest can. */}
             <strong className="font-semibold text-foreground">
-              Costs are indicative and exclude a few critical actions the assessment does
+              Costs are indicative and exclude {formatCount(NATIONAL_UNPRICED_ACTIONS)}{' '}
+              {NATIONAL_UNPRICED_ACTIONS === 1 ? 'action' : 'actions'} the assessment does
               not price.
             </strong>
           </p>

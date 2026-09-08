@@ -1091,7 +1091,11 @@ async function main() {
   write('snapshot.json', snapshot);
 
   writeGapCatalogue(catalogue, gapAreas);
-  writeNationalSplit(national.deploymentDistribution, facilities.length);
+  writeNationalSplit(
+    national.deploymentDistribution,
+    facilities.length,
+    national.deployment.unpricedInterventions,
+  );
 
   report(facilities, catalogue, national, stateProfiles, { roundingDrift, roundedRows });
 }
@@ -1371,7 +1375,7 @@ export const FACILITY_DOMAIN_IDS: FacilityThemeId[] = ${JSON.stringify(DOMAIN_ID
   );
 }
 
-function writeNationalSplit(distribution, total) {
+function writeNationalSplit(distribution, total, unpricedActions) {
   writeFileSync(
     resolve(ROOT, 'src/lib/nationalSplit.ts'),
     `/**
@@ -1392,6 +1396,18 @@ export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = ${JSON.stringify(
  *  page is taken over. Every assessed facility carries one, so this is simply
  *  the survey size. */
 export const NATIONAL_TOTAL = ${total};
+
+/**
+ * Actions the source records and does not price — Query A, all of them routine
+ * device maintenance.
+ *
+ * Generated rather than written into the footer as an adjective, for the reason
+ * \`COVERAGE.facilities\` is generated: the front door states that its costs are
+ * incomplete, and how incomplete they are must not be able to drift from the
+ * dataset saying so. It read "a few critical actions" while the figure was 332;
+ * the revised model made it 2,274, and minor rather than critical.
+ */
+export const NATIONAL_UNPRICED_ACTIONS: number = ${unpricedActions};
 `,
   );
 }
