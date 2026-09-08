@@ -5,9 +5,11 @@ healthcare facilities, for **NPHCDA**, in partnership with NTBLCP, The Global
 Fund and Solina.
 
 >  **The figures are the assessment's.** `public/data/` is built by
-> `npm run data:ingest` from `List of gaps and interventions per facility.csv` —
-> 2,806 facilities across 12 states — joined with `Raw data with readiness
-> level.xlsx`, the raw ODK export, for each facility's rural/urban setting. See
+> `npm run data:ingest` from
+> `Revised costing model and roadmap - List of gaps and interventions per
+> facility.csv` — 2,806 facilities across 12 states — joined with
+> `ERA dataset_v4 (1).xlsx`, the raw ODK export, for each facility's rural/urban
+> setting and coordinate. See
 > [`docs/ASSESSMENT_DATA.md`](docs/ASSESSMENT_DATA.md) for what the dataset
 > contains, and [`docs/data-queries/`](docs/data-queries/) for the two things in
 > it the assessment team still needs to settle.
@@ -230,31 +232,32 @@ What replaces it is **counts**. Where the sibling ranks states by mean score,
 this one ranks them by how many of their facilities are not ready — a figure a
 reader can act on without being taught how to read it first.
 
-### Two readings, not one
+### One reading
 
-The assessment reports every facility twice: readiness to **use** an EMR, and
-readiness to **deploy** one. They are different questions — one is about how
-well a facility could run the system, the other about whether anything blocks
-installing it — and they disagree for 553 of the 2,806 facilities.
+The assessment reports every facility once: **readiness to deploy an EMR** — is
+anything blocking installation. It is a mechanical reading of the blocking gaps,
+not a judgement:
 
-Both are shown together, everywhere: an area gets both distributions, a facility
-gets both bands. A control to switch between them would make the reader hold one
-number in their head while looking at the other, and the interesting fact here is
-the *distance* between the two.
-
-|  | Not ready | Moderately | Ready |
+| | Not ready | Moderately | Ready |
 |---|---|---|---|
-| **EMR use** | 1,340 | 1,395 | 71 |
-| **EMR deployment** | 1,340 | 842 | 624 |
+| **EMR deployment** | 744 | 1,892 | 170 |
 
-The Not-ready column is the same 1,340 facilities under both readings, not
-merely the same count — a critical gap sinks either. So 624 facilities are clear
-to deploy into and 71 are in shape to actually run an EMR, and six of the twelve
-states have none at all in the second column.
+Any critical gap is Not ready; any major gap and nothing critical is Moderately
+ready; neither is Ready. Only two of the twenty gap areas can produce a critical
+gap — Power and Facility-connectivity — so the bottom band is, in practice,
+*this facility has no electricity or no usable connection*.
 
-Tick a domain and both collapse to that domain's band. All four domain readings
-are EMR-*use* readings; the source has no per-domain deployment band, so under a
-domain the pair would be one row printed twice.
+An earlier costing model reported each facility twice, adding readiness to *run*
+an EMR beside readiness to deploy one, and this dashboard showed the pair
+because the distance between them was the finding. The revised model withdrew
+that column and brought the deployment band onto the same definition — the
+technical infrastructure reading — so the two collapsed into one. The rule that
+came out of it survives: **never show one band twice under two names.**
+
+Tick a domain and the reading becomes that domain's band. All four domain
+readings are on the same scale as the overall one, so a domain narrows the
+question rather than replacing it, and one swatch of colour means one thing
+across the app.
 
 Two rules do all the rolling up, both in `src/lib/bands.ts`:
 
@@ -276,6 +279,39 @@ desk review, which yields a state-level reading and nothing underneath it. The
 two are different kinds of claim and never render in the same visual language —
 the choropleth hatches desk-reviewed polygons, and tables show a dash where a
 facility count would go rather than a zero.
+
+## What it costs, and what the total leaves out
+
+**₦6.02bn** across the 2,806 facilities, every figure the source's own. The
+Investment Plan itemises it; two properties of the revised costing model are
+worth knowing before reading that page.
+
+**Two of the four domains cost nothing.** Every condition in Workforce Capacity
+and Data Use & Reporting still fires an action, and every one of those actions
+is priced ₦0 — recorded work, costed elsewhere or not at all. That is a real
+zero in the source, not a blank, and the schedule says how many of its lines
+carry one so a reader does not read the silence as an omission.
+
+| Domain | Total |
+|---|---:|
+| Technical infrastructure | ₦5,903,938,077 |
+| Workflow and transition | ₦112,344,948 |
+| Workforce capacity | ₦0 |
+| Data use and reporting | ₦0 |
+
+**2,274 actions carry no price at all.** All of them routine device maintenance,
+and they are the only empty cost cells in the file. The total excludes them and
+says so, on the tile and in the row — the schedule prints `unpriced` rather than
+a dash, because an unpriced line and a ₦0 line are different claims and must not
+look alike. See [`docs/data-queries/`](docs/data-queries/).
+
+**A gap does not have one price.** Four conditions — three in Power, one in
+Backup-power — are costed differently depending on the facility: a site already
+on the grid is not sold a ₦500,000 connection to it, and a site with some supply
+draws a ₦1,200,000 top-up where one with none draws the full ₦3,000,000 install.
+So a facility is costed from its own row, `gapCostNGN` takes a variant carried in
+`FacilitySummary.gapVariants`, and a population's cost is summed rather than
+multiplied out from a count.
 
 ## Deployment
 
