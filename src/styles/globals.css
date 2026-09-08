@@ -171,9 +171,9 @@
      * readiness scale, so a cool chip is unambiguously an urgency.
      *
      * Critical sits close to the not-ready ink on purpose. A facility is Not
-     * ready to deploy *because* it carries a critical action — exactly 1,340
-     * facilities under both readings — so the echo states a fact rather than
-     * confusing two scales.
+     * ready to deploy *because* it carries a critical action — exactly the 744
+     * facilities in that band, no more and no fewer — so the echo states a fact
+     * rather than confusing two scales.
      *
      * Purple for Long-term, never green: green means passed everywhere else
      * here, and a deferred task painted green reads as a finished one. Purple

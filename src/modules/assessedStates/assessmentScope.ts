@@ -191,7 +191,7 @@ export function domainOverlap(
       if (!gap) continue;
       const domain = gap.domain as FacilityThemeId;
       if (!domains.includes(domain)) continue;
-      const priced = gapCostNGN(gap);
+      const priced = gapCostNGN(gap, f.gapVariants[id] ?? 0);
       gaps += 1;
       costNGN += priced.costNGN;
       unpriced += priced.unpriced;

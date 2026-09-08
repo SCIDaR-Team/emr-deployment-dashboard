@@ -254,7 +254,7 @@ export default function InvestmentPlanPage() {
       return {
         name: 'All 12 assessed states',
         facilityCount: national.data?.facilityCount ?? 0,
-        distribution: national.data?.useDistribution ?? {
+        distribution: national.data?.deploymentDistribution ?? {
           not_ready: 0,
           moderately_ready: 0,
           ready: 0,
@@ -267,13 +267,31 @@ export default function InvestmentPlanPage() {
     return {
       name: picked.map((s) => s.name).join(', '),
       facilityCount: agg.facilityCount,
-      distribution: agg.useDistribution,
+      distribution: agg.deploymentDistribution,
       investments: agg.investments,
     };
   }, [selectedStates, states.data, national.data]);
 
   const totalCost = scope.investments.reduce((sum, i) => sum + (i.totalCostNGN ?? 0), 0);
-  const unpricedLines = scope.investments.filter((i) => i.totalCostNGN == null).length;
+  const unpriced = scope.investments.filter((i) => i.totalCostNGN == null);
+  const unpricedLines = unpriced.length;
+  /**
+   * Actions, not lines — because one line can be thousands of them.
+   *
+   * The revised costing model left routine device maintenance unpriced at 2,274
+   * facilities, and every one of them rolls up into a single line. "One line
+   * carries no indicative price" is true and reads like a rounding note; the
+   * quantity behind it is what says how much of the plan the total is silent
+   * about.
+   */
+  const unpricedActions = unpriced.reduce((sum, i) => sum + i.quantity, 0);
+  /**
+   * Lines the source prices at a real ₦0, which is a different claim from an
+   * unpriced one and now a common one: two of the four domains cost nothing at
+   * all under the revised model. Said out loud so a column of ₦0s reads as a
+   * decision rather than as missing data.
+   */
+  const freeLines = scope.investments.filter((i) => i.totalCostNGN === 0).length;
 
   /**
    * Critical and major together — the sheet's two "before EMR deployment"
@@ -353,7 +371,7 @@ export default function InvestmentPlanPage() {
 
         <SectionCard
           title="What is being invested against"
-          subtitle="EMR-use readiness of the facilities the plan is costed over"
+          subtitle="Deployment readiness of the facilities the plan is costed over"
         >
           <DistributionBar
             distribution={scope.distribution}
@@ -435,8 +453,21 @@ export default function InvestmentPlanPage() {
                    know the sum is short without being told here. */
                 <p className="border-t border-border px-3 py-2 text-[11.5px] text-muted-foreground">
                   {unpricedLines === 1 ? 'One line carries' : `${formatCount(unpricedLines)} lines carry`}{' '}
-                  no indicative price in the source. The totals above exclude{' '}
-                  {unpricedLines === 1 ? 'it' : 'them'}.
+                  no indicative price in the source, across {formatCount(unpricedActions)}{' '}
+                  {unpricedActions === 1 ? 'facility' : 'facilities'}. The totals above
+                  exclude {unpricedLines === 1 ? 'it' : 'them'}.
+                </p>
+              )}
+              {freeLines > 0 && (
+                /* Distinct from the note above it, and the distinction is the
+                   point: those lines have no price, these have a price of
+                   nothing. Under the revised costing model that is two whole
+                   domains, so a reader scanning a column of ₦0s needs to know
+                   the source put them there. */
+                <p className="border-t border-border px-3 py-2 text-[11.5px] text-muted-foreground">
+                  {formatCount(freeLines)} of {formatCount(scope.investments.length)} lines are
+                  costed at ₦0 in the source — recorded work that carries no facility-level
+                  cost, not missing data.
                 </p>
               )}
             </>
@@ -661,8 +692,16 @@ function InvestmentRow({ item, columns }: { item: InvestmentItem; columns: Colum
             );
           case 'total':
             return (
+              /* A dash was unambiguous while every priced line carried a
+                 figure. The revised model fills this column with real ₦0s, so a
+                 dash beside them now reads as another kind of zero. The word
+                 cannot be misread. */
               <td key={c} className="mono td text-right text-foreground">
-                {item.totalCostNGN != null ? formatNaira(item.totalCostNGN) : '—'}
+                {item.totalCostNGN != null ? (
+                  formatNaira(item.totalCostNGN)
+                ) : (
+                  <span className="text-muted-foreground">unpriced</span>
+                )}
               </td>
             );
         }
