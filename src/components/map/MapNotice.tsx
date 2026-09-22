@@ -27,7 +27,7 @@ export function MapNotice({
     <div
       role="status"
       className={cn(
-        'flex items-start gap-1.5 rounded border border-border bg-surface/95 px-2 py-1.5 text-[11px] leading-tight text-muted-foreground shadow-card backdrop-blur',
+        'flex items-start gap-1.5 rounded border border-border bg-surface/95 px-2 py-1.5 text-note leading-tight text-muted-foreground shadow-card backdrop-blur',
         className,
       )}
     >

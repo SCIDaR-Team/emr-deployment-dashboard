@@ -87,7 +87,7 @@ export function MapScaleBar({
       role="img"
       aria-label={`Map scale: ${formatDistance(bar.metres)}`}
     >
-      <span className="mono text-[10px] font-medium leading-none text-foreground">
+      <span className="mono text-tick font-medium leading-none text-foreground">
         {formatDistance(bar.metres)}
       </span>
       {/* The classic surveyor's bar: a baseline with a riser at each end, so

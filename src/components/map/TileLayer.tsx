@@ -385,7 +385,7 @@ export function BaseMapNotice({ baseMap }: { baseMap: BaseMapId }) {
   if (!unreachable || !source.tile) return null;
 
   return (
-    <div className="flex items-start gap-1.5 rounded border border-border bg-surface/95 px-2 py-1.5 text-[11px] leading-tight text-muted-foreground shadow-card backdrop-blur">
+    <div className="flex items-start gap-1.5 rounded border border-border bg-surface/95 px-2 py-1.5 text-note leading-tight text-muted-foreground shadow-card backdrop-blur">
       <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-moderate-ink" aria-hidden />
       <span>
         {source.label} tiles are not loading on this network.{' '}
@@ -415,7 +415,7 @@ export function MapAttribution({ baseMap }: { baseMap: BaseMapId }) {
   const source = baseMapSource(baseMap);
   if (!source.tile) return null;
   return (
-    <span className="rounded bg-surface/85 px-1.5 py-0.5 text-[10px] leading-tight text-muted-foreground">
+    <span className="rounded bg-surface/85 px-1.5 py-0.5 text-tick leading-tight text-muted-foreground">
       {source.tile.attribution}
     </span>
   );

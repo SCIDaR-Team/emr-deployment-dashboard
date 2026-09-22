@@ -618,12 +618,12 @@ export function LGAFacilityMap({
           fourth crumb. */}
       {selected && (
         <div className="absolute left-2 top-11 z-10 w-[250px] rounded-lg border border-border bg-surface/95 p-2.5 shadow-pop backdrop-blur">
-          <p className="text-[13px] font-semibold leading-snug text-foreground">{selected.name}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="text-prose font-semibold leading-snug text-foreground">{selected.name}</p>
+          <p className="mt-0.5 text-note text-muted-foreground">
             {[selected.lga, selected.state].filter(Boolean).join(', ') || lgaName}
           </p>
           {(selected.band || selected.status) && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-note text-muted-foreground">
               {[selected.band ? BAND_LABEL[selected.band] : null, selected.status]
                 .filter(Boolean)
                 .join(' · ')}
@@ -646,20 +646,20 @@ export function LGAFacilityMap({
           one thing the map will not do is put it somewhere plausible. */}
       {selectedUnplaced && selectedRecord && (
         <div className="absolute left-2 top-11 z-10 w-[250px] rounded-lg border border-border bg-surface/95 p-2.5 shadow-pop backdrop-blur">
-          <p className="text-[13px] font-semibold leading-snug text-foreground">
+          <p className="text-prose font-semibold leading-snug text-foreground">
             {selectedRecord.name}
           </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-note text-muted-foreground">
             {[selectedRecord.lga, selectedRecord.state].filter(Boolean).join(', ') || lgaName}
           </p>
           {(selectedRecord.band || selectedRecord.status) && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-note text-muted-foreground">
               {[selectedRecord.band ? BAND_LABEL[selectedRecord.band] : null, selectedRecord.status]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           )}
-          <div className="mt-2 flex items-start gap-1.5 border-t border-border pt-1.5 text-[11px] leading-tight text-muted-foreground">
+          <div className="mt-2 flex items-start gap-1.5 border-t border-border pt-1.5 text-note leading-tight text-muted-foreground">
             <MapPinOff className="mt-px h-3.5 w-3.5 shrink-0 text-moderate-ink" aria-hidden />
             <span>
               Exact location unavailable — the survey recorded no GPS coordinate for this
@@ -685,7 +685,7 @@ export function LGAFacilityMap({
           full-bleed overlay. Any future full-frame message here needs the same
           class. */}
       {points.length === 0 && (
-        <p className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+        <p className="pointer-events-none absolute inset-0 grid place-items-center text-prose text-muted-foreground">
           No GPS-mapped facilities for this selection
         </p>
       )}
@@ -696,7 +696,7 @@ export function LGAFacilityMap({
           reader counts dots and gets a different number from the pane beside
           them, with no way to tell which figure is wrong. */}
       {points.length > 0 && unplacedCount > 0 && !selectedUnplaced && (
-        <p className="pointer-events-none absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 rounded border border-border bg-surface/92 px-2 py-1 text-[11px] text-muted-foreground backdrop-blur">
+        <p className="pointer-events-none absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 rounded border border-border bg-surface/92 px-2 py-1 text-note text-muted-foreground backdrop-blur">
           {unplacedCount === 1
             ? '1 facility has no recorded coordinate and is not plotted'
             : `${unplacedCount} facilities have no recorded coordinate and are not plotted`}

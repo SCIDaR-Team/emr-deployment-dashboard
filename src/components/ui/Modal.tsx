@@ -48,11 +48,11 @@ export function Modal({
           <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-6 sm:py-4">
             <div className="min-w-0">
               {title && (
-                <h2 className="text-base font-semibold leading-tight text-foreground sm:text-lg">
+                <h2 className="text-lead font-semibold leading-tight text-foreground sm:text-title">
                   {title}
                 </h2>
               )}
-              {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
+              {subtitle && <p className="mt-1 text-body text-muted-foreground">{subtitle}</p>}
             </div>
             <button
               type="button"

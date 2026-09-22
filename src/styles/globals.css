@@ -464,7 +464,7 @@
 
   .eyebrow {
     font-family: theme('fontFamily.mono');
-    @apply text-[10px] uppercase tracking-[0.13em] text-muted-foreground;
+    @apply text-tick uppercase tracking-[0.13em] text-muted-foreground;
   }
 
   /* A scroll region that says so.
@@ -501,11 +501,11 @@
      rather than restated as a class string on every `<th>`. */
   .th {
     font-family: theme('fontFamily.mono');
-    @apply px-3 py-2 text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground;
+    @apply px-3 py-2.5 text-tick font-medium uppercase tracking-[0.11em] text-muted-foreground;
   }
 
   .td {
-    @apply px-3 py-2 align-middle text-muted-foreground;
+    @apply px-3 py-2.5 align-middle text-muted-foreground;
   }
 
   /* Secondary-evidence fill for the 25 desk-review states on the choropleth.

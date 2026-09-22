@@ -67,7 +67,7 @@ export function BandBadge({
       <span
         className={cn(
           'inline-flex items-center gap-1.5 rounded-full bg-muted font-medium text-muted-foreground',
-          size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm',
+          size === 'sm' ? 'px-2 py-0.5 text-body' : 'px-3 py-1 text-prose',
           className,
         )}
       >
@@ -85,7 +85,7 @@ export function BandBadge({
         'inline-flex items-center gap-1.5 rounded-full font-medium',
         classes.wash,
         classes.text,
-        size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm',
+        size === 'sm' ? 'px-2 py-0.5 text-body' : 'px-3 py-1 text-prose',
         className,
       )}
     >

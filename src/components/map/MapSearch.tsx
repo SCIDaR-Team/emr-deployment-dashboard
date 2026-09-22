@@ -129,7 +129,7 @@ export function MapSearchPanel({
               onClose();
             }
           }}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent text-prose text-foreground outline-none placeholder:text-muted-foreground"
         />
         <button
           type="button"
@@ -149,11 +149,11 @@ export function MapSearchPanel({
         className="max-h-[260px] overflow-y-auto py-1"
       >
         {query.trim().length < MIN_QUERY ? (
-          <p className="px-2.5 py-1.5 text-[12px] text-muted-foreground">
+          <p className="px-2.5 py-1.5 text-body text-muted-foreground">
             Type a name to jump straight to it.
           </p>
         ) : results.length === 0 ? (
-          <p className="px-2.5 py-1.5 text-[12px] text-muted-foreground">
+          <p className="px-2.5 py-1.5 text-body text-muted-foreground">
             Nothing here by that name.
           </p>
         ) : (
@@ -179,16 +179,16 @@ export function MapSearchPanel({
               )}
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] leading-tight text-foreground">
+                <span className="block truncate text-prose leading-tight text-foreground">
                   {result.label}
                 </span>
                 {result.hint && (
-                  <span className="block truncate text-[11px] leading-tight text-muted-foreground">
+                  <span className="block truncate text-note leading-tight text-muted-foreground">
                     {result.hint}
                   </span>
                 )}
               </span>
-              <span className="mono shrink-0 text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
+              <span className="mono shrink-0 text-tick uppercase tracking-[0.08em] text-muted-foreground">
                 {result.kind}
               </span>
             </button>

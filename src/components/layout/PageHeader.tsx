@@ -82,11 +82,11 @@ export function PageHeader({
       <div className="flex min-h-[52px] items-center gap-4 border-b border-border bg-surface px-4 sm:px-5">
         <div className="flex min-w-0 items-baseline gap-3">
           {back}
-          <h1 className="shrink-0 text-base font-semibold tracking-tight text-foreground">
+          <h1 className="shrink-0 text-lead font-semibold tracking-tight text-foreground">
             {title}
           </h1>
           {subtitle && (
-            <p className="min-w-0 truncate text-xs text-muted-foreground">{subtitle}</p>
+            <p className="min-w-0 truncate text-body text-muted-foreground">{subtitle}</p>
           )}
         </div>
 
@@ -132,7 +132,7 @@ export function Field({
 }) {
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <span className="mono shrink-0 text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+      <span className="mono shrink-0 text-tick uppercase tracking-[0.11em] text-muted-foreground">
         {label}
       </span>
       {children}

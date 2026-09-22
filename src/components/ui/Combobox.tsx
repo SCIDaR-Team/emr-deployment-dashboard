@@ -66,7 +66,7 @@ export function Combobox({
   return (
     <div ref={ref} className={cn('relative', className)}>
       {label && (
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <label className="mb-1 block truncate text-body font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
         </label>
       )}
@@ -78,7 +78,7 @@ export function Combobox({
         aria-haspopup="listbox"
         aria-expanded={open}
         className={cn(
-          'flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-left text-sm transition-colors',
+          'flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-left text-prose transition-colors',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
           disabled && 'cursor-not-allowed opacity-55',
           open || selected ? 'border-brand-500' : 'border-input hover:border-brand-500/50',
@@ -110,13 +110,13 @@ export function Combobox({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="h-8 w-full rounded-md border border-input bg-page pl-7 pr-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand-500 focus:outline-none"
+              className="h-8 w-full rounded-md border border-input bg-page pl-7 pr-2 text-prose text-foreground placeholder:text-muted-foreground focus:border-brand-500 focus:outline-none"
             />
           </div>
 
           <ul role="listbox" className="max-h-60 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-xs text-muted-foreground">No matches</li>
+              <li className="px-3 py-2 text-body text-muted-foreground">No matches</li>
             ) : (
               filtered.slice(0, 200).map((o) => {
                 const active = o.value === value;
@@ -131,14 +131,14 @@ export function Combobox({
                         setOpen(false);
                       }}
                       className={cn(
-                        'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted',
+                        'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-prose transition-colors hover:bg-muted',
                         active ? 'font-semibold text-brand-600' : 'text-foreground',
                       )}
                     >
                       <span className="min-w-0">
                         <span className="block truncate">{o.label}</span>
                         {o.hint && (
-                          <span className="block truncate text-xs text-muted-foreground">
+                          <span className="block truncate text-body text-muted-foreground">
                             {o.hint}
                           </span>
                         )}
@@ -153,7 +153,7 @@ export function Combobox({
                 the intended path; this line says so rather than silently
                 truncating. */}
             {filtered.length > 200 && (
-              <li className="px-3 py-2 text-xs text-muted-foreground">
+              <li className="px-3 py-2 text-body text-muted-foreground">
                 {(filtered.length - 200).toLocaleString()} more — keep typing to narrow
               </li>
             )}

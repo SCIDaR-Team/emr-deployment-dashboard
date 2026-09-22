@@ -66,10 +66,10 @@ function BrandBlock({
         <span className="sr-only">{INSTITUTION.abbr} EMR Readiness Assessment</span>
       ) : (
         <span className="flex min-w-0 flex-col leading-none">
-          <span className="mono truncate text-[9px] uppercase tracking-[0.13em] text-muted-foreground">
+          <span className="mono truncate text-tick uppercase tracking-[0.13em] text-muted-foreground">
             {INSTITUTION.abbr}
           </span>
-          <span className="mt-1 truncate text-[12px] font-semibold leading-tight text-foreground">
+          <span className="mt-1 truncate text-body font-semibold leading-tight text-foreground">
             EMR Readiness
           </span>
         </span>
@@ -97,7 +97,7 @@ function NavContents({
   return (
     <>
       {!collapsed && (
-        <p className="mono px-4 pb-1.5 pt-4 text-[9.5px] uppercase tracking-[0.13em] text-muted-foreground">
+        <p className="mono px-4 pb-1.5 pt-4 text-tick uppercase tracking-[0.13em] text-muted-foreground">
           Modules
         </p>
       )}
@@ -117,7 +117,7 @@ function NavContents({
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 border-l-2 border-transparent py-2 pl-3.5 pr-4 text-[13.5px] text-muted-foreground transition-colors',
+                    'flex items-center gap-3 border-l-2 border-transparent py-2 pl-3.5 pr-4 text-prose text-muted-foreground transition-colors',
                     'hover:bg-surface hover:text-foreground',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                     collapsed && 'justify-center px-0 pl-2',
@@ -179,7 +179,7 @@ export function Sidebar() {
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             className={cn(
-              'mono flex w-full items-center gap-2.5 px-1 py-1.5 text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground transition-colors',
+              'mono flex w-full items-center gap-2.5 px-1 py-1.5 text-tick uppercase tracking-[0.1em] text-muted-foreground transition-colors',
               'hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               collapsed && 'justify-center',
             )}
@@ -225,13 +225,13 @@ export function MobileNavBar() {
           <Menu className="h-5 w-5" aria-hidden />
         </button>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold leading-tight text-foreground">
+          <p className="truncate text-prose font-semibold leading-tight text-foreground">
             {current?.label ?? 'EMR Readiness Assessment'}
           </p>
           {/* The product name carries the agency here too. One surface still
               saying "EMR readiness" while the rail and the landing page say
               "NPHCDA EMR Readiness" is the inconsistency, not the length. */}
-          <p className="mono truncate text-[9.5px] uppercase tracking-[0.1em] leading-tight text-muted-foreground">
+          <p className="mono truncate text-tick uppercase tracking-[0.1em] leading-tight text-muted-foreground">
             {INSTITUTION.abbr} EMR readiness
           </p>
         </div>

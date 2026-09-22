@@ -133,6 +133,60 @@ export default {
         // Anything that floats above the page: popovers, dialogs, drawers, toasts.
         pop: '0 4px 12px -2px rgb(0 0 0 / 0.10), 0 12px 32px -8px rgb(0 0 0 / 0.18)',
       },
+      /*
+       * The type scale.
+       *
+       * The app had grown 25 distinct sizes across ~259 call sites, most of
+       * them arbitrary pixel values, including half-point steps at 9.5, 10.5,
+       * 11.5, 12.5 and 13.5. Nothing was wrong with any one of them; the
+       * problem is that a reader cannot learn a system with 25 steps, so
+       * nothing read as deliberate and two things a third of a pixel apart
+       * read as an accident — which they were.
+       *
+       * Nine steps, named for what they do rather than how big they are. A
+       * call site that wants a size not on this list is telling you it has a
+       * role the scale has not named yet; add the role, not the pixel.
+       *
+       * Line height and tracking ride with the size, because they are not
+       * independent choices: 10px set at 1.6 is a label that has come apart,
+       * and 34px set at 1.5 is a figure with a hole in it. Explicit
+       * `leading-*` at a call site still wins — Tailwind emits it after
+       * fontSize — so the handful of places that genuinely need their own
+       * leading keep it.
+       */
+      fontSize: {
+        // The micro tier. Everything here is a label on something else: axis
+        // ticks, table headers, eyebrows, legend keys, unit suffixes. 10px is
+        // the floor — Nunito's rounded terminals go muddy below it, which is
+        // why the old 9px and 9.5px steps had to go rather than be kept.
+        tick: ['10px', { lineHeight: '1.4' }],
+        note: ['11px', { lineHeight: '1.45' }],
+
+        // The reading tier.
+        body: ['12px', { lineHeight: '1.5' }],
+        prose: ['14px', { lineHeight: '1.6' }],
+        lead: ['17px', { lineHeight: '1.5' }],
+
+        // Headings.
+        title: ['21px', { lineHeight: '1.25', letterSpacing: '-0.01em' }],
+
+        // Figures. Two steps, because this app puts readings in two quite
+        // different places: a four-up strip where the column is 150-200px
+        // wide, and a pane where one number is the whole point. Negative
+        // tracking on both — Nunito sets numerals generously, and a 34px
+        // count at default tracking drifts apart.
+        'figure-sm': ['26px', { lineHeight: '1', letterSpacing: '-0.02em' }],
+        figure: ['34px', { lineHeight: '0.95', letterSpacing: '-0.02em' }],
+
+        // The one fluid step: a sentence, not a number, so it is sized off the
+        // viewport rather than off the scale. Nudged up from the old
+        // clamp(1.7rem, 2.9vw, 2.7rem) now that it has figures large enough to
+        // sit beside without being shouted down by them.
+        display: [
+          'clamp(1.9rem, 3.1vw, 3rem)',
+          { lineHeight: '1.06', letterSpacing: '-0.025em' },
+        ],
+      },
       fontFamily: {
         // One voice: Nunito, loaded in index.html. The `mono` token is kept —
         // and kept pointed at the same family — so the label, tick, figure and

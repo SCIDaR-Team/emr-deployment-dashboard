@@ -40,12 +40,12 @@ const SIZES = {
   md: {
     tile: 'h-[38px] w-[38px] rounded-[4px] p-[3px]',
     monogram:
-      'h-[38px] w-[38px] rounded-[4px] bg-foreground text-[12px] text-surface',
+      'h-[38px] w-[38px] rounded-[4px] bg-foreground text-body text-surface',
   },
   sm: {
     tile: 'h-[26px] w-[26px] rounded-[3px] p-[2px]',
     monogram:
-      'h-[26px] w-[26px] rounded-[3px] border-[1.5px] border-foreground text-[11px] text-foreground',
+      'h-[26px] w-[26px] rounded-[3px] border-[1.5px] border-foreground text-note text-foreground',
   },
 } as const;
 

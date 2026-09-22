@@ -204,7 +204,7 @@ export function SectionTabs({
             onClick={() => go(section.id)}
             aria-current={isActive ? 'true' : undefined}
             className={cn(
-              'shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-xs transition-colors',
+              'shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-body transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               isActive
                 ? 'bg-brand-50 font-medium text-brand-700'

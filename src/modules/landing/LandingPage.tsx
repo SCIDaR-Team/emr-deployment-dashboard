@@ -205,10 +205,10 @@ export default function LandingPage() {
                 buys its extra width back out of its own size rather than out of
                 theirs.
               */}
-              <span className="mono whitespace-nowrap text-[12px] font-semibold uppercase tracking-[0.08em] text-foreground">
+              <span className="mono whitespace-nowrap text-body font-semibold uppercase tracking-[0.08em] text-foreground">
                 {INSTITUTION.abbr} EMR readiness
               </span>
-              <span className="mono mt-1 text-[9.5px] uppercase tracking-[0.13em] text-muted-foreground">
+              <span className="mono mt-1 text-tick uppercase tracking-[0.13em] text-muted-foreground">
                 Nigeria
               </span>
             </span>
@@ -231,10 +231,10 @@ export default function LandingPage() {
                     aria-hidden
                   />
                   <span className="flex min-w-0 flex-col leading-tight">
-                    <span className="truncate text-[13px] font-semibold text-foreground">
+                    <span className="truncate text-prose font-semibold text-foreground">
                       {mod.label}
                     </span>
-                    <span className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    <span className="mt-0.5 truncate text-note text-muted-foreground">
                       {mod.description}
                     </span>
                   </span>
@@ -260,13 +260,13 @@ export default function LandingPage() {
                 true of every health system and tells a reader nothing. The
                 pair that carries the finding is how few are ready now and how
                 many are blocked outright. */}
-            <h1 className="mt-3 text-[clamp(1.7rem,2.9vw,2.7rem)] font-semibold leading-[1.08] tracking-tight text-balance text-foreground">
+            <h1 className="mt-3 text-display font-semibold leading-[1.08] tracking-tight text-balance text-foreground">
               Two in three facilities need only major work before an EMR.{' '}
               <em className="not-italic text-notready-ink">
                 One in four is blocked on power or connectivity.
               </em>
             </h1>
-            <p className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-[54ch] text-prose leading-relaxed text-muted-foreground">
               Readiness measures whether a facility can realistically begin an EMR
               deployment — not whether it already owns the equipment. What separates the
               bands is the work still outstanding.
@@ -287,14 +287,14 @@ export default function LandingPage() {
 
           <div className="flex flex-col">
             <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-              <h2 className="mono text-[13px] font-semibold uppercase tracking-[0.09em] text-foreground">
+              <h2 className="mono text-prose font-semibold uppercase tracking-[0.09em] text-foreground">
                 {formatCount(SCORED_TOTAL)} facilities assessed
               </h2>
               {/* Hand-rolled rather than <BandLegend/> so it can sit on the
                   heading's baseline at the far right, which the shared
                   component's own flex row cannot do. Same swatches, same
                   textures, same labels. */}
-              <ul className="mono ml-auto flex flex-wrap items-center gap-x-5 gap-y-1 text-[10.5px] text-muted-foreground">
+              <ul className="mono ml-auto flex flex-wrap items-center gap-x-5 gap-y-1 text-note text-muted-foreground">
                 {BAND_ORDER.map((band) => (
                   <li key={band} className="flex items-center gap-1.5">
                     <span
@@ -330,7 +330,7 @@ export default function LandingPage() {
               2,806 facilities, and the point of the waffle is that the count of
               green squares *is* the percentage.
             */}
-            <p className="mt-2 text-[11.5px] text-muted-foreground">
+            <p className="mt-2 text-note text-muted-foreground">
               Each square is one per cent of the facilities assessed.
             </p>
 
@@ -380,15 +380,15 @@ export default function LandingPage() {
                         BAND_CLASSES[band].text,
                       )}
                     >
-                      <span className="text-[31px] leading-none">{formatCount(count)}</span>
-                      <span className="mt-1.5 block whitespace-nowrap text-[11px] uppercase leading-none tracking-[0.09em]">
+                      <span className="text-figure leading-none">{formatCount(count)}</span>
+                      <span className="mt-1.5 block whitespace-nowrap text-note uppercase leading-none tracking-[0.09em]">
                         {BAND_LABEL[band]}
                       </span>
                     </p>
-                    <p className="mono mt-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+                    <p className="mono mt-2 text-tick font-semibold uppercase tracking-[0.05em] text-muted-foreground">
                       {((count / SCORED_TOTAL) * 100).toFixed(1)}% of those assessed
                     </p>
-                    <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
+                    <p className="mt-1.5 text-body leading-snug text-muted-foreground">
                       {BAND_RULE[band]}
                     </p>
                   </div>
@@ -415,13 +415,13 @@ export default function LandingPage() {
                     <Icon className="h-[18px] w-[18px]" aria-hidden />
                   </span>
                   <div className="min-w-0">
-                    <p className="mono text-[24px] font-semibold leading-none tracking-tight text-foreground">
+                    <p className="mono text-figure-sm font-semibold leading-none tracking-tight text-foreground">
                       {value}
                     </p>
-                    <p className="mono mt-1 whitespace-nowrap text-[9.5px] uppercase tracking-[0.08em] text-foreground">
+                    <p className="mono mt-1 whitespace-nowrap text-tick uppercase tracking-[0.08em] text-foreground">
                       {label}
                     </p>
-                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{sub}</p>
+                    <p className="mt-0.5 text-note leading-snug text-muted-foreground">{sub}</p>
                   </div>
                 </div>
               ))}
@@ -435,10 +435,10 @@ export default function LandingPage() {
         <div className="flex items-start gap-3.5 rounded-[6px] border border-border bg-surface px-5 py-3">
           <Info className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-500" aria-hidden />
           <div>
-            <p className="mono text-[10px] font-semibold uppercase tracking-[0.11em] text-foreground">
+            <p className="mono text-tick font-semibold uppercase tracking-[0.11em] text-foreground">
               How readiness is measured
             </p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+            <p className="mt-1.5 text-body leading-relaxed text-muted-foreground">
               A facility&rsquo;s band is a count of the work still outstanding, never a
               score. Critical gaps — electricity and connectivity, and nothing else — put
               it in Not ready on their own; major gaps alone pull it to Moderately ready.
@@ -451,7 +451,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-border bg-surface">
         <div className={cn(SHELL, 'py-3')}>
-          <p className="mono text-[9.5px] leading-relaxed text-muted-foreground">
+          <p className="mono text-tick leading-relaxed text-muted-foreground">
             NPHCDA, with NTBLCP, The Global Fund and Solina · {COVERAGE.statesPrimary}{' '}
             states by facility survey; {COVERAGE.statesSecondary} states and the FCT by
             desk review, which yields state-level findings only ·{' '}

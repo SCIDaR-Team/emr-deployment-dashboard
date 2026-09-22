@@ -389,7 +389,7 @@ export default function InvestmentPlanPage() {
           {scope.investments.length ? (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
+                <table className="w-full text-prose">
                   <thead>
                     <tr className="border-b border-border text-left">
                       {columns.map((c) => (
@@ -430,7 +430,7 @@ export default function InvestmentPlanPage() {
                   <tfoot>
                     <tr className="border-t-2 border-border">
                       <td
-                        className="mono td py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.09em] text-foreground"
+                        className="mono td py-3 text-right text-note font-bold uppercase tracking-[0.09em] text-foreground"
                         colSpan={columns.length - 1}
                       >
                         {/* "Grand total" only where there are subtotals for it
@@ -439,7 +439,7 @@ export default function InvestmentPlanPage() {
                             hierarchy the reader cannot see. */}
                         {groupMode === 'cost' ? 'Total' : 'Grand total'}
                       </td>
-                      <td className="mono td py-2.5 text-right font-bold text-foreground">
+                      <td className="mono td py-3 text-right font-bold text-foreground">
                         {formatNaira(totalCost)}
                       </td>
                     </tr>
@@ -451,7 +451,7 @@ export default function InvestmentPlanPage() {
                    is. `formatNaira` renders an unpriced line as an em dash in
                    its own row, but a reader adding the column up has no way to
                    know the sum is short without being told here. */
-                <p className="border-t border-border px-3 py-2 text-[11.5px] text-muted-foreground">
+                <p className="border-t border-border px-3 py-2 text-note text-muted-foreground">
                   {unpricedLines === 1 ? 'One line carries' : `${formatCount(unpricedLines)} lines carry`}{' '}
                   no indicative price in the source, across {formatCount(unpricedActions)}{' '}
                   {unpricedActions === 1 ? 'facility' : 'facilities'}. The totals above
@@ -464,7 +464,7 @@ export default function InvestmentPlanPage() {
                    nothing. Under the revised costing model that is two whole
                    domains, so a reader scanning a column of ₦0s needs to know
                    the source put them there. */
-                <p className="border-t border-border px-3 py-2 text-[11.5px] text-muted-foreground">
+                <p className="border-t border-border px-3 py-2 text-note text-muted-foreground">
                   {formatCount(freeLines)} of {formatCount(scope.investments.length)} lines are
                   costed at ₦0 in the source — recorded work that carries no facility-level
                   cost, not missing data.
@@ -493,23 +493,23 @@ export default function InvestmentPlanPage() {
                   <p className="eyebrow">
                     Wave {wave} · {waveStates[0]?.deployment?.startQuarter}
                   </p>
-                  <p className="mono mt-2 text-[25px] font-semibold leading-none tracking-tight text-foreground">
+                  <p className="mono mt-2 text-figure-sm font-semibold leading-none tracking-tight text-foreground">
                     {formatCount(facilityCount)}
-                    <span className="ml-1.5 text-xs font-medium tracking-normal text-muted-foreground">
+                    <span className="ml-1.5 text-body font-medium tracking-normal text-muted-foreground">
                       facilities
                     </span>
                   </p>
-                  <p className="mono mt-1.5 text-[11px] text-muted-foreground">
+                  <p className="mono mt-1.5 text-note text-muted-foreground">
                     {formatNaira(cost, true)}
                   </p>
-                  <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+                  <p className="mt-3 text-body leading-relaxed text-muted-foreground">
                     {WAVE_NOTE[wave]}
                   </p>
                   <ul className="mt-3 flex flex-wrap gap-1.5">
                     {waveStates.map((s) => (
                       <li
                         key={s.id}
-                        className="mono rounded-[2px] border border-border px-1.5 py-0.5 text-[10.5px] text-foreground"
+                        className="mono rounded-[2px] border border-border px-1.5 py-0.5 text-note text-foreground"
                       >
                         {s.name}
                       </li>
@@ -556,7 +556,7 @@ function GroupSwitch({
               aria-pressed={active}
               onClick={() => onChange(mode.id)}
               className={cn(
-                'mono px-2.5 py-1 text-[10px] uppercase tracking-[0.09em] transition-colors first:rounded-l-[2px] last:rounded-r-[2px]',
+                'mono px-2.5 py-1 text-tick uppercase tracking-[0.09em] transition-colors first:rounded-l-[2px] last:rounded-r-[2px]',
                 active
                   ? 'bg-foreground font-semibold text-surface'
                   : 'bg-surface text-muted-foreground hover:text-foreground',
@@ -589,10 +589,10 @@ function GroupHeader({
 }) {
   return (
     <tr className="border-b border-border bg-muted/40">
-      <td className="td py-2" colSpan={span}>
+      <td className="td" colSpan={span}>
         <span
           className={cn(
-            'mono text-[10.5px] font-bold uppercase tracking-[0.07em]',
+            'mono text-note font-bold uppercase tracking-[0.07em]',
             heading.className ?? 'text-foreground',
           )}
         >
@@ -603,7 +603,7 @@ function GroupHeader({
           )}
           {heading.label}
         </span>
-        <span className="ml-2 text-[11.5px] text-muted-foreground">{heading.note}</span>
+        <span className="ml-2 text-note text-muted-foreground">{heading.note}</span>
       </td>
     </tr>
   );
@@ -637,10 +637,10 @@ function GroupSubtotal({
 }) {
   return (
     <tr className="border-t border-border">
-      <td className="td py-2 text-right" colSpan={span}>
+      <td className="td text-right" colSpan={span}>
         <span className="font-semibold text-foreground">{label} subtotal</span>
       </td>
-      <td className="mono td py-2 text-right font-semibold text-foreground">
+      <td className="mono td text-right font-semibold text-foreground">
         {formatNaira(cost)}
         {unpriced > 0 && (
           <span
@@ -717,7 +717,7 @@ function UrgencyChip({ horizon }: { horizon: Horizon }) {
   return (
     <span
       className={cn(
-        'mono whitespace-nowrap text-[9.5px] font-semibold uppercase tracking-[0.06em]',
+        'mono whitespace-nowrap text-tick font-semibold uppercase tracking-[0.06em]',
         HORIZON_CLASSES[horizon].text,
       )}
     >

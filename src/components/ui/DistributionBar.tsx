@@ -51,7 +51,7 @@ export function DistributionBar({
           )}
         />
         {showLegend && (
-          <p className="mt-1.5 text-xs text-muted-foreground">
+          <p className="mt-1.5 text-body text-muted-foreground">
             No facilities scored on this selection
           </p>
         )}
@@ -88,7 +88,7 @@ export function DistributionBar({
       </div>
 
       {showLegend && (
-        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-body">
           {BANDS.map((band) => (
             <li key={band} className="flex items-center gap-1.5">
               <span

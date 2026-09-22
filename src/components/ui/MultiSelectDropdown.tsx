@@ -100,7 +100,7 @@ export function MultiSelectDropdown({
   return (
     <div className={cn('relative', className)} ref={ref}>
       <label
-        className="mono mb-1 block text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground"
+        className="mono mb-1 block truncate text-tick uppercase tracking-[0.11em] text-muted-foreground"
         id={`${label}-label`}
       >
         {label}
@@ -115,7 +115,7 @@ export function MultiSelectDropdown({
         aria-expanded={open}
         aria-labelledby={`${label}-label`}
         className={cn(
-          'flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-left text-sm transition-colors',
+          'flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-left text-prose transition-colors',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
           disabled && 'cursor-not-allowed opacity-55',
           !disabled && (open || selected.length)
@@ -151,7 +151,7 @@ export function MultiSelectDropdown({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={`Search ${label.toLowerCase()}…`}
-              className="mb-2 h-8 w-full rounded-md border border-input bg-page px-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand-500 focus:outline-none"
+              className="mb-2 h-8 w-full rounded-md border border-input bg-page px-2 text-prose text-foreground placeholder:text-muted-foreground focus:border-brand-500 focus:outline-none"
             />
           )}
 
@@ -159,20 +159,20 @@ export function MultiSelectDropdown({
             <button
               type="button"
               onClick={() => onChange([])}
-              className="mb-1 w-full rounded-md px-2 py-1 text-left text-xs font-semibold text-brand-600 hover:bg-brand-50"
+              className="mb-1 w-full rounded-md px-2 py-1 text-left text-body font-semibold text-brand-600 hover:bg-brand-50"
             >
               Clear {label.toLowerCase()}
             </button>
           )}
 
           {visible.length === 0 && (
-            <p className="px-2 py-3 text-xs text-muted-foreground">No matches</p>
+            <p className="px-2 py-3 text-body text-muted-foreground">No matches</p>
           )}
 
           {visible.map((group) => (
             <div key={group.label} className="mb-1 last:mb-0">
               {groups.length > 1 && (
-                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="px-2 py-1 text-note font-bold uppercase tracking-wider text-muted-foreground">
                   {group.label}
                 </div>
               )}
@@ -187,7 +187,7 @@ export function MultiSelectDropdown({
                     disabled={item.disabled}
                     onClick={() => toggle(item.key)}
                     className={cn(
-                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-prose transition-colors',
                       item.disabled
                         ? 'cursor-not-allowed text-muted-foreground opacity-60'
                         : 'hover:bg-muted',
@@ -212,7 +212,7 @@ export function MultiSelectDropdown({
                     )}
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {item.count != null && (
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      <span className="shrink-0 text-body tabular-nums text-muted-foreground">
                         {item.count.toLocaleString()}
                       </span>
                     )}

@@ -248,13 +248,21 @@ export function FilterBar({
    * so tailwind-merge drops the fixed `sm:w-[…]` rather than fighting it.
    *
    * `basis-0` with `flex-1` shares the line evenly instead of by content, so
-   * the row stays a grid of equal fields; `min-w-0` lets them shrink past their
-   * text, which the trigger already truncates. The cap keeps a short row (the
-   * Investment page shows one control) from stretching one dropdown across the
-   * page.
+   * the row stays a grid of equal fields; `lg:min-w-0` lets them shrink past
+   * their text, which the trigger already truncates. The cap keeps a short row
+   * (the Investment page shows one control) from stretching one dropdown across
+   * the page.
+   *
+   * The floor below `lg` is what stops eight fields sharing 640px. They can
+   * shrink without limit there too, and the container is already `flex-wrap`,
+   * so nothing ever wrapped — the row just squeezed until every label was an
+   * ellipsis and, because the label is not the truncating part, until
+   * "Functionality" was printed over "Funding". 116px is about the narrowest a
+   * field can be and still show a short label whole; past that the row breaks
+   * onto a second line, which is the behaviour the `flex-wrap` was for.
    */
   const dense = singleRow
-    ? 'min-w-0 flex-1 basis-0 sm:w-auto sm:flex-1 lg:max-w-[172px]'
+    ? 'min-w-[116px] flex-1 basis-0 sm:w-auto sm:flex-1 lg:min-w-0 lg:max-w-[172px]'
     : '';
 
   return (
@@ -430,7 +438,7 @@ export function FilterBar({
         <div className={cn('min-w-[7.5rem] flex-1', singleRow && 'min-w-[104px] basis-0')}>
           <label
             htmlFor="facility-search"
-            className="mono mb-1 block text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground"
+            className="mono mb-1 block truncate text-tick uppercase tracking-[0.11em] text-muted-foreground"
           >
             Search
           </label>
@@ -446,7 +454,7 @@ export function FilterBar({
               value={filters.search}
               onChange={(e) => filters.setSearch(e.target.value)}
               placeholder="Facility, LGA or state"
-              className="h-10 w-full rounded-lg border border-input bg-surface pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="h-10 w-full rounded-lg border border-input bg-surface pl-9 pr-3 text-prose text-foreground placeholder:text-muted-foreground focus:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
           </div>
         </div>
@@ -461,7 +469,7 @@ export function FilterBar({
             filters.reset();
             scopeReset?.clear();
           }}
-          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-input px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-brand-500/50 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-input px-3 text-prose font-medium text-muted-foreground transition-colors hover:border-brand-500/50 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <RotateCcw size={14} aria-hidden />
           Reset
@@ -557,13 +565,13 @@ function HiddenFilterChips({ show }: { show: Set<FilterKey> }) {
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">Also filtered by:</span>
+      <span className="text-body text-muted-foreground">Also filtered by:</span>
       {hidden.map((f) => (
         <button
           key={f.key}
           type="button"
           onClick={f.clear}
-          className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/30 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-600 transition-colors hover:border-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/30 bg-brand-50 px-2.5 py-1 text-body font-medium text-brand-600 transition-colors hover:border-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           {f.label}: {f.values.join(', ')}
           <X size={12} aria-hidden />
@@ -594,7 +602,7 @@ export function FilterScopeNote({
   if (!active) return null;
 
   return (
-    <p className={cn('text-xs font-medium text-brand-600', className)}>
+    <p className={cn('text-body font-medium text-brand-600', className)}>
       Filtered — {shown.toLocaleString()} of {total.toLocaleString()} facilities. Every
       figure below is for this subset.
     </p>

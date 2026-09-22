@@ -253,7 +253,7 @@ export function FacilityTooltip({
 
   return (
     <div
-      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-pop"
+      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-body shadow-pop"
       style={{ left: hover.x, top: hover.y - 10 }}
     >
       {lone ? (
@@ -267,15 +267,15 @@ export function FacilityTooltip({
               LGA — a name alone does not say which of the twelve states a
               marker on the national map belongs to. */}
           {(f.lga || f.state) && (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-note text-muted-foreground">
               {[f.lga, f.state].filter(Boolean).join(', ')}
             </p>
           )}
-          <p className="mono mt-0.5 text-[10px] text-muted-foreground">
+          <p className="mono mt-0.5 text-tick text-muted-foreground">
             {formatLatLon(f.lat, f.lon)}
           </p>
           {selectable && (
-            <p className="mt-1 text-[11px] font-medium text-brand-600">
+            <p className="mt-1 text-note font-medium text-brand-600">
               {selectedId === f.uuid ? 'View full Scorecard →' : 'Click to select'}
             </p>
           )}
@@ -288,7 +288,7 @@ export function FacilityTooltip({
           <p className="mt-0.5 text-muted-foreground">
             Too close together to separate at this zoom
           </p>
-          <p className="mt-1 text-[11px] font-medium text-brand-600">Click to zoom in</p>
+          <p className="mt-1 text-note font-medium text-brand-600">Click to zoom in</p>
         </>
       )}
     </div>

@@ -70,8 +70,8 @@ export function SectionCard({
             subtitle is set smaller and reads as a continuation of the heading,
             which top- or centre-aligning it would break. */}
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-[13.5px] font-semibold text-foreground">{title}</h2>
-          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+          <h2 className="text-prose font-semibold text-foreground">{title}</h2>
+          {subtitle && <p className="text-body text-muted-foreground">{subtitle}</p>}
         </div>
         {action && <div className="ml-auto">{action}</div>}
       </div>
@@ -104,13 +104,13 @@ export function KpiTile({ label, value, sublabel, icon, className }: KpiTileProp
         </div>
       )}
       <div className="min-w-0">
-        <p className="mono truncate text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+        <p className="mono truncate text-tick uppercase tracking-[0.11em] text-muted-foreground">
           {label}
         </p>
-        <p className="mono text-2xl font-semibold leading-tight tracking-tight text-foreground">
+        <p className="mono text-figure-sm font-semibold leading-tight tracking-tight text-foreground">
           {value}
         </p>
-        {sublabel && <p className="truncate text-xs text-muted-foreground">{sublabel}</p>}
+        {sublabel && <p className="truncate text-body text-muted-foreground">{sublabel}</p>}
       </div>
     </div>
   );
