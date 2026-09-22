@@ -248,13 +248,21 @@ export function FilterBar({
    * so tailwind-merge drops the fixed `sm:w-[…]` rather than fighting it.
    *
    * `basis-0` with `flex-1` shares the line evenly instead of by content, so
-   * the row stays a grid of equal fields; `min-w-0` lets them shrink past their
-   * text, which the trigger already truncates. The cap keeps a short row (the
-   * Investment page shows one control) from stretching one dropdown across the
-   * page.
+   * the row stays a grid of equal fields; `lg:min-w-0` lets them shrink past
+   * their text, which the trigger already truncates. The cap keeps a short row
+   * (the Investment page shows one control) from stretching one dropdown across
+   * the page.
+   *
+   * The floor below `lg` is what stops eight fields sharing 640px. They can
+   * shrink without limit there too, and the container is already `flex-wrap`,
+   * so nothing ever wrapped — the row just squeezed until every label was an
+   * ellipsis and, because the label is not the truncating part, until
+   * "Functionality" was printed over "Funding". 116px is about the narrowest a
+   * field can be and still show a short label whole; past that the row breaks
+   * onto a second line, which is the behaviour the `flex-wrap` was for.
    */
   const dense = singleRow
-    ? 'min-w-0 flex-1 basis-0 sm:w-auto sm:flex-1 lg:max-w-[172px]'
+    ? 'min-w-[116px] flex-1 basis-0 sm:w-auto sm:flex-1 lg:min-w-0 lg:max-w-[172px]'
     : '';
 
   return (
@@ -430,7 +438,7 @@ export function FilterBar({
         <div className={cn('min-w-[7.5rem] flex-1', singleRow && 'min-w-[104px] basis-0')}>
           <label
             htmlFor="facility-search"
-            className="mono mb-1 block text-tick uppercase tracking-[0.11em] text-muted-foreground"
+            className="mono mb-1 block truncate text-tick uppercase tracking-[0.11em] text-muted-foreground"
           >
             Search
           </label>

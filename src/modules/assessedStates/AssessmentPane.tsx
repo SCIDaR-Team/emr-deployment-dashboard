@@ -705,7 +705,7 @@ function BandCounts({
          * readings sit on the same scale as the overall one, so ticking a
          * domain narrows the reading rather than swapping it.
          */
-        <BandCards counts={distribution} showPercent className="mt-3.5" />
+        <BandCards counts={distribution} showPercent className="mt-5" />
       )}
     </div>
   );
@@ -747,7 +747,7 @@ function PerDomainSplit({
   );
 
   return (
-    <div className="mt-3.5">
+    <div className="mt-5">
       <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
         <span className="min-w-0 flex-1">Domain</span>
         {order.map((b) => (
@@ -1077,7 +1077,7 @@ function GapBlocks({
           Not the shared `Tile`: its padding and label size are set for a
           three-across row and would truncate "Interventions" at the quarter
           width this one needs. */}
-      <div className="grid grid-cols-4 gap-px border border-border bg-border">
+      <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
         <HeadFigure label="Gaps" value={formatCount(gapCount)} note="to close" />
         <HeadFigure
           label="Interventions"
@@ -1122,9 +1122,9 @@ function GapBlocks({
           Two across rather than four: the figures read beside their labels
           rather than under them, and "Interventions 17,555" does not fit in a
           quarter of 420px. */}
-      <div className="mt-3.5 grid grid-cols-2 gap-px border border-border bg-border">
+      <div className="mt-5 grid grid-cols-2 gap-px border border-border bg-border">
         {schedule.map((row) => (
-          <div key={row.horizon} className="min-w-0 bg-surface px-2.5 py-2">
+          <div key={row.horizon} className="min-w-0 bg-surface px-3 py-3">
             <p
               className={cn(
                 'mono text-tick font-bold uppercase tracking-[0.07em]',
@@ -1139,7 +1139,7 @@ function GapBlocks({
             <p className="text-note leading-tight text-muted-foreground">
               {HORIZON_WHEN[row.horizon]}
             </p>
-            <dl className="mt-1.5 space-y-0.5">
+            <dl className="mt-2.5 space-y-1">
               <CardFigure label="Interventions" value={formatCount(row.acts)} />
               <CardFigure label="Facilities" value={formatCount(row.facs)} />
               <CardFigure
@@ -1153,7 +1153,7 @@ function GapBlocks({
       </div>
 
       {/* The tree: domain → sub-domain → gap → intervention. */}
-      <div className="mono mt-3.5 flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
+      <div className="mono mt-5 flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
         <span className="min-w-0 flex-1">Gap and intervention</span>
         <span className="w-[70px] shrink-0 text-right">Facilities</span>
         <span className="w-[88px] shrink-0 text-right">Cost</span>
@@ -1245,14 +1245,14 @@ function HeadFigure({
   note: string;
 }) {
   return (
-    <div className="min-w-0 bg-surface px-2 py-2.5">
+    <div className="min-w-0 bg-surface px-3 py-3.5">
       <p className="mono text-tick uppercase leading-tight tracking-[0.06em] text-muted-foreground">
         {label}
       </p>
-      <p className="mono mt-1 text-lead font-semibold leading-none tabular-nums text-foreground">
+      <p className="mono mt-1.5 text-title font-semibold leading-none tabular-nums text-foreground">
         {value}
       </p>
-      <p className="mt-1 text-tick leading-tight text-muted-foreground">{note}</p>
+      <p className="mt-1.5 text-tick leading-tight text-muted-foreground">{note}</p>
     </div>
   );
 }

@@ -66,7 +66,7 @@ export function Combobox({
   return (
     <div ref={ref} className={cn('relative', className)}>
       {label && (
-        <label className="mb-1 block text-body font-semibold uppercase tracking-wide text-muted-foreground">
+        <label className="mb-1 block truncate text-body font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
         </label>
       )}

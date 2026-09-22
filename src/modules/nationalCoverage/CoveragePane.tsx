@@ -599,7 +599,7 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
   );
 
   return (
-    <section className="mt-4 border-t border-border pt-3.5">
+    <section className="mt-6 border-t border-border pt-5">
       <p className="eyebrow">Internet subscriptions</p>
       <h4 className="mt-1 text-lead font-semibold leading-tight tracking-tight text-foreground">
         {formatCompactCount(total)} active subscriptions
@@ -644,7 +644,7 @@ function InternetProviders({ internet }: { internet: InternetSubscriptions | nul
       {groups.map((group) => {
         const Icon = GROUP_ICONS[group.id];
         return (
-          <div key={group.id} className="mt-3">
+          <div key={group.id} className="mt-4">
             <div className="flex items-center gap-2">
               <span
                 aria-hidden

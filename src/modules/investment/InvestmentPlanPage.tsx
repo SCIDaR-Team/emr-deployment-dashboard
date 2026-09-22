@@ -430,7 +430,7 @@ export default function InvestmentPlanPage() {
                   <tfoot>
                     <tr className="border-t-2 border-border">
                       <td
-                        className="mono td py-2.5 text-right text-note font-bold uppercase tracking-[0.09em] text-foreground"
+                        className="mono td py-3 text-right text-note font-bold uppercase tracking-[0.09em] text-foreground"
                         colSpan={columns.length - 1}
                       >
                         {/* "Grand total" only where there are subtotals for it
@@ -439,7 +439,7 @@ export default function InvestmentPlanPage() {
                             hierarchy the reader cannot see. */}
                         {groupMode === 'cost' ? 'Total' : 'Grand total'}
                       </td>
-                      <td className="mono td py-2.5 text-right font-bold text-foreground">
+                      <td className="mono td py-3 text-right font-bold text-foreground">
                         {formatNaira(totalCost)}
                       </td>
                     </tr>
@@ -589,7 +589,7 @@ function GroupHeader({
 }) {
   return (
     <tr className="border-b border-border bg-muted/40">
-      <td className="td py-2" colSpan={span}>
+      <td className="td" colSpan={span}>
         <span
           className={cn(
             'mono text-note font-bold uppercase tracking-[0.07em]',
@@ -637,10 +637,10 @@ function GroupSubtotal({
 }) {
   return (
     <tr className="border-t border-border">
-      <td className="td py-2 text-right" colSpan={span}>
+      <td className="td text-right" colSpan={span}>
         <span className="font-semibold text-foreground">{label} subtotal</span>
       </td>
-      <td className="mono td py-2 text-right font-semibold text-foreground">
+      <td className="mono td text-right font-semibold text-foreground">
         {formatNaira(cost)}
         {unpriced > 0 && (
           <span
