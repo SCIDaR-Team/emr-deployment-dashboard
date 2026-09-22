@@ -245,9 +245,9 @@ function PaneHeader({ scope, band }: { scope: AssessmentScope; band: Band | null
 
   return (
     <div className="shrink-0 border-b border-border px-4 py-3">
-      <p className="mono text-[11px] uppercase tracking-[0.09em] text-muted-foreground">{level}</p>
+      <p className="mono text-note uppercase tracking-[0.09em] text-muted-foreground">{level}</p>
       <div className="mt-1 flex items-start justify-between gap-3">
-        <h2 className="text-[20px] font-semibold leading-tight text-foreground">{name}</h2>
+        <h2 className="text-title font-semibold leading-tight text-foreground">{name}</h2>
         {band && <BandBadge band={band} size="sm" />}
       </div>
     </div>
@@ -450,7 +450,7 @@ function FacilityBlocks({
       </Block>
 
       <Block title="This facility">
-        <dl className="space-y-1.5 text-[14px]">
+        <dl className="space-y-1.5 text-prose">
           <Detail term="Functionality" value={facility.functionalityLevel} />
           {/* Omitted rather than guessed where the raw export could not be
               matched: four fifths of these facilities are rural, so a default
@@ -513,7 +513,7 @@ function ConnectivityBlock({ facility }: { facility: FacilitySummary }) {
 
   return (
     <Block title="Mobile network" note="Measured, not a readiness reading">
-      <dl className="space-y-1.5 text-[14px]">
+      <dl className="space-y-1.5 text-prose">
         {facility.mtnServiceability && (
           <Detail term="MTN serviceability" value={facility.mtnServiceability} />
         )}
@@ -558,9 +558,9 @@ function gapUrgency(id: string, variant = 0): number {
 function BandLine({ label, band, note }: { label: string; band: Band | null; note?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate text-[14px] text-foreground">{label}</span>
+      <span className="min-w-0 truncate text-prose text-foreground">{label}</span>
       <span className="flex shrink-0 items-center gap-2">
-        {note && <span className="mono text-[11px] text-muted-foreground">{note}</span>}
+        {note && <span className="mono text-note text-muted-foreground">{note}</span>}
         <BandBadge band={band} size="sm" />
       </span>
     </div>
@@ -571,7 +571,7 @@ function Detail({ term, value, mono }: { term: string; value: string; mono?: boo
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className="text-muted-foreground">{term}</dt>
-      <dd className={cn('text-right text-foreground', mono && 'mono text-xs')}>{value}</dd>
+      <dd className={cn('text-right text-foreground', mono && 'mono text-body')}>{value}</dd>
     </div>
   );
 }
@@ -626,19 +626,19 @@ function SelectionBlock({
     <ul className="space-y-2.5">
       {groups.map((group) => (
         <li key={group.id}>
-          <p className="mono text-[10.5px] font-bold uppercase tracking-[0.09em] text-muted-foreground">
+          <p className="mono text-note font-bold uppercase tracking-[0.09em] text-muted-foreground">
             {group.label}
           </p>
           {group.areas.length ? (
             <ul className="mt-1 space-y-0.5">
               {group.areas.map((area) => (
-                <li key={area.id} className="text-[14px] leading-snug text-foreground">
+                <li key={area.id} className="text-prose leading-snug text-foreground">
                   {area.label} gap
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-[13.5px] italic leading-snug text-muted-foreground">
+            <p className="mt-1 text-prose italic leading-snug text-muted-foreground">
               No gap area selected — this domain is only narrowing what the Gap
               area filter offers.
             </p>
@@ -673,15 +673,15 @@ function BandCounts({
 
   return (
     <div>
-      <p className="mono text-[30px] font-semibold leading-none tracking-tight text-foreground">
+      <p className="mono text-figure font-semibold leading-none tracking-tight text-foreground">
         {formatCount(total)}
       </p>
-      <p className="mono mt-1 text-[11px] uppercase tracking-[0.09em] text-muted-foreground">
+      <p className="mono mt-1 text-note uppercase tracking-[0.09em] text-muted-foreground">
         {total === 1 ? 'facility in scope' : 'facilities in scope'}
       </p>
 
       {scored === 0 ? (
-        <p className="mt-3 text-[14px] italic text-muted-foreground">
+        <p className="mt-3 text-prose italic text-muted-foreground">
           None of them carries a readiness band.
         </p>
       ) : mode === 'multi' ? (
@@ -748,7 +748,7 @@ function PerDomainSplit({
 
   return (
     <div className="mt-3.5">
-      <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
+      <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
         <span className="min-w-0 flex-1">Domain</span>
         {order.map((b) => (
           <span key={b} className="w-[52px] shrink-0 text-right">
@@ -763,12 +763,12 @@ function PerDomainSplit({
             key={id}
             className="flex items-baseline gap-2 border-b border-border py-1.5 last:border-0"
           >
-            <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{label}</span>
+            <span className="min-w-0 flex-1 truncate text-prose text-foreground">{label}</span>
             {order.map((b) => (
               <span
                 key={b}
                 className={cn(
-                  'mono w-[52px] shrink-0 text-right text-[13px] font-semibold tabular-nums',
+                  'mono w-[52px] shrink-0 text-right text-prose font-semibold tabular-nums',
                   BAND_CLASSES[b].text,
                 )}
               >
@@ -783,7 +783,7 @@ function PerDomainSplit({
           the facility count above — three columns that sum to the total — when
           each row is in fact the same facilities counted again under a different
           domain. */}
-      <p className="mt-2 text-[12px] italic leading-snug text-muted-foreground">
+      <p className="mt-2 text-body italic leading-snug text-muted-foreground">
         Every row counts the same facilities under a different domain, so the rows
         do not add up. The assessment publishes no combined reading.
       </p>
@@ -1097,7 +1097,7 @@ function GapBlocks({
           Only from two domains up: with one selected the two are the same
           facilities, and drawing the distinction would imply one is being made. */}
       {overlap && (
-        <p className="mt-2 text-[12.5px] leading-snug text-muted-foreground">
+        <p className="mt-2 text-body leading-snug text-muted-foreground">
           <span className="mono font-semibold tabular-nums text-foreground">
             {formatCount(overlap.all)}
           </span>{' '}
@@ -1127,7 +1127,7 @@ function GapBlocks({
           <div key={row.horizon} className="min-w-0 bg-surface px-2.5 py-2">
             <p
               className={cn(
-                'mono text-[10px] font-bold uppercase tracking-[0.07em]',
+                'mono text-tick font-bold uppercase tracking-[0.07em]',
                 HORIZON_CLASSES[row.horizon].text,
               )}
             >
@@ -1136,7 +1136,7 @@ function GapBlocks({
               </span>
               {HORIZON_SHORT[row.horizon]}
             </p>
-            <p className="text-[10.5px] leading-tight text-muted-foreground">
+            <p className="text-note leading-tight text-muted-foreground">
               {HORIZON_WHEN[row.horizon]}
             </p>
             <dl className="mt-1.5 space-y-0.5">
@@ -1153,7 +1153,7 @@ function GapBlocks({
       </div>
 
       {/* The tree: domain → sub-domain → gap → intervention. */}
-      <div className="mono mt-3.5 flex items-baseline gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
+      <div className="mono mt-3.5 flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
         <span className="min-w-0 flex-1">Gap and intervention</span>
         <span className="w-[70px] shrink-0 text-right">Facilities</span>
         <span className="w-[88px] shrink-0 text-right">Cost</span>
@@ -1210,7 +1210,7 @@ function GapBlocks({
                                no action behind it. Saying so is more honest
                                than hiding the gap or inventing a fix for it —
                                see docs/data-queries. */
-                            <p className="py-0.5 pl-6 text-[12px] italic leading-snug text-muted-foreground">
+                            <p className="py-0.5 pl-6 text-body italic leading-snug text-muted-foreground">
                               No intervention recorded.
                             </p>
                           )}
@@ -1246,13 +1246,13 @@ function HeadFigure({
 }) {
   return (
     <div className="min-w-0 bg-surface px-2 py-2.5">
-      <p className="mono text-[9.5px] uppercase leading-tight tracking-[0.06em] text-muted-foreground">
+      <p className="mono text-tick uppercase leading-tight tracking-[0.06em] text-muted-foreground">
         {label}
       </p>
-      <p className="mono mt-1 text-[18px] font-semibold leading-none tabular-nums text-foreground">
+      <p className="mono mt-1 text-lead font-semibold leading-none tabular-nums text-foreground">
         {value}
       </p>
-      <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{note}</p>
+      <p className="mt-1 text-tick leading-tight text-muted-foreground">{note}</p>
     </div>
   );
 }
@@ -1269,10 +1269,10 @@ function CardFigure({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <dt className="mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+      <dt className="mono text-tick uppercase tracking-[0.06em] text-muted-foreground">
         {label}
       </dt>
-      <dd className="mono shrink-0 text-[12px] font-semibold tabular-nums text-foreground">
+      <dd className="mono shrink-0 text-body font-semibold tabular-nums text-foreground">
         {value}
         {suffix && <span className="font-normal text-muted-foreground">{suffix}</span>}
       </dd>
@@ -1339,7 +1339,7 @@ function Row({
           empty rather than printing that number a second time. */}
       <span className="w-[70px] shrink-0" aria-hidden />
       <span
-        className="mono w-[88px] shrink-0 text-right text-[12px] tabular-nums text-muted-foreground"
+        className="mono w-[88px] shrink-0 text-right text-body tabular-nums text-muted-foreground"
         title={
           unitCostNGN == null
             ? 'The source does not price this action'
@@ -1351,18 +1351,18 @@ function Row({
         ) : (
           <>
             {formatNaira(unitCostNGN, true)}
-            <span className="ml-0.5 text-[9.5px] uppercase tracking-[0.04em]">each</span>
+            <span className="ml-0.5 text-tick uppercase tracking-[0.04em]">each</span>
           </>
         )}
       </span>
     </>
   ) : (
     <>
-      <span className="mono w-[70px] shrink-0 text-right text-[12px] tabular-nums text-muted-foreground">
+      <span className="mono w-[70px] shrink-0 text-right text-body tabular-nums text-muted-foreground">
         {formatCount(facs ?? 0)}
       </span>
       <span
-        className="mono w-[88px] shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground"
+        className="mono w-[88px] shrink-0 text-right text-body font-semibold tabular-nums text-foreground"
         title={
           unpriced
             ? `Excludes ${unpriced} action(s) the source does not price — not ₦0, which this data also carries`
@@ -1383,10 +1383,10 @@ function Row({
 
   const text = cn(
     'min-w-0 flex-1 text-left leading-snug',
-    tone === 'domain' && 'mono text-[10.5px] font-bold uppercase tracking-[0.09em] text-foreground',
-    tone === 'area' && 'text-[13px] text-foreground',
-    tone === 'condition' && 'text-[12.5px] text-foreground',
-    leaf && 'text-[12px] text-muted-foreground',
+    tone === 'domain' && 'mono text-note font-bold uppercase tracking-[0.09em] text-foreground',
+    tone === 'area' && 'text-prose text-foreground',
+    tone === 'condition' && 'text-body text-foreground',
+    leaf && 'text-body text-muted-foreground',
   );
 
   const body =
@@ -1423,7 +1423,7 @@ function Row({
       <span
         aria-hidden
         className={cn(
-          'mono w-3 shrink-0 text-[10px] text-muted-foreground transition-transform',
+          'mono w-3 shrink-0 text-tick text-muted-foreground transition-transform',
           expanded && 'rotate-90',
         )}
       >
@@ -1508,7 +1508,7 @@ function FacilityGaps({
           quarters. That is why these rows sum past the gap count in the
           heading. */}
       <div className="mb-3.5">
-        <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
+        <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
           <span className="min-w-0 flex-1">When</span>
           <span className="w-[58px] shrink-0 text-right">Actions</span>
           <span className="w-[64px] shrink-0 text-right">Cost</span>
@@ -1516,7 +1516,7 @@ function FacilityGaps({
         <ul className="mt-1">
           {schedule.map((row) => (
             <li key={row.horizon} className="flex items-baseline gap-2 py-0.5">
-              <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-foreground">
+              <span className="min-w-0 flex-1 text-prose font-medium leading-snug text-foreground">
                 <span
                   aria-hidden
                   className={cn('mr-1.5', HORIZON_CLASSES[row.horizon].text)}
@@ -1525,17 +1525,17 @@ function FacilityGaps({
                 </span>
                 {HORIZON_LABEL[row.horizon]}
               </span>
-              <span className="mono w-[58px] shrink-0 text-right text-[12px] tabular-nums text-muted-foreground">
+              <span className="mono w-[58px] shrink-0 text-right text-body tabular-nums text-muted-foreground">
                 {formatCount(row.actions)}
               </span>
               <Money cost={row.cost} unpriced={row.unpriced} className="w-[64px]" />
             </li>
           ))}
           <li className="flex items-baseline gap-2 border-t border-border py-1 mt-0.5">
-            <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
+            <span className="min-w-0 flex-1 text-prose font-medium text-foreground">
               All actions
             </span>
-            <span className="mono w-[58px] shrink-0 text-right text-[12px] font-semibold tabular-nums text-foreground">
+            <span className="mono w-[58px] shrink-0 text-right text-body font-semibold tabular-nums text-foreground">
               {formatCount(actionCount)}
             </span>
             <Money cost={cost} unpriced={unpriced} className="w-[64px] font-semibold" />
@@ -1546,7 +1546,7 @@ function FacilityGaps({
       {groups.map((group) => (
         <section key={group.id} className="mb-3 last:mb-0">
           <div className="flex items-baseline gap-2 border-b border-border pb-1">
-            <h4 className="mono min-w-0 flex-1 text-[10.5px] font-bold uppercase tracking-[0.09em] text-foreground">
+            <h4 className="mono min-w-0 flex-1 text-note font-bold uppercase tracking-[0.09em] text-foreground">
               {group.label}
             </h4>
             <Money cost={group.cost} unpriced={group.unpriced} className="font-semibold" />
@@ -1556,7 +1556,7 @@ function FacilityGaps({
             {group.gaps.map((gap) => (
               <li key={gap.id}>
                 <div className="flex items-baseline gap-2">
-                  <p className="min-w-0 flex-1 text-[13.5px] font-medium leading-snug text-foreground">
+                  <p className="min-w-0 flex-1 text-prose font-medium leading-snug text-foreground">
                     {gap.area}
                   </p>
                   <Money cost={gap.cost} unpriced={gap.unpriced} />
@@ -1564,7 +1564,7 @@ function FacilityGaps({
                 {/* The finding, under the category it is filed as. Verbatim
                     from the sheet — "Power gap" is where it sits, this is what
                     is actually wrong. */}
-                <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                <p className="mt-0.5 text-prose leading-snug text-muted-foreground">
                   {gap.condition}
                 </p>
 
@@ -1573,7 +1573,7 @@ function FacilityGaps({
                     {gap.interventions.map((iv) => (
                       <li key={iv.id} className="flex items-baseline gap-2">
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[13px] leading-snug text-muted-foreground">
+                          <span className="block text-prose leading-snug text-muted-foreground">
                             {iv.label}
                           </span>
                           <HorizonChip horizon={iv.horizon} />
@@ -1582,7 +1582,7 @@ function FacilityGaps({
                             nothing still has to be closed; one the source does
                             not price is a different thing entirely, and a blank
                             would let a reader take it for free. */}
-                        <span className="mono shrink-0 text-right text-[12px] tabular-nums text-muted-foreground">
+                        <span className="mono shrink-0 text-right text-body tabular-nums text-muted-foreground">
                           {iv.costNGN == null ? (
                             <span className="italic opacity-70">Not costed</span>
                           ) : (
@@ -1596,7 +1596,7 @@ function FacilityGaps({
                   /* 55 facilities carry a gap the source records with no action
                      behind it. Saying so is more honest than hiding the gap or
                      inventing a fix for it — see docs/data-queries. */
-                  <p className="mt-1 border-l border-border pl-2.5 text-[13px] italic text-muted-foreground">
+                  <p className="mt-1 border-l border-border pl-2.5 text-prose italic text-muted-foreground">
                     No intervention recorded.
                   </p>
                 )}
@@ -1607,11 +1607,11 @@ function FacilityGaps({
       ))}
 
       <div className="flex items-baseline gap-2 border-t border-border pt-2">
-        <span className="min-w-0 flex-1 text-[14px] font-medium text-foreground">Total</span>
-        <Money cost={cost} unpriced={unpriced} className="text-[14px] font-semibold" />
+        <span className="min-w-0 flex-1 text-prose font-medium text-foreground">Total</span>
+        <Money cost={cost} unpriced={unpriced} className="text-prose font-semibold" />
       </div>
       {unpriced > 0 && (
-        <p className="mt-1.5 text-[12px] italic leading-snug text-muted-foreground">
+        <p className="mt-1.5 text-body italic leading-snug text-muted-foreground">
           The total excludes {formatCount(unpriced)} action(s) the source does not
           price — never ₦0, which is a real price this data also carries.
         </p>
@@ -1638,7 +1638,7 @@ function Money({
 }) {
   return (
     <span
-      className={cn('mono shrink-0 text-right text-[12.5px] tabular-nums text-foreground', className)}
+      className={cn('mono shrink-0 text-right text-body tabular-nums text-foreground', className)}
       title={unpriced ? `${unpriced} action(s) the source does not price` : undefined}
     >
       {unpriced && !cost ? (
@@ -1664,7 +1664,7 @@ function HorizonChip({ horizon, inline }: { horizon: Horizon; inline?: boolean }
         // Inline where the rows are many and a line each is a screenful; on its
         // own line at the facility card, where there are a handful and the
         // intervention text is the row rather than a detail of one.
-        inline ? 'mr-1.5 text-[9.5px]' : 'mt-0.5 inline-block text-[10.5px]',
+        inline ? 'mr-1.5 text-tick' : 'mt-0.5 inline-block text-note',
         HORIZON_CLASSES[horizon].text,
       )}
     >
@@ -1702,10 +1702,10 @@ function PaneListBlock({ list }: { list: PaneList }) {
   return (
     <div className="border-t border-border">
       <div className="flex items-center justify-between gap-3 px-4 pt-3">
-        <h3 className="mono text-[11px] font-bold uppercase tracking-[0.11em] text-foreground">
+        <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
           {label}
         </h3>
-        <span className="mono text-[11px] text-muted-foreground">{formatCount(total)}</span>
+        <span className="mono text-note text-muted-foreground">{formatCount(total)}</span>
       </div>
 
       {total > 12 && (
@@ -1719,7 +1719,7 @@ function PaneListBlock({ list }: { list: PaneList }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`Search ${label.toLowerCase()}…`}
             aria-label={`Search ${label.toLowerCase()}`}
-            className="w-full rounded border border-input bg-surface py-1.5 pl-7 pr-2 text-[14px] text-foreground placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="w-full rounded border border-input bg-surface py-1.5 pl-7 pr-2 text-prose text-foreground placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           />
         </div>
       )}
@@ -1736,21 +1736,21 @@ function PaneListBlock({ list }: { list: PaneList }) {
                 className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-sunk focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-[14px] font-medium text-foreground">
+                  <span className="block truncate text-prose font-medium text-foreground">
                     {row.name}
                   </span>
-                  <span className="mono block text-[11px] text-muted-foreground">
+                  <span className="mono block text-note text-muted-foreground">
                     {row.note}
                     {row.need ? ` · ${formatCount(row.need.gaps)} gaps` : ''}
                   </span>
                 </span>
                 {row.need ? (
-                  <span className="mono shrink-0 text-right text-[13px] font-semibold tabular-nums text-foreground">
+                  <span className="mono shrink-0 text-right text-prose font-semibold tabular-nums text-foreground">
                     {formatNaira(row.need.costNGN, true)}
                   </span>
                 ) : (
                   <span
-                    className="shrink-0 text-[11px] uppercase tracking-wide text-muted-foreground"
+                    className="shrink-0 text-note uppercase tracking-wide text-muted-foreground"
                     aria-label={row.band ? BAND_LABEL[row.band] : 'No band'}
                   >
                     <BandBadge band={row.band} size="sm" />
@@ -1776,10 +1776,10 @@ function Block({
 }) {
   return (
     <section className="border-b border-border px-4 py-3">
-      <h3 className="mono text-[11px] font-bold uppercase tracking-[0.11em] text-foreground">
+      <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
         {title}
       </h3>
-      {note && <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{note}</p>}
+      {note && <p className="mt-0.5 text-body leading-snug text-muted-foreground">{note}</p>}
       <div className="mt-2.5">{children}</div>
     </section>
   );
@@ -1803,5 +1803,5 @@ function lensLabel(domains: FacilityThemeId[]): string | undefined {
 }
 
 function Nothing({ children }: { children: React.ReactNode }) {
-  return <p className="text-[14px] italic text-muted-foreground">{children}</p>;
+  return <p className="text-prose italic text-muted-foreground">{children}</p>;
 }

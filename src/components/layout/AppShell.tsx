@@ -39,7 +39,7 @@ export function AppShell() {
       */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-surface focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ring"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-prose focus:font-medium focus:text-surface focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ring"
       >
         Skip to main content
       </a>

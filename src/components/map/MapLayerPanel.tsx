@@ -85,7 +85,7 @@ export function MapLayerPanel({
       )}
     >
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-note font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           <Layers className="h-3.5 w-3.5" aria-hidden />
           Layers
         </span>
@@ -99,7 +99,7 @@ export function MapLayerPanel({
               onClick={layers.reset}
               title="Show all layers again"
               aria-label="Reset map layers"
-              className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex items-center gap-1 rounded px-1 py-0.5 text-note text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <RotateCcw className="h-3 w-3" aria-hidden />
               Reset
@@ -119,7 +119,7 @@ export function MapLayerPanel({
       <div className="max-h-[320px] overflow-y-auto px-3 py-2">
         {groups.map((group) => (
           <div key={group} className="mb-2 last:mb-0">
-            <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            <p className="mb-1 text-tick font-medium uppercase tracking-[0.08em] text-muted-foreground">
               {group}
             </p>
             {shown
@@ -136,7 +136,7 @@ export function MapLayerPanel({
                     key={layer.id}
                     title={layer.hint}
                     className={cn(
-                      'flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[13px] text-foreground transition-colors hover:bg-muted',
+                      'flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-prose text-foreground transition-colors hover:bg-muted',
                       disabled && 'cursor-not-allowed opacity-45 hover:bg-transparent',
                       dependsOnFacilities && 'pl-4',
                     )}
@@ -156,7 +156,7 @@ export function MapLayerPanel({
         ))}
 
         <div className="mt-2 border-t border-border pt-2">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="mb-1 text-tick font-medium uppercase tracking-[0.08em] text-muted-foreground">
             Base map
           </p>
           <div role="radiogroup" aria-label="Base map style" className="flex gap-1">
@@ -169,7 +169,7 @@ export function MapLayerPanel({
                 title={option.hint}
                 onClick={() => setBaseMap(option.id)}
                 className={cn(
-                  'flex-1 rounded border px-1.5 py-1 text-[11px] transition-colors',
+                  'flex-1 rounded border px-1.5 py-1 text-note transition-colors',
                   baseMap === option.id
                     ? 'border-brand-600 bg-brand-600 font-medium text-surface'
                     : 'border-border text-muted-foreground hover:text-foreground',

@@ -34,17 +34,17 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="grid min-h-[60vh] place-items-center p-8">
         <div className="card max-w-lg p-6">
-          <h1 className="text-lg font-semibold text-notready-ink">Something went wrong</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h1 className="text-title font-semibold text-notready-ink">Something went wrong</h1>
+          <p className="mt-2 text-prose text-muted-foreground">
             This view failed to render. The rest of the dashboard is unaffected.
           </p>
-          <pre className="mt-4 overflow-x-auto rounded-md bg-muted p-3 text-xs text-muted-foreground">
+          <pre className="mt-4 overflow-x-auto rounded-md bg-muted p-3 text-body text-muted-foreground">
             {error.message}
           </pre>
           <button
             type="button"
             onClick={() => this.setState({ error: null })}
-            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-surface hover:bg-brand-700"
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-prose font-medium text-surface hover:bg-brand-700"
           >
             Try again
           </button>

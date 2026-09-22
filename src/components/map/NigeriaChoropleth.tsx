@@ -572,7 +572,7 @@ export function NigeriaChoropleth({
           const isSecondary = hoverDatum?.evidenceGrade === 'secondary';
           return (
             <div
-              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-pop"
+              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-body shadow-pop"
               style={{ left: hover.x, top: hover.y - 10 }}
             >
               <div className="font-semibold text-foreground">{shape.name}</div>
@@ -593,7 +593,7 @@ export function NigeriaChoropleth({
                 <p className="mt-0.5 italic text-muted-foreground">No data for this selection</p>
               )}
               {!isSecondary && onSelect && (
-                <p className="mt-1 text-[11px] font-medium text-brand-600">
+                <p className="mt-1 text-note font-medium text-brand-600">
                   {selectedId === hover.stateId ? 'Click to clear' : 'Click to drill in'}
                 </p>
               )}

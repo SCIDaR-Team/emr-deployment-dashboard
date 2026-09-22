@@ -62,7 +62,7 @@ export function Tooltip({ content, children, wide, className }: TooltipProps) {
             )}
             style={{ left: pos.x, top: pos.y, maxWidth: wide ? 320 : 240 }}
           >
-            <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs leading-relaxed text-foreground shadow-pop">
+            <div className="rounded-lg border border-border bg-surface px-3 py-2 text-body leading-relaxed text-foreground shadow-pop">
               {content}
             </div>
           </div>,

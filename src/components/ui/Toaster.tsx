@@ -43,9 +43,9 @@ export function Toaster() {
           >
             <Icon size={18} className={ACCENT[t.tone]} aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">{t.title}</p>
+              <p className="text-prose font-semibold text-foreground">{t.title}</p>
               {t.description && (
-                <p className="mt-0.5 text-xs text-muted-foreground">{t.description}</p>
+                <p className="mt-0.5 text-body text-muted-foreground">{t.description}</p>
               )}
             </div>
             <button

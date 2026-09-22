@@ -66,7 +66,7 @@ export function MapBreadcrumb({ crumbs, className }: { crumbs: Crumb[]; classNam
                 // for.
                 aria-current={last ? 'location' : undefined}
                 className={cn(
-                  'truncate px-1 text-xs leading-tight',
+                  'truncate px-1 text-body leading-tight',
                   last ? 'font-semibold text-foreground' : 'text-muted-foreground',
                 )}
                 title={`${crumb.kind}: ${crumb.label}`}
@@ -79,7 +79,7 @@ export function MapBreadcrumb({ crumbs, className }: { crumbs: Crumb[]; classNam
                 onClick={crumb.onSelect}
                 title={`Back to ${crumb.kind.toLowerCase()}: ${crumb.label}`}
                 aria-label={`Back to ${crumb.kind.toLowerCase()} ${crumb.label}`}
-                className="truncate rounded px-1 text-xs leading-tight text-muted-foreground transition-colors hover:text-brand-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                className="truncate rounded px-1 text-body leading-tight text-muted-foreground transition-colors hover:text-brand-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
               >
                 {crumb.label}
               </button>

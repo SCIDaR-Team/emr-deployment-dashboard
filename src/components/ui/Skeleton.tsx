@@ -34,7 +34,7 @@ export function EmptyState({ title, message, action }: EmptyStateProps) {
     <div className="grid place-items-center rounded-card border border-dashed border-border px-6 py-16 text-center">
       <div className="max-w-sm">
         <p className="font-medium text-foreground">{title}</p>
-        {message && <p className="mt-1 text-sm text-muted-foreground">{message}</p>}
+        {message && <p className="mt-1 text-prose text-muted-foreground">{message}</p>}
         {action && <div className="mt-4">{action}</div>}
       </div>
     </div>
@@ -84,13 +84,13 @@ export function LoadError({ what, error, onRetry, className }: LoadErrorProps) {
         <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-notready-ink" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="font-medium text-foreground">Could not load {what}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-prose text-muted-foreground">
             Nothing here is a finding — these figures have not arrived, rather
             than being absent from the assessment. Anything still on screen is
             from before the failure.
           </p>
           {error && (
-            <p className="mt-2 break-words font-mono text-xs text-muted-foreground/80">
+            <p className="mt-2 break-words font-mono text-body text-muted-foreground/80">
               {error.message}
             </p>
           )}
@@ -98,7 +98,7 @@ export function LoadError({ what, error, onRetry, className }: LoadErrorProps) {
             <button
               type="button"
               onClick={onRetry}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-input bg-surface px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-brand-500/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-input bg-surface px-3 py-1.5 text-prose font-medium text-foreground transition-colors hover:border-brand-500/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <RotateCw className="h-3.5 w-3.5" aria-hidden />
               Try again

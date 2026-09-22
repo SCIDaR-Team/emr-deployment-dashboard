@@ -59,7 +59,7 @@ export function MapLegend({
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground ${className ?? ''}`}
+      className={`flex flex-wrap items-center gap-x-5 gap-y-2 text-body text-muted-foreground ${className ?? ''}`}
     >
       {BAND_ORDER.map((band) => (
         <span key={band} className="flex items-center gap-1.5">

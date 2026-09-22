@@ -52,7 +52,7 @@ export function PointerCoordinates({
       )}
     >
       <Crosshair className="h-3 w-3 text-muted-foreground" aria-hidden />
-      <span className="mono text-[10px] leading-none text-foreground">
+      <span className="mono text-tick leading-none text-foreground">
         {formatLatLon(lat, lon, POINTER_DP)}
       </span>
     </div>
@@ -118,7 +118,7 @@ export function FacilityCoordinates({
       {/* `whitespace-nowrap`: the pair is one value, and a coordinate broken
           across two lines after the comma reads as two. The card is sized to
           hold it — see the caller. */}
-      <span className="mono whitespace-nowrap text-[11px] leading-tight text-foreground">
+      <span className="mono whitespace-nowrap text-note leading-tight text-foreground">
         {formatLatLon(lat, lon)}
       </span>
       <span className="flex shrink-0 items-center gap-0.5">
@@ -185,7 +185,7 @@ export function MapZoomLevel({
       title="Map zoom level — the same scale as OpenStreetMap and Google Maps"
     >
       <ZoomIn className="h-3 w-3 text-muted-foreground" aria-hidden />
-      <span className="mono text-[10px] leading-none text-foreground">z {z.toFixed(1)}</span>
+      <span className="mono text-tick leading-none text-foreground">z {z.toFixed(1)}</span>
     </div>
   );
 }

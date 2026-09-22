@@ -78,15 +78,15 @@ export function BandRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border py-2 last:border-0">
-      <span className="flex min-w-0 items-baseline gap-2 text-[12.5px] text-foreground">
+      <span className="flex min-w-0 items-baseline gap-2 text-body text-foreground">
         <BandMark band={band} />
         <span className="truncate">{label}</span>
       </span>
       <span className="flex shrink-0 items-baseline gap-3">
-        {note && <span className="mono text-[10.5px] text-muted-foreground">{note}</span>}
+        {note && <span className="mono text-note text-muted-foreground">{note}</span>}
         <span
           className={cn(
-            'mono text-[10px] uppercase tracking-[0.09em]',
+            'mono text-tick uppercase tracking-[0.09em]',
             band ? BAND_CLASSES[band].text : 'text-muted-foreground',
           )}
         >
@@ -159,7 +159,7 @@ export function BandLegend({
   return (
     <ul
       className={cn(
-        'mono flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] tracking-wide text-muted-foreground',
+        'mono flex flex-wrap items-center gap-x-4 gap-y-1 text-tick tracking-wide text-muted-foreground',
         className,
       )}
     >
@@ -249,18 +249,18 @@ export function BandCards({
               The band label has the line under it to itself. */}
           <div className="flex flex-wrap items-baseline gap-x-1.5">
             <BandIcon band={band} className="h-3.5 w-3.5 shrink-0 translate-y-[2px]" />
-            <span className="mono text-[18px] font-semibold leading-none tracking-tight">
+            <span className="mono text-lead font-semibold leading-none tracking-tight">
               {formatCount(counts[band] ?? 0)}
             </span>
-            {unit && <span className="text-[11px] leading-none text-onband-muted">{unit}</span>}
+            {unit && <span className="text-note leading-none text-onband-muted">{unit}</span>}
             {showPercent && (
-              <span className="mono ml-auto text-[11px] font-semibold leading-none text-onband-muted">
+              <span className="mono ml-auto text-note font-semibold leading-none text-onband-muted">
                 {total ? percentOf(counts[band] ?? 0, total, 1) : '—'}
               </span>
             )}
           </div>
 
-          <p className="mono mt-2 text-[9px] font-bold uppercase leading-tight tracking-[0.07em]">
+          <p className="mono mt-2 text-tick font-bold uppercase leading-tight tracking-[0.07em]">
             {BAND_LABEL[band]}
           </p>
         </div>
@@ -314,22 +314,22 @@ export function Tile({
 }) {
   return (
     <div className={cn('min-w-0 bg-surface px-3.5 py-3', className)}>
-      <div className="mono mb-2 flex items-center gap-2 text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+      <div className="mono mb-2 flex items-center gap-2 text-tick uppercase tracking-[0.11em] text-muted-foreground">
         {band && <BandMark band={band} className="h-2 w-3.5" />}
         <span className="truncate">{label}</span>
       </div>
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1.5">
-        <span className="mono text-[25px] font-semibold leading-none tracking-tight text-foreground">
+        <span className="mono text-figure-sm font-semibold leading-none tracking-tight text-foreground">
           {value}
           {suffix && (
-            <span className="ml-1.5 text-xs font-medium tracking-normal text-muted-foreground">
+            <span className="ml-1.5 text-body font-medium tracking-normal text-muted-foreground">
               {suffix}
             </span>
           )}
         </span>
         {aside}
       </div>
-      {note && <div className="mt-1.5 text-xs text-muted-foreground">{note}</div>}
+      {note && <div className="mt-1.5 text-body text-muted-foreground">{note}</div>}
     </div>
   );
 }
@@ -381,7 +381,7 @@ export function ScaleLegend({
 }) {
   return (
     <div className={cn('mt-3', className)}>
-      <p className="mono mb-1.5 text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
+      <p className="mono mb-1.5 text-tick uppercase tracking-[0.11em] text-muted-foreground">
         {caption}
       </p>
       <div className="flex items-start gap-2.5">
@@ -399,19 +399,19 @@ export function ScaleLegend({
           </div>
           {/* The ends only, pushed apart. `tabular-nums` so the right-hand
               figure does not shuffle sideways as the scope changes under it. */}
-          <div className="mono mt-1 flex justify-between gap-2 text-[9px] tabular-nums text-muted-foreground">
+          <div className="mono mt-1 flex justify-between gap-2 text-tick tabular-nums text-muted-foreground">
             <span>{format(lo)}</span>
             <span>{format(hi)}</span>
           </div>
         </div>
         <div className="shrink-0">
           <div className="hatch-secondary h-[9px] w-7 rounded-[1px] bg-surface-sunk" />
-          <div className="mono mt-1 text-[9px] leading-tight text-muted-foreground">
+          <div className="mono mt-1 text-tick leading-tight text-muted-foreground">
             {noDataLabel}
           </div>
         </div>
       </div>
-      {note && <p className="mono mt-2 text-[10.5px] leading-relaxed text-muted-foreground">{note}</p>}
+      {note && <p className="mono mt-2 text-note leading-relaxed text-muted-foreground">{note}</p>}
     </div>
   );
 }

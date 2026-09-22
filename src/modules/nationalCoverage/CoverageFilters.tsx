@@ -69,7 +69,7 @@ export function CoverageFilters({
         <button
           type="button"
           onClick={onReset}
-          className="mono inline-flex items-center gap-1.5 self-end rounded border border-input px-2.5 py-[7px] text-[10px] uppercase tracking-[0.09em] text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="mono inline-flex items-center gap-1.5 self-end rounded border border-input px-2.5 py-[7px] text-tick uppercase tracking-[0.09em] text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <RotateCcw className="h-3 w-3" aria-hidden />
           Reset
