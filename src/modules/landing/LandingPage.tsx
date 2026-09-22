@@ -16,6 +16,7 @@ import { InstitutionMark } from '@/components/layout/InstitutionMark';
 import { useDataContext } from '@/state/dataContext';
 import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
+import { useCountUp } from '@/hooks/useCountUp';
 import { COVERAGE, INSTITUTION } from '@/lib/constants';
 import { formatCount } from '@/lib/format';
 import {
@@ -80,6 +81,27 @@ const ICONS: Record<string, LucideIcon> = {
  * its own `max-w-[Nch]` caps — only the grids stretch.
  */
 const SHELL = 'mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 xl:px-14';
+
+/**
+ * A band's count, counted up from zero when the page first paints.
+ *
+ * Its own component because the three bands are rendered from a `.map`, and a
+ * hook cannot be called from inside that callback.
+ *
+ * The three run together and land together — they are one reading in three
+ * parts, and the whole point of the row is that 170, 1,892 and 744 are read
+ * against each other. Staggering them would turn a comparison into a sequence.
+ *
+ * The share underneath does not animate. Two numbers moving in the same block
+ * is a block that cannot be read while it settles, and the count is the one
+ * carrying the finding.
+ */
+function BandCount({ value }: { value: number }) {
+  const shown = useCountUp(value);
+  return (
+    <span className="text-figure leading-none">{formatCount(Math.round(shown))}</span>
+  );
+}
 
 /** Best case first — the waffle reads top-left to bottom-right. */
 const BAND_ORDER: readonly Band[] = ['ready', 'moderately_ready', 'not_ready'] as const;
@@ -380,7 +402,7 @@ export default function LandingPage() {
                         BAND_CLASSES[band].text,
                       )}
                     >
-                      <span className="text-figure leading-none">{formatCount(count)}</span>
+                      <BandCount value={count} />
                       <span className="mt-1.5 block whitespace-nowrap text-note uppercase leading-none tracking-[0.09em]">
                         {BAND_LABEL[band]}
                       </span>

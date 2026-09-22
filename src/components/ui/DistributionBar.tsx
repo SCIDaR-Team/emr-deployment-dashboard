@@ -79,7 +79,11 @@ export function DistributionBar({
           return (
             <div
               key={band}
-              className={cn(BAND_CLASSES[band].bg, BAND_CLASSES[band].texture)}
+              className={cn(
+                'animate-bar-in',
+                BAND_CLASSES[band].bg,
+                BAND_CLASSES[band].texture,
+              )}
               style={{ width: `${(count / scored) * 100}%` }}
               title={`${BAND_LABEL[band]}: ${formatCount(count)} (${percentOf(count, scored)})`}
             />

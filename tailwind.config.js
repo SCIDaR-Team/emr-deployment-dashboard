@@ -216,6 +216,12 @@ export default {
           to: { opacity: '1', transform: 'none' },
         },
         'slide-in-left': { from: { transform: 'translateX(-100%)' }, to: { transform: 'none' } },
+        // A band segment arriving at its share. Only a `from` — with no `to`,
+        // the animation interpolates to the element's own computed width,
+        // which is the inline percentage the component already sets. So the
+        // segments keep their exact proportions and nothing has to be
+        // recomputed in JS.
+        'bar-in': { from: { width: '0%' } },
         'slide-in-right': { from: { transform: 'translateX(100%)' }, to: { transform: 'none' } },
         'toast-in': {
           from: { opacity: '0', transform: 'translateX(2rem) scale(0.95)' },
@@ -223,6 +229,10 @@ export default {
         },
       },
       animation: {
+        // Once, on appearance. `both` so the segment is at zero width on the
+        // frame before the animation starts rather than flashing at full width
+        // and snapping back.
+        'bar-in': 'bar-in 500ms cubic-bezier(0.22, 1, 0.36, 1) both',
         'fade-in': 'fade-in 150ms ease-out',
         'pop-in': 'pop-in 140ms ease-out',
         'dialog-in': 'dialog-in 200ms cubic-bezier(0.22, 1, 0.36, 1)',
