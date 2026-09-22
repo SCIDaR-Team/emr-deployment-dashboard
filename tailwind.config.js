@@ -178,6 +178,13 @@ export default {
         'figure-sm': ['26px', { lineHeight: '1', letterSpacing: '-0.02em' }],
         figure: ['34px', { lineHeight: '0.95', letterSpacing: '-0.02em' }],
 
+        // The focal reading of a page: one per page, never two. Added now
+        // rather than with the rest of the scale, because a step this size is
+        // only defensible once something has been chosen to carry it — a
+        // 44px figure that is not the answer to the page's question is just a
+        // large number.
+        hero: ['44px', { lineHeight: '0.95', letterSpacing: '-0.025em' }],
+
         // The one fluid step: a sentence, not a number, so it is sized off the
         // viewport rather than off the scale. Nudged up from the old
         // clamp(1.7rem, 2.9vw, 2.7rem) now that it has figures large enough to
