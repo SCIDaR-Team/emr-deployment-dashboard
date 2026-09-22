@@ -110,6 +110,38 @@ export interface FilterBarProps {
  * 150px of dead space beside it and every filter takes a whole row, which is
  * five rows before the reader reaches the page.
  */
+/**
+ * The width of one field in a `singleRow` filter row.
+ *
+ * Appended to each control's own classes so tailwind-merge drops the fixed
+ * `sm:w-[…]` rather than fighting it.
+ *
+ * `basis-0` with `flex-1` shares the line evenly instead of by content, so the
+ * row stays a grid of equal fields; `lg:min-w-0` lets them shrink past their
+ * text, which the trigger already truncates. The cap keeps a short row (the
+ * Investment page shows one control) from stretching one dropdown across the
+ * page.
+ *
+ * The floor below `lg` is what stops eight fields sharing 640px. They can
+ * shrink without limit there too, and the container is already `flex-wrap`, so
+ * nothing ever wrapped — the row just squeezed until every label was an
+ * ellipsis and, because the label is not the truncating part, until
+ * "Functionality" was printed over "Funding". 116px is about the narrowest a
+ * field can be and still show a short label whole; past that the row breaks
+ * onto a second line, which is the behaviour the `flex-wrap` was for.
+ *
+ * **Exported because this row is not built in one place.** Assessed States
+ * renders the State and LGA pickers itself and passes them in as `leading`, so
+ * they sit in this flex row while being styled at their own call site. They
+ * carried a copy of this string, and when the floor was added here they did not
+ * get it: the six fields below held 116px, the two copies kept shrinking
+ * without limit, and the pickers collapsed to 46px — a chevron with "All 12"
+ * clipped to nothing behind it. One string, imported, so the next change to it
+ * cannot reach two thirds of a row.
+ */
+export const FILTER_FIELD =
+  'min-w-[116px] flex-1 basis-0 sm:w-auto sm:flex-1 lg:min-w-0 lg:max-w-[172px]';
+
 export function FilterBar({
   facilities,
   show = DEFAULT_KEYS,
@@ -243,27 +275,7 @@ export function FilterBar({
     }));
   }, [domains, facilities]);
 
-  /**
-   * The width override for `singleRow`, appended to each control's own classes
-   * so tailwind-merge drops the fixed `sm:w-[…]` rather than fighting it.
-   *
-   * `basis-0` with `flex-1` shares the line evenly instead of by content, so
-   * the row stays a grid of equal fields; `lg:min-w-0` lets them shrink past
-   * their text, which the trigger already truncates. The cap keeps a short row
-   * (the Investment page shows one control) from stretching one dropdown across
-   * the page.
-   *
-   * The floor below `lg` is what stops eight fields sharing 640px. They can
-   * shrink without limit there too, and the container is already `flex-wrap`,
-   * so nothing ever wrapped — the row just squeezed until every label was an
-   * ellipsis and, because the label is not the truncating part, until
-   * "Functionality" was printed over "Funding". 116px is about the narrowest a
-   * field can be and still show a short label whole; past that the row breaks
-   * onto a second line, which is the behaviour the `flex-wrap` was for.
-   */
-  const dense = singleRow
-    ? 'min-w-[116px] flex-1 basis-0 sm:w-auto sm:flex-1 lg:min-w-0 lg:max-w-[172px]'
-    : '';
+  const dense = singleRow ? FILTER_FIELD : '';
 
   return (
     <div

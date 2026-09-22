@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageHeader, Field } from '@/components/layout/PageHeader';
-import { FilterBar } from '@/components/filters/FilterBar';
+import { FILTER_FIELD, FilterBar } from '@/components/filters/FilterBar';
 import {
   LGAFacilityMap,
   MapLegend,
@@ -637,7 +637,7 @@ export default function AssessedStatesPage() {
           }}
           leading={
             <>
-              <Field label="State" className="min-w-0 flex-1 basis-0 lg:max-w-[172px]">
+              <Field label="State" className={FILTER_FIELD}>
                 <Combobox
                   value={scope.state?.id ?? ALL}
                   onChange={(value) => selectState(value === ALL ? '' : value)}
@@ -646,7 +646,7 @@ export default function AssessedStatesPage() {
                   searchPlaceholder="Search states…"
                 />
               </Field>
-              <Field label="LGA" className="min-w-0 flex-1 basis-0 lg:max-w-[172px]">
+              <Field label="LGA" className={FILTER_FIELD}>
                 <Combobox
                   value={scope.lga ? bareLgaId(scope.lga.id) : ALL}
                   onChange={(value) =>
