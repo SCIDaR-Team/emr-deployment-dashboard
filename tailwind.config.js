@@ -117,7 +117,12 @@ export default {
         card: 'var(--radius-card)',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        sm: 'calc(var(--radius) - 6px)',
+        // Bare `rounded` is 48 of the ~90 radius call sites in the app — chips,
+        // swatches, small controls. Tailwind's DEFAULT is a hard 0.25rem and is
+        // not reached by `--radius`, so without this line the token moves the
+        // named steps and leaves the majority of the app square.
+        DEFAULT: 'calc(var(--radius) - 4px)',
       },
       boxShadow: {
         // Deliberately none: hierarchy is hairlines and vertical rhythm. Kept
