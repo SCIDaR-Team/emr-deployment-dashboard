@@ -22,6 +22,7 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { formatCount, percentOf } from '@/lib/format';
 import { BandIcon } from './BandBadge';
 import { cn } from '@/lib/cn';
+import { useCountUp } from '@/hooks/useCountUp';
 import type { Band } from '@/lib/types';
 
 
@@ -133,7 +134,7 @@ export function BandStack({
             key={band}
             title={`${label ? `${label} — ` : ''}${BAND_LABEL[band]} ${n.toLocaleString()} · ${pct.toFixed(1)}%`}
             className={cn(
-              'block rounded-[1px]',
+              'block rounded-[1px] animate-bar-in',
               BAND_CLASSES[band].bg,
               BAND_CLASSES[band].texture,
             )}
@@ -297,6 +298,7 @@ export function Tile({
   band,
   aside,
   lead = false,
+  count,
   className,
 }: {
   label: string;
@@ -313,6 +315,18 @@ export function Tile({
    */
   lead?: boolean;
   /**
+   * Count the figure up from zero when it first appears, instead of printing
+   * it. Takes the raw number and the formatter rather than the finished string,
+   * because the figure has to be re-formatted on every frame — a naira total
+   * counting up has to read as naira the whole way, not as a bare integer that
+   * turns into money at the end.
+   *
+   * For the focal reading only. `value` is still what renders when this is
+   * absent, and what a reader who has asked for reduced motion sees on the
+   * first frame.
+   */
+  count?: { to: number; format: (n: number) => string };
+  /**
    * A second reading of the same figure, on the figure's own line after the
    * suffix — a readiness badge beside a score. Outside the mono block rather
    * than inside it, so a pill does not inherit the tabular face the number is
@@ -321,6 +335,8 @@ export function Tile({
   aside?: React.ReactNode;
   className?: string;
 }) {
+  const counted = useCountUp(count?.to ?? 0);
+
   return (
     <div className={cn('min-w-0 bg-surface px-3.5 py-3', lead && 'py-5', className)}>
       <div className="mono mb-2 flex items-center gap-2 text-tick uppercase tracking-[0.11em] text-muted-foreground">
@@ -334,7 +350,7 @@ export function Tile({
             lead ? 'text-hero' : 'text-figure-sm',
           )}
         >
-          {value}
+          {count ? count.format(counted) : value}
           {suffix && (
             <span className="ml-1.5 text-body font-medium tracking-normal text-muted-foreground">
               {suffix}

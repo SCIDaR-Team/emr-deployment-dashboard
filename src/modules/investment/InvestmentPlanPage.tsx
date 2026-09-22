@@ -369,6 +369,7 @@ export default function InvestmentPlanPage() {
             lead
             label="Total investment"
             value={formatNaira(totalCost, true)}
+            count={{ to: totalCost, format: (n) => formatNaira(n, true) }}
             className="sm:col-span-3"
           />
           <Tile
