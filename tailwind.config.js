@@ -202,9 +202,20 @@ export default {
         sans: ['Nunito', 'Segoe UI', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['Nunito', 'Segoe UI', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
       },
-      // Overlay entrances. Kept in CSS rather than a motion library: these are
-      // the only animations in the app, and the reduced-motion rule in
-      // globals.css already neutralises them for anyone who has asked.
+      // Overlay entrances, plus one reading animation. Kept in CSS rather than
+      // a motion library, so the reduced-motion rule in globals.css neutralises
+      // them for anyone who has asked without any of them having to know it
+      // exists.
+      //
+      // This list used to say it was the only motion in the app, and that is no
+      // longer true in two ways. `bar-in` below is the first animation here
+      // that is part of a *reading* rather than the arrival of a panel. And the
+      // count-up on the focal figures is not here at all, because a number
+      // cannot be animated in CSS — it lives in `useCountUp`, which has to ask
+      // about reduced motion itself for exactly that reason.
+      //
+      // The bar for adding to this list should stay high. Everything in it runs
+      // once, on appearance, and nothing runs on a filter change.
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
         'pop-in': {
