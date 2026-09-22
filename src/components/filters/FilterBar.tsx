@@ -117,18 +117,31 @@ export interface FilterBarProps {
  * `sm:w-[…]` rather than fighting it.
  *
  * `basis-0` with `flex-1` shares the line evenly instead of by content, so the
- * row stays a grid of equal fields; `lg:min-w-0` lets them shrink past their
+ * row stays a grid of equal fields; `xl:min-w-0` lets them shrink past their
  * text, which the trigger already truncates. The cap keeps a short row (the
  * Investment page shows one control) from stretching one dropdown across the
  * page.
  *
- * The floor below `lg` is what stops eight fields sharing 640px. They can
- * shrink without limit there too, and the container is already `flex-wrap`, so
- * nothing ever wrapped — the row just squeezed until every label was an
- * ellipsis and, because the label is not the truncating part, until
- * "Functionality" was printed over "Funding". 116px is about the narrowest a
- * field can be and still show a short label whole; past that the row breaks
- * onto a second line, which is the behaviour the `flex-wrap` was for.
+ * The 116px floor is what stops nine fields sharing one line that cannot hold
+ * them. They could shrink without limit, and the container is already
+ * `flex-wrap`, so nothing ever wrapped — the row just squeezed until every
+ * label was an ellipsis and, because the label is not the truncating part,
+ * until "Functionality" was printed over "Funding". 116px is about the
+ * narrowest a field can be and still show a short label whole; past that the
+ * row breaks onto a second line, which is what the `flex-wrap` was for.
+ *
+ * ## Why the floor lifts at `xl` and not at `lg`
+ *
+ * It has to lift somewhere, because the row is `flex-nowrap` at the width
+ * where it is meant to be a single line, and a floor plus nowrap is an
+ * overflow rather than a wrap.
+ *
+ * That width is `xl`, not `lg`. Nine fields at 116px need about 1,050px before
+ * gaps, and at `lg` the row has roughly 960 once the rail is out — so the pair
+ * put the row on one line and then squeezed all nine to 78px to fit, which
+ * clipped four of the labels and every value. Between 1024 and 1280 two full
+ * rows are simply better than one unreadable one. From `xl` the fields have
+ * 127px each and the single row is honest.
  *
  * **Exported because this row is not built in one place.** Assessed States
  * renders the State and LGA pickers itself and passes them in as `leading`, so
@@ -140,7 +153,7 @@ export interface FilterBarProps {
  * cannot reach two thirds of a row.
  */
 export const FILTER_FIELD =
-  'min-w-[116px] flex-1 basis-0 sm:w-auto sm:flex-1 lg:min-w-0 lg:max-w-[172px]';
+  'min-w-[116px] flex-1 basis-0 sm:w-auto sm:flex-1 xl:min-w-0 xl:max-w-[172px]';
 
 export function FilterBar({
   facilities,
@@ -281,7 +294,7 @@ export function FilterBar({
     <div
       className={cn(
         'flex w-full flex-wrap items-end gap-3',
-        singleRow && 'lg:flex-nowrap lg:gap-2',
+        singleRow && 'xl:flex-nowrap xl:gap-2',
         className,
       )}
     >
