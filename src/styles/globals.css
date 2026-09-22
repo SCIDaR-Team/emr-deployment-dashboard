@@ -37,14 +37,36 @@
 
 @layer base {
   :root {
-    --page: 100 9% 96%;
+    /*
+     * The neutral ladder, darkest well to brightest card:
+     *
+     *   surface-sunk  90.0   a well *inside* a card — search fields, empty states
+     *   sidebar       91.0   the rail, one step off the page
+     *   page          93.5   the ground everything sits on
+     *   surface       99.0   cards, panels, anything that should read as an object
+     *
+     * The page used to be 96%, three points off a 99% surface, which is why a
+     * card with a hairline round it still did not read as a card: three points
+     * of lightness is below what the eye reliably separates across a gap, so
+     * the border was carrying the whole job alone. At 5.5 points the card lifts
+     * on tone and the hairline becomes confirmation rather than evidence.
+     *
+     * This is how the no-shadow rule stays affordable. Elevation has to come
+     * from somewhere, and tone costs nothing, prints correctly and does not
+     * blur at 200% zoom the way a soft shadow does.
+     *
+     * The whole ladder moved together, not just the page. A sunk well has to
+     * stay below the page it is cut into, and the rail has to stay between the
+     * two, so dropping the page alone would have collapsed both against it.
+     */
+    --page: 100 9% 93.5%;
     --surface: 80 20% 99%;
-    --surface-sunk: 90 8% 93%;
+    --surface-sunk: 90 8% 90%;
     --foreground: 160 12% 8%;
-    --muted: 90 8% 93%;
+    --muted: 90 8% 90.5%;
     --muted-foreground: 155 5% 36%;
-    --border: 100 8% 89%;
-    --input: 100 8% 82%;
+    --border: 100 8% 87%;
+    --input: 100 8% 80%;
     --ring: 214 68% 50%;
 
     /*
@@ -76,7 +98,7 @@
      * tint on a light rail is exactly the soft hover wash those rules wanted,
      * the same way a 10% white tint was on the dark one.
      */
-    --sidebar: 90 8% 93%;
+    --sidebar: 90 8% 91%;
     --sidebar-foreground: 160 12% 8%;
 
     /*
@@ -185,17 +207,24 @@
      * the dark scheme the same way the band inks are.
      *
      * Hues are #D32F2F / #ED6C02 / #0288D1 / #7B1FA2 exactly. Lightness is not,
-     * for two of them: as *text* on this near-white surface the four measure
+     * for three of them: as *text* on a near-white surface the four measure
      * 4.54, 2.86, 3.59 and 7.42 against it, and the middle two fail the 4.5:1
      * WCAG AA floor for text this size — badly, in Major's case. Those values
      * are drawn for a badge with a tinted fill behind it, which is not how they
      * are used here. So the hue and saturation are the client's and the
-     * lightness is whatever clears 4.5:1: Major 47% → 36%, Minor 41% → 35%.
-     * Critical and Long-term already passed and did not move.
+     * lightness is whatever clears 4.5:1.
+     *
+     * The floor is measured against `--page`, not `--surface`, because the page
+     * is the darker of the two and a chip is not guaranteed to sit on a card.
+     * When the page dropped from 96% to 93.5% for the elevation restack, all
+     * four lost about half a point of contrast and three of them went under, so
+     * they were taken down to the first half-step that clears it again:
+     * Critical 51% → 49% (4.30 → 4.55), Major 36% → 35% (4.34 → 4.55), Minor
+     * 35% → 34.5% (4.46 → 4.56). Long-term passed at 7.13 and did not move.
      */
-    --urgency-critical: 0 65% 51%;
-    --urgency-major: 27 98% 36%;
-    --urgency-minor: 201 98% 35%;
+    --urgency-critical: 0 65% 49%;
+    --urgency-major: 27 98% 35%;
+    --urgency-minor: 201 98% 34.5%;
     --urgency-longterm: 282 68% 38%;
 
     /*
@@ -278,8 +307,21 @@
     --map-admin-ink: 156 10% 26%;
     --map-admin-paper: 80 16% 92%;
 
-    --radius: 0.25rem;
-    --radius-card: 0.25rem;
+    /*
+     * Shape.
+     *
+     * Both of these were 4px, which was a reasonable choice against Avenir Next
+     * and is the wrong one against Nunito: a face with rounded terminals inside
+     * a box with square ones reads as two decisions taken by two people. The
+     * ladder now runs 4 / 6 / 8 / 10 / 12 — `sm` for a swatch, the Tailwind
+     * DEFAULT for chips and small controls, `md`/`lg` for inputs and buttons,
+     * `card` for anything that is an object on the page.
+     *
+     * 12px on a card and no more. Past that a panel starts to read as a pill,
+     * and a 305-row ranked table inside a pill is a toy.
+     */
+    --radius: 0.625rem;
+    --radius-card: 0.75rem;
   }
 
   .dark {
