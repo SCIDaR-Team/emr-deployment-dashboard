@@ -23,6 +23,7 @@ const FONT_SIZES = [
   'title',
   'figure-sm',
   'figure',
+  'hero',
   'display',
 ] as const;
 
