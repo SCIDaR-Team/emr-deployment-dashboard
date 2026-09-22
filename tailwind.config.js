@@ -129,10 +129,12 @@ export default {
         pop: '0 4px 12px -2px rgb(0 0 0 / 0.10), 0 12px 32px -8px rgb(0 0 0 / 0.18)',
       },
       fontFamily: {
-        // Two voices. Prose in a humanist grotesque; every label, tick, figure
-        // column and code fragment in the mono, so readings look like readings.
-        sans: ['Avenir Next', 'Segoe UI', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['ui-monospace', 'SF Mono', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+        // One voice: Nunito, loaded in index.html. The `mono` token is kept —
+        // and kept pointed at the same family — so the label, tick, figure and
+        // code call sites keep resolving; what still sets a reading apart from
+        // prose is the tracking, the case and `tabular-nums`, not the family.
+        sans: ['Nunito', 'Segoe UI', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['Nunito', 'Segoe UI', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
       },
       // Overlay entrances. Kept in CSS rather than a motion library: these are
       // the only animations in the app, and the reduced-motion rule in

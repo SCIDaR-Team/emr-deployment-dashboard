@@ -412,8 +412,9 @@
     @apply bg-surface rounded-card border border-border;
   }
 
-  /* Every label, tick, figure column and code fragment. Prose stays in the
-     sans; readings look like readings. */
+  /* Every label, tick, figure column and code fragment. The family is now the
+     same Nunito as the prose, so `tabular-nums` is what keeps a figure column
+     aligned and what still makes a reading look like a reading. */
   .mono {
     font-family: theme('fontFamily.mono');
     font-variant-numeric: tabular-nums;

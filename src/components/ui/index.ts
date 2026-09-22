@@ -19,8 +19,6 @@ export { Tooltip } from './Tooltip';
 export { Modal } from './Modal';
 export { Drawer } from './Drawer';
 export { Toaster } from './Toaster';
-export { ExportMenu } from './ExportMenu';
-export type { ExportAction, ExportMenuGroup } from './ExportMenu';
 export { Combobox } from './Combobox';
 export type { ComboOption } from './Combobox';
 export { MultiSelectDropdown } from './MultiSelectDropdown';

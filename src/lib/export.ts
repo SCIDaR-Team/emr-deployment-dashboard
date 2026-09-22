@@ -1,37 +1,31 @@
 /**
- * File export — CSV, Excel, PNG and PDF.
+ * File export — PNG.
  *
- * Adapted from `../NPHCDA_dashboard_int/src/lib/export.ts`. CSV landed early in
- * Phase 5, which needed an exportable ranked table; the other three arrive here
- * in Phase 7.
+ * Adapted from `../NPHCDA_dashboard_int/src/lib/export.ts`. The port also
+ * carried CSV, Excel and two PDF paths; none of them was ever wired to a
+ * control, so they have been removed rather than left to rot against a design
+ * that has moved on. The scripts in `scripts/` keep their own `xlsx` and
+ * `papaparse` usage and are unaffected.
  *
- * **Everything heavy is behind `await import()`.** `xlsx`, `html2canvas` and
- * `jspdf` are ~1 MB between them — more than the rest of the application — and
- * most sessions never export anything. The rule is that opening the dashboard
- * must not pay for a format the reader did not ask for, so nothing in this file
- * may import them at the top level. `papaparse` and `file-saver` are the two
- * exceptions and are already in the initial chunk, because the CSV path is
- * synchronous and small.
+ * **Everything heavy is behind `await import()`.** `html2canvas` is larger than
+ * most of the application and the majority of sessions never export anything,
+ * so the rule is that opening the dashboard must not pay for a capture the
+ * reader did not ask for: nothing in this file may import it at the top level.
+ * `file-saver` is the exception and is already in the initial chunk, because
+ * the download itself is synchronous and small.
  *
  * The second rule running through this file is **provenance**. Every figure in
  * this dashboard appears with the population it was computed from — that is the
- * discipline the context panel, the scope banner and the CSV's `Sorted by`
- * column all enforce. An export leaves the app, so it has to carry that context
- * itself: a filtered map pasted into a slide with no note that filters were
- * active is the same misquote the ScopeBanner exists to prevent, and by then
- * nobody can tell. So each format carries its notes in whatever way that format
- * allows — CSV in columns, Excel on a second sheet, PDF in a header block, PNG
- * in a caption strip burnt into the image.
+ * discipline the context panel and the scope banner enforce. An export leaves
+ * the app, so it has to carry that context itself: a filtered map pasted into a
+ * slide with no note that filters were active is the same misquote the
+ * ScopeBanner exists to prevent, and by then nobody can tell. So the PNG burns
+ * its notes into a caption strip under the image, where they cannot be cropped
+ * off by accident.
  */
 
-import Papa from 'papaparse';
+
 import { saveAs } from 'file-saver';
-
-/** Rows are passed already shaped: object keys are the columns, in order. */
-export type ExportRow = Record<string, unknown>;
-
-/** One line of the provenance block. */
-export type ExportNote = readonly [label: string, value: string];
 
 function ensureExtension(name: string, ext: string): string {
   return name.toLowerCase().endsWith(`.${ext}`) ? name : `${name}.${ext}`;
@@ -53,131 +47,8 @@ export function exportFilename(...parts: (string | null | undefined)[]): string 
   );
 }
 
-/** Local date/time, for the "exported on" line every format carries. */
-function stamp(): string {
-  return new Date().toLocaleString('en-NG', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 // ---------------------------------------------------------------------------
-// CSV
-// ---------------------------------------------------------------------------
-
-/**
- * Write rows to CSV and hand them to the browser's download.
- *
- * The rows are passed already shaped — headers come from the object keys, in
- * insertion order — so the exported columns are the columns the caller decided
- * on rather than whatever the underlying record happens to hold.
- */
-export function exportCSV(filename: string, rows: ExportRow[]): void {
-  const csv = Papa.unparse(rows, { newline: '\r\n' });
-  // The BOM is what makes Excel open a UTF-8 CSV as UTF-8. Without it the
-  // naira sign and the ≤ in the consultation bands arrive as mojibake, which
-  // is exactly the class of bug the ETL already sweeps for upstream.
-  const BOM = '\uFEFF';
-  const blob = new Blob([`${BOM}${csv}`], { type: 'text/csv;charset=utf-8;' });
-  saveAs(blob, ensureExtension(filename, 'csv'));
-}
-
-// ---------------------------------------------------------------------------
-// Excel
-// ---------------------------------------------------------------------------
-
-export interface ExcelOptions {
-  /** Name of the data sheet. */
-  sheet?: string;
-  /** Provenance, written to a second sheet. */
-  notes?: ExportNote[];
-}
-
-/**
- * Write rows to a `.xlsx` workbook.
- *
- * Two things this does that the source port did not, both because a CSV opened
- * in Excel already does them badly enough to be the reason someone asks for
- * Excel in the first place:
- *
- * - **Blanks stay blank.** `''` and `null` become an absent cell rather than an
- *   empty string, so `AVERAGE` over a column of scores skips the unmeasured
- *   units instead of reading them as zero. Half this dataset's honesty is in
- *   the difference between "not ready" and "not measured", and a zero in a
- *   spreadsheet erases it.
- * - **Columns are wide enough to read.** The default 8 characters truncates
- *   every header this app produces ("Moderately ready (n)"), and a reader who
- *   has to widen sixteen columns before they can check a figure will not.
- */
-export async function exportExcel(
-  filename: string,
-  rows: ExportRow[],
-  options: ExcelOptions = {},
-): Promise<void> {
-  const XLSX = await import('xlsx');
-  const { sheet = 'Data', notes = [] } = options;
-
-  const keys = rows[0] ? Object.keys(rows[0]) : [];
-  const blanked = rows.map((row) => {
-    const out: ExportRow = {};
-    for (const key of keys) {
-      const value = row[key];
-      out[key] = value === '' || value == null ? null : value;
-    }
-    return out;
-  });
-
-  const ws = XLSX.utils.json_to_sheet(blanked, { header: keys });
-
-  ws['!cols'] = keys.map((key) => {
-    const widest = blanked.reduce(
-      (max, row) => Math.max(max, String(row[key] ?? '').length),
-      key.length,
-    );
-    return { wch: Math.min(44, widest + 2) };
-  });
-
-  if (rows.length && keys.length) {
-    ws['!autofilter'] = {
-      ref: XLSX.utils.encode_range({
-        s: { r: 0, c: 0 },
-        e: { r: rows.length, c: keys.length - 1 },
-      }),
-    };
-  }
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheet.slice(0, 31));
-
-  // The About sheet is the workbook's equivalent of the CSV's provenance
-  // columns — cheaper here, because it does not have to repeat itself on every
-  // one of 2,804 rows.
-  const about = XLSX.utils.aoa_to_sheet([
-    ['EMR Readiness Assessment Dashboard'],
-    [],
-    ...notes.map(([label, value]) => [label, value]),
-    ['Rows exported', String(rows.length)],
-    ['Exported', stamp()],
-  ]);
-  about['!cols'] = [{ wch: 24 }, { wch: 72 }];
-  XLSX.utils.book_append_sheet(wb, about, 'About');
-
-  // Written through file-saver rather than `XLSX.writeFile`, so all four
-  // formats leave the app by one download path.
-  const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
-  saveAs(
-    new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    }),
-    ensureExtension(filename, 'xlsx'),
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Raster capture — shared by PNG and PDF
+// Raster capture
 // ---------------------------------------------------------------------------
 
 /**
@@ -319,252 +190,11 @@ function withCaption(
   ctx.fillRect(pad, source.height, out.width - pad * 2, Math.max(1, fontPx / 12));
 
   ctx.fillStyle = tokenColor('--muted-foreground', '#64748b');
-  ctx.font = `${fontPx}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  ctx.font = `${fontPx}px Nunito, system-ui, -apple-system, "Segoe UI", sans-serif`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
     ctx.fillText(line, pad, source.height + pad + i * lineH, out.width - pad * 2);
   });
 
   return out;
-}
-
-// ---------------------------------------------------------------------------
-// PDF
-// ---------------------------------------------------------------------------
-
-export interface PdfOptions {
-  title: string;
-  subtitle?: string;
-  notes?: ExportNote[];
-}
-
-const PT_MARGIN = 36; // half an inch at 72dpi
-const PT_FOOTER = 26;
-
-/**
- * PDF furniture is always dark-on-white, whatever scheme the app is in.
- *
- * The page is a printed artefact rather than a screenshot of one: a dark-mode
- * capture sits on a white page as a dark panel, which prints and reads fine,
- * whereas a dark page with dark-mode furniture is
- * an A4 sheet of solid ink.
- */
-const PDF_INK: [number, number, number] = [17, 34, 26];
-const PDF_MUTED: [number, number, number] = [110, 122, 115];
-const PDF_BRAND: [number, number, number] = [45, 108, 79]; // --brand-500, light
-const PDF_PAGE: [number, number, number] = [255, 255, 255];
-
-type Doc = import('jspdf').jsPDF;
-
-/**
- * Title, subtitle and notes at the top of page one. Returns the y content
- * should start at.
- *
- * Callable with `draw: false` to measure without marking the page. The image
- * path needs the height *before* it paints, but must not paint the header until
- * after — the slice masks below cover the top of the page, so a header drawn
- * first is a header painted over. (It was, once. Hence the flag.)
- */
-function drawHeader(
-  pdf: Doc,
-  options: PdfOptions,
-  width: number,
-  draw = true,
-): number {
-  let y = PT_MARGIN;
-
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(15);
-  if (draw) {
-    pdf.setTextColor(...PDF_BRAND);
-    pdf.text(options.title, PT_MARGIN, y + 12);
-  }
-  y += 22;
-
-  if (options.subtitle) {
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9.5);
-    const wrapped = pdf.splitTextToSize(options.subtitle, width) as string[];
-    if (draw) {
-      pdf.setTextColor(...PDF_INK);
-      pdf.text(wrapped, PT_MARGIN, y + 8);
-    }
-    y += wrapped.length * 12 + 4;
-  }
-
-  for (const [label, value] of options.notes ?? []) {
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8);
-    const indent = Math.max(64, pdf.getTextWidth(`${label}: `) + 4);
-    if (draw) {
-      pdf.setTextColor(...PDF_MUTED);
-      pdf.text(`${label}:`, PT_MARGIN, y + 8);
-    }
-    pdf.setFont('helvetica', 'normal');
-    const wrapped = pdf.splitTextToSize(value, width - indent) as string[];
-    if (draw) pdf.text(wrapped, PT_MARGIN + indent, y + 8);
-    y += wrapped.length * 10 + 2;
-  }
-
-  y += 6;
-  if (draw) {
-    pdf.setDrawColor(...PDF_MUTED);
-    pdf.setLineWidth(0.5);
-    pdf.line(PT_MARGIN, y, PT_MARGIN + width, y);
-  }
-
-  return y + 12;
-}
-
-function drawFooter(pdf: Doc, page: number, pages: number, title: string): void {
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
-  const y = pageH - PT_MARGIN + 8;
-
-  pdf.setFillColor(...PDF_PAGE);
-  pdf.rect(0, pageH - PT_MARGIN - PT_FOOTER + 12, pageW, PT_MARGIN + PT_FOOTER, 'F');
-
-  pdf.setDrawColor(...PDF_MUTED);
-  pdf.setLineWidth(0.4);
-  pdf.line(PT_MARGIN, y - 10, pageW - PT_MARGIN, y - 10);
-
-  pdf.setTextColor(...PDF_MUTED);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(7.5);
-  pdf.text(`${title} · EMR Readiness Assessment · exported ${stamp()}`, PT_MARGIN, y);
-  pdf.text(`Page ${page} of ${pages}`, pageW - PT_MARGIN, y, { align: 'right' });
-}
-
-/**
- * Render a DOM element into a PDF, across as many pages as it takes.
- *
- * The source port fitted the whole element onto a single A4 page, which is fine
- * for one chart and useless for anything taller: a facility scorecard squashed
- * to a third of a page is a picture of a document rather than the document. So
- * the capture is scaled to the page *width* and sliced down the page instead,
- * with the header and footer painted over the slice edges.
- */
-export async function exportElementToPDF(
-  el: HTMLElement,
-  filename: string,
-  options: PdfOptions,
-): Promise<void> {
-  const [{ canvas }, { jsPDF }] = await Promise.all([rasterise(el), import('jspdf')]);
-
-  const landscape = canvas.width > canvas.height * 1.15;
-  const pdf = new jsPDF({
-    orientation: landscape ? 'landscape' : 'portrait',
-    unit: 'pt',
-    format: 'a4',
-    compress: true,
-  });
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
-  const contentW = pageW - PT_MARGIN * 2;
-
-  const image = canvas.toDataURL('image/png');
-  const imageH = (canvas.height * contentW) / canvas.width;
-
-  // Measured now, drawn once the masks are down — see drawHeader.
-  const firstTop = drawHeader(pdf, options, contentW, false);
-  let printed = 0;
-  let page = 0;
-
-  // A guard, not a policy: 60 A4 pages is far past anything this app renders,
-  // and a mis-measured element would otherwise loop until the tab dies.
-  const MAX_PAGES = 60;
-
-  while (printed < imageH - 1 && page < MAX_PAGES) {
-    if (page > 0) pdf.addPage();
-    const top = page === 0 ? firstTop : PT_MARGIN;
-    const band = pageH - top - PT_MARGIN - PT_FOOTER;
-
-    pdf.addImage(image, 'PNG', PT_MARGIN, top - printed, contentW, imageH, '', 'FAST');
-
-    // The image is drawn whole and overflows its band in both directions; these
-    // two rects are what cut it back to the page's printable area.
-    pdf.setFillColor(...PDF_PAGE);
-    if (top > 0) pdf.rect(0, 0, pageW, top, 'F');
-    pdf.rect(0, top + band, pageW, pageH - top - band, 'F');
-
-    printed += band;
-    page += 1;
-  }
-
-  const pages = pdf.getNumberOfPages();
-  for (let i = 1; i <= pages; i += 1) {
-    pdf.setPage(i);
-    if (i === 1) drawHeader(pdf, options, contentW);
-    drawFooter(pdf, i, pages, options.title);
-  }
-
-  pdf.save(ensureExtension(filename, 'pdf'));
-}
-
-/**
- * Render rows into a PDF as a real table.
- *
- * Deliberately *not* a screenshot of the table on screen. A 305-row LGA ranking
- * rasterised is a several-megabyte image whose figures cannot be searched,
- * selected or copied, and which breaks across pages mid-row with no repeated
- * header. `jspdf-autotable` — already a dependency, and unused until now —
- * gives vector text, a header on every page and honest page breaks.
- */
-export async function exportTablePDF(
-  filename: string,
-  rows: ExportRow[],
-  options: PdfOptions,
-): Promise<void> {
-  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
-    import('jspdf'),
-    import('jspdf-autotable'),
-  ]);
-
-  const keys = rows[0] ? Object.keys(rows[0]) : [];
-  const pdf = new jsPDF({
-    // Anything past six columns will not fit A4 portrait at a legible size, and
-    // autotable's answer to that is to shrink the text rather than the table.
-    orientation: keys.length > 6 ? 'landscape' : 'portrait',
-    unit: 'pt',
-    format: 'a4',
-    compress: true,
-  });
-
-  const contentW = pdf.internal.pageSize.getWidth() - PT_MARGIN * 2;
-  const firstTop = drawHeader(pdf, options, contentW);
-
-  autoTable(pdf, {
-    head: [keys],
-    body: rows.map((row) => keys.map((key) => cellText(row[key]))),
-    startY: firstTop,
-    margin: {
-      top: PT_MARGIN,
-      left: PT_MARGIN,
-      right: PT_MARGIN,
-      bottom: PT_MARGIN + PT_FOOTER,
-    },
-    theme: 'striped',
-    styles: { fontSize: 7, cellPadding: 3, textColor: PDF_INK, lineWidth: 0 },
-    headStyles: {
-      fillColor: PDF_BRAND,
-      textColor: PDF_PAGE,
-      fontStyle: 'bold',
-      fontSize: 7,
-    },
-    alternateRowStyles: { fillColor: [245, 248, 246] },
-  });
-
-  const pages = pdf.getNumberOfPages();
-  for (let i = 1; i <= pages; i += 1) {
-    pdf.setPage(i);
-    drawFooter(pdf, i, pages, options.title);
-  }
-
-  pdf.save(ensureExtension(filename, 'pdf'));
-}
-
-/** Cell values as autotable wants them: a string, with blanks staying blank. */
-function cellText(value: unknown): string {
-  if (value == null || value === '') return '';
-  return String(value);
 }
