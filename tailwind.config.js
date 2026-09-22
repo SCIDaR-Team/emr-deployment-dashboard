@@ -178,6 +178,13 @@ export default {
         'figure-sm': ['26px', { lineHeight: '1', letterSpacing: '-0.02em' }],
         figure: ['34px', { lineHeight: '0.95', letterSpacing: '-0.02em' }],
 
+        // The focal reading of a page: one per page, never two. Added now
+        // rather than with the rest of the scale, because a step this size is
+        // only defensible once something has been chosen to carry it — a
+        // 44px figure that is not the answer to the page's question is just a
+        // large number.
+        hero: ['44px', { lineHeight: '0.95', letterSpacing: '-0.025em' }],
+
         // The one fluid step: a sentence, not a number, so it is sized off the
         // viewport rather than off the scale. Nudged up from the old
         // clamp(1.7rem, 2.9vw, 2.7rem) now that it has figures large enough to
@@ -195,9 +202,20 @@ export default {
         sans: ['Nunito', 'Segoe UI', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['Nunito', 'Segoe UI', 'Roboto', 'system-ui', '-apple-system', 'sans-serif'],
       },
-      // Overlay entrances. Kept in CSS rather than a motion library: these are
-      // the only animations in the app, and the reduced-motion rule in
-      // globals.css already neutralises them for anyone who has asked.
+      // Overlay entrances, plus one reading animation. Kept in CSS rather than
+      // a motion library, so the reduced-motion rule in globals.css neutralises
+      // them for anyone who has asked without any of them having to know it
+      // exists.
+      //
+      // This list used to say it was the only motion in the app, and that is no
+      // longer true in two ways. `bar-in` below is the first animation here
+      // that is part of a *reading* rather than the arrival of a panel. And the
+      // count-up on the focal figures is not here at all, because a number
+      // cannot be animated in CSS — it lives in `useCountUp`, which has to ask
+      // about reduced motion itself for exactly that reason.
+      //
+      // The bar for adding to this list should stay high. Everything in it runs
+      // once, on appearance, and nothing runs on a filter change.
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
         'pop-in': {
@@ -209,6 +227,12 @@ export default {
           to: { opacity: '1', transform: 'none' },
         },
         'slide-in-left': { from: { transform: 'translateX(-100%)' }, to: { transform: 'none' } },
+        // A band segment arriving at its share. Only a `from` — with no `to`,
+        // the animation interpolates to the element's own computed width,
+        // which is the inline percentage the component already sets. So the
+        // segments keep their exact proportions and nothing has to be
+        // recomputed in JS.
+        'bar-in': { from: { width: '0%' } },
         'slide-in-right': { from: { transform: 'translateX(100%)' }, to: { transform: 'none' } },
         'toast-in': {
           from: { opacity: '0', transform: 'translateX(2rem) scale(0.95)' },
@@ -216,6 +240,10 @@ export default {
         },
       },
       animation: {
+        // Once, on appearance. `both` so the segment is at zero width on the
+        // frame before the animation starts rather than flashing at full width
+        // and snapping back.
+        'bar-in': 'bar-in 500ms cubic-bezier(0.22, 1, 0.36, 1) both',
         'fade-in': 'fade-in 150ms ease-out',
         'pop-in': 'pop-in 140ms ease-out',
         'dialog-in': 'dialog-in 200ms cubic-bezier(0.22, 1, 0.36, 1)',

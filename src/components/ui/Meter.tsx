@@ -22,6 +22,7 @@ import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { formatCount, percentOf } from '@/lib/format';
 import { BandIcon } from './BandBadge';
 import { cn } from '@/lib/cn';
+import { useCountUp } from '@/hooks/useCountUp';
 import type { Band } from '@/lib/types';
 
 
@@ -133,7 +134,7 @@ export function BandStack({
             key={band}
             title={`${label ? `${label} — ` : ''}${BAND_LABEL[band]} ${n.toLocaleString()} · ${pct.toFixed(1)}%`}
             className={cn(
-              'block rounded-[1px]',
+              'block rounded-[1px] animate-bar-in',
               BAND_CLASSES[band].bg,
               BAND_CLASSES[band].texture,
             )}
@@ -296,6 +297,8 @@ export function Tile({
   note,
   band,
   aside,
+  lead = false,
+  count,
   className,
 }: {
   label: string;
@@ -303,6 +306,26 @@ export function Tile({
   suffix?: string;
   note?: React.ReactNode;
   band?: Band;
+  /**
+   * The page's focal reading — the one figure that is the answer to the
+   * question the page asks. Sets the value at `hero` instead of `figure-sm`.
+   *
+   * One per page. A row where two tiles claim the lead has no lead, and the
+   * reader is back to scanning four equal figures for the one that matters.
+   */
+  lead?: boolean;
+  /**
+   * Count the figure up from zero when it first appears, instead of printing
+   * it. Takes the raw number and the formatter rather than the finished string,
+   * because the figure has to be re-formatted on every frame — a naira total
+   * counting up has to read as naira the whole way, not as a bare integer that
+   * turns into money at the end.
+   *
+   * For the focal reading only. `value` is still what renders when this is
+   * absent, and what a reader who has asked for reduced motion sees on the
+   * first frame.
+   */
+  count?: { to: number; format: (n: number) => string };
   /**
    * A second reading of the same figure, on the figure's own line after the
    * suffix — a readiness badge beside a score. Outside the mono block rather
@@ -312,15 +335,22 @@ export function Tile({
   aside?: React.ReactNode;
   className?: string;
 }) {
+  const counted = useCountUp(count?.to ?? 0);
+
   return (
-    <div className={cn('min-w-0 bg-surface px-3.5 py-3', className)}>
+    <div className={cn('min-w-0 bg-surface px-3.5 py-3', lead && 'py-5', className)}>
       <div className="mono mb-2 flex items-center gap-2 text-tick uppercase tracking-[0.11em] text-muted-foreground">
         {band && <BandMark band={band} className="h-2 w-3.5" />}
         <span className="truncate">{label}</span>
       </div>
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1.5">
-        <span className="mono text-figure-sm font-semibold leading-none tracking-tight text-foreground">
-          {value}
+        <span
+          className={cn(
+            'mono font-semibold leading-none tracking-tight text-foreground',
+            lead ? 'text-hero' : 'text-figure-sm',
+          )}
+        >
+          {count ? count.format(counted) : value}
           {suffix && (
             <span className="ml-1.5 text-body font-medium tracking-normal text-muted-foreground">
               {suffix}

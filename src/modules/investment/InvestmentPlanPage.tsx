@@ -347,12 +347,31 @@ export default function InvestmentPlanPage() {
       </PageHeader>
 
       <div className="space-y-4 p-4 sm:p-5">
-        <TileRow className="sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total investment leads; the other three qualify it.
+
+            All four were the same size, which made the row a list of facts and
+            left the reader to work out which one the page was for. It is for
+            the total: this page answers "what will deploying cost", and the
+            other three tiles are that number divided up — what part of it is
+            due before go-live, what population it covers, and what it comes to
+            per facility. None of them is an answer on its own, so none of them
+            should be set like one.
+
+            Spanning the full row rather than sitting in a wider column, so the
+            hairline underneath reads as the line between the answer and its
+            breakdown. */}
+        <TileRow className="sm:grid-cols-3">
           {/* Compact in the tiles, exact in the table below. A ten-digit naira
               figure set at tile size is unreadable and, worse, unmemorable —
               nobody carries ₦9,442,810,000 out of the room, but they carry
               ₦9.4bn. The schedule is where the exact number belongs. */}
-          <Tile label="Total investment" value={formatNaira(totalCost, true)} />
+          <Tile
+            lead
+            label="Total investment"
+            value={formatNaira(totalCost, true)}
+            count={{ to: totalCost, format: (n) => formatNaira(n, true) }}
+            className="sm:col-span-3"
+          />
           <Tile
             label="Before deployment"
             value={formatNaira(beforeCost, true)}
