@@ -111,3 +111,206 @@ export function scenarioFor(
     costPerUnlockedNGN: unlocked ? costNGN / unlocked : null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// The scenario builder: any mix of fixes, under a budget
+// ---------------------------------------------------------------------------
+
+/**
+ * What one facility needs to become Ready: the fixes, and what they cost.
+ *
+ * `needs` are the scenario components of its blocking Technical
+ * Infrastructure actions — the fixes that must all be funded before it can be
+ * Ready. Empty for a facility that is Ready already. `blockedOther` marks a
+ * blocking action no fix covers, which would keep a facility out of reach of
+ * every scenario; none exists in the data today, and the tests hold it there.
+ */
+export interface FacilityPath {
+  facility: FacilitySummary;
+  baseline: Band;
+  needs: ScenarioComponentId[];
+  /** The needs joined in a fixed order — the facility's "need group". */
+  groupKey: string;
+  costNGN: number;
+  blockedOther: boolean;
+}
+
+const COMPONENT_ORDER: ScenarioComponentId[] = [
+  'full_solar',
+  'solar_topup',
+  'router',
+  'fibrex',
+  'network_extension',
+  'satellite',
+];
+
+export function facilityPaths(facilities: readonly FacilitySummary[]): FacilityPath[] {
+  return facilities.map((facility) => {
+    const needs = new Set<ScenarioComponentId>();
+    let costNGN = 0;
+    let blockedOther = false;
+    for (const [id, qty] of Object.entries(facility.actions)) {
+      const action = ACTION_BY_ID[id];
+      if (!action || action.domain !== 'technical_infrastructure') continue;
+      if (action.horizon !== 'major' && action.horizon !== 'moderate') continue;
+      if (!action.scenario) {
+        blockedOther = true;
+        continue;
+      }
+      needs.add(action.scenario);
+      costNGN += (action.unitCostNGN ?? 0) * qty;
+    }
+    const ordered = COMPONENT_ORDER.filter((c) => needs.has(c));
+    return {
+      facility,
+      baseline: facility.deploymentBand ?? 'not_ready',
+      needs: ordered,
+      groupKey: ordered.join('+') || 'none',
+      costNGN,
+      blockedOther,
+    };
+  });
+}
+
+/**
+ * The fixed order facilities are drawn in: Ready already, then everyone else
+ * cheapest to make Ready first — the order a budget spends in when every fix
+ * is allowed, so a growing budget sweeps across the field.
+ */
+export function fieldOrder(paths: readonly FacilityPath[]): FacilityPath[] {
+  return [...paths].sort(
+    (a, b) =>
+      Number(a.baseline !== 'ready') - Number(b.baseline !== 'ready') ||
+      Number(a.blockedOther) - Number(b.blockedOther) ||
+      spendOrder(a, b),
+  );
+}
+
+const BASELINE_RANK: Record<Band, number> = { ready: 0, moderately_ready: 1, not_ready: 2 };
+
+/**
+ * The order money reaches facilities: cheapest to make Ready first, then — for
+ * facilities that cost the same — Moderately ready before Not ready, then by
+ * need group, state and id. The field is drawn in this same order, so a budget
+ * fills it in a clean line rather than leaving gaps, and equal-cost facilities
+ * sit in solid runs of one colour rather than a salt-and-pepper mix.
+ */
+function spendOrder(a: FacilityPath, b: FacilityPath): number {
+  return (
+    a.costNGN - b.costNGN ||
+    BASELINE_RANK[a.baseline] - BASELINE_RANK[b.baseline] ||
+    a.groupKey.localeCompare(b.groupKey) ||
+    a.facility.state.localeCompare(b.facility.state) ||
+    a.facility.uuid.localeCompare(b.facility.uuid)
+  );
+}
+
+export interface ScenarioPlan {
+  /** Facilities the plan makes Ready, in the order the money reaches them. */
+  funded: FacilityPath[];
+  fundedIds: Set<string>;
+  spendNGN: number;
+  readyBefore: number;
+  newlyReady: number;
+  /** Readiness after: funded facilities are Ready, everyone else as before. */
+  after: Record<Band, number>;
+  /** What the plan buys, per fix: facilities it goes to, and its cost. */
+  bought: Record<ScenarioComponentId, { facilities: number; costNGN: number }>;
+  /** Of the facilities still not Ready, how many wait on each unfunded fix. A
+   *  facility waiting on two counts under both. */
+  waitingOn: Record<ScenarioComponentId, number>;
+  /** Facilities the chosen fixes could make Ready but the budget does not
+   *  reach, and what reaching them all would cost. */
+  overBudget: { facilities: number; costNGN: number };
+  /** Every facility the chosen fixes could make Ready, with no budget. */
+  reachable: { facilities: number; costNGN: number };
+  /** Cumulative facilities made Ready against spend, for the chosen fixes, at
+   *  each point the per-facility cost changes — exact, because within a need
+   *  group every facility costs the same. Starts at (0, 0). */
+  curve: { spendNGN: number; ready: number }[];
+}
+
+const emptyByComponent = <T,>(make: () => T) =>
+  Object.fromEntries(COMPONENT_ORDER.map((c) => [c, make()])) as Record<ScenarioComponentId, T>;
+
+/**
+ * Fund the chosen fixes, cheapest facility first, until the budget runs out.
+ *
+ * Money only goes where it makes a facility Ready: a router at a facility that
+ * also needs solar power buys no readiness, so it is not bought. Each facility
+ * counts the same, so spending in ascending order of cost to make Ready gives
+ * the most facilities for any budget — the greedy order is optimal here, not a
+ * heuristic. With no budget (`null`) the Ready count is `scenarioFor`'s.
+ */
+export function planScenario(
+  paths: readonly FacilityPath[],
+  allowed: ReadonlySet<ScenarioComponentId>,
+  budgetNGN: number | null,
+): ScenarioPlan {
+  const eligible = paths
+    .filter(
+      (p) =>
+        p.baseline !== 'ready' &&
+        !p.blockedOther &&
+        p.needs.length > 0 &&
+        p.needs.every((c) => allowed.has(c)),
+    )
+    .sort(spendOrder);
+
+  const funded: FacilityPath[] = [];
+  let spendNGN = 0;
+  for (const p of eligible) {
+    if (budgetNGN !== null && spendNGN + p.costNGN > budgetNGN + 0.5) break;
+    funded.push(p);
+    spendNGN += p.costNGN;
+  }
+  const fundedIds = new Set(funded.map((p) => p.facility.uuid));
+
+  const after: Record<Band, number> = { ready: 0, moderately_ready: 0, not_ready: 0 };
+  const bought = emptyByComponent(() => ({ facilities: 0, costNGN: 0 }));
+  const waitingOn = emptyByComponent(() => 0);
+  let readyBefore = 0;
+
+  for (const p of paths) {
+    if (p.baseline === 'ready') readyBefore += 1;
+    const band = fundedIds.has(p.facility.uuid) ? 'ready' : p.baseline;
+    after[band] += 1;
+    if (band !== 'ready') {
+      for (const c of p.needs) if (!allowed.has(c)) waitingOn[c] += 1;
+    }
+  }
+  for (const p of funded) {
+    for (const [id, qty] of Object.entries(p.facility.actions)) {
+      const a = ACTION_BY_ID[id];
+      if (!a?.scenario || !p.needs.includes(a.scenario)) continue;
+      bought[a.scenario].facilities += 1;
+      bought[a.scenario].costNGN += (a.unitCostNGN ?? 0) * qty;
+    }
+  }
+
+  const reachableCost = eligible.reduce((s, p) => s + p.costNGN, 0);
+  const curve = [{ spendNGN: 0, ready: 0 }];
+  let cum = 0;
+  eligible.forEach((p, i) => {
+    cum += p.costNGN;
+    const next = eligible[i + 1];
+    if (!next || next.costNGN !== p.costNGN) curve.push({ spendNGN: cum, ready: i + 1 });
+  });
+
+  return {
+    funded,
+    fundedIds,
+    spendNGN,
+    readyBefore,
+    newlyReady: funded.length,
+    after,
+    bought,
+    waitingOn,
+    overBudget: {
+      facilities: eligible.length - funded.length,
+      costNGN: reachableCost - spendNGN,
+    },
+    reachable: { facilities: eligible.length, costNGN: reachableCost },
+    curve,
+  };
+}

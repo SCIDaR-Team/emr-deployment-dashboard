@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SCENARIO_PACKAGES } from './gapCatalogue';
-import { scenarioBand, scenarioFor } from './scenarios';
+import { facilityPaths, planScenario, scenarioBand, scenarioFor } from './scenarios';
 import type { FacilitySummary } from './types';
 
 const facilities: FacilitySummary[] = JSON.parse(
@@ -60,5 +60,65 @@ describe('scenarioFor, nationally', () => {
     expect(r.readyToday).toBe(170);
     expect(r.unlocked).toBe((ready as number) - 170);
     expect(r.costNGN).toBeCloseTo(cost as number, 0);
+  });
+});
+
+describe('planScenario', () => {
+  const paths = facilityPaths(facilities);
+  const ALL = new Set([
+    'router',
+    'fibrex',
+    'solar_topup',
+    'full_solar',
+    'network_extension',
+    'satellite',
+  ] as const);
+
+  it('leaves no facility out of reach of every fix', () => {
+    expect(paths.filter((p) => p.blockedOther)).toEqual([]);
+    for (const p of paths) {
+      expect(p.needs.length === 0, p.facility.uuid).toBe(p.baseline === 'ready');
+    }
+  });
+
+  it.each(SCENARIO_PACKAGES.map((p) => [p.id, p] as const))(
+    'agrees with scenarioFor on %s, with no budget',
+    (_id, pkg) => {
+      const plan = planScenario(paths, new Set(pkg.components), null);
+      const table = scenarioFor(facilities, pkg);
+      expect(plan.readyBefore + plan.newlyReady).toBe(table.distribution.ready);
+      expect(plan.spendNGN).toBeCloseTo(table.costNGN, 0);
+      expect(plan.overBudget.facilities).toBe(0);
+    },
+  );
+
+  it('makes every facility Ready with every fix and no budget', () => {
+    const plan = planScenario(paths, ALL, null);
+    expect(plan.after).toEqual({ ready: 2806, moderately_ready: 0, not_ready: 0 });
+  });
+
+  it('spends a budget on the cheapest facilities first', () => {
+    // ₦45m is exactly the 1,125 facilities that need only a ₦40,000 router.
+    const plan = planScenario(paths, ALL, 45_000_000);
+    expect(plan.newlyReady).toBe(1125);
+    expect(plan.spendNGN).toBe(45_000_000);
+    expect(plan.bought.router).toEqual({ facilities: 1125, costNGN: 45_000_000 });
+  });
+
+  it('never spends past the budget, and more money never makes fewer Ready', () => {
+    let last = -1;
+    for (const budget of [0, 1e6, 5e7, 2.5e8, 1e9, 2.5e9, 5e9]) {
+      const plan = planScenario(paths, ALL, budget);
+      expect(plan.spendNGN).toBeLessThanOrEqual(budget + 0.5);
+      expect(plan.newlyReady).toBeGreaterThanOrEqual(last);
+      last = plan.newlyReady;
+    }
+  });
+
+  it('draws a curve that ends at everything reachable', () => {
+    const plan = planScenario(paths, ALL, null);
+    const end = plan.curve[plan.curve.length - 1]!;
+    expect(end.ready).toBe(plan.reachable.facilities);
+    expect(end.spendNGN).toBeCloseTo(plan.reachable.costNGN, 0);
   });
 });
