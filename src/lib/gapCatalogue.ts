@@ -21,6 +21,7 @@
 import type {
   ActionPhase,
   Band,
+  ScenarioComponentId,
   FacilityThemeId,
   GapAreaId,
   GapDomainId,
@@ -112,6 +113,9 @@ export interface ActionDef {
   unit: string | null;
   /** Null where the source carries no price. Not zero. */
   unitCostNGN: number | null;
+  /** The scenario component this action is — router, full solar system and
+   *  so on — for the six power and connectivity fixes; null for the rest. */
+  scenario: ScenarioComponentId | null;
 }
 
 export const ACTIONS: ActionDef[] = [
@@ -123,7 +127,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 750000
+    "unitCostNGN": 750000,
+    "scenario": "network_extension"
   },
   {
     "id": "install_satellite_internet_4f78d",
@@ -133,7 +138,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 3000000
+    "unitCostNGN": 3000000,
+    "scenario": "satellite"
   },
   {
     "id": "install_solar_panels_4305c",
@@ -143,7 +149,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 3085000
+    "unitCostNGN": 3085000,
+    "scenario": "full_solar"
   },
   {
     "id": "add_solar_panels_f6f25",
@@ -153,7 +160,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 2100000
+    "unitCostNGN": 2100000,
+    "scenario": "solar_topup"
   },
   {
     "id": "install_a_facility_2a48c",
@@ -163,7 +171,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 40000
+    "unitCostNGN": 40000,
+    "scenario": "router"
   },
   {
     "id": "install_solar_panels_bca54",
@@ -173,7 +182,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 3085000
+    "unitCostNGN": 3085000,
+    "scenario": "full_solar"
   },
   {
     "id": "upgrade_the_facility_aa02d",
@@ -183,7 +193,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 360000
+    "unitCostNGN": 360000,
+    "scenario": "fibrex"
   },
   {
     "id": "confirm_whether_a_d15e1",
@@ -193,7 +204,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "during",
     "unit": "service point",
-    "unitCostNGN": null
+    "unitCostNGN": null,
+    "scenario": null
   },
   {
     "id": "fix_unsafe_or_fefdb",
@@ -203,7 +215,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "during",
     "unit": null,
-    "unitCostNGN": 388000
+    "unitCostNGN": 388000,
+    "scenario": null
   },
   {
     "id": "install_socket_points_bcc65",
@@ -213,7 +226,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "during",
     "unit": "socket point",
-    "unitCostNGN": 3000
+    "unitCostNGN": 3000,
+    "scenario": null
   },
   {
     "id": "procure_desks_for_7dbee",
@@ -223,7 +237,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "during",
     "unit": "desk",
-    "unitCostNGN": 35000
+    "unitCostNGN": 35000,
+    "scenario": null
   },
   {
     "id": "procure_electric_fans_4dba3",
@@ -233,7 +248,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "during",
     "unit": "electric fan",
-    "unitCostNGN": 60000
+    "unitCostNGN": 60000,
+    "scenario": null
   },
   {
     "id": "procure_emr_capable_7c04d",
@@ -243,7 +259,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": "tablet",
-    "unitCostNGN": 233333.33333333334
+    "unitCostNGN": 233333.33333333334,
+    "scenario": null
   },
   {
     "id": "procure_patient_chairs_9a3b4",
@@ -253,7 +270,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "during",
     "unit": "patient chair",
-    "unitCostNGN": 25000
+    "unitCostNGN": 25000,
+    "scenario": null
   },
   {
     "id": "procure_staff_chairs_682d7",
@@ -263,7 +281,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "during",
     "unit": "staff chair",
-    "unitCostNGN": 25000
+    "unitCostNGN": 25000,
+    "scenario": null
   },
   {
     "id": "provide_routine_device_e87da",
@@ -273,7 +292,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": null
+    "unitCostNGN": null,
+    "scenario": null
   },
   {
     "id": "repair_or_upgrade_fcc76",
@@ -283,7 +303,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 200000
+    "unitCostNGN": 200000,
+    "scenario": null
   },
   {
     "id": "connect_the_facility_e0157",
@@ -293,7 +314,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "long_term",
     "phase": "after",
     "unit": null,
-    "unitCostNGN": 500000
+    "unitCostNGN": 500000,
+    "scenario": null
   },
   {
     "id": "assign_the_full_f2e80",
@@ -303,7 +325,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": null
+    "unitCostNGN": null,
+    "scenario": null
   },
   {
     "id": "provide_state_facility_e16f7",
@@ -313,7 +336,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "train_every_person_7b84d",
@@ -323,7 +347,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "assign_the_full_40c8b",
@@ -333,7 +358,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": null
+    "unitCostNGN": null,
+    "scenario": null
   },
   {
     "id": "provide_state_facility_8f6a0",
@@ -343,7 +369,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "train_every_person_7b5ae",
@@ -353,7 +380,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "provide_state_facility_5b855",
@@ -363,7 +391,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "train_every_person_b5264",
@@ -373,7 +402,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "train_staff_on_1ed86",
@@ -383,7 +413,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "configure_emr_roles_23d21",
@@ -393,7 +424,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "configure_emr_workflows_78bcc",
@@ -403,7 +435,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "support_change_management_007bd",
@@ -413,7 +446,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "configure_emr_roles_6f328",
@@ -423,7 +457,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "configure_emr_workflows_16441",
@@ -433,7 +468,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "support_change_management_f2fd4",
@@ -443,7 +479,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "configure_emr_roles_d0cc2",
@@ -453,7 +490,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "configure_emr_workflows_93777",
@@ -463,7 +501,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "use_emr_dashboards_55c0d",
@@ -473,7 +512,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "use_emr_data_8d642",
@@ -483,7 +523,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "use_emr_reports_772b6",
@@ -493,7 +534,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "use_emr_data_2866f",
@@ -503,7 +545,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "use_emr_reports_7b773",
@@ -513,7 +556,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   },
   {
     "id": "use_emr_dashboards_670d1",
@@ -523,7 +567,8 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 0
+    "unitCostNGN": 0,
+    "scenario": null
   }
 ];
 
@@ -1658,3 +1703,152 @@ export const SEVERITY_BAND: Record<GapSeverity, Band> = {
 
 /** The four facility domains. */
 export const FACILITY_DOMAIN_IDS: FacilityThemeId[] = ["technical_infrastructure","workforce_capacity","workflow_transition","data_use_reporting"];
+
+/** The six power and connectivity fixes the scenarios fund, in the workbook's
+ *  order. */
+export const SCENARIO_COMPONENTS: { id: ScenarioComponentId; label: string }[] = [
+  {
+    "id": "router",
+    "label": "Router"
+  },
+  {
+    "id": "fibrex",
+    "label": "FibreX"
+  },
+  {
+    "id": "solar_topup",
+    "label": "Solar top-up"
+  },
+  {
+    "id": "full_solar",
+    "label": "Full solar system"
+  },
+  {
+    "id": "network_extension",
+    "label": "Network extension"
+  },
+  {
+    "id": "satellite",
+    "label": "Satellite"
+  }
+];
+
+export interface ScenarioPackageDef {
+  id: string;
+  label: string;
+  components: ScenarioComponentId[];
+}
+
+/**
+ * The fourteen packages the workbook costs, in its own order. Each funds one
+ * or two of the six fixes; `scenarioFor` (src/lib/scenarios.ts) says what
+ * readiness would then be.
+ */
+export const SCENARIO_PACKAGES: ScenarioPackageDef[] = [
+  {
+    "id": "router",
+    "label": "Router only",
+    "components": [
+      "router"
+    ]
+  },
+  {
+    "id": "fibrex",
+    "label": "FibreX only",
+    "components": [
+      "fibrex"
+    ]
+  },
+  {
+    "id": "solar_topup",
+    "label": "Solar top-up only",
+    "components": [
+      "solar_topup"
+    ]
+  },
+  {
+    "id": "full_solar",
+    "label": "Full solar system only",
+    "components": [
+      "full_solar"
+    ]
+  },
+  {
+    "id": "network_extension",
+    "label": "Network extension only",
+    "components": [
+      "network_extension"
+    ]
+  },
+  {
+    "id": "satellite",
+    "label": "Satellite only",
+    "components": [
+      "satellite"
+    ]
+  },
+  {
+    "id": "solar_topup_router",
+    "label": "Solar top-up + Router",
+    "components": [
+      "solar_topup",
+      "router"
+    ]
+  },
+  {
+    "id": "full_solar_router",
+    "label": "Full solar system + Router",
+    "components": [
+      "full_solar",
+      "router"
+    ]
+  },
+  {
+    "id": "solar_topup_fibrex",
+    "label": "Solar top-up + FibreX",
+    "components": [
+      "solar_topup",
+      "fibrex"
+    ]
+  },
+  {
+    "id": "full_solar_fibrex",
+    "label": "Full solar system + FibreX",
+    "components": [
+      "full_solar",
+      "fibrex"
+    ]
+  },
+  {
+    "id": "solar_topup_network_extension",
+    "label": "Solar top-up + Network extension",
+    "components": [
+      "solar_topup",
+      "network_extension"
+    ]
+  },
+  {
+    "id": "full_solar_network_extension",
+    "label": "Full solar system + Network extension",
+    "components": [
+      "full_solar",
+      "network_extension"
+    ]
+  },
+  {
+    "id": "solar_topup_satellite",
+    "label": "Solar top-up + Satellite",
+    "components": [
+      "solar_topup",
+      "satellite"
+    ]
+  },
+  {
+    "id": "full_solar_satellite",
+    "label": "Full solar system + Satellite",
+    "components": [
+      "full_solar",
+      "satellite"
+    ]
+  }
+];

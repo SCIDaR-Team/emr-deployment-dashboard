@@ -115,6 +115,41 @@ column needs to change. The dashboard will follow it.
 
 ---
 
+## Query F — 4 of the 14 scenario packages disagree with the readiness rule
+
+**File:** [`query-f-scenario-readiness-disagrees.csv`](query-f-scenario-readiness-disagrees.csv) (2,778 facility × package rows)
+
+The facility sheet's closure-summary columns give each facility's readiness if
+only one package of power and connectivity fixes were funded, and the Cost
+summary totals them. Ten of the fourteen packages agree, in every row, with
+the sheet's own readiness rule (any Major infrastructure fix left unfunded is
+Not ready, any Moderate one Moderately ready). Four do not:
+
+| Package | Workbook Ready | Rule gives | Facilities | What the sheet does |
+|---|---:|---:|---:|---|
+| Router only | 1,940 | **1,295** | 645 | Marks Ready facilities whose Moderate power gap is still open — 519 that need a full solar system, 126 a top-up |
+| Full solar system only | 56 | **271** | 2,049 | Reads the wrong connectivity column, so 2,357 facilities come out Not ready |
+| FibreX only | 330 | **253** | 77 | Lets FibreX replace the router at 175 "installation required" facilities here, but not in the FibreX combinations |
+| Solar top-up + Network extension | 231 | **238** | 7 | Leaves the top-up open at 43 facilities in this package's power column |
+
+**Also: the "Approximate investment required" column** prices only the
+facilities whose need is *exactly* the package — for Solar top-up + Router,
+the 112 that need both — while its "Additional facilities unlocked" counts
+every facility the package makes Ready, including the 1,125 that needed only a
+router. The two do not describe the same facilities.
+
+**What the dashboard does.** The Investment Plan's "What unlocks readiness"
+section recomputes every package from each facility's own actions with the
+rule, and prices it as the package's fixes at the facilities it makes Ready —
+so a figure and the facilities beside it always go together. The ingest checks
+the ten consistent packages against the sheet in every row and pins the four
+counts above, so a change to the workbook's scenarios stops the build.
+
+**The question.** Are the four columns' formulas meant as they stand? In
+particular, is "FibreX only" meant to include replacing routers?
+
+---
+
 ## Also noted, no action needed from the dashboard
 
 - **The Interventions_summary sheet is a draft.** Its total is ₦6,557,271,333

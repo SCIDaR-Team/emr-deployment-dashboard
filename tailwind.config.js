@@ -4,6 +4,12 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        // A screen with height to spare — a laptop with a full-height window
+        // rather than a 768px one. Panels sized to the viewport (Scenarios)
+        // use it to grow their marks where there is room.
+        tall: { raw: '(min-height: 760px)' },
+      },
       colors: {
         // Semantic tokens — every value resolves through a CSS variable in
         // src/styles/globals.css so light/dark swap in one place.
