@@ -96,11 +96,3 @@ export const FIX_BY_ID = Object.fromEntries(FIXES.map((f) => [f.id, f])) as Reco
 export function groupLabel(ids: readonly ScenarioComponentId[]): string {
   return ids.map((id) => FIX_BY_ID[id].short).join(' + ') || 'nothing';
 }
-
-/** One-click starting points: the workbook's headline packages, and the ends. */
-export const PRESETS: { label: string; fixes: ScenarioComponentId[] }[] = [
-  { label: 'Router only', fixes: ['router'] },
-  { label: 'Top-up + Router', fixes: ['solar_topup', 'router'] },
-  { label: 'Full solar + Router', fixes: ['full_solar', 'router'] },
-  { label: 'Every fix', fixes: FIXES.map((f) => f.id) },
-];
