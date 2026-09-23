@@ -314,3 +314,80 @@ export function planScenario(
     curve,
   };
 }
+
+/**
+ * Where the readiness fixes sit inside the whole plan.
+ *
+ * The builder funds only the power and connectivity fixes that decide
+ * readiness — about ₦4.7bn for every facility. The plan's other money does
+ * not move a facility's band: tablets and backup-power repair are needed before
+ * go-live too (the two together are the gap between ₦4.7bn and the ₦6.1bn
+ * "before deployment"), wiring and furniture go in during deployment, and grid
+ * connections come after. Split here so the builder can say so, and so the
+ * three figures a reader meets on the page visibly add up.
+ */
+export function planComposition(facilities: readonly FacilitySummary[]): {
+  readinessFixesNGN: number;
+  otherBeforeNGN: number;
+  duringNGN: number;
+  afterNGN: number;
+  totalNGN: number;
+} {
+  let readinessFixesNGN = 0;
+  let otherBeforeNGN = 0;
+  let duringNGN = 0;
+  let afterNGN = 0;
+  for (const f of facilities) {
+    for (const [id, qty] of Object.entries(f.actions)) {
+      const a = ACTION_BY_ID[id];
+      if (!a || a.unitCostNGN === null) continue;
+      const cost = a.unitCostNGN * qty;
+      if (a.scenario) readinessFixesNGN += cost;
+      else if (a.phase === 'before') otherBeforeNGN += cost;
+      else if (a.phase === 'during') duringNGN += cost;
+      else afterNGN += cost;
+    }
+  }
+  return {
+    readinessFixesNGN,
+    otherBeforeNGN,
+    duringNGN,
+    afterNGN,
+    totalNGN: readinessFixesNGN + otherBeforeNGN + duringNGN + afterNGN,
+  };
+}
+
+export interface NeedGroup {
+  key: string;
+  needs: ScenarioComponentId[];
+  facilities: number;
+  /** What one facility in the group costs to make Ready — the same for every
+   *  facility in it. */
+  costEachNGN: number;
+  costNGN: number;
+}
+
+/**
+ * The facilities not yet Ready, grouped by the fixes they need, in the order
+ * money reaches them — cheapest to make Ready first. This is the queue a budget
+ * works down, and the builder draws it as one.
+ */
+export function needGroups(paths: readonly FacilityPath[]): NeedGroup[] {
+  const groups = new Map<string, NeedGroup>();
+  for (const p of paths) {
+    if (p.baseline === 'ready' || p.blockedOther || !p.needs.length) continue;
+    const g = groups.get(p.groupKey) ?? {
+      key: p.groupKey,
+      needs: p.needs,
+      facilities: 0,
+      costEachNGN: p.costNGN,
+      costNGN: 0,
+    };
+    g.facilities += 1;
+    g.costNGN += p.costNGN;
+    groups.set(p.groupKey, g);
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.costEachNGN - b.costEachNGN || a.key.localeCompare(b.key),
+  );
+}

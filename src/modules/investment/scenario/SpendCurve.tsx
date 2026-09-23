@@ -1,41 +1,42 @@
-import { useCallback, useId, useRef } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { PencilLine } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { formatCount, formatNaira } from '@/lib/format';
+import { formatCount, formatNaira, parseNaira } from '@/lib/format';
 import type { ScenarioPlan } from '@/lib/scenarios';
 
 /**
- * The budget control, drawn as what a budget buys.
+ * The budget control.
  *
- * A curve of facilities made Ready against money spent, for the fixes chosen,
- * with the budget as a point the reader drags along it. The shape is the
- * finding: it climbs almost vertically at the start — ₦45m of routers makes
- * over a thousand facilities Ready — and then flattens into the long, costly
- * tail of solar systems and satellite links. A reader sees diminishing returns
- * before reading a number.
+ * The budget is the headline of this step, so it is set in figure type and is
+ * itself the input: click it and type "250m" or "1.2bn". Under it, what the
+ * budget buys and how much of it is spent. Under that, the curve — facilities
+ * made Ready against money spent, for the fixes chosen — with the budget as a
+ * point the reader drags along it and a callout saying what that point buys.
  *
- * - **Square-root spend axis.** On a linear axis the router step would be a
- *   pixel wide at the left edge and impossible to set a budget inside; a root
- *   scale gives the cheap end room while keeping the order of magnitude
- *   legible. The slider moves on the same scale, so dragging either feels the
- *   same.
- * - **A ghost curve for every fix**, behind the chosen one, so the reader sees
- *   what the fixes they left out would add at each budget.
- * - **The right end is "No limit"**: every facility the chosen fixes can reach.
+ * The curve's shape is the finding: it climbs almost vertically at the start —
+ * ₦45m of routers makes over a thousand facilities Ready — and flattens into
+ * the long, costly tail of solar systems and satellite links.
  *
- * The slider under the curve is the keyboard and screen-reader way to set the
- * same value; the chips are quick amounts.
+ * - **Square-root spend axis.** On a linear axis the router step is a pixel
+ *   wide; a root scale gives the cheap end room. The slider uses the same
+ *   scale, so dragging either feels the same.
+ * - **A grey curve for every fix**, behind the chosen one: what the fixes left
+ *   out would add at each budget.
+ * - **What the budget buys is filled and drawn solid**; the rest of the curve,
+ *   what more money would buy, is faint.
  */
 
-const W = 320;
-const H = 128;
-const PAD = { left: 4, right: 6, top: 10, bottom: 18 };
+const W = 360;
+const H = 200;
+const PAD = { left: 38, right: 10, top: 34, bottom: 24 };
 const STEPS = 1000;
 
-export interface SpendCurveProps {
+export interface BudgetControlProps {
   plan: ScenarioPlan;
-  /** The curve with every fix allowed — the ghost, and the vertical scale. */
+  /** The plan with every fix allowed and no budget — the grey curve, and the
+   *  scale of both axes. */
   ghost: ScenarioPlan;
-  /** The top of the spend axis: everything reachable with every fix. */
+  /** The right end of the spend axis: every facility Ready. */
   maxNGN: number;
   budgetNGN: number | null;
   onBudget: (budget: number | null) => void;
@@ -43,9 +44,148 @@ export interface SpendCurveProps {
 
 const QUICK = [50_000_000, 250_000_000, 1_000_000_000];
 
-export function SpendCurve({ plan, ghost, maxNGN, budgetNGN, onBudget }: SpendCurveProps) {
+export function BudgetControl({ plan, ghost, maxNGN, budgetNGN, onBudget }: BudgetControlProps) {
+  const unspent = budgetNGN === null ? null : Math.max(0, budgetNGN - plan.spendNGN);
+  const meter =
+    budgetNGN === null
+      ? plan.reachable.costNGN
+        ? plan.spendNGN / plan.reachable.costNGN
+        : 0
+      : budgetNGN
+        ? plan.spendNGN / budgetNGN
+        : 0;
+
+  return (
+    <div>
+      <div className="rounded-[8px] border border-border bg-surface p-3.5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="mono text-tick uppercase tracking-[0.08em] text-muted-foreground">
+              Budget
+            </p>
+            <BudgetInput budgetNGN={budgetNGN} onBudget={onBudget} />
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="mono text-tick uppercase tracking-[0.08em] text-muted-foreground">
+              Buys
+            </p>
+            <p className="mono mt-1 text-figure-sm font-semibold leading-none tabular-nums text-ready-ink">
+              +{formatCount(plan.newlyReady)}
+            </p>
+            <p className="mt-1 text-note text-muted-foreground">made Ready</p>
+          </div>
+        </div>
+
+        <div
+          className="mt-3 h-2 overflow-hidden rounded-full bg-surface-sunk"
+          role="img"
+          aria-label={`${formatNaira(plan.spendNGN)} spent`}
+        >
+          <div
+            className="h-full rounded-full bg-ready-ink transition-[width] duration-500 ease-out"
+            style={{ width: `${Math.min(100, meter * 100)}%` }}
+          />
+        </div>
+        <p className="mono mt-1.5 flex flex-wrap justify-between gap-x-3 text-note tabular-nums text-muted-foreground">
+          <span>
+            Spent <span className="font-semibold text-foreground">{formatNaira(plan.spendNGN, true)}</span>
+          </span>
+          <span>
+            {unspent === null ? (
+              <>
+                The chosen fixes top out at{' '}
+                <span className="text-foreground">{formatNaira(plan.reachable.costNGN, true)}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-foreground">{formatNaira(unspent, true)}</span> left over
+              </>
+            )}
+          </span>
+        </p>
+      </div>
+
+      <Curve plan={plan} ghost={ghost} maxNGN={maxNGN} budgetNGN={budgetNGN} onBudget={onBudget} />
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        {QUICK.filter((q) => q < maxNGN).map((q) => (
+          <Chip key={q} active={budgetNGN === q} onClick={() => onBudget(q)}>
+            {formatNaira(q, true)}
+          </Chip>
+        ))}
+        <Chip active={budgetNGN === null} onClick={() => onBudget(null)}>
+          No limit
+        </Chip>
+      </div>
+    </div>
+  );
+}
+
+/** The budget, in figure type, as the input itself. */
+function BudgetInput({
+  budgetNGN,
+  onBudget,
+}: {
+  budgetNGN: number | null;
+  onBudget: (b: number | null) => void;
+}) {
+  const shown = budgetNGN === null ? 'No limit' : formatNaira(budgetNGN, true);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => setInvalid(false), [budgetNGN]);
+
+  const commit = () => {
+    if (draft === null) return;
+    const v = parseNaira(draft);
+    if (v === undefined) {
+      setInvalid(true);
+      return;
+    }
+    onBudget(v);
+    setDraft(null);
+  };
+
+  return (
+    <label className="group mt-1 flex items-center gap-2">
+      <input
+        value={draft ?? shown}
+        onFocus={(e) => {
+          setDraft(budgetNGN === null ? '' : formatNaira(budgetNGN, true));
+          requestAnimationFrame(() => e.target.select());
+        }}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setInvalid(false);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') {
+            setDraft(null);
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        placeholder="e.g. 250m"
+        aria-label="Budget, in naira. Type an amount like 250m or 1.2bn, or leave empty for no limit."
+        aria-invalid={invalid}
+        className={cn(
+          'mono w-full min-w-0 rounded-[4px] bg-transparent text-figure font-semibold leading-none tracking-tight text-foreground outline-none transition-colors',
+          'hover:bg-surface-sunk/60 focus:bg-surface-sunk focus:px-1.5',
+          invalid && 'text-notready-ink',
+        )}
+      />
+      <PencilLine
+        className="h-4 w-4 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100"
+        aria-hidden
+      />
+    </label>
+  );
+}
+
+function Curve({ plan, ghost, maxNGN, budgetNGN, onBudget }: BudgetControlProps) {
   const svg = useRef<SVGSVGElement>(null);
-  const gradient = useId().replace(/:/g, '');
+  const id = useId().replace(/:/g, '');
   const maxReady = Math.max(1, ghost.reachable.facilities);
 
   const innerW = W - PAD.left - PAD.right;
@@ -54,28 +194,19 @@ export function SpendCurve({ plan, ghost, maxNGN, budgetNGN, onBudget }: SpendCu
     PAD.left + (maxNGN > 0 ? Math.sqrt(Math.min(1, spend / maxNGN)) : 0) * innerW;
   const y = (ready: number) => PAD.top + innerH - (ready / maxReady) * innerH;
 
-  /** A curve as a path: straight within a need group (every facility in it
-   *  costs the same), so the joins are exact, and flat after its last point. */
+  /** Straight within a need group (every facility in it costs the same), so the
+   *  joins are exact; sampled so the root axis bends it; flat after the end. */
   const pathOf = (curve: ScenarioPlan['curve']) => {
-    const pts: [number, number][] = [];
-    curve.forEach((p, i) => {
-      if (i === 0) {
-        pts.push([x(0), y(0)]);
-        return;
+    const pts: [number, number][] = [[x(0), y(0)]];
+    for (let i = 1; i < curve.length; i += 1) {
+      const a = curve[i - 1]!;
+      const b = curve[i]!;
+      for (let k = 1; k <= 12; k += 1) {
+        const t = k / 12;
+        pts.push([x(a.spendNGN + (b.spendNGN - a.spendNGN) * t), y(a.ready + (b.ready - a.ready) * t)]);
       }
-      // Sample along the segment so the root axis bends it as it should.
-      const prev = curve[i - 1]!;
-      const n = 12;
-      for (let k = 1; k <= n; k += 1) {
-        const t = k / n;
-        pts.push([
-          x(prev.spendNGN + (p.spendNGN - prev.spendNGN) * t),
-          y(prev.ready + (p.ready - prev.ready) * t),
-        ]);
-      }
-    });
-    const last = curve[curve.length - 1]!;
-    pts.push([x(maxNGN), y(last.ready)]);
+    }
+    pts.push([x(maxNGN), y(curve[curve.length - 1]!.ready)]);
     return pts.map(([a, b], i) => `${i ? 'L' : 'M'}${a.toFixed(2)},${b.toFixed(2)}`).join(' ');
   };
 
@@ -84,40 +215,45 @@ export function SpendCurve({ plan, ghost, maxNGN, budgetNGN, onBudget }: SpendCu
   const area = `${line} L${x(maxNGN).toFixed(2)},${y(0).toFixed(2)} L${x(0).toFixed(2)},${y(0).toFixed(2)} Z`;
 
   const atBudget = budgetNGN === null ? maxNGN : Math.min(budgetNGN, maxNGN);
-  const handleX = x(atBudget);
-  const handleY = y(plan.newlyReady);
+  const hx = x(atBudget);
+  const hy = y(plan.newlyReady);
 
   const fromPosition = useCallback(
     (p: number) => {
-      const clamped = Math.min(1, Math.max(0, p));
-      if (clamped >= 0.995) onBudget(null);
-      else onBudget(Math.round((clamped * clamped * maxNGN) / 1e5) * 1e5);
+      const c = Math.min(1, Math.max(0, p));
+      if (c >= 0.995) onBudget(null);
+      else onBudget(Math.round((c * c * maxNGN) / 1e6) * 1e6);
     },
     [maxNGN, onBudget],
   );
-
   const drag = (e: React.PointerEvent<SVGSVGElement>) => {
     const r = svg.current?.getBoundingClientRect();
     if (!r) return;
-    const px = ((e.clientX - r.left) / r.width) * W;
-    fromPosition((px - PAD.left) / innerW);
+    fromPosition((((e.clientX - r.left) / r.width) * W - PAD.left) / innerW);
   };
 
-  const slider = budgetNGN === null ? STEPS : Math.round(Math.sqrt(atBudget / maxNGN) * STEPS);
-  // Round, short labels, and only where they cannot collide: on the root axis
-  // ₦10m and ₦100m sit a few pixels apart.
-  const ticks = [
+  const xTicks = [
+    { at: 0, label: '₦0' },
     { at: 100_000_000, label: '₦100m' },
     { at: 1_000_000_000, label: '₦1bn' },
-  ].filter((t) => t.at < maxNGN * 0.7);
-  const clip = `${gradient}-clip`;
+    { at: maxNGN, label: formatNaira(maxNGN, true) },
+  ].filter((t) => t.at === 0 || t.at === maxNGN || t.at < maxNGN * 0.7);
+  const yTicks = [0, Math.round(maxReady / 2), maxReady];
+
+  // The callout: what the budget point buys, kept inside the frame.
+  const label = `${budgetNGN === null ? 'No limit' : formatNaira(budgetNGN, true)} · +${formatCount(plan.newlyReady)}`;
+  const lw = label.length * 6.2 + 14;
+  const lx = Math.min(Math.max(hx - lw / 2, PAD.left), W - PAD.right - lw);
+  const ly = Math.max(4, hy - 30);
+
+  const slider = budgetNGN === null ? STEPS : Math.round(Math.sqrt(atBudget / maxNGN) * STEPS);
 
   return (
-    <div>
+    <div className="mt-4">
       <svg
         ref={svg}
         viewBox={`0 0 ${W} ${H}`}
-        className="block h-auto w-full touch-none select-none"
+        className="block h-auto w-full cursor-crosshair touch-none select-none"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           drag(e);
@@ -128,92 +264,62 @@ export function SpendCurve({ plan, ghost, maxNGN, budgetNGN, onBudget }: SpendCu
         aria-hidden
       >
         <defs>
-          <linearGradient id={gradient} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" className="[stop-color:hsl(var(--ready-ink))]" stopOpacity={0.28} />
-            <stop offset="100%" className="[stop-color:hsl(var(--ready-ink))]" stopOpacity={0} />
+          <linearGradient id={`${id}-g`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" className="[stop-color:hsl(var(--ready-ink))]" stopOpacity={0.3} />
+            <stop offset="100%" className="[stop-color:hsl(var(--ready-ink))]" stopOpacity={0.02} />
           </linearGradient>
+          <clipPath id={`${id}-c`}>
+            <rect x={0} y={0} width={hx} height={H} />
+          </clipPath>
         </defs>
 
-        {/* Baseline and budget ticks. */}
-        <line
-          x1={PAD.left}
-          x2={W - PAD.right}
-          y1={y(0)}
-          y2={y(0)}
-          className="stroke-border"
-          strokeWidth={1}
-        />
-        {ticks.map((t) => (
-          <g key={t.at}>
-            <line x1={x(t.at)} x2={x(t.at)} y1={y(0)} y2={y(0) + 3} className="stroke-border" />
-            <text
-              x={x(t.at)}
-              y={H - 4}
-              textAnchor="middle"
-              className="fill-muted-foreground text-[8px] font-medium"
-            >
-              {t.label}
+        {/* Facilities axis: gridlines and counts. */}
+        {yTicks.map((t) => (
+          <g key={t}>
+            <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="stroke-border" strokeWidth={t ? 0.6 : 1} />
+            <text x={PAD.left - 6} y={y(t) + 3.5} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">
+              {formatCount(t)}
             </text>
           </g>
         ))}
-        <text
-          x={PAD.left}
-          y={H - 4}
-          textAnchor="start"
-          className="fill-muted-foreground text-[8px] font-medium"
-        >
-          ₦0
-        </text>
-        <text
-          x={W - PAD.right}
-          y={H - 4}
-          textAnchor="end"
-          className="fill-muted-foreground text-[8px] font-medium"
-        >
-          {formatNaira(maxNGN, true)}
+        <text x={PAD.left - 6} y={12} textAnchor="start" className="fill-muted-foreground text-[9px] uppercase tracking-[0.06em]">
+          Facilities made Ready
         </text>
 
-        {/* What the budget buys is filled and drawn solid, up to the budget;
-            the rest of the curve — what more money would buy — is faint. */}
-        <clipPath id={clip}>
-          <rect x={0} y={0} width={handleX} height={H} />
-        </clipPath>
-        <path d={ghostLine} fill="none" className="stroke-border" strokeWidth={1.5} />
-        <path d={area} fill={`url(#${gradient})`} clipPath={`url(#${clip})`} />
-        <path
-          d={line}
-          fill="none"
-          className="stroke-ready-ink/35"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        {/* Spend axis. */}
+        {xTicks.map((t) => (
+          <text
+            key={t.label}
+            x={x(t.at)}
+            y={H - 6}
+            textAnchor={t.at === 0 ? 'start' : t.at === maxNGN ? 'end' : 'middle'}
+            className="fill-muted-foreground text-[10px] tabular-nums"
+          >
+            {t.label}
+          </text>
+        ))}
+
+        <path d={ghostLine} fill="none" className="stroke-foreground/15" strokeWidth={1.5} />
+        <path d={area} fill={`url(#${id}-g)`} clipPath={`url(#${id}-c)`} />
+        <path d={line} fill="none" className="stroke-ready-ink/30" strokeWidth={2.5} strokeLinejoin="round" />
         <path
           d={line}
           fill="none"
           className="stroke-ready-ink"
-          strokeWidth={2}
+          strokeWidth={2.5}
           strokeLinejoin="round"
-          strokeLinecap="round"
-          clipPath={`url(#${clip})`}
+          clipPath={`url(#${id}-c)`}
         />
 
-        {/* The budget: a rule down to the axis and a dot on the curve. */}
-        <line
-          x1={handleX}
-          x2={handleX}
-          y1={PAD.top - 4}
-          y2={y(0)}
-          className="stroke-foreground/40"
-          strokeWidth={1}
-        />
-        <circle
-          cx={handleX}
-          cy={handleY}
-          r={5.5}
-          className="fill-ready-ink stroke-surface cursor-grab"
-          strokeWidth={2.5}
-        />
+        {/* The budget point: a rule, a dot, and what it buys. */}
+        <line x1={hx} x2={hx} y1={hy} y2={y(0)} className="stroke-ready-ink/60" strokeWidth={1} strokeDasharray="0" />
+        <circle cx={hx} cy={hy} r={6.5} className="fill-ready-ink stroke-surface" strokeWidth={3} />
+        <g>
+          <rect x={lx} y={ly} width={lw} height={20} rx={10} className="fill-foreground" />
+          <text x={lx + lw / 2} y={ly + 13.5} textAnchor="middle" className="fill-surface text-[10.5px] font-semibold tabular-nums">
+            {label}
+          </text>
+        </g>
       </svg>
 
       <input
@@ -222,27 +328,10 @@ export function SpendCurve({ plan, ghost, maxNGN, budgetNGN, onBudget }: SpendCu
         max={STEPS}
         value={slider}
         onChange={(e) => fromPosition(Number(e.target.value) / STEPS)}
-        className="budget-range mt-1 w-full accent-[hsl(var(--ready-ink))]"
+        className="mt-1 w-full accent-[hsl(var(--ready-ink))]"
         aria-label="Budget"
-        aria-valuetext={
-          budgetNGN === null ? 'No limit' : `${formatNaira(budgetNGN, true)} budget`
-        }
+        aria-valuetext={budgetNGN === null ? 'No limit' : `${formatNaira(budgetNGN, true)} budget`}
       />
-
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {QUICK.filter((q) => q < maxNGN).map((q) => (
-          <Chip key={q} active={budgetNGN === q} onClick={() => onBudget(q)}>
-            {formatNaira(q, true)}
-          </Chip>
-        ))}
-        <Chip active={budgetNGN === null} onClick={() => onBudget(null)}>
-          No limit
-        </Chip>
-        <span className="mono ml-auto text-note tabular-nums text-muted-foreground">
-          {plan.newlyReady ? `+${formatCount(plan.newlyReady)} for ` : ''}
-          <span className="text-foreground">{formatNaira(plan.spendNGN, true)}</span>
-        </span>
-      </div>
     </div>
   );
 }

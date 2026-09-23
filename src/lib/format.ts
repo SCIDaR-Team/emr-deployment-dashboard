@@ -193,3 +193,18 @@ export function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 }
+
+/**
+ * Read an amount a person typed: "250m", "₦1.2bn", "45,000,000", "300k".
+ * Empty or "no limit" is `null` — no budget. `undefined` means the text is not
+ * an amount at all, so the caller can say so rather than guess.
+ */
+export function parseNaira(text: string): number | null | undefined {
+  const s = text.trim().toLowerCase().replace(/[₦,\s]/g, '');
+  if (!s || s === 'nolimit' || s === 'none') return null;
+  const m = s.match(/^(\d+(?:\.\d+)?)(k|m|bn|b)?$/);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  const mult = m[2] === 'k' ? 1e3 : m[2] === 'm' ? 1e6 : m[2] ? 1e9 : 1;
+  return Math.round(n * mult);
+}

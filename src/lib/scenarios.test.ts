@@ -11,7 +11,23 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SCENARIO_PACKAGES } from './gapCatalogue';
-import { facilityPaths, planScenario, scenarioBand, scenarioFor } from './scenarios';
+import {
+  facilityPaths,
+  needGroups,
+  planComposition,
+  planScenario,
+  scenarioBand,
+  scenarioFor,
+} from './scenarios';
+
+const ALL_FIXES = [
+  'router',
+  'fibrex',
+  'solar_topup',
+  'full_solar',
+  'network_extension',
+  'satellite',
+] as const;
 import type { FacilitySummary } from './types';
 
 const facilities: FacilitySummary[] = JSON.parse(
@@ -120,5 +136,34 @@ describe('planScenario', () => {
     const end = plan.curve[plan.curve.length - 1]!;
     expect(end.ready).toBe(plan.reachable.facilities);
     expect(end.spendNGN).toBeCloseTo(plan.reachable.costNGN, 0);
+  });
+});
+
+describe('planComposition and needGroups', () => {
+  it('splits the whole plan, with the readiness fixes as the builder’s ceiling', () => {
+    const c = planComposition(facilities);
+    const total = facilities.reduce((s, f) => s + f.costNGN, 0);
+    expect(c.totalNGN).toBeCloseTo(total, 0);
+    const everything = planScenario(facilityPaths(facilities), new Set(ALL_FIXES), null);
+    expect(c.readinessFixesNGN).toBeCloseTo(everything.spendNGN, 0);
+    // The readiness fixes plus the other before-go-live work are the plan's
+    // "before deployment" phase, as the national deployment records it.
+    const national = JSON.parse(
+      readFileSync(join(__dirname, '../../public/data/national.json'), 'utf8'),
+    );
+    expect(c.readinessFixesNGN + c.otherBeforeNGN).toBeCloseTo(
+      national.deployment.costByPhase.before,
+      0,
+    );
+  });
+
+  it('prices every facility in a need group the same', () => {
+    const paths = facilityPaths(facilities);
+    for (const g of needGroups(paths)) {
+      const members = paths.filter((p) => p.groupKey === g.key && p.baseline !== 'ready');
+      expect(members.length).toBe(g.facilities);
+      for (const m of members) expect(m.costNGN).toBe(g.costEachNGN);
+    }
+    expect(needGroups(paths).reduce((s, g) => s + g.facilities, 0)).toBe(2636);
   });
 });
