@@ -115,7 +115,7 @@ export function SpendCurve({
         if (e.buttons) drag(e);
       }}
       role="img"
-      aria-label={`Facilities made Ready against spend. ${callout}.`}
+      aria-label={`Facilities unlocked against spend. ${callout}.`}
     >
       <defs>
         <linearGradient id={`${id}-g`} x1="0" x2="0" y1="0" y2="1">
@@ -152,7 +152,7 @@ export function SpendCurve({
         y={11}
         className="fill-muted-foreground text-[9px] uppercase tracking-[0.06em]"
       >
-        Facilities made Ready
+        Facilities unlocked
       </text>
       {xTicks.map((t) => (
         <text

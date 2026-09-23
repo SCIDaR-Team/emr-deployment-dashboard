@@ -30,17 +30,16 @@ export function Figures({ plan, total }: { plan: TargetPlan; total: number }) {
   const shownPer = useTween(per);
 
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-border bg-border sm:grid-cols-4">
-      <Figure
-        label="Ready after"
-        accent
-        note={`of ${formatCount(total)} · ${formatShare(readyAfter, total)}`}
-      >
-        <span className="text-figure-sm">{formatCount(Math.round(shownAfter))}</span>
-      </Figure>
-      <Figure label="Newly ready" note={`from ${formatCount(plan.readyBefore)} before`}>
-        <span className="text-figure-sm text-ready-ink">+{formatCount(Math.round(shownNew))}</span>
-      </Figure>
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-border bg-border sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="col-span-2 bg-ready-wash px-3 py-2.5 sm:col-span-1">
+        <Readiness
+          before={plan.readyBefore}
+          unlocked={Math.round(shownNew)}
+          total={Math.round(shownAfter)}
+          of={total}
+          size="lg"
+        />
+      </div>
       <Figure
         label="Spend"
         note={
@@ -51,13 +50,82 @@ export function Figures({ plan, total }: { plan: TargetPlan; total: number }) {
             : 'the cheapest way there'
         }
       >
-        <span className="text-figure-sm">{formatNaira(shownSpend, true)}</span>
+        {formatNaira(shownSpend, true)}
       </Figure>
-      <Figure label="Per facility" note="made Ready">
-        <span className="text-figure-sm">
-          {plan.newlyReady ? formatNaira(shownPer, true) : '—'}
-        </span>
+      <Figure label="Per facility" note="unlocked">
+        {plan.newlyReady ? formatNaira(shownPer, true) : '—'}
       </Figure>
+    </div>
+  );
+}
+
+/**
+ * Ready before + Unlocked = Total Ready, written out as the sum it is. The
+ * three terms every view of the builder uses.
+ */
+export function Readiness({
+  before,
+  unlocked,
+  total,
+  of,
+  size = 'md',
+}: {
+  before: number;
+  unlocked: number;
+  total: number;
+  /** Facilities in scope, for Total Ready's share. */
+  of: number;
+  size?: 'md' | 'lg';
+}) {
+  const figure = size === 'lg' ? 'text-[20px] 2xl:text-figure-sm' : 'text-lead tall:text-[19px]';
+  const op = (sign: string) => (
+    <span
+      aria-hidden
+      className={cn(
+        'mono self-end pb-[3px] text-muted-foreground',
+        size === 'lg' ? 'text-lead' : 'text-body',
+      )}
+    >
+      {sign}
+    </span>
+  );
+  const term = (label: string, value: string, tone: string, note?: string) => (
+    <div className="min-w-0">
+      <p className="mono whitespace-nowrap text-[9.5px] uppercase tracking-[0.04em] text-muted-foreground 2xl:text-tick 2xl:tracking-[0.07em]">
+        {label}
+      </p>
+      <p
+        className={cn(
+          'mono mt-1 font-semibold leading-none tracking-tight tabular-nums',
+          figure,
+          tone,
+        )}
+      >
+        {value}
+      </p>
+      {note !== undefined && (
+        <p className="mt-1 whitespace-nowrap text-[10.5px] text-muted-foreground">{note}</p>
+      )}
+    </div>
+  );
+  const notes = size === 'lg';
+  return (
+    <div className="grid grid-cols-[auto_auto_auto_auto_auto] items-start justify-between gap-x-1.5">
+      {term('Ready before', formatCount(before), 'text-foreground', notes ? 'today' : undefined)}
+      {op('+')}
+      {term(
+        'Unlocked',
+        `+${formatCount(unlocked)}`,
+        'text-ready-ink',
+        notes ? 'by this plan' : undefined,
+      )}
+      {op('=')}
+      {term(
+        'Total Ready',
+        formatCount(total),
+        'text-foreground',
+        notes ? `of ${formatCount(of)} · ${formatShare(total, of)}` : undefined,
+      )}
     </div>
   );
 }
@@ -65,18 +133,18 @@ export function Figures({ plan, total }: { plan: TargetPlan; total: number }) {
 function Figure({
   label,
   note,
-  accent,
   children,
 }: {
   label: string;
   note: string;
-  accent?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('min-w-0 px-3 py-2.5', accent ? 'bg-ready-wash' : 'bg-surface')}>
-      <p className="mono text-tick uppercase tracking-[0.07em] text-muted-foreground">{label}</p>
-      <p className="mono mt-1 font-semibold leading-none tracking-tight tabular-nums text-foreground">
+    <div className="min-w-0 bg-surface px-3 py-2.5">
+      <p className="mono truncate text-tick uppercase tracking-[0.07em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mono mt-1 text-[20px] font-semibold leading-none tracking-tight tabular-nums text-foreground 2xl:text-figure-sm">
         {children}
       </p>
       <p className="mt-1 truncate text-[10.5px] text-muted-foreground">{note}</p>
@@ -115,7 +183,7 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
       label: 'After',
       segs: [
         { key: 'r', n: plan.readyBefore, cls: BAND_CLASSES.ready.bg, name: 'Ready before' },
-        { key: 'x', n: plan.newlyReady, cls: 'bg-ready-ink', name: 'Newly ready' },
+        { key: 'x', n: plan.newlyReady, cls: 'bg-ready-ink', name: 'Unlocked' },
         {
           key: 'm',
           n: plan.after.moderately_ready,
@@ -157,7 +225,7 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
       <ul className="flex flex-wrap gap-x-3 gap-y-0.5 pl-[54px] text-[10.5px] text-muted-foreground">
         {[
           { cls: BAND_CLASSES.ready.bg, name: 'Ready before' },
-          { cls: 'bg-ready-ink', name: 'Newly ready' },
+          { cls: 'bg-ready-ink', name: 'Unlocked' },
           { cls: BAND_CLASSES.moderately_ready.bg, name: 'Moderately' },
           { cls: BAND_CLASSES.not_ready.bg, name: 'Not ready' },
         ].map((l) => (

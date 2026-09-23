@@ -14,8 +14,8 @@ import { stateId, type ScenarioSpec } from './scenarioState';
  * it make the most facilities Ready?"
  *
  * The controls are the single scenario's. On the right, every state in view,
- * ranked, with what the scenario comes to there: newly Ready, spend, cost per
- * facility, and the state's share Ready after. Above the ranking, the answer
+ * ranked, with what the scenario comes to there: Ready before, Unlocked,
+ * Total Ready, spend, cost per facility and the share Ready after. Above the ranking, the answer
  * in a sentence, and the same scenario run across every state at once, for
  * the difference between concentrating money and spreading it. A state can be
  * sent to Compare as a scenario of its own.
@@ -145,7 +145,7 @@ export function StatesView({
               <p className="text-body text-muted-foreground">Choose a fix to fund.</p>
             ) : byMoney && top && top.plan.newlyReady > 0 ? (
               <p className="text-body leading-snug text-foreground">
-                {inEach}, <span className="font-semibold">{top.state}</span> makes the most Ready:{' '}
+                {inEach}, <span className="font-semibold">{top.state}</span> unlocks the most:{' '}
                 <span className="mono font-semibold text-ready-ink">
                   +{formatCount(top.plan.newlyReady)}
                 </span>{' '}
@@ -169,11 +169,11 @@ export function StatesView({
               </p>
             )}
             <p className="mt-0.5 text-note text-muted-foreground">
-              Spread across every state in view instead, the same target makes{' '}
+              Spread across every state in view instead, the same target unlocks{' '}
               <span className="mono font-semibold text-foreground">
                 +{formatCount(national.newlyReady)}
               </span>{' '}
-              Ready for {formatNaira(national.spendNGN, true)}.
+              for {formatNaira(national.spendNGN, true)}.
             </p>
           </div>
           <Segmented
@@ -181,9 +181,9 @@ export function StatesView({
             value={sort}
             onChange={setSort}
             options={[
-              { id: 'newly', label: 'Most Ready' },
+              { id: 'newly', label: 'Most unlocked' },
               { id: 'per', label: 'Best value' },
-              { id: 'share', label: 'Share after' },
+              { id: 'share', label: '% After' },
             ]}
           />
         </div>
@@ -196,14 +196,13 @@ export function StatesView({
               <tr className="mono h-8 text-left text-tick uppercase tracking-[0.07em] text-muted-foreground">
                 <th className="w-6 py-1 font-normal">#</th>
                 <th className="py-1 font-normal">State</th>
-                <th className="hidden w-[34%] py-1 font-normal sm:table-cell">
-                  Ready before → after
-                </th>
+                <th className="hidden w-[30%] py-1 font-normal sm:table-cell">Readiness</th>
                 <th className="py-1 pr-3 text-right font-normal">Ready before</th>
-                <th className="py-1 text-right font-normal">New</th>
+                <th className="py-1 text-right font-normal">Unlocked</th>
+                <th className="py-1 pl-3 text-right font-normal">Total Ready</th>
                 <th className="py-1 text-right font-normal">Spend</th>
                 <th className="py-1 text-right font-normal">Per facility</th>
-                <th className="hidden py-1 text-right font-normal md:table-cell">Share after</th>
+                <th className="hidden py-1 text-right font-normal md:table-cell">% After</th>
                 <th className="w-7" />
               </tr>
             </thead>
@@ -247,6 +246,9 @@ export function StatesView({
                       />
                       {r.plan.newlyReady ? `+${formatCount(r.plan.newlyReady)}` : '—'}
                     </span>
+                  </td>
+                  <td className="mono py-[2px] pl-3 text-right font-semibold tabular-nums text-foreground">
+                    {formatCount(r.plan.readyBefore + r.plan.newlyReady)}
                   </td>
                   <td className="mono py-[2px] text-right tabular-nums text-foreground">
                     {formatNaira(r.plan.spendNGN, true)}

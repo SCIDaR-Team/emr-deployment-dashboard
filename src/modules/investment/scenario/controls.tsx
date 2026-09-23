@@ -487,13 +487,13 @@ export function TargetControl({
     target.kind === 'budget' ? (
       <>
         <span className="text-ready-ink">+{formatCount(plan.newlyReady)}</span>
-        <span className="block text-note font-normal text-muted-foreground">made Ready</span>
+        <span className="block text-note font-normal text-muted-foreground">unlocked</span>
       </>
     ) : (
       <>
         <span>{formatNaira(plan.spendNGN, true)}</span>
         <span className="block text-note font-normal text-muted-foreground">
-          +{formatCount(plan.newlyReady)} made Ready
+          +{formatCount(plan.newlyReady)} unlocked
         </span>
       </>
     );
@@ -515,7 +515,7 @@ export function TargetControl({
       )
     ) : (
       <>
-        {formatCount(readyAfter)} of {formatCount(total)} Ready after
+        Total Ready {formatCount(readyAfter)} of {formatCount(total)}
       </>
     );
 
