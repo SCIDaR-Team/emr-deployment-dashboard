@@ -50,11 +50,12 @@ function catalogueFromModule() {
     }
     throw new Error(`Could not slice ${name} out of gapCatalogue.ts`);
   };
-  return { GAPS: slice('GAPS'), GAP_AREAS: slice('GAP_AREAS') };
+  return { GAPS: slice('GAPS'), GAP_AREAS: slice('GAP_AREAS'), ACTIONS: slice('ACTIONS') };
 }
 
-const { GAPS, GAP_AREAS } = catalogueFromModule();
+const { GAPS, GAP_AREAS, ACTIONS } = catalogueFromModule();
 const GAP_BY_ID = new Map(GAPS.map((g) => [g.id, g]));
+const ACTION_BY_ID = new Map(ACTIONS.map((a) => [a.id, a]));
 const DOMAIN_IDS = [
   'technical_infrastructure',
   'workforce_capacity',
@@ -63,17 +64,18 @@ const DOMAIN_IDS = [
 ];
 
 /**
- * What a gap costs *at one facility*.
+ * What a gap costs *at one facility* — `facilityGapCost`, reimplemented.
  *
- * The variant matters: four conditions are costed more than one way, so a
- * price read off the catalogue alone would under-count every facility on a
- * later variant — which is exactly the drift these tests exist to catch.
+ * The facility's own quantities matter: one buys two tablets and another
+ * five, so a price read off the catalogue alone would be wrong at nearly every
+ * facility — which is exactly the drift these tests exist to catch.
  */
-const gapCost = (g, variant = 0) =>
-  (g.variants[variant] ?? g.variants[0] ?? []).reduce(
-    (sum, iv) => sum + (iv.costNGN ?? 0),
-    0,
-  );
+const gapCost = (f, g) =>
+  g.actions.reduce((sum, id) => {
+    const qty = f.actions[id];
+    const unit = ACTION_BY_ID.get(id).unitCostNGN;
+    return qty && unit !== null ? sum + unit * qty : sum;
+  }, 0);
 
 /** `offeredGapIds`, reimplemented from the catalogue the app ships. */
 function offeredGapIds(domains, gapAreas) {
@@ -97,8 +99,11 @@ function scopeTotals(rows, domains, gapAreas) {
     let hit = false;
     for (const id of f.gaps) {
       if (!offered.has(id)) continue;
+      const gap = GAP_BY_ID.get(id);
+      costNGN += gapCost(f, gap);
+      // "No gap recorded" carries cost and is not a gap — `isRecordedGap`.
+      if (!gap.recorded) continue;
       gaps += 1;
-      costNGN += gapCost(GAP_BY_ID.get(id), f.gapVariants[id] ?? 0);
       hit = true;
     }
     if (hit) affected += 1;
@@ -132,6 +137,20 @@ describe('the catalogue is a clean three-level tree', () => {
     }
     expect(GAP_AREAS).toHaveLength(20);
     expect(new Set(GAP_AREAS.map((a) => a.id)).size).toBe(20);
+  });
+
+  it('ties every facility action to a condition the facility carries', () => {
+    for (const f of facilities) {
+      const areas = new Set(f.gaps.map((id) => GAP_BY_ID.get(id).area));
+      for (const [id, qty] of Object.entries(f.actions)) {
+        const action = ACTION_BY_ID.get(id);
+        expect(action, `${f.uuid} names unknown action ${id}`).toBeDefined();
+        expect(areas.has(action.area), `${f.uuid}: ${id} has no condition in ${action.area}`).toBe(true);
+        expect(Number.isInteger(qty) && qty > 0, `${f.uuid}: ${id} × ${qty}`).toBe(true);
+        const gap = f.gaps.map((g) => GAP_BY_ID.get(g)).find((g) => g.area === action.area);
+        expect(gap.actions, `${f.uuid}: ${gap.id} does not list ${id}`).toContain(id);
+      }
+    }
   });
 
   it('gives every facility at most one condition per area', () => {
@@ -178,7 +197,7 @@ describe('the parts sum to the whole', () => {
         { gaps: 0, costNGN: 0 },
       );
       expect(summed.gaps, `${level} ${name} gaps`).toBe(whole.gaps);
-      expect(summed.costNGN, `${level} ${name} cost`).toBe(whole.costNGN);
+      expect(summed.costNGN, `${level} ${name} cost`).toBeCloseTo(whole.costNGN, 2);
     }
   });
 
@@ -193,22 +212,25 @@ describe('the parts sum to the whole', () => {
         { gaps: 0, costNGN: 0 },
       );
       expect(summed.gaps, `${level} ${name} gaps`).toBe(whole.gaps);
-      expect(summed.costNGN, `${level} ${name} cost`).toBe(whole.costNGN);
+      expect(summed.costNGN, `${level} ${name} cost`).toBeCloseTo(whole.costNGN, 2);
     }
   });
 });
 
 describe('the screen agrees with the published aggregates', () => {
   // `deployment.costByDomain` and `costByHorizon` are **naira, not counts** — the ingest
-  // accumulates `iv.costNGN` into both. Worth stating here because the field
+  // accumulates `iv.costNGN` into both. Compared to the kobo, not exactly: the
+  // tablet price is a third of a naira off whole, and two sums of the same
+  // thirds in a different order differ in the last floating-point bits. Worth stating here because the field
   // names do not, and `gapCount` beside them is a count.
   const check = (label, rows, deployment) => {
     const whole = scopeTotals(rows, [], []);
     expect(whole.gaps, `${label} gapCount`).toBe(deployment.gapCount);
-    expect(whole.costNGN, `${label} costNGN`).toBe(deployment.costNGN);
+    expect(whole.costNGN, `${label} costNGN`).toBeCloseTo(deployment.costNGN, 2);
     for (const d of DOMAIN_IDS) {
-      expect(scopeTotals(rows, [d], []).costNGN, `${label} costByDomain.${d}`).toBe(
+      expect(scopeTotals(rows, [d], []).costNGN, `${label} costByDomain.${d}`).toBeCloseTo(
         deployment.costByDomain[d],
+        2,
       );
     }
   };
@@ -232,10 +254,11 @@ describe('the screen agrees with the published aggregates', () => {
   it('every facility’s own stored totals', () => {
     for (const f of facilities) {
       expect(scopeTotals([f], [], []).gaps, `${f.uuid} gapCount`).toBe(f.gapCount);
-      expect(scopeTotals([f], [], []).costNGN, `${f.uuid} costNGN`).toBe(f.costNGN);
+      expect(scopeTotals([f], [], []).costNGN, `${f.uuid} costNGN`).toBeCloseTo(f.costNGN, 2);
       for (const d of DOMAIN_IDS) {
-        expect(scopeTotals([f], [d], []).costNGN, `${f.uuid} costByDomain.${d}`).toBe(
+        expect(scopeTotals([f], [d], []).costNGN, `${f.uuid} costByDomain.${d}`).toBeCloseTo(
           f.costByDomain[d],
+          2,
         );
       }
     }

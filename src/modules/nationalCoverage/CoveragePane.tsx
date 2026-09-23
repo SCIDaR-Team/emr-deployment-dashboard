@@ -14,7 +14,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
+import { BAND_CLASSES, MATURITY_LABEL, MATURITY_NO_DATA } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { formatCompactCount, formatCount, formatPercent } from '@/lib/format';
 import {
@@ -63,7 +63,7 @@ import { bandOf, countByBand, countLeadershipBands, totalOf, type Scope } from '
  * clearer one.
  *
  * The one domain that can render no block at all is Leadership & Governance,
- * whose only content is the governance rows — inside one of the ten unscored
+ * whose only content is the governance rows — inside one of the six unscored
  * states there are none, and a heading over nothing is worse than silence.
  */
 
@@ -100,8 +100,8 @@ export function CoveragePane({
    *
    * Leadership & Governance is the only domain with no rows in `SUB_DOMAINS` —
    * its whole content is the governance rows, and those exist only where the
-   * source scored the area. Nationally that is 27 states, so the block shows;
-   * inside one of the ten unscored states it would be a heading over nothing,
+   * source scored the area. Nationally that is 31 states, so the block shows;
+   * inside one of the six unscored states it would be a heading over nothing,
    * so it is dropped.
    *
    * The other two always show. Note that `staffCount` is null throughout the
@@ -131,7 +131,7 @@ export function CoveragePane({
             domain blocks no longer carrying a band of their own, it is the
             reader's one answer to "how does the country stand" and always
             shows. */}
-        <Block title="Overall readiness">
+        <Block title="Maturity band">
           {isNational ? (
             <CountRows counts={countByBand(states)} unit="states" of={states.length} />
           ) : (
@@ -210,7 +210,14 @@ function PaneHeader({
         <h2 className="text-title font-semibold tracking-tight text-foreground">{name}</h2>
         {/* The national scope shows counts rather than a badge: a single band
             for the whole country would flatten 37 readings into one word. */}
-        {scope.level !== 'national' && area && <BandBadge band={bandOf(area)} size="sm" />}
+        {scope.level !== 'national' && area && (
+          <BandBadge
+            band={bandOf(area)}
+            labels={MATURITY_LABEL}
+            noDataLabel={MATURITY_NO_DATA}
+            size="sm"
+          />
+        )}
       </div>
     </div>
   );
@@ -266,7 +273,7 @@ function CountRows({
 
   return (
     <div>
-      <BandCards counts={counts} showPercent />
+      <BandCards counts={counts} labels={MATURITY_LABEL} showPercent />
       <p className="mono mt-2.5 text-note text-muted-foreground">
         {formatCount(total)} {unit} classified
         {/*
@@ -275,9 +282,9 @@ function CountRows({
           Newly load-bearing. Every domain used to be classified on all 37
           states or on none, so "37 states classified" was the only line this
           ever printed and the shares beside it were shares of the country.
-          Leadership covers 27, and three shares adding to 100% of a figure the
+          Maturity covers 31, and three shares adding to 100% of a figure the
           reader has not been given the denominator for is precisely how a
-          two-thirds finding gets read as a national one. Ten states are grey on
+          two-thirds finding gets read as a national one. Six states are grey on
           the map for the same reason, and this is the sentence that explains
           them.
         */}
@@ -305,7 +312,7 @@ function Reading({ band }: { band: Band | null }) {
   if (!band) {
     return (
       <div className="border border-border bg-surface-sunk px-2.5 py-2.5">
-        <p className="text-prose text-muted-foreground">Not assessed.</p>
+        <p className="text-prose text-muted-foreground">{MATURITY_NO_DATA}.</p>
       </div>
     );
   }
@@ -317,7 +324,7 @@ function Reading({ band }: { band: Band | null }) {
       )}
     >
       <BandIcon band={band} className="h-4 w-4 shrink-0" />
-      <span className="text-lead font-bold tracking-tight">{BAND_LABEL[band]}</span>
+      <span className="text-lead font-bold tracking-tight">{MATURITY_LABEL[band]}</span>
     </div>
   );
 }
@@ -878,7 +885,7 @@ function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
  *
  * ## One square is one state
  *
- * This was a table of bare counts, and a table made the reader divide by 27
+ * This was a table of bare counts, and a table made the reader divide by 31
  * before it said anything — "22 no" is a figure, "almost the whole country" is
  * the finding. It was four proportional bars before that, which showed the
  * shape and took the figures away.
@@ -896,7 +903,7 @@ function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
  * the three runs read as three quantities rather than one dashed line.
  *
  * `scored` is the denominator, stated once in the header rather than on every
- * row — ten of the 37 states carry no leadership reading at all, so this is
+ * row — six of the 37 states carry no governance reading at all, so this is
  * never "of 37".
  */
 function LeadershipSpread({ states }: { states: AreaProfile[] }) {
@@ -1122,7 +1129,7 @@ function AreaList({
                     band ? BAND_CLASSES[band].text : 'text-muted-foreground',
                   )}
                 >
-                  {band ? BAND_LABEL[band] : '—'}
+                  {band ? MATURITY_LABEL[band] : MATURITY_NO_DATA}
                 </span>
               </button>
             </li>

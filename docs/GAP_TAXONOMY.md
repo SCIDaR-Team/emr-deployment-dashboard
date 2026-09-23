@@ -14,17 +14,17 @@ single-occupancy rule is what makes the area the right unit for a rollup:
 counting areas counts facilities, while counting conditions counts survey
 answers.
 
-Source: `Revised costing model and roadmap - List of gaps and interventions per facility.csv`.
+Source: `List of gaps and interventions per facility.csv`.
 
 ## The shape, in one table
 
 | Domain | Gap areas | Conditions | Gap instances | Indicative cost |
 | --- | ---: | ---: | ---: | ---: |
-| Technical Infrastructure | 9 | 34 | 18,310 | ₦5,903,938,077 |
+| Technical Infrastructure | 10 | 37 | 20,376 | ₦7,255,194,333 |
 | Workforce Capacity | 4 | 17 | 5,777 | ₦0 |
-| Workflow & Transition | 4 | 11 | 4,721 | ₦112,344,948 |
+| Workflow & Transition | 3 | 8 | 2,655 | ₦0 |
 | Data Use & Reporting | 3 | 9 | 1,392 | ₦0 |
-| **All four** | **20** | **71** | **30,200** | **₦6,016,283,025** |
+| **All four** | **20** | **71** | **30,200** | **₦7,255,194,333** |
 
 *Gap instances* are (facility × area) pairs, not facilities: a facility
 carrying nine gaps contributes nine. The median facility carries 11 of the 20 areas.
@@ -33,11 +33,11 @@ carrying nine gaps contributes nine. The median facility carries 11 of the 20 ar
 
 Six things worth knowing, in the order they matter to a plan.
 
-### 1. 13 of the 20 areas now fund nothing
+### 1. 12 of the 20 areas now fund nothing
 
-The revised costing model prices 7 of the 20 gap areas and leaves 13 recording a gap with no money against it — Backup-connectivity, Data-backup, Mobile-network feasibility, Digital-competency, EMR/Data focal-person, Training, Technical-support, Duplicate-entry, Workflow-bottleneck, Staff-willingness support, Routine-data-use, Data-validation, Report-review support.
+The revised costing model prices 8 of the 20 gap areas and leaves 12 recording a gap with no money against it — Backup-connectivity, Data-backup, Mobile-network feasibility, Digital-competency, Training, Technical-support, Duplicate-entry, Workflow-bottleneck, Staff-willingness support, Routine-data-use, Data-validation, Report-review support.
 
-Two whole domains fall to zero this way: every condition in Workforce Capacity and Data Use & Reporting still fires an action, and every one of those actions is priced ₦0. The gaps are real and counted; what changed is that closing them is no longer costed here — as shared programme work rather than a facility line, which is also what removed the satellite double count described below.
+Three whole domains fall to zero this way: every condition in Workforce Capacity, Workflow & Transition and Data Use & Reporting that fires an action fires one priced ₦0 or left unpriced. The gaps are real and counted; closing them is not costed here — as shared programme work rather than a facility line, which is also what removed the satellite double count described below. All ₦7,255,194,333 is Technical Infrastructure.
 
 ### 2. The satellite double count is gone
 
@@ -48,11 +48,11 @@ Mobile-network feasibility now fires no intervention at all, so the pair costs w
 ### 3. Adequate conditions are still counted as gaps
 
 13 of the 71 conditions describe a facility that is *doing the thing* and still record a gap — "Formal quarterly maintenance", "Issues are usually resolved within 24–48 hours", "Training within 6 months and foundational".
-Together: 4,061 gap instances and ₦101,739,925 (**1.7%** of the total).
+Together: 4,061 gap instances and ₦101,740,000 (**1.4%** of the total).
 
 | Condition | Facilities | Cost |
 | --- | ---: | ---: |
-| Immediately usable devices cover 75%–99% of the minimum requirement | 225 | ₦52,499,925 |
+| Immediately usable devices cover 75%–99% of the minimum requirement | 225 | ₦52,500,000 |
 | Individual connection at or above 5 Mbps | 1,231 | ₦49,240,000 |
 | Grid and functional backup are available, but backup runtime is below 9 hours | 409 | ₦0 |
 | Formal annual maintenance | 11 | ₦0 |
@@ -60,119 +60,153 @@ Together: 4,061 gap instances and ₦101,739,925 (**1.7%** of the total).
 | 75–99% of applicable service points have basic digital skills | 173 | ₦0 |
 | Training 6–12 months ago and foundational | 49 | ₦0 |
 | Training within 6 months and foundational | 48 | ₦0 |
-| Issues are resolved within 24 hours through an informal or external pathway | 455 | ₦0 |
 | Issues are usually resolved within 24–48 hours | 626 | ₦0 |
+| Issues are resolved within 24 hours through an informal or external pathway | 455 | ₦0 |
 | One structured data-use mechanism | 461 | ₦0 |
 | Quarterly validation meetings | 52 | ₦0 |
 | Reports are sometimes discussed | 172 | ₦0 |
 
-The revised pricing takes most of the money off these, which is the right move and not quite the whole one: they are *improvements* rather than *gaps*, and the taxonomy still has no place to say so — so "2,434 facilities have a device-maintenance gap" continues to include 160 that maintain their devices on a formal schedule.
+The pricing takes most of the money off these, which is the right move and not quite the whole one: they are *improvements* rather than *gaps*, and the taxonomy still has no place to say so — so a count of facilities with a device-maintenance gap includes the ones that maintain their devices on a formal schedule.
 
-### 4. Severity still cannot explain three of the four domains
+### 4. Severity reaches every domain; readiness reads one
 
-A gap's severity is read off the urgency of the action it triggers: critical or major blocks deployment, minor and long-term do not. Only **2 of the 20 areas** ever produce a blocking condition — Power, Facility-connectivity, all of them in Technical Infrastructure.
+A gap's severity is read off the urgency of the action it triggers: Major or Moderate blocks, Minor and Long-term do not. **11 of the 20 areas** produce a blocking condition — Power, Facility-connectivity, Digital-competency, EMR/Data focal-person, Technical-support, Duplicate-entry, Workflow-bottleneck, Staff-willingness support, Routine-data-use, Data-validation, Report-review support — and they now span all four domains.
 
-Every condition in Workforce Capacity, Workflow & Transition and Data Use & Reporting is `partial` by construction. So a facility can be Not ready for workforce reasons and carry no gap capable of saying why. The band and the gap list are answering different questions in three domains out of four.
+Readiness does not follow them. The sheet decides it from Technical Infrastructure alone, so only Power and Facility-connectivity can move a facility's band. A Major workforce, workflow or data-use gap is reported as that domain's highest severity and leaves readiness where it is — see data query E.
 
-### 5. A condition can now be costed more than one way
+### 5. Some actions are bought by the unit
 
-4 conditions no longer imply one set of actions — three in Power, one in Backup-power. The choice is real work rather than an inconsistency: a facility off the grid draws a ₦500,000 connection that a connected one does not, and a facility with some supply draws a ₦1,200,000 top-up where one with none draws the full ₦3,000,000 install. Partly working backup power is repaired at 136 facilities and left alone at 81.
+One cell can buy five tablets, or two desks and a fan, for one cost. The ingest splits each into unit actions — a type, a quantity and a unit price — and checks the split adds back to the cell. These are the unit-priced action types, across the dataset:
 
-| Condition | Facilities | Ways it is costed |
-| --- | ---: | ---: |
-| No functional electricity source or 0 hours/day | 571 | 2 |
-| Estimated combined power coverage is 1–4 hours/day | 375 | 4 |
-| Estimated combined power coverage is 5–8 hours/day | 382 | 4 |
-| Backup is partially functional | 217 | 2 |
+| Action | Unit | Unit cost | Units | Facilities |
+| --- | --- | ---: | ---: | ---: |
+| Procure EMR-capable tablets to close the immediate device gap. | tablet | ₦233,333 | 5,920 | 2,221 |
+| Procure electric fans for the affected service points. | electric fan | ₦60,000 | 4,104 | 1,416 |
+| Procure desks for the affected service points. | desk | ₦35,000 | 3,487 | 1,158 |
+| Confirm whether a lockable door is required at the affected service points. | service point | *unpriced* | 3,431 | 1,245 |
+| Install socket points where EMR equipment will be used. | socket point | ₦3,000 | 2,713 | 983 |
+| Procure patient chairs for the affected service points. | patient chair | ₦25,000 | 800 | 459 |
+| Procure staff chairs for the affected service points. | staff chair | ₦25,000 | 671 | 372 |
 
-This is why a facility is costed from its own row rather than from the catalogue, and why `gapCostNGN` takes a variant. Costing a population by multiplying a count by a price would now be wrong by construction.
+This is why a facility is costed from its own quantities (`FacilitySummary.actions`) rather than from the catalogue. Costing a population by multiplying a count of facilities by a price would be wrong by construction.
 
 ### 6. Pricing is flat inside most areas
 
-2 of the 20 areas still charge the same amount for every condition inside them, so a facility where 0% of service points are adequate and one at 74% cost the same. Severity gradations inside these areas are therefore descriptive only — they change what the gap *says* and never what it *costs*, which is worth knowing before anyone builds a prioritisation on them.
+3 of the 20 areas buy the same things at the same unit prices for every condition inside them. Where quantities are per unit, what differs between two facilities is how many they need, not which condition they carry.
 
-| Area | Conditions | Cost, all of them |
+| Area | Conditions | Unit prices, summed |
 | --- | ---: | ---: |
-| Wiring | 2 | ₦388,000 |
-| Physical service-point | 3 | ₦54,378 |
+| Wiring | 2 | ₦391,000 |
+| Device-sufficiency | 5 | ₦233,333 |
+| Physical service-point | 3 | ₦145,000 |
 
 Severity gradations inside these areas are therefore descriptive only. They change what the gap *says* and never what it *costs*, which is worth knowing before anyone builds a prioritisation on them.
 
 ## The gaps, by domain
 
-Conditions are listed commonest-first within their area. **Blocking** conditions are marked; everything else is partial. Cost is per facility, from the source. Where a condition is costed more than one way, every action it can fire is listed — they are alternatives, so the rows are not a sum.
+Conditions are listed commonest-first within their area. **Blocking** conditions are marked; everything else is partial. Every action a condition can call for is listed with its urgency, its phase and its unit price — a facility takes the ones its own row asks for, in its own quantities, so the rows are not a sum. "No gap recorded" is the work the sheet costs where the gap column reads No gap; it is not counted as a gap.
 
 ### Technical Infrastructure
 
-9 gap areas · 34 conditions · 18,310 gap instances · ₦5,903,938,077
+10 gap areas · 37 conditions · 20,376 gap instances · ₦7,255,194,333
 
 #### Power gap
 
 1,328 of 2,806 facilities (47.3%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| No functional electricity source or 0 hours/day — **blocking** | 571 | Install solar panels and batteries that can power the EMR equipment. | Critical | ₦3,000,000 |
-|  |  | Connect the facility to the electricity grid. | Long-term | ₦500,000 |
-| Estimated combined power coverage is 5–8 hours/day — **blocking** | 382 | Install solar panels and batteries that can power the EMR equipment. | Major | ₦3,000,000 |
-|  |  | Connect the facility to the electricity grid. | Long-term | ₦500,000 |
-|  |  | Add solar panels or batteries so EMR equipment has power for at least nine hours. | Major | ₦1,200,000 |
-| Estimated combined power coverage is 1–4 hours/day — **blocking** | 375 | Install solar panels and batteries that can power the EMR equipment. | Major | ₦3,000,000 |
-|  |  | Connect the facility to the electricity grid. | Long-term | ₦500,000 |
-|  |  | Add solar panels or batteries so EMR equipment has power for at least nine hours. | Major | ₦1,200,000 |
+| No functional electricity source or 0 hours/day — **blocking** | 571 | Install solar panels and batteries that can power the EMR equipment. | Major, before | ₦3,085,000 |
+|  |  | Connect the facility to the electricity grid. | Long-term, after | ₦500,000 |
+| Estimated combined power coverage is 5–8 hours/day — **blocking** | 382 | Install solar panels and batteries that can power the EMR equipment. | Moderate, before | ₦3,085,000 |
+|  |  | Add solar panels or batteries so EMR equipment has power for at least nine hours. | Moderate, before | ₦2,100,000 |
+|  |  | Connect the facility to the electricity grid. | Long-term, after | ₦500,000 |
+| Estimated combined power coverage is 1–4 hours/day — **blocking** | 375 | Install solar panels and batteries that can power the EMR equipment. | Moderate, before | ₦3,085,000 |
+|  |  | Add solar panels or batteries so EMR equipment has power for at least nine hours. | Moderate, before | ₦2,100,000 |
+|  |  | Connect the facility to the electricity grid. | Long-term, after | ₦500,000 |
 
 #### Wiring gap
 
 1,034 of 2,806 facilities (36.8%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| Partially functional, unreliable or inadequate wiring | 627 | Fix unsafe wiring and add working wall sockets where EMR equipment will be used. | Minor | ₦388,000 |
-| No functional wiring or wiring condition not demonstrated | 407 | Fix unsafe wiring and add working wall sockets where EMR equipment will be used. | Minor | ₦388,000 |
+| Partially functional, unreliable or inadequate wiring | 627 | Fix unsafe or inadequate wiring where EMR equipment will be used. | Minor, during | ₦388,000 |
+|  |  | Install socket points where EMR equipment will be used. | Minor, during | ₦3,000 / socket point |
+| No functional wiring or wiring condition not demonstrated | 407 | Fix unsafe or inadequate wiring where EMR equipment will be used. | Minor, during | ₦388,000 |
+|  |  | Install socket points where EMR equipment will be used. | Minor, during | ₦3,000 / socket point |
+| No gap recorded | 380 | Install socket points where EMR equipment will be used. | Minor, during | ₦3,000 / socket point |
 
 #### Facility-connectivity gap
 
 2,521 of 2,806 facilities (89.8%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| Individual connection at or above 5 Mbps — **blocking**, *adequate* | 1,231 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Major | ₦40,000 |
-| Individual connection below 5 Mbps — **blocking** | 654 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Major | ₦40,000 |
-| Facility internet installation required — **blocking** | 175 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Major | ₦40,000 |
-| Network extension required — **blocking** | 156 | Engage the mobile network provider to extend or strengthen network coverage and install a facility-managed router/MiFi. | Critical | ₦750,000 |
-| Confirmed satellite-only route — **blocking** | 152 | Install satellite internet at the facility. | Critical | ₦3,000,000 |
-| Facility-managed connection below 5 Mbps — **blocking** | 141 | Upgrade the facility-managed connection to at least 5 Mbps. | Major | ₦0 |
-| Individual connection — speed not measured — **blocking** | 12 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Major | ₦40,000 |
+| Individual connection at or above 5 Mbps — **blocking**, *adequate* | 1,231 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Moderate, before | ₦40,000 |
+| Individual connection below 5 Mbps — **blocking** | 654 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Moderate, before | ₦40,000 |
+| Facility internet installation required — **blocking** | 175 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Moderate, before | ₦40,000 |
+| Network extension required — **blocking** | 156 | Engage the mobile network provider to extend or strengthen network coverage and install a facility-managed router/MiFi. | Major, before | ₦750,000 |
+| Confirmed satellite-only route — **blocking** | 152 | Install satellite internet at the facility. | Major, before | ₦3,000,000 |
+| Facility-managed connection below 5 Mbps — **blocking** | 141 | Upgrade the facility-managed connection to at least 5 Mbps. | Moderate, before | ₦360,000 |
+| Individual connection — speed not measured — **blocking** | 12 | Install a facility-managed router/MiFi with at least 5 Mbps capacity. | Moderate, before | ₦40,000 |
 
 #### Device-sufficiency gap
 
 2,221 of 2,806 facilities (79.2%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| Immediately usable devices cover less than 75% of the minimum requirement | 1,114 | Give each place where staff enter EMR data the number of tablets it is missing. | Minor | ₦233,333 |
-| No supported computing devices are available | 452 | Give the facility three tablets that can run the EMR. | Minor | ₦700,000 |
-| Supported devices exist but none is immediately deployable | 405 | Give each place where staff enter EMR data the number of tablets it is missing. | Minor | ₦233,333 |
-| Immediately usable devices cover 75%–99% of the minimum requirement — *adequate* | 225 | Give each place where staff enter EMR data the number of tablets it is missing. | Minor | ₦233,333 |
-| All supported devices are obsolete | 25 | Give each place where staff enter EMR data the number of tablets it is missing. | Minor | ₦233,333 |
+| Immediately usable devices cover less than 75% of the minimum requirement | 1,114 | Procure EMR-capable tablets to close the immediate device gap. | Minor, before | ₦233,333 / tablet |
+| No supported computing devices are available | 452 | Procure EMR-capable tablets to close the immediate device gap. | Minor, before | ₦233,333 / tablet |
+| Supported devices exist but none is immediately deployable | 405 | Procure EMR-capable tablets to close the immediate device gap. | Minor, before | ₦233,333 / tablet |
+| Immediately usable devices cover 75%–99% of the minimum requirement — *adequate* | 225 | Procure EMR-capable tablets to close the immediate device gap. | Minor, before | ₦233,333 / tablet |
+| All supported devices are obsolete | 25 | Procure EMR-capable tablets to close the immediate device gap. | Minor, before | ₦233,333 / tablet |
+
+#### Physical service-point gap
+
+2,066 of 2,806 facilities (73.6%)
+
+| Condition | Facilities | Action | Urgency | Unit cost |
+| --- | ---: | --- | --- | ---: |
+| 0% of applicable service points meet all minimum conditions | 1,523 | Procure electric fans for the affected service points. | Minor, during | ₦60,000 / electric fan |
+|  |  | Procure desks for the affected service points. | Minor, during | ₦35,000 / desk |
+|  |  | Procure patient chairs for the affected service points. | Minor, during | ₦25,000 / patient chair |
+|  |  | Procure staff chairs for the affected service points. | Minor, during | ₦25,000 / staff chair |
+|  |  | Confirm whether a lockable door is required at the affected service points. | Minor, during | *unpriced* |
+| 1%–49% of applicable service points meet all minimum conditions | 316 | Procure electric fans for the affected service points. | Minor, during | ₦60,000 / electric fan |
+|  |  | Procure desks for the affected service points. | Minor, during | ₦35,000 / desk |
+|  |  | Procure patient chairs for the affected service points. | Minor, during | ₦25,000 / patient chair |
+|  |  | Procure staff chairs for the affected service points. | Minor, during | ₦25,000 / staff chair |
+|  |  | Confirm whether a lockable door is required at the affected service points. | Minor, during | *unpriced* |
+| 50%–74% of applicable service points meet all minimum conditions | 227 | Procure electric fans for the affected service points. | Minor, during | ₦60,000 / electric fan |
+|  |  | Procure desks for the affected service points. | Minor, during | ₦35,000 / desk |
+|  |  | Procure patient chairs for the affected service points. | Minor, during | ₦25,000 / patient chair |
+|  |  | Procure staff chairs for the affected service points. | Minor, during | ₦25,000 / staff chair |
+|  |  | Confirm whether a lockable door is required at the affected service points. | Minor, during | *unpriced* |
+| No gap recorded | 224 | Procure electric fans for the affected service points. | Minor, during | ₦60,000 / electric fan |
+|  |  | Procure desks for the affected service points. | Minor, during | ₦35,000 / desk |
+|  |  | Procure patient chairs for the affected service points. | Minor, during | ₦25,000 / patient chair |
+|  |  | Procure staff chairs for the affected service points. | Minor, during | ₦25,000 / staff chair |
+|  |  | Confirm whether a lockable door is required at the affected service points. | Minor, during | *unpriced* |
 
 #### Backup-power gap
 
 2,224 of 2,806 facilities (79.3%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
 | Only one usable power pathway is confirmed | 792 | *none recorded* | — | — |
 | No secondary or backup power pathway | 652 | *none recorded* | — | — |
 | Grid and functional backup are available, but backup runtime is below 9 hours — *adequate* | 409 | *none recorded* | — | — |
-| Backup is partially functional | 217 | Repair or upgrade the partially functional backup power source. | Minor | ₦200,000 |
+| Backup is partially functional | 217 | Repair or upgrade the partially functional backup power source. | Minor, before | ₦200,000 |
 | Backup exists but is non-functional | 154 | *none recorded* | — | — |
 
 #### Backup-connectivity gap
 
 2,529 of 2,806 facilities (90.1%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
 | No backup internet option confirmed | 1,935 | *none recorded* | — | — |
 | Personal hotspot or USB backup option | 583 | *none recorded* | — | — |
@@ -182,11 +216,11 @@ Conditions are listed commonest-first within their area. **Blocking** conditions
 
 2,434 of 2,806 facilities (86.7%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| No formal maintenance arrangement | 1,065 | Provide routine device maintenance and repair support. | Minor | *unpriced* |
-| Maintenance only when devices fail or as needed | 774 | Provide routine device maintenance and repair support. | Minor | *unpriced* |
-| No maintenance schedule reported | 435 | Provide routine device maintenance and repair support. | Minor | *unpriced* |
+| No formal maintenance arrangement | 1,065 | Provide routine device maintenance and repair support. | Minor, before | *unpriced* |
+| Maintenance only when devices fail or as needed | 774 | Provide routine device maintenance and repair support. | Minor, before | *unpriced* |
+| No maintenance schedule reported | 435 | Provide routine device maintenance and repair support. | Minor, before | *unpriced* |
 | Formal quarterly maintenance — *adequate* | 149 | *none recorded* | — | — |
 | Formal annual maintenance — *adequate* | 11 | *none recorded* | — | — |
 
@@ -194,7 +228,7 @@ Conditions are listed commonest-first within their area. **Blocking** conditions
 
 2,488 of 2,806 facilities (88.7%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
 | No data-backup capability reported | 1,912 | *none recorded* | — | — |
 | Manual data-backup capability | 576 | *none recorded* | — | — |
@@ -203,7 +237,7 @@ Conditions are listed commonest-first within their area. **Blocking** conditions
 
 1,531 of 2,806 facilities (54.6%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
 | Network extension required | 800 | *none recorded* | — | — |
 | No serviceable mobile pathway | 731 | *none recorded* | — | — |
@@ -216,89 +250,79 @@ Conditions are listed commonest-first within their area. **Blocking** conditions
 
 835 of 2,806 facilities (29.8%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| No applicable service point has basic digital skills | 357 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Minor | ₦0 |
-| 75–99% of applicable service points have basic digital skills — *adequate* | 173 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Minor | ₦0 |
-| Less than 50% of applicable service points have basic digital skills | 155 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Minor | ₦0 |
-| 50–74% of applicable service points have basic digital skills | 150 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Minor | ₦0 |
+| No applicable service point has basic digital skills — **blocking** | 357 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Major, before | ₦0 |
+| 75–99% of applicable service points have basic digital skills — *adequate* | 173 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Minor, before | ₦0 |
+| Less than 50% of applicable service points have basic digital skills — **blocking** | 155 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Major, before | ₦0 |
+| 50–74% of applicable service points have basic digital skills — **blocking** | 150 | Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months. | Moderate, before | ₦0 |
 
 #### EMR/Data focal-person gap
 
 1,135 of 2,806 facilities (40.4%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| No dedicated HRO/M&E officer | 680 | Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion. | Minor | ₦0 |
-| Dedicated HRO/M&E officer — part-time/shared | 455 | Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion. | Minor | ₦0 |
+| No dedicated HRO/M&E officer — **blocking** | 680 | Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion. | Major, before | *unpriced* |
+| Dedicated HRO/M&E officer — part-time/shared — **blocking** | 455 | Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion. | Moderate, before | *unpriced* |
 
 #### Training gap
 
 1,396 of 2,806 facilities (49.8%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| No formal digital-health training | 794 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor | ₦0 |
-| Training over 1 year ago and directly relevant | 406 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor | ₦0 |
-| Training over 1 year ago with foundational or low relevance | 60 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor | ₦0 |
-| Training 6–12 months ago and foundational — *adequate* | 49 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor | ₦0 |
-| Training within 6 months and foundational — *adequate* | 48 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor | ₦0 |
-| Training within 6 months with low relevance | 25 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor | ₦0 |
-| Training 6–12 months ago with low relevance | 14 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor | ₦0 |
+| No formal digital-health training | 794 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor, before | ₦0 |
+| Training over 1 year ago and directly relevant | 406 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor, before | ₦0 |
+| Training over 1 year ago with foundational or low relevance | 60 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor, before | ₦0 |
+| Training 6–12 months ago and foundational — *adequate* | 49 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor, before | ₦0 |
+| Training within 6 months and foundational — *adequate* | 48 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor, before | ₦0 |
+| Training within 6 months with low relevance | 25 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor, before | ₦0 |
+| Training 6–12 months ago with low relevance | 14 | Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months. | Minor, before | ₦0 |
 
 #### Technical-support gap
 
 2,411 of 2,806 facilities (85.9%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| No defined technical-support process | 969 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Minor | ₦0 |
-| Issues are usually resolved within 24–48 hours — *adequate* | 626 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Minor | ₦0 |
-| Issues are resolved within 24 hours through an informal or external pathway — *adequate* | 455 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Minor | ₦0 |
-| Issues usually take more than 48 hours to resolve | 361 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Minor | ₦0 |
+| No defined technical-support process — **blocking** | 969 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Major, before | ₦0 |
+| Issues are usually resolved within 24–48 hours — **blocking**, *adequate* | 626 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Moderate, before | ₦0 |
+| Issues are resolved within 24 hours through an informal or external pathway — *adequate* | 455 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Minor, before | ₦0 |
+| Issues usually take more than 48 hours to resolve — **blocking** | 361 | Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison. | Major, before | ₦0 |
 
 ### Workflow & Transition
 
-4 gap areas · 11 conditions · 4,721 gap instances · ₦112,344,948
+3 gap areas · 8 conditions · 2,655 gap instances · ₦0
 
 #### Duplicate-entry gap
 
 1,429 of 2,806 facilities (50.9%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| At least 75% of documenting service points affected | 1,032 | Configure EMR workflows so information captured at one service point is available at subsequent points of care. | Minor | ₦0 |
-| 50%–74% of documenting service points affected | 208 | Configure EMR workflows so information captured at one service point is available at subsequent points of care. | Minor | ₦0 |
-| 25%–49% of documenting service points affected | 189 | Configure EMR workflows so information captured at one service point is available at subsequent points of care. | Minor | ₦0 |
+| At least 75% of documenting service points affected — **blocking** | 1,032 | Configure EMR workflows so information captured at one service point is available at subsequent points of care. | Major, before | ₦0 |
+| 50%–74% of documenting service points affected — **blocking** | 208 | Configure EMR workflows so information captured at one service point is available at subsequent points of care. | Moderate, before | ₦0 |
+| 25%–49% of documenting service points affected | 189 | Configure EMR workflows so information captured at one service point is available at subsequent points of care. | Minor, before | ₦0 |
 
 #### Workflow-bottleneck gap
 
 1,204 of 2,806 facilities (42.9%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| 25%–49% of documenting service points affected | 519 | Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps. | Minor | ₦0 |
-| At least 75% of documenting service points affected | 421 | Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps. | Minor | ₦0 |
-| 50%–74% of documenting service points affected | 264 | Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps. | Minor | ₦0 |
-
-#### Physical service-point gap
-
-2,066 of 2,806 facilities (73.6%)
-
-| Condition | Facilities | Action | When | Cost |
-| --- | ---: | --- | --- | ---: |
-| 0% of applicable service points meet all minimum conditions | 1,523 | Provide missing desks, chairs, fans and lockable doors at affected service points to support EMR use. | Minor | ₦54,378 |
-| 1%–49% of applicable service points meet all minimum conditions | 316 | Provide missing desks, chairs, fans and lockable doors at affected service points to support EMR use. | Minor | ₦54,378 |
-| 50%–74% of applicable service points meet all minimum conditions | 227 | Provide missing desks, chairs, fans and lockable doors at affected service points to support EMR use. | Minor | ₦54,378 |
+| 25%–49% of documenting service points affected | 519 | Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps. | Minor, before | ₦0 |
+| At least 75% of documenting service points affected — **blocking** | 421 | Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps. | Major, before | ₦0 |
+| 50%–74% of documenting service points affected — **blocking** | 264 | Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps. | Moderate, before | ₦0 |
 
 #### Staff-willingness support gap
 
 22 of 2,806 facilities (0.8%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| Unwilling | 13 | Support change management through the state/facility TA pathway. | Minor | ₦0 |
-| Very unwilling | 9 | Support change management through the state/facility TA pathway. | Minor | ₦0 |
+| Unwilling — **blocking** | 13 | Support change management through the state/facility TA pathway. | Moderate, before | ₦0 |
+| Very unwilling — **blocking** | 9 | Support change management through the state/facility TA pathway. | Major, before | ₦0 |
 
 ### Data Use & Reporting
 
@@ -308,31 +332,31 @@ Conditions are listed commonest-first within their area. **Blocking** conditions
 
 499 of 2,806 facilities (17.8%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| One structured data-use mechanism — *adequate* | 461 | Use EMR dashboards and routine performance meetings to review data and track actions. | Minor | ₦0 |
-| Data rarely used or no structured mechanism | 38 | Use EMR dashboards and routine performance meetings to review data and track actions. | Minor | ₦0 |
+| One structured data-use mechanism — *adequate* | 461 | Use EMR dashboards and routine performance meetings to review data and track actions. | Minor, before | ₦0 |
+| Data rarely used or no structured mechanism — **blocking** | 38 | Use EMR dashboards and routine performance meetings to review data and track actions. | Major, before | ₦0 |
 
 #### Data-validation gap
 
 401 of 2,806 facilities (14.3%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| No validation meetings | 305 | Use EMR data checks and routine performance meetings to validate data and track actions. | Minor | ₦0 |
-| Quarterly validation meetings — *adequate* | 52 | Use EMR data checks and routine performance meetings to validate data and track actions. | Minor | ₦0 |
-| Validation meetings occur without a structured schedule | 44 | Use EMR data checks and routine performance meetings to validate data and track actions. | Minor | ₦0 |
+| No validation meetings — **blocking** | 305 | Use EMR data checks and routine performance meetings to validate data and track actions. | Major, before | ₦0 |
+| Quarterly validation meetings — **blocking**, *adequate* | 52 | Use EMR data checks and routine performance meetings to validate data and track actions. | Moderate, before | ₦0 |
+| Validation meetings occur without a structured schedule — **blocking** | 44 | Use EMR data checks and routine performance meetings to validate data and track actions. | Major, before | ₦0 |
 
 #### Report-review support gap
 
 492 of 2,806 facilities (17.5%)
 
-| Condition | Facilities | Action | When | Cost |
+| Condition | Facilities | Action | Urgency | Unit cost |
 | --- | ---: | --- | --- | ---: |
-| Reports never discussed because no validation meeting occurs | 305 | Use EMR reports in routine performance meetings to agree and track actions. | Minor | ₦0 |
-| Reports are sometimes discussed — *adequate* | 172 | Use EMR reports in routine performance meetings to agree and track actions. | Minor | ₦0 |
-| Reports are rarely discussed | 13 | Use EMR reports in routine performance meetings to agree and track actions. | Minor | ₦0 |
-| Reports are never discussed | 2 | Use EMR reports in routine performance meetings to agree and track actions. | Minor | ₦0 |
+| Reports never discussed because no validation meeting occurs — **blocking** | 305 | Use EMR reports in routine performance meetings to agree and track actions. | Major, before | ₦0 |
+| Reports are sometimes discussed — **blocking**, *adequate* | 172 | Use EMR reports in routine performance meetings to agree and track actions. | Moderate, before | ₦0 |
+| Reports are rarely discussed — **blocking** | 13 | Use EMR reports in routine performance meetings to agree and track actions. | Moderate, before | ₦0 |
+| Reports are never discussed — **blocking** | 2 | Use EMR reports in routine performance meetings to agree and track actions. | Major, before | ₦0 |
 
 ## What this still implies for the model
 
@@ -341,5 +365,5 @@ The gap area is now a real level — an id, a label and a fixed order, carried a
 | | Today | Needs |
 | --- | --- | --- |
 | Adequate conditions | counted as gaps, priced at ₦0 | a flag on the condition, so a facility doing the thing is not filed as a problem |
-| Non-blocking domains | every condition `partial` in three of four domains | an area-level reading that can say why a domain band is what it is |
+| Readiness outside infrastructure | Major gaps in three domains never move a band | a decision on whether they should (data query E) |
 

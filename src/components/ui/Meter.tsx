@@ -221,11 +221,14 @@ export function BandCards({
   counts,
   unit,
   showPercent = false,
+  labels = BAND_LABEL,
   className,
 }: {
   counts: Record<Band, number>;
   unit?: string;
   showPercent?: boolean;
+  /** The band names, where the band is not readiness (`MATURITY_LABEL`). */
+  labels?: Record<Band, string>;
   className?: string;
 }) {
   const order: Band[] = ['ready', 'moderately_ready', 'not_ready'];
@@ -262,7 +265,7 @@ export function BandCards({
           </div>
 
           <p className="mono mt-2 text-tick font-bold uppercase leading-tight tracking-[0.07em]">
-            {BAND_LABEL[band]}
+            {labels[band]}
           </p>
         </div>
       ))}

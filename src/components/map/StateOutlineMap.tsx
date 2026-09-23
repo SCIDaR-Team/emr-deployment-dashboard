@@ -296,7 +296,7 @@ export function StateOutlineMap({
             // the base map's own version of the same border.
             strokeWidth={bandFill ? hairline * 2 : hairline * 2.6}
             strokeLinejoin="round"
-            aria-label={`${stateName}${datum.band ? `, ${BAND_LABEL[datum.band]}` : ', no data'}`}
+            aria-label={`${stateName}, ${datum.bandLabel ?? (datum.band ? BAND_LABEL[datum.band] : 'no data')}`}
           />
         </g>
 

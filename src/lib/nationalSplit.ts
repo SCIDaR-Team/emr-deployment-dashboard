@@ -18,13 +18,12 @@ export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = {"not_ready":744,
 export const NATIONAL_TOTAL = 2806;
 
 /**
- * Actions the source records and does not price — Query A, all of them routine
- * device maintenance.
+ * Facility actions the source records and does not price — routine device
+ * maintenance, naming an EMR focal person, and the lockable-door checks the
+ * sheet leaves "before costing".
  *
- * Generated rather than written into the footer as an adjective, for the reason
- * `COVERAGE.facilities` is generated: the front door states that its costs are
- * incomplete, and how incomplete they are must not be able to drift from the
- * dataset saying so. It read "a few critical actions" while the figure was 332;
- * the revised model made it 2,274, and minor rather than critical.
+ * Generated rather than written into the footer as an adjective: the front
+ * door states that its costs are incomplete, and how incomplete they are must
+ * not be able to drift from the dataset saying so.
  */
-export const NATIONAL_UNPRICED_ACTIONS: number = 2274;
+export const NATIONAL_UNPRICED_ACTIONS: number = 4654;

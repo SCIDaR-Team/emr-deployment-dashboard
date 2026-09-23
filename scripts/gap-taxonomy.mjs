@@ -19,29 +19,29 @@ import { dirname, join } from 'node:path';
 import {
   parseAssessmentCsv,
   extractCatalogue,
-  catalogueInterventions,
+  conditionInRow,
   gapAreaId,
   gapValueInRow,
   interventionsCost,
   interventionsInRow,
   DOMAINS,
-  HORIZONS,
-  COL,
 } from './assessment-source.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SOURCE = 'Revised costing model and roadmap - List of gaps and interventions per facility.csv';
+const SOURCE = 'List of gaps and interventions per facility.csv';
 const OUT = join(ROOT, 'docs', 'GAP_TAXONOMY.md');
 
 const naira = (n) => `₦${Math.round(n).toLocaleString('en-NG')}`;
 const pct = (n, d) => `${((100 * n) / d).toFixed(1)}%`;
 
 const HORIZON_SHORT = {
-  critical: 'Critical',
   major: 'Major',
+  moderate: 'Moderate',
   minor: 'Minor',
   long_term: 'Long-term',
 };
+
+const PHASE_SHORT = { before: 'before', during: 'during', after: 'after' };
 
 /**
  * Conditions that describe an **acceptable** state and are still recorded as
@@ -49,7 +49,7 @@ const HORIZON_SHORT = {
  *
  * Hand-listed because no column marks them: "Formal quarterly maintenance" and
  * "No formal maintenance arrangement" are both `Device-maintenance` values and
- * both fire the same ₦90,000 action. Reading which is which needs the sentence,
+ * both carry a Minor urgency. Reading which is which needs the sentence,
  * not the schema — so the judgement is written down here where it can be argued
  * with, rather than inferred somewhere it cannot.
  */
@@ -77,7 +77,8 @@ const ADEQUATE = new Set([
 
 const text = readFileSync(join(ROOT, SOURCE), 'utf8');
 const { blocks, rows } = parseAssessmentCsv(text);
-const catalogue = extractCatalogue(rows, blocks);
+const { gaps: catalogue, actions: actionTypes } = extractCatalogue(rows, blocks);
+const actionById = new Map(actionTypes.map((a) => [a.id, a]));
 const N = rows.length;
 
 /**
@@ -91,19 +92,17 @@ const N = rows.length;
  */
 const key = (b) => `${b.domain}|${gapAreaId(b.subDomain)}`;
 const gapKey = (g) => `${g.domain}|${g.area}`;
-const findGap = (subDomain, label) =>
-  catalogue.find((g) => g.area === gapAreaId(subDomain) && g.label === label);
-
-/** Facilities carrying each condition, and each area. */
+/** Facilities under each condition (unrecorded ones included), and facilities
+ *  with a recorded gap in each area. */
 const conditionCount = new Map();
 const areaCount = new Map();
 /**
  * Money, accumulated per facility rather than derived from the catalogue.
  *
- * The revised costing model prices four conditions more than one way, so
- * `count × price` is no longer defined. Everything below sums what the rows
- * actually ask for, which is also what makes these totals agree with the
- * dashboard's.
+ * Facilities buy different quantities — two tablets here, five there — so
+ * `count × price` is not defined. Everything below sums what the rows actually
+ * ask for, including the work costed under "No gap recorded", which is what
+ * makes these totals agree with the dashboard's and the sheet's.
  */
 const conditionCost = new Map();
 const conditionUnpriced = new Map();
@@ -115,10 +114,10 @@ const mnBlock = blocks.find((b) => b.subDomain === 'Mobile-network feasibility')
 
 for (const row of rows) {
   for (const b of blocks) {
-    const value = gapValueInRow(row, b);
-    if (value === null) continue;
-    areaCount.set(key(b), (areaCount.get(key(b)) ?? 0) + 1);
-    const id = findGap(b.subDomain, value).id;
+    const condition = conditionInRow(row, b);
+    if (condition === null) continue;
+    if (condition.recorded) areaCount.set(key(b), (areaCount.get(key(b)) ?? 0) + 1);
+    const id = condition.id;
     conditionCount.set(id, (conditionCount.get(id) ?? 0) + 1);
 
     const { costNGN, unpriced } = interventionsCost(interventionsInRow(row, b));
@@ -149,7 +148,7 @@ const domainTotals = new Map(
       d.id,
       {
         areas: areas.length,
-        conditions: conditions.length,
+        conditions: conditions.filter((g) => g.recorded).length,
         instances: areas.reduce((a, b) => a + (areaCount.get(key(b)) ?? 0), 0),
         cost: conditions.reduce((a, g) => a + costOf(g), 0),
         unpriced: conditions.reduce((a, g) => a + (conditionUnpriced.get(g.id) ?? 0), 0),
@@ -161,11 +160,12 @@ const domainTotals = new Map(
 const grandCost = [...domainTotals.values()].reduce((a, x) => a + x.cost, 0);
 const grandInstances = [...domainTotals.values()].reduce((a, x) => a + x.instances, 0);
 const grandUnpriced = [...domainTotals.values()].reduce((a, x) => a + x.unpriced, 0);
+const recorded = catalogue.filter((g) => g.recorded);
 const adequate = catalogue.filter((g) => ADEQUATE.has(g.id));
 const adequateInstances = adequate.reduce((a, g) => a + (conditionCount.get(g.id) ?? 0), 0);
 const adequateCost = adequate.reduce((a, g) => a + costOf(g), 0);
 
-/** Areas that fund nothing at all — the revised model's largest single move. */
+/** Areas that fund nothing at all. */
 const unfundedAreas = [...new Set(blocks.map(key))].filter(
   (k) =>
     catalogue
@@ -173,8 +173,19 @@ const unfundedAreas = [...new Set(blocks.map(key))].filter(
       .every((g) => costOf(g) === 0 && (conditionUnpriced.get(g.id) ?? 0) === 0),
 );
 
-/** Conditions the sheet costs more than one way. */
-const multiVariant = catalogue.filter((g) => g.variants.length > 1);
+/** Action types bought by the unit, with how many units and facilities. */
+const unitTotals = new Map();
+for (const row of rows) {
+  for (const b of blocks) {
+    for (const iv of interventionsInRow(row, b)) {
+      if (!iv.unit) continue;
+      const t = unitTotals.get(iv.id) ?? { units: 0, facilities: 0 };
+      t.units += iv.quantity;
+      t.facilities += 1;
+      unitTotals.set(iv.id, t);
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Write
@@ -213,7 +224,7 @@ for (const d of DOMAINS) {
   );
 }
 w(
-  `| **All four** | **${blocks.length}** | **${catalogue.length}** | **${grandInstances.toLocaleString()}** | **${naira(grandCost)}** |`,
+  `| **All four** | **${blocks.length}** | **${recorded.length}** | **${grandInstances.toLocaleString()}** | **${naira(grandCost)}** |`,
 );
 w();
 w('*Gap instances* are (facility × area) pairs, not facilities: a facility');
@@ -239,7 +250,7 @@ w(
 );
 w();
 w(
-  `Two whole domains fall to zero this way: every condition in Workforce Capacity and Data Use & Reporting still fires an action, and every one of those actions is priced ₦0. The gaps are real and counted; what changed is that closing them is no longer costed here — as shared programme work rather than a facility line, which is also what removed the satellite double count described below.`,
+  `Three whole domains fall to zero this way: every condition in Workforce Capacity, Workflow & Transition and Data Use & Reporting that fires an action fires one priced ₦0 or left unpriced. The gaps are real and counted; closing them is not costed here — as shared programme work rather than a facility line, which is also what removed the satellite double count described below. All ${naira(grandCost)} is Technical Infrastructure.`,
 );
 w();
 
@@ -257,7 +268,7 @@ w();
 w('### 3. Adequate conditions are still counted as gaps');
 w();
 w(
-  `${adequate.length} of the ${catalogue.length} conditions describe a facility that is *doing the thing* and still record a gap — "Formal quarterly maintenance", "Issues are usually resolved within 24–48 hours", "Training within 6 months and foundational".`,
+  `${adequate.length} of the ${recorded.length} conditions describe a facility that is *doing the thing* and still record a gap — "Formal quarterly maintenance", "Issues are usually resolved within 24–48 hours", "Training within 6 months and foundational".`,
 );
 w(
   `Together: ${adequateInstances.toLocaleString()} gap instances and ${naira(adequateCost)}${grandCost ? ` (**${pct(adequateCost, grandCost)}** of the total)` : ''}.`,
@@ -272,38 +283,42 @@ for (const g of adequate.sort((a, b) => costOf(b) - costOf(a))) {
 }
 w();
 w(
-  'The revised pricing takes most of the money off these, which is the right move and not quite the whole one: they are *improvements* rather than *gaps*, and the taxonomy still has no place to say so — so "2,434 facilities have a device-maintenance gap" continues to include 160 that maintain their devices on a formal schedule.',
+  'The pricing takes most of the money off these, which is the right move and not quite the whole one: they are *improvements* rather than *gaps*, and the taxonomy still has no place to say so — so a count of facilities with a device-maintenance gap includes the ones that maintain their devices on a formal schedule.',
 );
 w();
 
-w('### 4. Severity still cannot explain three of the four domains');
+w('### 4. Severity reaches every domain; readiness reads one');
 w();
 const blockingAreas = [...new Set(blocks.map(key))].filter((k) =>
-  catalogue.some((g) => gapKey(g) === k && g.severity === 'blocking'),
+  catalogue.some((g) => gapKey(g) === k && g.recorded && g.severity === 'blocking'),
 );
+const techBlocking = blockingAreas.filter((k) => k.startsWith('technical_infrastructure|'));
 w(
-  `A gap's severity is read off the urgency of the action it triggers: critical or major blocks deployment, minor and long-term do not. Only **${blockingAreas.length} of the ${blocks.length} areas** ever produce a blocking condition — ${blockingAreas.map(areaLabelOf).join(', ')}, all of them in Technical Infrastructure.`,
+  `A gap's severity is read off the urgency of the action it triggers: Major or Moderate blocks, Minor and Long-term do not. **${blockingAreas.length} of the ${blocks.length} areas** produce a blocking condition — ${blockingAreas.map(areaLabelOf).join(', ')} — and they now span all four domains.`,
 );
 w();
 w(
-  'Every condition in Workforce Capacity, Workflow & Transition and Data Use & Reporting is `partial` by construction. So a facility can be Not ready for workforce reasons and carry no gap capable of saying why. The band and the gap list are answering different questions in three domains out of four.',
+  `Readiness does not follow them. The sheet decides it from Technical Infrastructure alone, so only ${techBlocking.map(areaLabelOf).join(' and ')} can move a facility's band. A Major workforce, workflow or data-use gap is reported as that domain's highest severity and leaves readiness where it is — see data query E.`,
 );
 w();
 
-w('### 5. A condition can now be costed more than one way');
+w('### 5. Some actions are bought by the unit');
 w();
 w(
-  `${multiVariant.length} conditions no longer imply one set of actions — three in Power, one in Backup-power. The choice is real work rather than an inconsistency: a facility off the grid draws a ₦500,000 connection that a connected one does not, and a facility with some supply draws a ₦1,200,000 top-up where one with none draws the full ₦3,000,000 install. Partly working backup power is repaired at 136 facilities and left alone at 81.`,
+  'One cell can buy five tablets, or two desks and a fan, for one cost. The ingest splits each into unit actions — a type, a quantity and a unit price — and checks the split adds back to the cell. These are the unit-priced action types, across the dataset:',
 );
 w();
-w('| Condition | Facilities | Ways it is costed |');
-w('| --- | ---: | ---: |');
-for (const g of multiVariant) {
-  w(`| ${g.label} | ${(conditionCount.get(g.id) ?? 0).toLocaleString()} | ${g.variants.length} |`);
+w('| Action | Unit | Unit cost | Units | Facilities |');
+w('| --- | --- | ---: | ---: | ---: |');
+for (const [id, t] of [...unitTotals.entries()].sort((a, b) => b[1].units - a[1].units)) {
+  const a = actionById.get(id);
+  w(
+    `| ${a.label} | ${a.unit} | ${a.unitCostNGN === null ? '*unpriced*' : naira(a.unitCostNGN)} | ${t.units.toLocaleString()} | ${t.facilities.toLocaleString()} |`,
+  );
 }
 w();
 w(
-  'This is why a facility is costed from its own row rather than from the catalogue, and why `gapCostNGN` takes a variant. Costing a population by multiplying a count by a price would now be wrong by construction.',
+  'This is why a facility is costed from its own quantities (`FacilitySummary.actions`) rather than from the catalogue. Costing a population by multiplying a count of facilities by a price would be wrong by construction.',
 );
 w();
 
@@ -311,17 +326,30 @@ w('### 6. Pricing is flat inside most areas');
 w();
 const flat = [];
 for (const k of [...new Set(blocks.map(key))]) {
-  const gs = catalogue.filter((g) => gapKey(g) === k);
-  const costs = new Set(gs.flatMap((g) => g.variants.map((v) => interventionsCost(v).costNGN)));
-  if (gs.length > 1 && costs.size === 1 && [...costs][0] > 0) {
-    flat.push({ area: areaLabelOf(k), n: gs.length, cost: [...costs][0] });
+  const gs = catalogue.filter((g) => gapKey(g) === k && g.recorded);
+  // What a condition's actions cost per unit, as one signature. Quantities are
+  // the facility's, so a flat area is one whose conditions buy the same
+  // things at the same prices.
+  const signature = (g) =>
+    g.actions
+      .map((id) => actionById.get(id))
+      .map((a) => `${a.label}@${a.unitCostNGN}`)
+      .sort()
+      .join('|');
+  const sigs = new Set(gs.map(signature));
+  const priced = gs[0]?.actions.some((id) => (actionById.get(id).unitCostNGN ?? 0) > 0);
+  if (gs.length > 1 && sigs.size === 1 && priced) {
+    const unit = gs[0].actions
+      .map((id) => actionById.get(id))
+      .reduce((sum, a) => sum + (a.unitCostNGN ?? 0), 0);
+    flat.push({ area: areaLabelOf(k), n: gs.length, cost: unit });
   }
 }
 w(
-  `${flat.length} of the ${blocks.length} areas still charge the same amount for every condition inside them, so a facility where 0% of service points are adequate and one at 74% cost the same. Severity gradations inside these areas are therefore descriptive only — they change what the gap *says* and never what it *costs*, which is worth knowing before anyone builds a prioritisation on them.`,
+  `${flat.length} of the ${blocks.length} areas buy the same things at the same unit prices for every condition inside them. Where quantities are per unit, what differs between two facilities is how many they need, not which condition they carry.`,
 );
 w();
-w('| Area | Conditions | Cost, all of them |');
+w('| Area | Conditions | Unit prices, summed |');
 w('| --- | ---: | ---: |');
 for (const f of flat) w(`| ${f.area} | ${f.n} | ${naira(f.cost)} |`);
 w();
@@ -335,7 +363,7 @@ w();
 w('## The gaps, by domain');
 w();
 w(
-  'Conditions are listed commonest-first within their area. **Blocking** conditions are marked; everything else is partial. Cost is per facility, from the source. Where a condition is costed more than one way, every action it can fire is listed — they are alternatives, so the rows are not a sum.',
+  'Conditions are listed commonest-first within their area. **Blocking** conditions are marked; everything else is partial. Every action a condition can call for is listed with its urgency, its phase and its unit price — a facility takes the ones its own row asks for, in its own quantities, so the rows are not a sum. "No gap recorded" is the work the sheet costs where the gap column reads No gap; it is not counted as a gap.',
 );
 w();
 
@@ -354,7 +382,7 @@ for (const d of DOMAINS) {
     w();
     w(`${n.toLocaleString()} of ${N.toLocaleString()} facilities (${pct(n, N)})`);
     w();
-    w('| Condition | Facilities | Action | When | Cost |');
+    w('| Condition | Facilities | Action | Urgency | Unit cost |');
     w('| --- | ---: | --- | --- | ---: |');
     const conditions = catalogue
       .filter((g) => g.domain === d.id && g.area === gapAreaId(b.subDomain))
@@ -366,16 +394,16 @@ for (const d of DOMAINS) {
         ADEQUATE.has(g.id) ? '*adequate*' : null,
       ].filter(Boolean);
       const label = flags.length ? `${g.label} — ${flags.join(', ')}` : g.label;
-      /** Every action across every variant. Alternatives, so they are listed
-       *  and never added — see `catalogueInterventions`. */
-      const actions = catalogueInterventions(g);
+      /** Every action type the condition calls for anywhere. Listed, never
+       *  added — each facility takes its own. */
+      const actions = g.actions.map((id) => actionById.get(id));
       if (!actions.length) {
         w(`| ${label} | ${c.toLocaleString()} | *none recorded* | — | — |`);
         continue;
       }
       actions.forEach((iv, i) => {
         w(
-          `| ${i === 0 ? label : ''} | ${i === 0 ? c.toLocaleString() : ''} | ${iv.label} | ${HORIZON_SHORT[iv.horizon]} | ${iv.costNGN === null ? '*unpriced*' : naira(iv.costNGN)} |`,
+          `| ${i === 0 ? label : ''} | ${i === 0 ? c.toLocaleString() : ''} | ${iv.label} | ${HORIZON_SHORT[iv.horizon]}, ${PHASE_SHORT[iv.phase]} | ${iv.unitCostNGN === null ? '*unpriced*' : `${naira(iv.unitCostNGN)}${iv.unit ? ` / ${iv.unit}` : ''}`} |`,
         );
       });
     }
@@ -388,7 +416,7 @@ for (const d of DOMAINS) {
 w('## What this still implies for the model');
 w();
 w(
-  'The gap area is now a real level — an id, a label and a fixed order, carried at all four geographies, which is what lets a reader ask *which facilities have a power problem* rather than picking through 71 conditions. Two things below it are still unsaid.',
+  `The gap area is now a real level — an id, a label and a fixed order, carried at all four geographies, which is what lets a reader ask *which facilities have a power problem* rather than picking through ${recorded.length} conditions. Two things below it are still unsaid.`,
 );
 w();
 w('| | Today | Needs |');
@@ -397,11 +425,11 @@ w(
   '| Adequate conditions | counted as gaps, priced at ₦0 | a flag on the condition, so a facility doing the thing is not filed as a problem |',
 );
 w(
-  '| Non-blocking domains | every condition `partial` in three of four domains | an area-level reading that can say why a domain band is what it is |',
+  '| Readiness outside infrastructure | Major gaps in three domains never move a band | a decision on whether they should (data query E) |',
 );
 w();
 
 writeFileSync(OUT, `${out.join('\n')}\n`);
 console.log(
-  `Wrote docs/GAP_TAXONOMY.md — ${blocks.length} areas, ${catalogue.length} conditions, ${N} facilities.`,
+  `Wrote docs/GAP_TAXONOMY.md — ${blocks.length} areas, ${recorded.length} conditions, ${N} facilities.`,
 );

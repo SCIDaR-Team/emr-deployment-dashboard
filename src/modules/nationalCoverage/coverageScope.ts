@@ -65,7 +65,7 @@ export function scopedArea(scope: Scope): AreaProfile | null {
 }
 
 /**
- * The band an area shows.
+ * The band an area shows — its State Maturity reading, on the band scale.
  *
  * A one-line read of `coverage.band`, and it stays a named function because it
  * is the one place a band is resolved for painting — map fills, list rows, the
@@ -83,10 +83,9 @@ export function bandOf(area: AreaProfile): Band | null {
 /**
  * Whether anything in this population is unclassified.
  *
- * Asked rather than assumed. Every one of the 37 states carries an overall
- * band, so today this is false and the no-data key stays off
- * — but a state arriving unclassified would turn a polygon grey, and an
- * unexplained grey on a readiness map reads as the worst band rather than as an
+ * Asked rather than assumed. Six of the 37 states read Not assessed in the
+ * State Maturity sheet, so today this is true and the key names them — an
+ * unexplained grey on a band map reads as the worst band rather than as an
  * absent one. The legend reads this so that grey is explained the moment it
  * appears, rather than left to be guessed at — see the note on `Band` in
  * types.ts about null being a fourth state.
@@ -120,10 +119,10 @@ export function totalOf(counts: Record<Band, number>): number {
  * Computed from the state profiles rather than carried in the data, for the
  * same reason the band counts are: the pane's denominator has to be whatever
  * set of areas it is actually showing, and a figure baked at build time would
- * silently keep saying "of 27" if the workbook ever grew.
+ * silently keep saying "of 31" if the workbook ever grew.
  *
  * `scored` is the denominator and is returned rather than inferred, because it
- * is not `areas.length` — ten states carry no reading at all. Every count here
+ * is not `areas.length` — six states carry no reading at all. Every count here
  * is out of the states that have one.
  */
 export type LeadershipTally = {
@@ -147,8 +146,8 @@ export function countLeadershipBands(areas: AreaProfile[]): LeadershipTally {
        * Without this the failure is silent and confident, which is the worst
        * shape a data bug takes on a dashboard. `counts[band] += 1` on a value
        * that is not a band writes `NaN` to a key nobody reads, leaves all three
-       * real counts at zero, and renders four rows of "0 of 27" with full-width
-       * empty bars — while the heading above them still says 27, because the
+       * real counts at zero, and renders four rows of "0 of 31" with full-width
+       * empty bars — while the heading above them still says 31, because the
        * area *did* carry a reading. Every number on screen is then wrong and
        * nothing looks broken.
        *
@@ -165,7 +164,7 @@ export function countLeadershipBands(areas: AreaProfile[]): LeadershipTally {
             `${JSON.stringify(band)}, which is not a readiness band. This field ` +
             `once held "yes" / "partial" / "no" — a stale public/data/states.json ` +
             `is the likely cause, so hard-reload, and re-run \`npm run ` +
-            `data:leadership && npm run data:ingest\` if that does not clear it.`,
+            `data:maturity && npm run data:ingest\` if that does not clear it.`,
         );
       }
       bySubDomain[id] ??= { not_ready: 0, moderately_ready: 0, ready: 0 };

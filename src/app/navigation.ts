@@ -30,7 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/states',
     label: 'National Coverage',
     icon: 'Map',
-    description: 'All 37 states, by readiness band',
+    description: 'All 37 states, by maturity band',
     showOnHome: true,
   },
   {

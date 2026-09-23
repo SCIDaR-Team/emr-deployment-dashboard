@@ -12,6 +12,7 @@ import {
 } from '@/components/map';
 import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
+import { MATURITY_LABEL, MATURITY_NO_DATA } from '@/lib/bands';
 import { formatPercent } from '@/lib/format';
 import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
@@ -42,6 +43,15 @@ import { bandOf, hasUnbanded, resolveScope } from './coverageScope';
  * band, which is the same colour the state had on the national map a click
  * earlier. Going in changes the extent and the detail around it; it does not
  * change what is being said.
+ *
+ * ## The band is maturity
+ *
+ * Every fill, badge and count on this page is the State Maturity sheet's
+ * reading — six items (four governance answers, electricity, internet) scored
+ * and averaged into Mature / Moderately mature / Not mature. It is carried on
+ * the band scale, so it takes the band colours, and it is labelled in its own
+ * words throughout (`MATURITY_LABEL`). Six states are Not assessed and paint
+ * grey. See `build-maturity.mjs`.
  *
  * ## The unit here is the state, not the facility
  *
@@ -114,14 +124,13 @@ export default function NationalCoveragePage() {
     for (const state of states.data) {
       data[state.id] = {
         band: bandOf(state),
+        bandLabel: maturityLabel(state),
         n: 0,
         evidenceGrade: 'primary',
         label: state.name,
-        // The two rates the band was classified from, or the band's own name
-        // where a state carries neither. It used to fall back to an LGA count,
-        // which is a fact about a level this page no longer has and was
-        // answering a question nobody hovering a readiness map is asking.
-        valueLabel: coverageRates(state) ?? READINESS_LABEL,
+        // The two access rates behind two of the six maturity items, or the
+        // measure's own name where a state carries neither.
+        valueLabel: coverageRates(state) ?? MAP_MEASURE,
       };
     }
     return data;
@@ -140,10 +149,11 @@ export default function NationalCoveragePage() {
     return (
       nationalMapData[scope.state.id] ?? {
         band: bandOf(scope.state),
+        bandLabel: maturityLabel(scope.state),
         n: 0,
         evidenceGrade: 'primary',
         label: scope.state.name,
-        valueLabel: coverageRates(scope.state) ?? READINESS_LABEL,
+        valueLabel: coverageRates(scope.state) ?? MAP_MEASURE,
       }
     );
   }, [nationalMapData, scope.state]);
@@ -226,7 +236,11 @@ export default function NationalCoveragePage() {
    */
   const legend = (
     <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-      <MapLegend showNoData={hasUnbanded(states.data)} />
+      <MapLegend
+        labels={MATURITY_LABEL}
+        noDataLabel={MATURITY_NO_DATA}
+        showNoData={hasUnbanded(states.data)}
+      />
     </div>
   );
 
@@ -283,7 +297,7 @@ export default function NationalCoveragePage() {
               onZoomOut={() => go('/states')}
               crumbs={crumbs}
               overlay={legend}
-              exportScope={READINESS_LABEL}
+              exportScope={MAP_MEASURE}
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -295,7 +309,7 @@ export default function NationalCoveragePage() {
               onSelect={selectState}
               crumbs={crumbs}
               overlay={legend}
-              exportScope={READINESS_LABEL}
+              exportScope={MAP_MEASURE}
               onSearch={searchPlaces}
               className="h-full"
             />
@@ -325,12 +339,22 @@ export default function NationalCoveragePage() {
 }
 
 /**
- * The two figures the band was classified from, for the hover.
+ * The band's name in maturity's words, or "Not assessed" for the six states
+ * the sheet has not scored — never "No data", which reads as a gap in the
+ * dashboard rather than in the assessment.
+ */
+function maturityLabel(area: AreaProfile): string {
+  const band = bandOf(area);
+  return band ? MATURITY_LABEL[band] : MATURITY_NO_DATA;
+}
+
+/**
+ * The two access rates, for the hover.
  *
- * The band on its own says a state is Not ready and stops there; these say why,
- * and they are the only two inputs the coverage model has — so a reader
- * hovering Kano learns that 45% electricity access is what put it there, not
- * its network coverage or its staffing.
+ * The band on its own says a state is Not mature and stops there. Electricity
+ * and internet are two of the six items it was scored from, and the two that
+ * are measurements, so the hover prints them; the four governance answers are
+ * in the pane.
  *
  * Deliberately not colour-coded and deliberately not banded. These are
  * measurements sitting *beside* a judgement, and the tooltip renders this
@@ -351,17 +375,11 @@ function coverageRates(area: AreaProfile): string | null {
   );
 }
 
-/**
- * What the fills mean — a constant now, where it was a function of the lens.
- *
- * The Domain control could name a single domain or "the weakest of two", and
- * this label followed it onto the map's export. With one reading on the page
- * there is one thing for it to say.
- */
-const READINESS_LABEL = 'Overall readiness';
+/** What the fills mean — named on the map's export. */
+const MAP_MEASURE = 'State maturity';
 
 function subtitleFor(level: 'national' | 'state'): string {
   return level === 'national'
-    ? 'All 37 states, by readiness band'
-    : 'One state, by readiness band';
+    ? 'All 37 states, by maturity band'
+    : 'One state, by maturity band';
 }

@@ -1,27 +1,54 @@
 # The assessment dataset
 
-`Revised costing model and roadmap - List of gaps and interventions per
-facility.csv` — 2,806 assessed facilities across 12 states, every gap they
-carry, the intervention each gap calls for, when it is needed and what it costs.
+`List of gaps and interventions per facility.csv` — the "List of gaps and
+interventions" sheet of `ERA Dashboard dataset.xlsx`, exported by
+`npm run data:gaps`. 2,806 assessed facilities across 12 states, every gap they
+carry, the action each gap calls for, when it is needed and what it costs.
 
-This is the dataset behind `public/data/`. It replaced a synthetic stand-in,
-whose generator and documentation were retired once the ingest landed — both are
-in git history if the invented population is ever wanted again.
-
-**Two sources.** The revised costing sheet is the primary one, verified on
-2026-09-08. `ERA dataset_v4 (1).xlsx` — the raw ODK export the gaps CSV was
-summarised from — is joined on top of it for the rural/urban setting and each
+This is the dataset behind `public/data/`. `ERA dataset_v4 (1).xlsx` — the raw
+ODK export — is joined on top of it for the rural/urban setting and each
 facility's coordinate. See
 [Part 2 §7](#7-the-raw-odk-workbook--the-second-source).
 
-> **This is the revised costing model, and it supersedes an earlier one.** Same
-> 2,806 facilities, same geography, same four domain readings — and a different
-> answer to almost every question about money. The national total fell from
-> ₦16.26bn to ₦6.02bn, six of the twenty gap areas stopped being funded, the
-> second overall reading was withdrawn, and one condition can now be costed more
-> than one way. The superseded file is gone from the repository; where this doc
-> refers to it, it is explaining why something is shaped the way it is, never
-> sourcing a figure from it.
+## The current sheet (verified 2026-09-23)
+
+It keeps the earlier revision's facilities, geography, gap areas and overall
+readiness counts (744 / 1,892 / 170), and changes the rest:
+
+- **Four urgencies, renamed.** Major, Moderate, Minor and Long-term. The old
+  Critical is now Major and the old Major is Moderate. Minor is worded two ways —
+  a gap to fix *before* deployment and an action to complete *during* it — and
+  both are Minor. The ingest keeps the difference as each action's **phase**.
+- **Readiness is Technical Infrastructure alone.** Any Major infrastructure
+  action is Not ready, any Moderate is Moderately ready. It holds in 2,806 of
+  2,806 rows, and the ingest checks it.
+- **No readiness band per domain.** The four domain columns are now
+  `Highest <domain> gap severity`: Major, Moderate or Minor gap present, or none.
+  Each is the worst urgency written against the domain's recorded gaps. It
+  holds in every row except three, which are named in `SEVERITY_EXCEPTIONS`
+  and in [data query C](data-queries/README.md).
+- **Workforce, workflow and data-use actions are graded.** They used to be
+  uniformly Minor, during deployment. Now they are Major, Moderate or Minor, all
+  before deployment, and none of them enters readiness.
+- **₦7,255,194,333**, all in Technical Infrastructure, reconciled per facility,
+  per domain and per state against the workbook's Cost summary.
+- **Unit-priced actions.** Tablets (₦700,000 ÷ 3 each), socket points (₦3,000),
+  desks (₦35,000), patient and staff chairs (₦25,000), fans (₦60,000) and
+  lockable-door checks (unpriced). They are split out of their cells into unit
+  actions, and the split is checked against every cell's cost.
+- **Physical service-point** moved from Workflow & Transition to Technical
+  Infrastructure.
+- **Helper and scenario columns** — the "Router only", "Solar top-up + FibreX"
+  what-if readings — sit inside the power and connectivity blocks. The parser
+  steps past them. The dashboard does not read them yet.
+
+Everything the assessment team still needs to settle is in
+[`data-queries/`](data-queries/README.md).
+
+> **Everything below this line describes the earlier revision** (`Revised
+> costing model and roadmap`, verified 2026-09-08). Its structural notes about
+> positional parsing, gap areas and the raw ODK join still apply. Its figures,
+> urgency names, domain bands and variant costing do not.
 
 ---
 

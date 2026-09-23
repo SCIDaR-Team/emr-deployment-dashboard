@@ -15,7 +15,6 @@ import type {
   FacilityThemeId,
   FilterState,
   FunctionalityLevel,
-  ThemeId,
 } from '@/lib/types';
 
 interface FilterActions {
@@ -26,7 +25,6 @@ interface FilterActions {
   setFunding: (values: ('BHCPF' | 'non-BHCPF')[]) => void;
   setFunctionalityLevels: (levels: FunctionalityLevel[]) => void;
   setArchetypes: (bands: Band[]) => void;
-  setBandForTheme: (theme: ThemeId, bands: Band[]) => void;
   /** Point every readiness reading at another set of domains. The chosen bands
    *  stay put: the reader asked "which facilities are not ready", and changing
    *  the domains re-asks that question rather than starting over. */
@@ -52,7 +50,6 @@ const initialState: FilterState = {
   funding: [],
   functionalityLevels: [],
   archetypes: [],
-  bandByTheme: {},
   domains: [],
   gapAreas: [],
   search: '',
@@ -70,8 +67,6 @@ export const useFilterStore = create<FilterState & FilterActions>()(
       setFunding: (funding) => set({ funding }),
       setFunctionalityLevels: (functionalityLevels) => set({ functionalityLevels }),
       setArchetypes: (archetypes) => set({ archetypes }),
-      setBandForTheme: (theme, bands) =>
-        set((s) => ({ bandByTheme: { ...s.bandByTheme, [theme]: bands } })),
       // Nothing to move: `archetypes` holds the band selection whatever the
       // domains are, because `facilityBandUnder` reads the band *through* them.
       // Domain and Readiness are one filter with two controls.
@@ -133,14 +128,13 @@ export const useFilterStore = create<FilterState & FilterActions>()(
           s.functionalityLevels.length > 0 ||
           s.archetypes.length > 0 ||
           s.gapAreas.length > 0 ||
-          Object.values(s.bandByTheme).some((b) => b && b.length > 0) ||
           s.search.trim() !== ''
         );
       },
     }),
     {
       name: 'emr-filters',
-      version: 3,
+      version: 4,
       // v3 replaced `gaps` — a flat list of the conditions — with
       // `gapAreas`, the twenty areas above them. A v2 payload holds condition
       // ids, and mapping them up to their areas would silently widen the
@@ -153,7 +147,19 @@ export const useFilterStore = create<FilterState & FilterActions>()(
       // Spelled out rather than left to the default, which logs the discard as
       // an error in the console of every reader who had used a filter before
       // today.
-      migrate: () => initialState,
+      //
+      // v4 dropped `bandByTheme`, the link-only per-domain band filter: the
+      // revised sheet carries no readiness band per domain, only each domain's
+      // highest gap severity. A v3 payload is otherwise current, so it keeps
+      // everything else rather than losing the reader's filters for it.
+      migrate: (persisted, version) => {
+        if (version === 3 && persisted && typeof persisted === 'object') {
+          const rest = { ...(persisted as Record<string, unknown>) };
+          delete rest.bandByTheme;
+          return { ...initialState, ...rest } as FilterState & FilterActions;
+        }
+        return initialState as FilterState & FilterActions;
+      },
     },
   ),
 );

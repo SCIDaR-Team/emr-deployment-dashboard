@@ -88,25 +88,18 @@ export function worstBand(bands: (Band | null)[]): Band | null {
 const FACILITY_THEME_COUNT = 4;
 
 /**
- * How many published readiness columns a domain selection resolves to.
+ * How a domain selection reads — nothing, one domain, or several.
  *
- * The whole Domain feature turns on this. The dataset publishes six readiness
- * columns per facility — two overall readings and four per-domain ones — and
- * **nothing in this app may produce a seventh.** A selection either names one
- * of those columns or it does not, and this says which case you are in:
+ * It no longer changes the readiness reading: the source classifies readiness
+ * once, overall, and reports each domain as its highest gap severity rather
+ * than as a band (see `facilityBandUnder`). What it still decides is how the
+ * pane lays out the per-domain severities — one domain as a single split,
+ * several side by side — and what the subtitles say.
  *
  *   overall   nothing ticked, or all four ticked. All four is the same
- *             statement as none — the reader has narrowed to everything — so
- *             it falls back to the published overall reading rather than
- *             claiming the four domains compose into it. They do not: the
- *             overall EMR-use column is the technical infrastructure column,
- *             identically, in all 2,806 rows, and the other three domains are
- *             not in it.
- *   single    one ticked. That domain's own published column.
- *   multi     two or three ticked. **No published column answers this**, so no
- *             single band may be shown for it. Surfaces that need one band
- *             fall back to the published overall; the pane shows the selected
- *             domains side by side instead, which is the honest reading.
+ *             statement as none — the reader has narrowed to everything.
+ *   single    one ticked.
+ *   multi     two or three ticked.
  */
 export type DomainSelectionMode = 'overall' | 'single' | 'multi';
 
@@ -118,41 +111,28 @@ export function domainSelectionMode(
 }
 
 /**
- * A facility's readiness under the Domain filter. **The rule.**
+ * A facility's readiness. **The rule.**
  *
- * Everything the Domain control touches goes through here: the pane's counts,
- * the map's fills, the Gap filter, the badge on a list row. That is the point —
- * a count, a polygon's colour and a filtered list cannot disagree about what
- * "not ready" meant, because there is one function that decides it.
+ * Everything that paints or counts readiness goes through here: the pane's
+ * counts, the map's fills, the Readiness filter, the badge on a list row. That
+ * is the point — a count, a polygon's colour and a filtered list cannot
+ * disagree about what "not ready" meant, because there is one function that
+ * decides it.
  *
- * **Every value it returns is a column the assessment published.** It composes
- * nothing. It used to: with several domains ticked it returned the weakest of
- * their bands, on the assessment's principle that strength in one domain cannot
- * offset a gap in another. That principle is sound and the number it produced
- * was not — no such column exists in the source, so the figure could not be
- * checked against anything, and the page was showing a derived band beside
- * published ones in the same visual language.
+ * It is the facility's overall band, whatever the Domain filter says. It used
+ * to switch to a domain's own band when one domain was ticked, because the
+ * source published a readiness band per domain. The revised sheet does not: it
+ * classifies readiness once, from the Technical Infrastructure actions, and
+ * reports each domain as its *highest gap severity* — a different scale, shown
+ * as one. The Domain filter now narrows which gaps and costs are counted, and
+ * leaves readiness alone.
  *
- * So the three cases, per `domainSelectionMode`:
- *
- *   overall   the facility's published overall band.
- *   single    that domain's published band.
- *   multi     the published overall band again — a fallback, not an answer.
- *             Two ticked domains ask a question one swatch of colour cannot
- *             carry, and the pane answers it properly, one row per domain.
- *             Callers that can show more than one band should read
- *             `domainSelectionMode` and do so rather than calling this.
- *
- * The overall band and the four domain bands are on the same scale, so ticking
- * a domain narrows the question rather than switching to a different one, and a
- * point's colour means the same thing either way. That used to need an argument
- * — the source carried two overall readings and this had to choose between
- * them. It carries one now.
+ * `domains` stays in the signature so every caller keeps reading readiness
+ * through one function; it is unused on purpose.
  */
 export function facilityBandUnder(
   facility: FacilitySummary,
-  domains: readonly FacilityThemeId[],
+  _domains: readonly FacilityThemeId[],
 ): Band | null {
-  if (domainSelectionMode(domains) !== 'single') return facility.deploymentBand;
-  return facility.themeBands[domains[0]!] ?? null;
+  return facility.deploymentBand;
 }

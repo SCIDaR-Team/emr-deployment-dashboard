@@ -22,6 +22,11 @@ interface MapLegendProps {
    *  than a texture — the legend has to show whichever the map beneath it
    *  actually uses, or it is teaching the wrong vocabulary. */
   marks?: 'area' | 'point';
+  /** The band names, where the map's band is not readiness — the state maps
+   *  pass `MATURITY_LABEL`. */
+  labels?: Record<Band, string>;
+  /** What the grey swatch means on this map. */
+  noDataLabel?: string;
   className?: string;
 }
 
@@ -50,6 +55,8 @@ export function MapLegend({
   showSecondary = false,
   showNoData = true,
   marks = 'area',
+  labels = BAND_LABEL,
+  noDataLabel = 'No data',
   className,
 }: MapLegendProps) {
   const hatchId = useHatchPatternId();
@@ -79,7 +86,7 @@ export function MapLegend({
               <path d={bandMarkerPath(band, 7, 7, 5.4)} className={BAND_SWATCH_CLASS[band]} />
             )}
           </svg>
-          {BAND_LABEL[band]}
+          {labels[band]}
         </span>
       ))}
       {showNoData && (
@@ -96,7 +103,7 @@ export function MapLegend({
               stroke="rgb(0 0 0 / 0.12)"
             />
           </svg>
-          No data
+          {noDataLabel}
         </span>
       )}
       {showSecondary && (

@@ -153,6 +153,13 @@ export interface GeoDatum {
   /** Pre-formatted measure for the tooltip, e.g. "54.1% not ready". */
   valueLabel?: string;
   /**
+   * The band's name, where the caller's band is not a readiness band — the
+   * state maps show maturity on the band scale, and a Mature state must not
+   * hover as "Ready". Also names a null band ("Not assessed") where the caller
+   * knows why it is null. Falls back to `BAND_LABEL` / "No data".
+   */
+  bandLabel?: string;
+  /**
    * The number `step` was bucketed from, kept so a caller can print the scale
    * it actually fitted. `step` is lossy by design — five buckets — and a legend
    * reconstructed from buckets prints bounds the polygons were never coloured

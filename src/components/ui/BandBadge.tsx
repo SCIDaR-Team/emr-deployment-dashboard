@@ -53,6 +53,10 @@ interface BandBadgeProps {
   band: Band | null;
   size?: 'sm' | 'md';
   showIcon?: boolean;
+  /** The band names, where the band is not readiness (`MATURITY_LABEL`). */
+  labels?: Record<Band, string>;
+  /** What a null band says. */
+  noDataLabel?: string;
   className?: string;
 }
 
@@ -60,6 +64,8 @@ export function BandBadge({
   band,
   size = 'md',
   showIcon = true,
+  labels = BAND_LABEL,
+  noDataLabel = 'No data',
   className,
 }: BandBadgeProps) {
   if (!band) {
@@ -71,7 +77,7 @@ export function BandBadge({
           className,
         )}
       >
-        No data
+        {noDataLabel}
       </span>
     );
   }
@@ -90,7 +96,7 @@ export function BandBadge({
       )}
     >
       {showIcon && <Icon className={size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'} aria-hidden />}
-      {BAND_LABEL[band]}
+      {labels[band]}
     </span>
   );
 }

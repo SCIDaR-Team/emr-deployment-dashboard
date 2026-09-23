@@ -65,49 +65,49 @@ export type GapDomainId = ThemeId;
 export type GapAreaId = string;
 
 /**
- * What a gap does to its domain's band.
+ * What a gap does to readiness.
  *
- * `blocking` puts the domain in Not ready on its own; `partial` only pulls it
- * to Moderately ready. Read off the gap's urgency rather than declared — see
+ * `blocking` gaps call for a Major or Moderate action — the two urgencies the
+ * deployment band is computed from; `partial` gaps call only for Minor or
+ * Long-term work. Read off the gap's urgency rather than declared — see
  * `Horizon`.
  */
 export type GapSeverity = 'blocking' | 'partial';
 
 /**
- * When an intervention is meant to happen — the source's own four levels.
+ * When an action is meant to happen — the source's four urgency levels, worst
+ * first.
  *
- * Not the three-level scale the synthetic model used. `critical` and `major`
- * are exactly what `FacilitySummary.deploymentBand` is computed from, so
- * collapsing them would destroy the distinction the deployment reading rests
- * on. Ordered worst-first: every sort of gaps or interventions on screen uses
- * this order, so "most urgent" means one thing everywhere.
+ * `major` and `moderate` are exactly what `FacilitySummary.deploymentBand` is
+ * computed from: any Major Technical Infrastructure action is Not ready, any
+ * Moderate is Moderately ready. The sheet words Minor two ways — a gap to fix
+ * before deployment and an action to complete during it — and both are Minor;
+ * the difference is the action's `phase`, not a fifth urgency.
  */
-export type Horizon = 'critical' | 'major' | 'minor' | 'long_term';
+export type Horizon = 'major' | 'moderate' | 'minor' | 'long_term';
 
-/** One action against one gap. */
-export interface GapIntervention {
-  id: string;
-  label: string;
-  horizon: Horizon;
-  /**
-   * What the action costs, or `null` where the source does not price it.
-   *
-   * Null and zero are different claims and both occur. Zero is real — naming a
-   * staff member to lead EMR work costs nothing but attention. Null means *not
-   * yet priced*: 332 facilities carry a critical connectivity blocker whose fix
-   * cannot be costed until someone establishes which connection reaches the
-   * site. Nothing may collapse the second into the first, or a total presented
-   * as sourced will quietly absorb a blocker it does not cover.
-   */
-  costNGN: number | null;
-}
+/** When an action happens relative to go-live, from the sheet's own wording. */
+export type ActionPhase = 'before' | 'during' | 'after';
 
-/** One line of a rolled-up plan: an intervention, its quantity and its cost. */
+/**
+ * A domain's highest gap severity at one facility — the sheet's own column,
+ * and the only per-domain reading it carries.
+ *
+ * Not a readiness band. The source classifies readiness once, overall; it
+ * reports each domain as the worst gap in it. `none` is a domain with no gap.
+ */
+export type DomainSeverity = 'none' | 'minor' | 'moderate' | 'major';
+
+/** One line of a rolled-up plan: an action type, how many, and what it costs. */
 export interface DeploymentLine {
   id: string;
   label: string;
   domain: GapDomainId;
   horizon: Horizon;
+  phase: ActionPhase;
+  /** What one unit is — "tablet", "desk" — or null where the action is one per
+   *  facility, in which case `quantity` equals `facilityCount`. */
+  unit: string | null;
   unitCostNGN: number | null;
   quantity: number;
   facilityCount: number;
@@ -127,6 +127,8 @@ export interface GapTally {
   subDomain: string;
   label: string;
   severity: GapSeverity;
+  /** False for an area's "No gap recorded" condition — costed, not counted. */
+  recorded: boolean;
   facilityCount: number;
 }
 
@@ -134,15 +136,17 @@ export interface GapTally {
  *  priced part of it. */
 export interface DeploymentPlan {
   facilityCount: number;
-  /** Gap *instances*, not distinct gaps: one facility with four gaps is four. */
+  /** Recorded gap *instances*, not distinct gaps: one facility with four gaps
+   *  is four. */
   gapCount: number;
   costNGN: number;
   /**
    * Actions in scope that the source does not price.
    *
    * Carried beside the cost rather than folded into it, so any total covering
-   * one of them can say what it excludes. Zero almost everywhere; non-zero only
-   * where one of the 332 unpriced connectivity blockers is in scope.
+   * one of them can say what it excludes: routine device maintenance, naming
+   * an EMR focal person, and the lockable-door checks the sheet leaves
+   * "before costing".
    */
   unpricedInterventions: number;
   /**
@@ -153,6 +157,7 @@ export interface DeploymentPlan {
    * Both split the same `costNGN` above, so either one sums to it.
    */
   costByHorizon: Record<Horizon, number>;
+  costByPhase: Record<ActionPhase, number>;
   costByDomain: Record<GapDomainId, number>;
   gaps: GapTally[];
   lines: DeploymentLine[];
@@ -280,8 +285,8 @@ export interface CoverageMeasures {
  *
  * Everything here arrives already classified from a model outside this
  * dashboard — that is the whole point of the type. The facility-derived fields
- * on `AreaProfile` (`archetypeDistribution`, `themeDistribution`, and the
- * `band`/`themeBands` rolled up from them) are a *different* claim: they count
+ * on `AreaProfile` (`deploymentDistribution`, `severityDistribution`, and the
+ * `deploymentBand` rolled up from them) are a *different* claim: they count
  * what a survey found in the clinics. This one describes the state itself.
  *
  * They are kept apart so no page can quietly show one and imply the other. A
@@ -289,7 +294,12 @@ export interface CoverageMeasures {
  * readings can be correct — they are answers to different questions.
  */
 export interface CoverageProfile {
-  /** Overall readiness for the area. */
+  /**
+   * The state's maturity, from the State Maturity sheet — Mature / Moderately
+   * mature / Not mature written as ready / moderately_ready / not_ready, and
+   * labelled with `MATURITY_LABEL` wherever it is shown. Null on the six
+   * states the sheet has not assessed, on every LGA and on the nation.
+   */
   band: Band | null;
   /** Readiness per coverage domain. Never derived from `measures`. */
   themeBands: Record<CoverageThemeId, Band | null>;
@@ -298,7 +308,7 @@ export interface CoverageProfile {
   /** The subscription counts behind `internetSubscriptionPct`, where the source
    *  has them. Null on every area it does not — see `InternetSubscriptions`. */
   internet: InternetSubscriptions | null;
-  /** A band per leadership sub-domain. Null wherever the Leadership band is
+  /** A band per leadership sub-domain. Null wherever the maturity band is
    *  null — see `LeadershipBands`. */
   leadership: LeadershipBands | null;
 }
@@ -307,7 +317,7 @@ export interface CoverageProfile {
 // Leadership & Governance
 // ---------------------------------------------------------------------------
 
-/** The four things the leadership workbook asks of a state. */
+/** The four governance items the State Maturity sheet scores a state on. */
 export type LeadershipSubDomainId =
   | 'governance_structure'
   | 'data_governance_policy'
@@ -328,42 +338,37 @@ export type LeadershipSubDomainId =
  * are *measurements* — 45% is a quantity, and calling it Not ready would be
  * inventing a threshold the source never set.
  *
- * These are not measurements. The leadership workbook scores each answer Yes 5
- * / Partial 3 / No 1 and bands a state by cutting the mean of the four at >= 4
- * and >= 3 — on that same 1-5 scale. So a single answer put through the sheet's
- * own cut points lands exactly on a band name:
+ * These are not measurements. The State Maturity sheet scores each answer Yes
+ * 5 / Partial 3 / No 1 and bands a state by cutting the mean of its six items
+ * at >= 4 and >= 3 — on that same 1-5 scale. So a single answer put through the
+ * sheet's own cut points lands exactly on a band name:
  *
  *     Yes -> 5 -> Ready     Partial -> 3 -> Moderately ready     No -> 1 -> Not ready
  *
  * The band is therefore the source's own classification of that sub-domain, not
- * a reading this codebase has invented, and `build-leadership.mjs` derives it
+ * a reading this codebase has invented, and `build-maturity.mjs` derives it
  * by calling the sheet's banding function rather than by writing a table. The
  * Yes/Partial/No wording is dropped entirely: carrying both would leave the
  * reader wondering which is authoritative, and the page can now speak one
  * vocabulary from the map down to the last row.
  *
- * ## The four do not roll up to the fifth, and the pane must say so
+ * ## The four do not roll up to the state's band
  *
- * The state's own band is the *average* of these four, which is neither of this
- * codebase's rollup rules. `worstBand` disagrees with the sheet on 7 of 27
- * states: Rivers is Ready with a Not-ready data governance policy, Kano and
- * Lagos are Ready over Moderately-ready rows. That is a finding, not a
- * contradiction — a state can be ready overall and still be missing the policy
- * that governs the record — but it only reads that way if the block says the
- * source averages them. Nothing may rebuild the state band from these.
- *
- * What *is* guaranteed, and asserted at build time in 27 of 27 rows, is
- * containment: the state's band always sits between the weakest and strongest
- * of its four. A badge outside its own rows would be a broken source.
+ * The state's maturity band is the *average* of these four and the two access
+ * scores, which is neither of this codebase's rollup rules: Rivers is Mature
+ * with a No on its data governance policy. That is a finding, not a
+ * contradiction — a state can be mature overall and still be missing the
+ * policy that governs the record. Nothing may rebuild the state band from
+ * these.
  *
  * ## Still no score
  *
  * The mean the workbook bands is checked in the build script and dropped there.
  * "Bands, not scores" is a type-level invariant — there is no `number` in
- * `AreaProfile` to average — so nothing downstream can rank states by 2.5
- * against 2.0, a distance four answers cannot support.
+ * `AreaProfile` to average — so nothing downstream can rank states by 2.67
+ * against 2.33, a distance six answers cannot support.
  *
- * Null on every area with no reading: the ten unscored states, every LGA, and
+ * Null on every area with no reading: the six unscored states, every LGA, and
  * the nation. Null is *not measured*, which is not Not ready.
  */
 export type LeadershipBands = Record<LeadershipSubDomainId, Band>;
@@ -491,46 +496,42 @@ export interface FacilitySummary {
    * model withdrew that column and brought this one onto the same definition as
    * the technical infrastructure reading, so there is one number here now.
    *
-   * It is a function of the blocking gaps, exactly: any critical gap is Not
-   * ready, any major gap Moderately ready, neither is Ready. The ingest checks
-   * that against the sheet in all 2,806 rows.
+   * It is a function of the Technical Infrastructure actions, exactly: any
+   * Major is Not ready, any Moderate Moderately ready, neither is Ready. Gaps
+   * in the other three domains do not enter it. The ingest checks that against
+   * the sheet in all 2,806 rows.
    */
   deploymentBand: Band | null;
-  /** Band per domain. All four are `readiness for EMR use` — there is no
-   *  per-domain deployment reading anywhere in the source. */
-  themeBands: Record<FacilityThemeId, Band | null>;
+  /** Each domain's highest gap severity. Not a band — see `DomainSeverity`. */
+  domainSeverity: Record<FacilityThemeId, DomainSeverity>;
 
   /**
    * The gap ids this facility carries. **The reason the bands above are what
    * they are** — not a separate finding beside them.
    *
-   * Every gap is in `GAP_BY_ID`, and the catalogue carries its interventions,
-   * urgencies and prices — so the ids, with `gapVariants` beside them, are
-   * enough to render the facility's whole gap list. Nothing is quantity-scaled,
-   * so an action costs the same here as anywhere else it appears.
+   * Every gap is in `GAP_BY_ID`, and the catalogue carries the action types
+   * it can call for — so the ids, with `actions` beside them, are enough to
+   * render the facility's whole gap list. Includes an area's "No gap recorded"
+   * condition where the sheet costs work without a gap; see `GapDef.recorded`.
    */
   gaps: string[];
   /**
-   * Which way each gap is costed here, for the four conditions the sheet costs
-   * more than one way. **Sparse**: a gap absent from this map is on variant 0,
-   * which is every gap at most facilities.
+   * Action type id → how many this facility needs.
    *
-   * It exists because the revised costing model stopped pricing a condition
-   * identically everywhere — a facility with no power draws a ₦3,000,000 solar
-   * install, and only one that is also off-grid draws the ₦500,000 connection
-   * behind it. Costing a facility from the catalogue alone would charge both
-   * the same. Pass it to `gapCostNGN` and `gapInterventions` wherever the
-   * subject is a facility.
+   * Quantities differ facility to facility — two tablets here, five there, three
+   * desks and a fan somewhere else — so they live on the facility and the unit
+   * prices live in the catalogue. `facilityGapActions` joins the two; use it
+   * wherever the subject is a facility.
    */
-  gapVariants: Record<string, number>;
+  actions: Record<string, number>;
+  /** Recorded gaps — the "No gap recorded" conditions are not counted. */
   gapCount: number;
-  /** What closing them costs: the sum of `gaps`, so the figure and the list
+  /** What closing them costs: the sum of `actions`, so the figure and the list
    *  beneath it cannot disagree. */
   costNGN: number;
   /** The same total, split by domain. Matches the source's own subtotals. */
   costByDomain: Record<GapDomainId, number>;
-  /** Actions this facility needs that the source does not price. Non-zero for
-   *  332 facilities, all of them a critical connectivity blocker. */
+  /** Actions this facility needs that the source does not price. */
   unpricedInterventions: number;
 
   /** Banded, as the source collects it: `<10`, `11-30`, `31-50`, `>50`. */
@@ -568,24 +569,22 @@ export interface InvestmentItem {
   themeId: ThemeId;
   category: InvestmentCategory;
   /**
-   * When the source says the action has to happen — the sheet's own four-level
-   * "when action is needed", carried through rather than reduced.
-   *
-   * This used to be a three-level `priority` of our own invention, mapping
-   * critical *and* major onto "high". That threw away the one distinction the
-   * deployment band is computed from (`critical > 0` is Not ready; `major > 0`
-   * alone is Moderately ready), and it labelled `minor` — 24 of the 30 national
-   * lines and the largest cost bucket — "medium", which reads as discretionary.
-   * The plan is phased by this field, so the plan states it in the source's
-   * vocabulary.
+   * How urgent the source says the action is — the sheet's four levels, carried
+   * through rather than reduced. Major and Moderate are the two the deployment
+   * band is computed from.
    */
   horizon: Horizon;
-  /** Units required across the geography this item belongs to. */
+  /** Before, during or after go-live, from the same cell's wording. */
+  phase: ActionPhase;
+  /** Units required across the geography this item belongs to — tablets,
+   *  desks, socket points — or facilities where `unit` is null. */
   quantity: number;
+  /** What one unit is, or null where the action is one per facility. */
+  unit: string | null;
   unitCostNGN: number | null;
   totalCostNGN: number | null;
-  /** Facilities in scope that contributed to this line's quantity. */
-  facilityCount?: number;
+  /** Facilities in scope that need this action. */
+  facilityCount: number;
 }
 
 /** Which rollout wave a geography falls into. Waves are ordered; wave 1 goes
@@ -627,19 +626,13 @@ export interface AreaProfile {
    * All zeroes for a desk-reviewed state, which has no facility rows behind it.
    */
   deploymentDistribution: BandDistribution;
-  /** Band per domain. All four are EMR-use readings. */
-  themeBands: Record<ThemeId, Band | null>;
   /**
-   * How this area's facilities split across the bands *within* each domain.
-   *
-   * Carried alongside `themeBands` rather than derived from it, because the
-   * dominant band alone flattens the finding: nationally every domain resolves
-   * to Moderately ready, and five identical rows say nothing about
-   * infrastructure failing three times as often as workforce. The split is what
-   * separates them. All zeroes for a desk-reviewed state, which has a
-   * state-level reading and no facilities under it.
+   * How this area's facilities split across each domain's highest gap
+   * severity. A count per severity, never rolled up into a band — the source
+   * reports domains as severities and classifies readiness only overall. All
+   * zeroes for a desk-reviewed state.
    */
-  themeDistribution: Record<ThemeId, BandDistribution>;
+  severityDistribution: Record<ThemeId, Record<DomainSeverity, number>>;
   /** The area's own overall readiness — the dominant band of the distribution
    *  above. */
   deploymentBand: Band | null;
@@ -676,24 +669,11 @@ export interface FilterState {
   funding: ('BHCPF' | 'non-BHCPF')[];
   functionalityLevels: FunctionalityLevel[];
   /**
-   * Readiness bands the Readiness control has ticked.
-   *
-   * Selects on the facility's overall band when no domain is ticked, and on the
-   * ticked domain's band otherwise — see `facilityBandUnder`, which is the one
-   * place that decision is made.
+   * Readiness bands the Readiness control has ticked — always the facility's
+   * overall band, the only readiness reading the source carries. See
+   * `facilityBandUnder`.
    */
   archetypes: Band[];
-  bandByTheme: Partial<Record<ThemeId, Band[]>>;
-  /**
-   * Which domains the Gap filter is asking about.
-   *
-   * Empty is the absence of a domain rather than a domain of its own, and under
-   * it Gap reads the facility's overall band (`archetypes`). Name one or more
-   * and Gap reads those domains' bands instead (`bandByTheme`), as one OR
-   * group: two ticked domains ask for facilities carrying the gap in *either*,
-   * the same way two ticked functionality levels do. See `filterFacilities`,
-   * which is where that grouping is applied.
-   */
   /** The Domain control's selection. Holds `DomainId`, not `ThemeId`: the
    *  control is shared with National Coverage, which offers Leadership &
    *  Governance. Each page narrows this to what it can read — see `DomainId`. */

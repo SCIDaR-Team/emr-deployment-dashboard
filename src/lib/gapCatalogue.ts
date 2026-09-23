@@ -3,9 +3,12 @@
  *
  * The gap dictionary, extracted from the assessment dataset rather than
  * declared. Three levels, as the source has them: **domain → gap area →
- * condition**. Every entry in `GAPS` is a condition the survey actually
- * recorded, sitting in one of the twenty areas and carrying the interventions
- * it triggers at the urgency and price the sheet gives them.
+ * condition** — and beside them the **action types** a condition can call
+ * for, each with its urgency, its phase, its unit and its unit price.
+ *
+ * A facility's own quantities are not here. They are on the facility
+ * (`FacilitySummary.actions`), because no two facilities need quite the same
+ * number of tablets or desks; `facilityGapActions` joins the two.
  *
  * Emitted rather than fetched: every control that offers a gap needs the whole
  * list before it can render one, so a network round-trip would only buy a
@@ -16,6 +19,7 @@
  */
 
 import type {
+  ActionPhase,
   Band,
   FacilityThemeId,
   GapAreaId,
@@ -24,30 +28,34 @@ import type {
   Horizon,
 } from './types';
 
-/** Urgencies, worst-first. The source's own four, not a three-level
- *  approximation of them: major and critical are exactly what the deployment
- *  band is computed from. */
-export const HORIZONS: Horizon[] = ["critical","major","minor","long_term"];
+/** Urgencies, worst-first. The source's four: Major and Moderate are what the
+ *  deployment band is computed from. */
+export const HORIZONS: Horizon[] = ["major","moderate","minor","long_term"];
 
+/**
+ * An urgency and when it falls. Minor spans two moments — the sheet has minor
+ * gaps to fix *before* deployment and minor actions to complete *during* it —
+ * and an action's own `phase` says which.
+ */
 export const HORIZON_LABEL: Record<Horizon, string> = {
-  critical: "Critical — before deployment",
   major: "Major — before deployment",
-  minor: "Minor — during deployment",
+  moderate: "Moderate — before deployment",
+  minor: "Minor — before or during deployment",
   long_term: "Long-term — after deployment",
 };
 
-/** The short form, for a chip beside a gap. */
+/** The short form, for a chip beside an action. */
 export const HORIZON_SHORT: Record<Horizon, string> = {
-  critical: "Critical",
   major: "Major",
+  moderate: "Moderate",
   minor: "Minor",
   long_term: "Long-term",
 };
 
-/** What an intervention's urgency does to its domain's band. */
+/** What an action's urgency does to readiness. */
 export const HORIZON_SEVERITY: Record<Horizon, GapSeverity> = {
-  critical: "blocking",
   major: "blocking",
+  moderate: "blocking",
   minor: "partial",
   long_term: "partial",
 };
@@ -82,14 +90,446 @@ export const GAP_DOMAIN_LABEL: Record<GapDomainId, string> = {
   "data_use_reporting": "Data Use & Reporting"
 };
 
-export interface GapInterventionDef {
+/**
+ * One kind of action — "Procure EMR-capable tablets", "Install a router" — at
+ * one urgency.
+ *
+ * The same work at two urgencies is two action types, because it sits in two
+ * places in the plan: a solar install is Major where a facility has no power
+ * and Moderate where it has a few hours a day.
+ */
+export interface ActionDef {
   id: string;
   label: string;
+  domain: GapDomainId;
+  /** The gap area the action closes. One per action type, which is what lets a
+   *  facility's actions be tied back to its gaps. */
+  area: GapAreaId;
   horizon: Horizon;
-  /** Null where the source carries no price. Not zero — see
-   *  docs/data-queries/README.md, Query B. */
-  costNGN: number | null;
+  phase: ActionPhase;
+  /** What one unit is — "tablet", "desk", "socket point" — or null where the
+   *  action is one per facility. */
+  unit: string | null;
+  /** Null where the source carries no price. Not zero. */
+  unitCostNGN: number | null;
 }
+
+export const ACTIONS: ActionDef[] = [
+  {
+    "id": "engage_the_mobile_aac07",
+    "label": "Engage the mobile network provider to extend or strengthen network coverage and install a facility-managed router/MiFi.",
+    "domain": "technical_infrastructure",
+    "area": "facility_connectivity",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 750000
+  },
+  {
+    "id": "install_satellite_internet_4f78d",
+    "label": "Install satellite internet at the facility.",
+    "domain": "technical_infrastructure",
+    "area": "facility_connectivity",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 3000000
+  },
+  {
+    "id": "install_solar_panels_4305c",
+    "label": "Install solar panels and batteries that can power the EMR equipment.",
+    "domain": "technical_infrastructure",
+    "area": "power",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 3085000
+  },
+  {
+    "id": "add_solar_panels_f6f25",
+    "label": "Add solar panels or batteries so EMR equipment has power for at least nine hours.",
+    "domain": "technical_infrastructure",
+    "area": "power",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 2100000
+  },
+  {
+    "id": "install_a_facility_2a48c",
+    "label": "Install a facility-managed router/MiFi with at least 5 Mbps capacity.",
+    "domain": "technical_infrastructure",
+    "area": "facility_connectivity",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 40000
+  },
+  {
+    "id": "install_solar_panels_bca54",
+    "label": "Install solar panels and batteries that can power the EMR equipment.",
+    "domain": "technical_infrastructure",
+    "area": "power",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 3085000
+  },
+  {
+    "id": "upgrade_the_facility_aa02d",
+    "label": "Upgrade the facility-managed connection to at least 5 Mbps.",
+    "domain": "technical_infrastructure",
+    "area": "facility_connectivity",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 360000
+  },
+  {
+    "id": "confirm_whether_a_d15e1",
+    "label": "Confirm whether a lockable door is required at the affected service points.",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "horizon": "minor",
+    "phase": "during",
+    "unit": "service point",
+    "unitCostNGN": null
+  },
+  {
+    "id": "fix_unsafe_or_fefdb",
+    "label": "Fix unsafe or inadequate wiring where EMR equipment will be used.",
+    "domain": "technical_infrastructure",
+    "area": "wiring",
+    "horizon": "minor",
+    "phase": "during",
+    "unit": null,
+    "unitCostNGN": 388000
+  },
+  {
+    "id": "install_socket_points_bcc65",
+    "label": "Install socket points where EMR equipment will be used.",
+    "domain": "technical_infrastructure",
+    "area": "wiring",
+    "horizon": "minor",
+    "phase": "during",
+    "unit": "socket point",
+    "unitCostNGN": 3000
+  },
+  {
+    "id": "procure_desks_for_7dbee",
+    "label": "Procure desks for the affected service points.",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "horizon": "minor",
+    "phase": "during",
+    "unit": "desk",
+    "unitCostNGN": 35000
+  },
+  {
+    "id": "procure_electric_fans_4dba3",
+    "label": "Procure electric fans for the affected service points.",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "horizon": "minor",
+    "phase": "during",
+    "unit": "electric fan",
+    "unitCostNGN": 60000
+  },
+  {
+    "id": "procure_emr_capable_7c04d",
+    "label": "Procure EMR-capable tablets to close the immediate device gap.",
+    "domain": "technical_infrastructure",
+    "area": "device_sufficiency",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": "tablet",
+    "unitCostNGN": 233333.33333333334
+  },
+  {
+    "id": "procure_patient_chairs_9a3b4",
+    "label": "Procure patient chairs for the affected service points.",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "horizon": "minor",
+    "phase": "during",
+    "unit": "patient chair",
+    "unitCostNGN": 25000
+  },
+  {
+    "id": "procure_staff_chairs_682d7",
+    "label": "Procure staff chairs for the affected service points.",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "horizon": "minor",
+    "phase": "during",
+    "unit": "staff chair",
+    "unitCostNGN": 25000
+  },
+  {
+    "id": "provide_routine_device_e87da",
+    "label": "Provide routine device maintenance and repair support.",
+    "domain": "technical_infrastructure",
+    "area": "device_maintenance",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": null
+  },
+  {
+    "id": "repair_or_upgrade_fcc76",
+    "label": "Repair or upgrade the partially functional backup power source.",
+    "domain": "technical_infrastructure",
+    "area": "backup_power",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 200000
+  },
+  {
+    "id": "connect_the_facility_e0157",
+    "label": "Connect the facility to the electricity grid.",
+    "domain": "technical_infrastructure",
+    "area": "power",
+    "horizon": "long_term",
+    "phase": "after",
+    "unit": null,
+    "unitCostNGN": 500000
+  },
+  {
+    "id": "assign_the_full_f2e80",
+    "label": "Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion.",
+    "domain": "workforce_capacity",
+    "area": "emr_data_focal_person",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": null
+  },
+  {
+    "id": "provide_state_facility_e16f7",
+    "label": "Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison.",
+    "domain": "workforce_capacity",
+    "area": "technical_support",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "train_every_person_7b84d",
+    "label": "Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months.",
+    "domain": "workforce_capacity",
+    "area": "digital_competency",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "assign_the_full_40c8b",
+    "label": "Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion.",
+    "domain": "workforce_capacity",
+    "area": "emr_data_focal_person",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": null
+  },
+  {
+    "id": "provide_state_facility_8f6a0",
+    "label": "Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison.",
+    "domain": "workforce_capacity",
+    "area": "technical_support",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "train_every_person_7b5ae",
+    "label": "Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months.",
+    "domain": "workforce_capacity",
+    "area": "digital_competency",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "provide_state_facility_5b855",
+    "label": "Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison.",
+    "domain": "workforce_capacity",
+    "area": "technical_support",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "train_every_person_b5264",
+    "label": "Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months.",
+    "domain": "workforce_capacity",
+    "area": "digital_competency",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "train_staff_on_1ed86",
+    "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
+    "domain": "workforce_capacity",
+    "area": "training",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "configure_emr_roles_23d21",
+    "label": "Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.",
+    "domain": "workflow_transition",
+    "area": "workflow_bottleneck",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "configure_emr_workflows_78bcc",
+    "label": "Configure EMR workflows so information captured at one service point is available at subsequent points of care.",
+    "domain": "workflow_transition",
+    "area": "duplicate_entry",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "support_change_management_007bd",
+    "label": "Support change management through the state/facility TA pathway.",
+    "domain": "workflow_transition",
+    "area": "staff_willingness_support",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "configure_emr_roles_6f328",
+    "label": "Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.",
+    "domain": "workflow_transition",
+    "area": "workflow_bottleneck",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "configure_emr_workflows_16441",
+    "label": "Configure EMR workflows so information captured at one service point is available at subsequent points of care.",
+    "domain": "workflow_transition",
+    "area": "duplicate_entry",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "support_change_management_f2fd4",
+    "label": "Support change management through the state/facility TA pathway.",
+    "domain": "workflow_transition",
+    "area": "staff_willingness_support",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "configure_emr_roles_d0cc2",
+    "label": "Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.",
+    "domain": "workflow_transition",
+    "area": "workflow_bottleneck",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "configure_emr_workflows_93777",
+    "label": "Configure EMR workflows so information captured at one service point is available at subsequent points of care.",
+    "domain": "workflow_transition",
+    "area": "duplicate_entry",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "use_emr_dashboards_55c0d",
+    "label": "Use EMR dashboards and routine performance meetings to review data and track actions.",
+    "domain": "data_use_reporting",
+    "area": "routine_data_use",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "use_emr_data_8d642",
+    "label": "Use EMR data checks and routine performance meetings to validate data and track actions.",
+    "domain": "data_use_reporting",
+    "area": "data_validation",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "use_emr_reports_772b6",
+    "label": "Use EMR reports in routine performance meetings to agree and track actions.",
+    "domain": "data_use_reporting",
+    "area": "report_review_support",
+    "horizon": "major",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "use_emr_data_2866f",
+    "label": "Use EMR data checks and routine performance meetings to validate data and track actions.",
+    "domain": "data_use_reporting",
+    "area": "data_validation",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "use_emr_reports_7b773",
+    "label": "Use EMR reports in routine performance meetings to agree and track actions.",
+    "domain": "data_use_reporting",
+    "area": "report_review_support",
+    "horizon": "moderate",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  },
+  {
+    "id": "use_emr_dashboards_670d1",
+    "label": "Use EMR dashboards and routine performance meetings to review data and track actions.",
+    "domain": "data_use_reporting",
+    "area": "routine_data_use",
+    "horizon": "minor",
+    "phase": "before",
+    "unit": null,
+    "unitCostNGN": 0
+  }
+];
+
+export const ACTION_BY_ID: Record<string, ActionDef> = Object.fromEntries(
+  ACTIONS.map((a) => [a.id, a]),
+);
 
 export interface GapAreaDef {
   id: GapAreaId;
@@ -104,12 +544,12 @@ export interface GapAreaDef {
 /**
  * The gap areas — the level between a domain and a gap.
  *
- * Twenty of them, one per gap column in the source. A facility holds **at most
- * one condition per area**, because a column holds one value, and that is what
- * makes the area the unit a filter and a rollup can count: counting areas
- * counts facilities, where counting conditions counts survey answers.
+ * One per gap column in the source. A facility holds **at most one condition
+ * per area**, because a column holds one value, and that is what makes the area
+ * the unit a filter and a rollup can count: counting areas counts facilities,
+ * where counting conditions counts survey answers.
  *
- * In the sheet's column order, not alphabetical — see `extractGapAreas`.
+ * In the sheet's column order, not alphabetical.
  */
 export const GAP_AREAS: GapAreaDef[] = [
   {
@@ -137,75 +577,75 @@ export const GAP_AREAS: GapAreaDef[] = [
     "order": 3
   },
   {
+    "id": "physical_service_point",
+    "domain": "technical_infrastructure",
+    "label": "Physical service-point",
+    "order": 4
+  },
+  {
     "id": "backup_power",
     "domain": "technical_infrastructure",
     "label": "Backup-power",
-    "order": 4
+    "order": 5
   },
   {
     "id": "backup_connectivity",
     "domain": "technical_infrastructure",
     "label": "Backup-connectivity",
-    "order": 5
+    "order": 6
   },
   {
     "id": "device_maintenance",
     "domain": "technical_infrastructure",
     "label": "Device-maintenance",
-    "order": 6
+    "order": 7
   },
   {
     "id": "data_backup",
     "domain": "technical_infrastructure",
     "label": "Data-backup",
-    "order": 7
+    "order": 8
   },
   {
     "id": "mobile_network_feasibility",
     "domain": "technical_infrastructure",
     "label": "Mobile-network feasibility",
-    "order": 8
+    "order": 9
   },
   {
     "id": "digital_competency",
     "domain": "workforce_capacity",
     "label": "Digital-competency",
-    "order": 9
+    "order": 10
   },
   {
     "id": "emr_data_focal_person",
     "domain": "workforce_capacity",
     "label": "EMR/Data focal-person",
-    "order": 10
+    "order": 11
   },
   {
     "id": "training",
     "domain": "workforce_capacity",
     "label": "Training",
-    "order": 11
+    "order": 12
   },
   {
     "id": "technical_support",
     "domain": "workforce_capacity",
     "label": "Technical-support",
-    "order": 12
+    "order": 13
   },
   {
     "id": "duplicate_entry",
     "domain": "workflow_transition",
     "label": "Duplicate-entry",
-    "order": 13
+    "order": 14
   },
   {
     "id": "workflow_bottleneck",
     "domain": "workflow_transition",
     "label": "Workflow-bottleneck",
-    "order": 14
-  },
-  {
-    "id": "physical_service_point",
-    "domain": "workflow_transition",
-    "label": "Physical service-point",
     "order": 15
   },
   {
@@ -248,22 +688,23 @@ export function gapAreasForDomains(domains: readonly string[]): GapAreaDef[] {
 export interface GapDef {
   id: string;
   domain: GapDomainId;
-  /** The gap area this condition sits in. An id — the label is on
-   *  `GAP_AREA_BY_ID`, so nothing renders a sliced column header. */
+  /** The gap area this condition sits in. */
   area: GapAreaId;
-  /** The condition the survey recorded, verbatim. */
+  /** The condition the survey recorded, verbatim — or "No gap recorded". */
   label: string;
   severity: GapSeverity;
   /**
-   * The action sets this condition fires, one per way the sheet costs it.
+   * False for an area's "No gap recorded" condition.
    *
-   * Almost always one. Four conditions have more, all of them power: the
-   * revised costing model chooses between a ₦3,000,000 solar install and a
-   * ₦1,200,000 top-up, and adds a ₦500,000 grid connection only where the
-   * facility is not already connected. A facility says which one it is on
-   * through `FacilitySummary.gapVariants`; absent means the first.
+   * The sheet costs socket points at 380 facilities whose wiring column reads
+   * No gap, and furniture at 224 whose service-point column does. That money
+   * is in the sheet's total and stays in every total here; the condition is
+   * kept so the cost has somewhere to sit, and flagged so a *count of gaps*
+   * leaves it out. Use `isRecordedGap` wherever gaps are counted.
    */
-  variants: GapInterventionDef[][];
+  recorded: boolean;
+  /** Every action type this condition calls for anywhere, most urgent first. */
+  actions: string[];
 }
 
 export const GAPS: GapDef[] = [
@@ -272,30 +713,11 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "power",
     "label": "No functional electricity source or 0 hours/day",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_solar_panels_and_batteries__be5a79",
-          "label": "Install solar panels and batteries that can power the EMR equipment.",
-          "horizon": "critical",
-          "costNGN": 3000000
-        },
-        {
-          "id": "connect_the_facility_to_the__1563cf",
-          "label": "Connect the facility to the electricity grid.",
-          "horizon": "long_term",
-          "costNGN": 500000
-        }
-      ],
-      [
-        {
-          "id": "install_solar_panels_and_batteries__be5a79",
-          "label": "Install solar panels and batteries that can power the EMR equipment.",
-          "horizon": "critical",
-          "costNGN": 3000000
-        }
-      ]
+    "actions": [
+      "install_solar_panels_4305c",
+      "connect_the_facility_e0157"
     ]
   },
   {
@@ -303,52 +725,12 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "power",
     "label": "Estimated combined power coverage is 1–4 hours/day",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_solar_panels_and_batteries__cd156c",
-          "label": "Install solar panels and batteries that can power the EMR equipment.",
-          "horizon": "major",
-          "costNGN": 3000000
-        },
-        {
-          "id": "connect_the_facility_to_the__1563cf",
-          "label": "Connect the facility to the electricity grid.",
-          "horizon": "long_term",
-          "costNGN": 500000
-        }
-      ],
-      [
-        {
-          "id": "install_solar_panels_and_batteries__cd156c",
-          "label": "Install solar panels and batteries that can power the EMR equipment.",
-          "horizon": "major",
-          "costNGN": 3000000
-        }
-      ],
-      [
-        {
-          "id": "add_solar_panels_or_batteries__bc860e",
-          "label": "Add solar panels or batteries so EMR equipment has power for at least nine hours.",
-          "horizon": "major",
-          "costNGN": 1200000
-        },
-        {
-          "id": "connect_the_facility_to_the__1563cf",
-          "label": "Connect the facility to the electricity grid.",
-          "horizon": "long_term",
-          "costNGN": 500000
-        }
-      ],
-      [
-        {
-          "id": "add_solar_panels_or_batteries__bc860e",
-          "label": "Add solar panels or batteries so EMR equipment has power for at least nine hours.",
-          "horizon": "major",
-          "costNGN": 1200000
-        }
-      ]
+    "actions": [
+      "install_solar_panels_bca54",
+      "add_solar_panels_f6f25",
+      "connect_the_facility_e0157"
     ]
   },
   {
@@ -356,52 +738,12 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "power",
     "label": "Estimated combined power coverage is 5–8 hours/day",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_solar_panels_and_batteries__cd156c",
-          "label": "Install solar panels and batteries that can power the EMR equipment.",
-          "horizon": "major",
-          "costNGN": 3000000
-        }
-      ],
-      [
-        {
-          "id": "install_solar_panels_and_batteries__cd156c",
-          "label": "Install solar panels and batteries that can power the EMR equipment.",
-          "horizon": "major",
-          "costNGN": 3000000
-        },
-        {
-          "id": "connect_the_facility_to_the__1563cf",
-          "label": "Connect the facility to the electricity grid.",
-          "horizon": "long_term",
-          "costNGN": 500000
-        }
-      ],
-      [
-        {
-          "id": "add_solar_panels_or_batteries__bc860e",
-          "label": "Add solar panels or batteries so EMR equipment has power for at least nine hours.",
-          "horizon": "major",
-          "costNGN": 1200000
-        }
-      ],
-      [
-        {
-          "id": "add_solar_panels_or_batteries__bc860e",
-          "label": "Add solar panels or batteries so EMR equipment has power for at least nine hours.",
-          "horizon": "major",
-          "costNGN": 1200000
-        },
-        {
-          "id": "connect_the_facility_to_the__1563cf",
-          "label": "Connect the facility to the electricity grid.",
-          "horizon": "long_term",
-          "costNGN": 500000
-        }
-      ]
+    "actions": [
+      "install_solar_panels_bca54",
+      "add_solar_panels_f6f25",
+      "connect_the_facility_e0157"
     ]
   },
   {
@@ -409,16 +751,11 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "wiring",
     "label": "No functional wiring or wiring condition not demonstrated",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "fix_unsafe_wiring_and_add__76bcf2",
-          "label": "Fix unsafe wiring and add working wall sockets where EMR equipment will be used.",
-          "horizon": "minor",
-          "costNGN": 388000
-        }
-      ]
+    "actions": [
+      "fix_unsafe_or_fefdb",
+      "install_socket_points_bcc65"
     ]
   },
   {
@@ -426,16 +763,22 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "wiring",
     "label": "Partially functional, unreliable or inadequate wiring",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "fix_unsafe_wiring_and_add__76bcf2",
-          "label": "Fix unsafe wiring and add working wall sockets where EMR equipment will be used.",
-          "horizon": "minor",
-          "costNGN": 388000
-        }
-      ]
+    "actions": [
+      "fix_unsafe_or_fefdb",
+      "install_socket_points_bcc65"
+    ]
+  },
+  {
+    "id": "wiring__no_gap_recorded",
+    "domain": "technical_infrastructure",
+    "area": "wiring",
+    "label": "No gap recorded",
+    "recorded": false,
+    "severity": "partial",
+    "actions": [
+      "install_socket_points_bcc65"
     ]
   },
   {
@@ -443,16 +786,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "label": "Confirmed satellite-only route",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_satellite_internet_at_the__875617",
-          "label": "Install satellite internet at the facility.",
-          "horizon": "critical",
-          "costNGN": 3000000
-        }
-      ]
+    "actions": [
+      "install_satellite_internet_4f78d"
     ]
   },
   {
@@ -460,16 +797,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "label": "Network extension required",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "engage_the_mobile_network_provider__ca2d4f",
-          "label": "Engage the mobile network provider to extend or strengthen network coverage and install a facility-managed router/MiFi.",
-          "horizon": "critical",
-          "costNGN": 750000
-        }
-      ]
+    "actions": [
+      "engage_the_mobile_aac07"
     ]
   },
   {
@@ -477,16 +808,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "label": "Facility internet installation required",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_a_facility_managed_router__7abde6",
-          "label": "Install a facility-managed router/MiFi with at least 5 Mbps capacity.",
-          "horizon": "major",
-          "costNGN": 40000
-        }
-      ]
+    "actions": [
+      "install_a_facility_2a48c"
     ]
   },
   {
@@ -494,16 +819,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "label": "Facility-managed connection below 5 Mbps",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "upgrade_the_facility_managed_connection__000343",
-          "label": "Upgrade the facility-managed connection to at least 5 Mbps.",
-          "horizon": "major",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "upgrade_the_facility_aa02d"
     ]
   },
   {
@@ -511,16 +830,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "label": "Individual connection — speed not measured",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_a_facility_managed_router__7abde6",
-          "label": "Install a facility-managed router/MiFi with at least 5 Mbps capacity.",
-          "horizon": "major",
-          "costNGN": 40000
-        }
-      ]
+    "actions": [
+      "install_a_facility_2a48c"
     ]
   },
   {
@@ -528,16 +841,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "label": "Individual connection at or above 5 Mbps",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_a_facility_managed_router__7abde6",
-          "label": "Install a facility-managed router/MiFi with at least 5 Mbps capacity.",
-          "horizon": "major",
-          "costNGN": 40000
-        }
-      ]
+    "actions": [
+      "install_a_facility_2a48c"
     ]
   },
   {
@@ -545,16 +852,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "label": "Individual connection below 5 Mbps",
+    "recorded": true,
     "severity": "blocking",
-    "variants": [
-      [
-        {
-          "id": "install_a_facility_managed_router__7abde6",
-          "label": "Install a facility-managed router/MiFi with at least 5 Mbps capacity.",
-          "horizon": "major",
-          "costNGN": 40000
-        }
-      ]
+    "actions": [
+      "install_a_facility_2a48c"
     ]
   },
   {
@@ -562,16 +863,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_sufficiency",
     "label": "All supported devices are obsolete",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "give_each_place_where_staff__eadb7e",
-          "label": "Give each place where staff enter EMR data the number of tablets it is missing.",
-          "horizon": "minor",
-          "costNGN": 233333
-        }
-      ]
+    "actions": [
+      "procure_emr_capable_7c04d"
     ]
   },
   {
@@ -579,16 +874,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_sufficiency",
     "label": "Immediately usable devices cover 75%–99% of the minimum requirement",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "give_each_place_where_staff__eadb7e",
-          "label": "Give each place where staff enter EMR data the number of tablets it is missing.",
-          "horizon": "minor",
-          "costNGN": 233333
-        }
-      ]
+    "actions": [
+      "procure_emr_capable_7c04d"
     ]
   },
   {
@@ -596,16 +885,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_sufficiency",
     "label": "Immediately usable devices cover less than 75% of the minimum requirement",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "give_each_place_where_staff__eadb7e",
-          "label": "Give each place where staff enter EMR data the number of tablets it is missing.",
-          "horizon": "minor",
-          "costNGN": 233333
-        }
-      ]
+    "actions": [
+      "procure_emr_capable_7c04d"
     ]
   },
   {
@@ -613,16 +896,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_sufficiency",
     "label": "No supported computing devices are available",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "give_the_facility_three_tablets__0bd7bc",
-          "label": "Give the facility three tablets that can run the EMR.",
-          "horizon": "minor",
-          "costNGN": 700000
-        }
-      ]
+    "actions": [
+      "procure_emr_capable_7c04d"
     ]
   },
   {
@@ -630,16 +907,70 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_sufficiency",
     "label": "Supported devices exist but none is immediately deployable",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "give_each_place_where_staff__eadb7e",
-          "label": "Give each place where staff enter EMR data the number of tablets it is missing.",
-          "horizon": "minor",
-          "costNGN": 233333
-        }
-      ]
+    "actions": [
+      "procure_emr_capable_7c04d"
+    ]
+  },
+  {
+    "id": "physical_service_point__0_of_applicable_service_points_meet_all_minimum_conditio",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "label": "0% of applicable service points meet all minimum conditions",
+    "recorded": true,
+    "severity": "partial",
+    "actions": [
+      "procure_electric_fans_4dba3",
+      "procure_desks_for_7dbee",
+      "procure_patient_chairs_9a3b4",
+      "procure_staff_chairs_682d7",
+      "confirm_whether_a_d15e1"
+    ]
+  },
+  {
+    "id": "physical_service_point__1_49_of_applicable_service_points_meet_all_minimum_condi",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "label": "1%–49% of applicable service points meet all minimum conditions",
+    "recorded": true,
+    "severity": "partial",
+    "actions": [
+      "procure_electric_fans_4dba3",
+      "procure_desks_for_7dbee",
+      "procure_patient_chairs_9a3b4",
+      "procure_staff_chairs_682d7",
+      "confirm_whether_a_d15e1"
+    ]
+  },
+  {
+    "id": "physical_service_point__50_74_of_applicable_service_points_meet_all_minimum_cond",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "label": "50%–74% of applicable service points meet all minimum conditions",
+    "recorded": true,
+    "severity": "partial",
+    "actions": [
+      "procure_electric_fans_4dba3",
+      "procure_desks_for_7dbee",
+      "procure_patient_chairs_9a3b4",
+      "procure_staff_chairs_682d7",
+      "confirm_whether_a_d15e1"
+    ]
+  },
+  {
+    "id": "physical_service_point__no_gap_recorded",
+    "domain": "technical_infrastructure",
+    "area": "physical_service_point",
+    "label": "No gap recorded",
+    "recorded": false,
+    "severity": "partial",
+    "actions": [
+      "procure_electric_fans_4dba3",
+      "procure_desks_for_7dbee",
+      "procure_patient_chairs_9a3b4",
+      "procure_staff_chairs_682d7",
+      "confirm_whether_a_d15e1"
     ]
   },
   {
@@ -647,17 +978,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "backup_power",
     "label": "Backup is partially functional",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "repair_or_upgrade_the_partially__74126b",
-          "label": "Repair or upgrade the partially functional backup power source.",
-          "horizon": "minor",
-          "costNGN": 200000
-        }
-      ],
-      []
+    "actions": [
+      "repair_or_upgrade_fcc76"
     ]
   },
   {
@@ -665,86 +989,73 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "backup_power",
     "label": "Backup exists but is non-functional",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "backup_power__grid_and_functional_backup_are_available_but_backup_runt",
     "domain": "technical_infrastructure",
     "area": "backup_power",
     "label": "Grid and functional backup are available, but backup runtime is below 9 hours",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "backup_power__no_secondary_or_backup_power_pathway",
     "domain": "technical_infrastructure",
     "area": "backup_power",
     "label": "No secondary or backup power pathway",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "backup_power__only_one_usable_power_pathway_is_confirmed",
     "domain": "technical_infrastructure",
     "area": "backup_power",
     "label": "Only one usable power pathway is confirmed",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "backup_connectivity__backup_reported_but_method_is_unclear_or_unusable",
     "domain": "technical_infrastructure",
     "area": "backup_connectivity",
     "label": "Backup reported, but method is unclear or unusable",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "backup_connectivity__no_backup_internet_option_confirmed",
     "domain": "technical_infrastructure",
     "area": "backup_connectivity",
     "label": "No backup internet option confirmed",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "backup_connectivity__personal_hotspot_or_usb_backup_option",
     "domain": "technical_infrastructure",
     "area": "backup_connectivity",
     "label": "Personal hotspot or USB backup option",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "device_maintenance__maintenance_only_when_devices_fail_or_as_needed",
     "domain": "technical_infrastructure",
     "area": "device_maintenance",
     "label": "Maintenance only when devices fail or as needed",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_routine_device_maintenance_and__e73125",
-          "label": "Provide routine device maintenance and repair support.",
-          "horizon": "minor",
-          "costNGN": null
-        }
-      ]
+    "actions": [
+      "provide_routine_device_e87da"
     ]
   },
   {
@@ -752,16 +1063,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_maintenance",
     "label": "No formal maintenance arrangement",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_routine_device_maintenance_and__e73125",
-          "label": "Provide routine device maintenance and repair support.",
-          "horizon": "minor",
-          "costNGN": null
-        }
-      ]
+    "actions": [
+      "provide_routine_device_e87da"
     ]
   },
   {
@@ -769,16 +1074,10 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_maintenance",
     "label": "No maintenance schedule reported",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_routine_device_maintenance_and__e73125",
-          "label": "Provide routine device maintenance and repair support.",
-          "horizon": "minor",
-          "costNGN": null
-        }
-      ]
+    "actions": [
+      "provide_routine_device_e87da"
     ]
   },
   {
@@ -786,110 +1085,64 @@ export const GAPS: GapDef[] = [
     "domain": "technical_infrastructure",
     "area": "device_maintenance",
     "label": "Formal annual maintenance",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "device_maintenance__formal_quarterly_maintenance",
     "domain": "technical_infrastructure",
     "area": "device_maintenance",
     "label": "Formal quarterly maintenance",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "data_backup__manual_data_backup_capability",
     "domain": "technical_infrastructure",
     "area": "data_backup",
     "label": "Manual data-backup capability",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "data_backup__no_data_backup_capability_reported",
     "domain": "technical_infrastructure",
     "area": "data_backup",
     "label": "No data-backup capability reported",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "mobile_network_feasibility__network_extension_required",
     "domain": "technical_infrastructure",
     "area": "mobile_network_feasibility",
     "label": "Network extension required",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
+    "actions": []
   },
   {
     "id": "mobile_network_feasibility__no_serviceable_mobile_pathway",
     "domain": "technical_infrastructure",
     "area": "mobile_network_feasibility",
     "label": "No serviceable mobile pathway",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      []
-    ]
-  },
-  {
-    "id": "digital_competency__50_74_of_applicable_service_points_have_basic_digital_sk",
-    "domain": "workforce_capacity",
-    "area": "digital_competency",
-    "label": "50–74% of applicable service points have basic digital skills",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_every_person_who_will__cdb2b0",
-          "label": "Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
-  },
-  {
-    "id": "digital_competency__75_99_of_applicable_service_points_have_basic_digital_sk",
-    "domain": "workforce_capacity",
-    "area": "digital_competency",
-    "label": "75–99% of applicable service points have basic digital skills",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_every_person_who_will__cdb2b0",
-          "label": "Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
+    "actions": []
   },
   {
     "id": "digital_competency__less_than_50_of_applicable_service_points_have_basic_dig",
     "domain": "workforce_capacity",
     "area": "digital_competency",
     "label": "Less than 50% of applicable service points have basic digital skills",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_every_person_who_will__cdb2b0",
-          "label": "Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "train_every_person_7b84d"
     ]
   },
   {
@@ -897,33 +1150,32 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "digital_competency",
     "label": "No applicable service point has basic digital skills",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_every_person_who_will__cdb2b0",
-          "label": "Train every person who will use the EMR. Stay with them while they first use it. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "train_every_person_7b84d"
     ]
   },
   {
-    "id": "emr_data_focal_person__dedicated_hro_m_e_officer_part_time_shared",
+    "id": "digital_competency__50_74_of_applicable_service_points_have_basic_digital_sk",
     "domain": "workforce_capacity",
-    "area": "emr_data_focal_person",
-    "label": "Dedicated HRO/M&E officer — part-time/shared",
+    "area": "digital_competency",
+    "label": "50–74% of applicable service points have basic digital skills",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "train_every_person_7b5ae"
+    ]
+  },
+  {
+    "id": "digital_competency__75_99_of_applicable_service_points_have_basic_digital_sk",
+    "domain": "workforce_capacity",
+    "area": "digital_competency",
+    "label": "75–99% of applicable service points have basic digital skills",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "assign_the_full_time_hro__9b652d",
-          "label": "Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_every_person_b5264"
     ]
   },
   {
@@ -931,16 +1183,21 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "emr_data_focal_person",
     "label": "No dedicated HRO/M&E officer",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "assign_the_full_time_hro__9b652d",
-          "label": "Assign the full-time HRO/M&E officer; otherwise designate the OIC or another suitable staff member as EMR/data focal person and digital champion.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "assign_the_full_f2e80"
+    ]
+  },
+  {
+    "id": "emr_data_focal_person__dedicated_hro_m_e_officer_part_time_shared",
+    "domain": "workforce_capacity",
+    "area": "emr_data_focal_person",
+    "label": "Dedicated HRO/M&E officer — part-time/shared",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "assign_the_full_40c8b"
     ]
   },
   {
@@ -948,16 +1205,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "training",
     "label": "No formal digital-health training",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_staff_on_the_emr__6d8871",
-          "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_staff_on_1ed86"
     ]
   },
   {
@@ -965,16 +1216,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "training",
     "label": "Training 6–12 months ago and foundational",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_staff_on_the_emr__6d8871",
-          "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_staff_on_1ed86"
     ]
   },
   {
@@ -982,16 +1227,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "training",
     "label": "Training 6–12 months ago with low relevance",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_staff_on_the_emr__6d8871",
-          "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_staff_on_1ed86"
     ]
   },
   {
@@ -999,16 +1238,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "training",
     "label": "Training over 1 year ago and directly relevant",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_staff_on_the_emr__6d8871",
-          "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_staff_on_1ed86"
     ]
   },
   {
@@ -1016,16 +1249,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "training",
     "label": "Training over 1 year ago with foundational or low relevance",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_staff_on_the_emr__6d8871",
-          "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_staff_on_1ed86"
     ]
   },
   {
@@ -1033,16 +1260,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "training",
     "label": "Training within 6 months and foundational",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_staff_on_the_emr__6d8871",
-          "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_staff_on_1ed86"
     ]
   },
   {
@@ -1050,50 +1271,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "training",
     "label": "Training within 6 months with low relevance",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "train_staff_on_the_emr__6d8871",
-          "label": "Train staff on the EMR tasks they need. Write down who completed training. Train new staff and repeat training every three months.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
-  },
-  {
-    "id": "technical_support__issues_are_resolved_within_24_hours_through_an_informal",
-    "domain": "workforce_capacity",
-    "area": "technical_support",
-    "label": "Issues are resolved within 24 hours through an informal or external pathway",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_state_facility_technical_assistance__699b81",
-          "label": "Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
-  },
-  {
-    "id": "technical_support__issues_are_usually_resolved_within_24_48_hours",
-    "domain": "workforce_capacity",
-    "area": "technical_support",
-    "label": "Issues are usually resolved within 24–48 hours",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_state_facility_technical_assistance__699b81",
-          "label": "Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "train_staff_on_1ed86"
     ]
   },
   {
@@ -1101,16 +1282,10 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "technical_support",
     "label": "Issues usually take more than 48 hours to resolve",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_state_facility_technical_assistance__699b81",
-          "label": "Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "provide_state_facility_e16f7"
     ]
   },
   {
@@ -1118,50 +1293,32 @@ export const GAPS: GapDef[] = [
     "domain": "workforce_capacity",
     "area": "technical_support",
     "label": "No defined technical-support process",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_state_facility_technical_assistance__699b81",
-          "label": "Provide state/facility technical assistance: transition support, SOPs and job aids, digital champions, adoption follow-up, retraining, troubleshooting and LGA/state liaison.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "provide_state_facility_e16f7"
     ]
   },
   {
-    "id": "duplicate_entry__25_49_of_documenting_service_points_affected",
-    "domain": "workflow_transition",
-    "area": "duplicate_entry",
-    "label": "25%–49% of documenting service points affected",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "configure_emr_workflows_so_information__c1c093",
-          "label": "Configure EMR workflows so information captured at one service point is available at subsequent points of care.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "id": "technical_support__issues_are_usually_resolved_within_24_48_hours",
+    "domain": "workforce_capacity",
+    "area": "technical_support",
+    "label": "Issues are usually resolved within 24–48 hours",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "provide_state_facility_8f6a0"
     ]
   },
   {
-    "id": "duplicate_entry__50_74_of_documenting_service_points_affected",
-    "domain": "workflow_transition",
-    "area": "duplicate_entry",
-    "label": "50%–74% of documenting service points affected",
+    "id": "technical_support__issues_are_resolved_within_24_hours_through_an_informal",
+    "domain": "workforce_capacity",
+    "area": "technical_support",
+    "label": "Issues are resolved within 24 hours through an informal or external pathway",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "configure_emr_workflows_so_information__c1c093",
-          "label": "Configure EMR workflows so information captured at one service point is available at subsequent points of care.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "provide_state_facility_5b855"
     ]
   },
   {
@@ -1169,50 +1326,32 @@ export const GAPS: GapDef[] = [
     "domain": "workflow_transition",
     "area": "duplicate_entry",
     "label": "At least 75% of documenting service points affected",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "configure_emr_workflows_so_information__c1c093",
-          "label": "Configure EMR workflows so information captured at one service point is available at subsequent points of care.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "configure_emr_workflows_78bcc"
     ]
   },
   {
-    "id": "workflow_bottleneck__25_49_of_documenting_service_points_affected",
+    "id": "duplicate_entry__50_74_of_documenting_service_points_affected",
     "domain": "workflow_transition",
-    "area": "workflow_bottleneck",
-    "label": "25%–49% of documenting service points affected",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "configure_emr_roles_queues_and__3c6765",
-          "label": "Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
-  },
-  {
-    "id": "workflow_bottleneck__50_74_of_documenting_service_points_affected",
-    "domain": "workflow_transition",
-    "area": "workflow_bottleneck",
+    "area": "duplicate_entry",
     "label": "50%–74% of documenting service points affected",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "configure_emr_workflows_16441"
+    ]
+  },
+  {
+    "id": "duplicate_entry__25_49_of_documenting_service_points_affected",
+    "domain": "workflow_transition",
+    "area": "duplicate_entry",
+    "label": "25%–49% of documenting service points affected",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "configure_emr_roles_queues_and__3c6765",
-          "label": "Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "configure_emr_workflows_93777"
     ]
   },
   {
@@ -1220,84 +1359,32 @@ export const GAPS: GapDef[] = [
     "domain": "workflow_transition",
     "area": "workflow_bottleneck",
     "label": "At least 75% of documenting service points affected",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "configure_emr_roles_queues_and__3c6765",
-          "label": "Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "configure_emr_roles_23d21"
     ]
   },
   {
-    "id": "physical_service_point__0_of_applicable_service_points_meet_all_minimum_conditio",
+    "id": "workflow_bottleneck__50_74_of_documenting_service_points_affected",
     "domain": "workflow_transition",
-    "area": "physical_service_point",
-    "label": "0% of applicable service points meet all minimum conditions",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_missing_desks_chairs_fans__a23f80",
-          "label": "Provide missing desks, chairs, fans and lockable doors at affected service points to support EMR use.",
-          "horizon": "minor",
-          "costNGN": 54378
-        }
-      ]
+    "area": "workflow_bottleneck",
+    "label": "50%–74% of documenting service points affected",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "configure_emr_roles_6f328"
     ]
   },
   {
-    "id": "physical_service_point__1_49_of_applicable_service_points_meet_all_minimum_condi",
+    "id": "workflow_bottleneck__25_49_of_documenting_service_points_affected",
     "domain": "workflow_transition",
-    "area": "physical_service_point",
-    "label": "1%–49% of applicable service points meet all minimum conditions",
+    "area": "workflow_bottleneck",
+    "label": "25%–49% of documenting service points affected",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_missing_desks_chairs_fans__a23f80",
-          "label": "Provide missing desks, chairs, fans and lockable doors at affected service points to support EMR use.",
-          "horizon": "minor",
-          "costNGN": 54378
-        }
-      ]
-    ]
-  },
-  {
-    "id": "physical_service_point__50_74_of_applicable_service_points_meet_all_minimum_cond",
-    "domain": "workflow_transition",
-    "area": "physical_service_point",
-    "label": "50%–74% of applicable service points meet all minimum conditions",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "provide_missing_desks_chairs_fans__a23f80",
-          "label": "Provide missing desks, chairs, fans and lockable doors at affected service points to support EMR use.",
-          "horizon": "minor",
-          "costNGN": 54378
-        }
-      ]
-    ]
-  },
-  {
-    "id": "staff_willingness_support__unwilling",
-    "domain": "workflow_transition",
-    "area": "staff_willingness_support",
-    "label": "Unwilling",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "support_change_management_through_the__3c5497",
-          "label": "Support change management through the state/facility TA pathway.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "configure_emr_roles_d0cc2"
     ]
   },
   {
@@ -1305,16 +1392,21 @@ export const GAPS: GapDef[] = [
     "domain": "workflow_transition",
     "area": "staff_willingness_support",
     "label": "Very unwilling",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "support_change_management_through_the__3c5497",
-          "label": "Support change management through the state/facility TA pathway.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "support_change_management_007bd"
+    ]
+  },
+  {
+    "id": "staff_willingness_support__unwilling",
+    "domain": "workflow_transition",
+    "area": "staff_willingness_support",
+    "label": "Unwilling",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "support_change_management_f2fd4"
     ]
   },
   {
@@ -1322,16 +1414,10 @@ export const GAPS: GapDef[] = [
     "domain": "data_use_reporting",
     "area": "routine_data_use",
     "label": "Data rarely used or no structured mechanism",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_dashboards_and_routine__43fbff",
-          "label": "Use EMR dashboards and routine performance meetings to review data and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_dashboards_55c0d"
     ]
   },
   {
@@ -1339,16 +1425,10 @@ export const GAPS: GapDef[] = [
     "domain": "data_use_reporting",
     "area": "routine_data_use",
     "label": "One structured data-use mechanism",
+    "recorded": true,
     "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_dashboards_and_routine__43fbff",
-          "label": "Use EMR dashboards and routine performance meetings to review data and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "actions": [
+      "use_emr_dashboards_670d1"
     ]
   },
   {
@@ -1356,33 +1436,10 @@ export const GAPS: GapDef[] = [
     "domain": "data_use_reporting",
     "area": "data_validation",
     "label": "No validation meetings",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_data_checks_and__35c385",
-          "label": "Use EMR data checks and routine performance meetings to validate data and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
-  },
-  {
-    "id": "data_validation__quarterly_validation_meetings",
-    "domain": "data_use_reporting",
-    "area": "data_validation",
-    "label": "Quarterly validation meetings",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_data_checks_and__35c385",
-          "label": "Use EMR data checks and routine performance meetings to validate data and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_data_8d642"
     ]
   },
   {
@@ -1390,16 +1447,21 @@ export const GAPS: GapDef[] = [
     "domain": "data_use_reporting",
     "area": "data_validation",
     "label": "Validation meetings occur without a structured schedule",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_data_checks_and__35c385",
-          "label": "Use EMR data checks and routine performance meetings to validate data and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_data_8d642"
+    ]
+  },
+  {
+    "id": "data_validation__quarterly_validation_meetings",
+    "domain": "data_use_reporting",
+    "area": "data_validation",
+    "label": "Quarterly validation meetings",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_data_2866f"
     ]
   },
   {
@@ -1407,50 +1469,10 @@ export const GAPS: GapDef[] = [
     "domain": "data_use_reporting",
     "area": "report_review_support",
     "label": "Reports are never discussed",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_reports_in_routine__1fe27b",
-          "label": "Use EMR reports in routine performance meetings to agree and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
-  },
-  {
-    "id": "report_review_support__reports_are_rarely_discussed",
-    "domain": "data_use_reporting",
-    "area": "report_review_support",
-    "label": "Reports are rarely discussed",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_reports_in_routine__1fe27b",
-          "label": "Use EMR reports in routine performance meetings to agree and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
-    ]
-  },
-  {
-    "id": "report_review_support__reports_are_sometimes_discussed",
-    "domain": "data_use_reporting",
-    "area": "report_review_support",
-    "label": "Reports are sometimes discussed",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_reports_in_routine__1fe27b",
-          "label": "Use EMR reports in routine performance meetings to agree and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_reports_772b6"
     ]
   },
   {
@@ -1458,16 +1480,32 @@ export const GAPS: GapDef[] = [
     "domain": "data_use_reporting",
     "area": "report_review_support",
     "label": "Reports never discussed because no validation meeting occurs",
-    "severity": "partial",
-    "variants": [
-      [
-        {
-          "id": "use_emr_reports_in_routine__1fe27b",
-          "label": "Use EMR reports in routine performance meetings to agree and track actions.",
-          "horizon": "minor",
-          "costNGN": 0
-        }
-      ]
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_reports_772b6"
+    ]
+  },
+  {
+    "id": "report_review_support__reports_are_rarely_discussed",
+    "domain": "data_use_reporting",
+    "area": "report_review_support",
+    "label": "Reports are rarely discussed",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_reports_7b773"
+    ]
+  },
+  {
+    "id": "report_review_support__reports_are_sometimes_discussed",
+    "domain": "data_use_reporting",
+    "area": "report_review_support",
+    "label": "Reports are sometimes discussed",
+    "recorded": true,
+    "severity": "blocking",
+    "actions": [
+      "use_emr_reports_7b773"
     ]
   }
 ];
@@ -1475,6 +1513,11 @@ export const GAPS: GapDef[] = [
 export const GAP_BY_ID: Record<string, GapDef> = Object.fromEntries(
   GAPS.map((g) => [g.id, g]),
 );
+
+/** Whether a condition is a gap the survey recorded. See `GapDef.recorded`. */
+export function isRecordedGap(id: string): boolean {
+  return GAP_BY_ID[id]?.recorded ?? false;
+}
 
 /** Gaps for a domain selection. No domains ticked means every gap. */
 export function gapsForDomains(domains: readonly string[]): GapDef[] {
@@ -1490,10 +1533,9 @@ export function gapsForDomains(domains: readonly string[]): GapDef[] {
  * per-domain rows, the facility card, the list rows and the map's investment
  * fills. That is the point: they cannot disagree about what was selected.
  *
- * Both filters narrow, and a gap area narrows *which gaps are counted*, not
- * only which facilities are in scope. Selecting a domain's areas and selecting
- * the domain give identical figures, because every gap sits in exactly one area
- * and every area in exactly one domain.
+ * Unrecorded conditions are in scope like any other: they carry cost, and a
+ * cost total that dropped them would not reconcile to the sheet. Counts leave
+ * them out through `isRecordedGap`.
  */
 export function offeredGapIds(
   domains: readonly string[],
@@ -1518,85 +1560,94 @@ export function gapsInArea(areaId: GapAreaId): GapDef[] {
 /**
  * Whether an area can block deployment at all.
  *
- * The worst severity any of its conditions carries — so `blocking` means *some
- * facility here is stopped*, not that every one is. Only 3 of the 20 areas
- * qualify, all in Technical Infrastructure; see docs/GAP_TAXONOMY.md.
+ * The worst severity any of its recorded conditions carries — so `blocking`
+ * means *some facility here is stopped*, not that every one is.
  */
 export function gapAreaSeverity(areaId: GapAreaId): GapSeverity {
-  return gapsInArea(areaId).some((g) => g.severity === 'blocking') ? 'blocking' : 'partial';
+  return gapsInArea(areaId).some((g) => g.recorded && g.severity === 'blocking')
+    ? 'blocking'
+    : 'partial';
 }
 
-/** The areas a facility carries a gap in. At most one condition feeds each, so
- *  the length is how many of the 20 areas are a problem here. */
+/** The areas a facility has a recorded gap in. At most one condition feeds
+ *  each, so the length is how many areas are a problem here. */
 export function facilityGapAreas(gapIds: readonly string[]): GapAreaId[] {
   const seen = new Set<GapAreaId>();
   for (const id of gapIds) {
-    const area = GAP_BY_ID[id]?.area;
-    if (area) seen.add(area);
+    const gap = GAP_BY_ID[id];
+    if (gap?.recorded) seen.add(gap.area);
   }
   return GAP_AREAS.filter((a) => seen.has(a.id)).map((a) => a.id);
 }
 
-/** Does this facility carry a gap in any of these areas? The Gap area filter's
- *  own question — OR within the control, like every other multi-select. */
+/** Does this facility carry a recorded gap in any of these areas? The Gap area
+ *  filter's own question — OR within the control, like every other
+ *  multi-select. */
 export function hasGapInAreas(gapIds: readonly string[], areas: readonly string[]): boolean {
   if (!areas.length) return true;
-  return gapIds.some((id) => areas.includes(GAP_BY_ID[id]?.area ?? ''));
+  return gapIds.some((id) => {
+    const gap = GAP_BY_ID[id];
+    return Boolean(gap?.recorded && areas.includes(gap.area));
+  });
+}
+
+/** An action at one facility: the type, how many, and what that comes to. */
+export interface FacilityAction extends ActionDef {
+  quantity: number;
+  /** `unitCostNGN × quantity`, or null where the action is unpriced. */
+  costNGN: number | null;
 }
 
 /**
- * The actions one facility's gap asks for.
+ * The actions one facility's gap asks for, with its own quantities.
  *
- * `variant` comes from `FacilitySummary.gapVariants[gapId]`, and defaults to
- * the first — which is the whole story for 67 of the 71 conditions. Pass it
- * wherever the reading is about a *facility*; omit it only where the subject is
- * the condition itself.
+ * Joined through the area: a facility sits under one condition per area and
+ * every action type belongs to one area, so the facility's actions that the
+ * condition can call for are exactly this gap's.
  */
-export function gapInterventions(gap: GapDef, variant = 0): GapInterventionDef[] {
-  return gap.variants[variant] ?? gap.variants[0] ?? [];
-}
-
-/**
- * What a gap costs at one facility.
- *
- * Nothing in the source is quantity-scaled, so an action costs the same
- * wherever it appears — but which actions a gap fires is no longer the same
- * everywhere, which is what `variant` carries. Unpriced interventions are
- * reported separately rather than counted as zero, so a total never silently
- * absorbs a missing price.
- */
-export function gapCostNGN(
+export function facilityGapActions(
+  facility: { actions: Record<string, number> },
   gap: GapDef,
-  variant = 0,
+): FacilityAction[] {
+  const out: FacilityAction[] = [];
+  for (const id of gap.actions) {
+    const quantity = facility.actions[id];
+    if (!quantity) continue;
+    const def = ACTION_BY_ID[id]!;
+    out.push({
+      ...def,
+      quantity,
+      costNGN: def.unitCostNGN === null ? null : def.unitCostNGN * quantity,
+    });
+  }
+  return out;
+}
+
+/**
+ * What a gap costs at one facility. Unpriced actions are reported separately
+ * rather than counted as zero, so a total never silently absorbs a missing
+ * price.
+ */
+export function facilityGapCost(
+  facility: { actions: Record<string, number> },
+  gap: GapDef,
 ): { costNGN: number; unpriced: number } {
   let costNGN = 0;
   let unpriced = 0;
-  for (const iv of gapInterventions(gap, variant)) {
-    if (iv.costNGN === null) unpriced += 1;
-    else costNGN += iv.costNGN;
+  for (const a of facilityGapActions(facility, gap)) {
+    if (a.costNGN === null) unpriced += 1;
+    else costNGN += a.costNGN;
   }
   return { costNGN, unpriced };
 }
 
 /**
- * Every action a condition can trigger, across all the ways it is costed.
- *
- * The union, not a sum — the ₦3,000,000 install and the ₦1,200,000 top-up are
- * alternatives, and a reader looking at the condition rather than at a facility
- * wants to see both. Never use this to cost anything.
+ * Every action type a condition can call for, as definitions. For a reader
+ * looking at the condition rather than at a facility; never use it to cost
+ * anything.
  */
-export function gapAllInterventions(gap: GapDef): GapInterventionDef[] {
-  if (gap.variants.length < 2) return gapInterventions(gap);
-  const seen = new Set<string>();
-  const out: GapInterventionDef[] = [];
-  for (const variant of gap.variants) {
-    for (const iv of variant) {
-      if (seen.has(iv.id)) continue;
-      seen.add(iv.id);
-      out.push(iv);
-    }
-  }
-  return out;
+export function gapActionDefs(gap: GapDef): ActionDef[] {
+  return gap.actions.map((id) => ACTION_BY_ID[id]!).filter(Boolean);
 }
 
 /** Band ranks, so a caller can order gap severity beside a readiness band. */
@@ -1605,5 +1656,5 @@ export const SEVERITY_BAND: Record<GapSeverity, Band> = {
   partial: "moderately_ready",
 };
 
-/** The four domains a facility is banded on. */
+/** The four facility domains. */
 export const FACILITY_DOMAIN_IDS: FacilityThemeId[] = ["technical_infrastructure","workforce_capacity","workflow_transition","data_use_reporting"];

@@ -16,13 +16,8 @@ import { useFilterStore } from '@/store/filterStore';
 import { archetypeDistribution, facilityBandUnder } from '@/lib/archetype';
 import { dominantBand } from '@/lib/bands';
 import { hasGapInAreas } from '@/lib/gapCatalogue';
-import { FACILITY_THEMES, facilityLens } from '@/lib/themes';
-import type {
-  Band,
-  FacilitySummary,
-  FacilityThemeId,
-  FilterState,
-} from '@/lib/types';
+import { facilityLens } from '@/lib/themes';
+import type { Band, FacilitySummary, FilterState } from '@/lib/types';
 
 export function filterFacilities(
   facilities: FacilitySummary[],
@@ -41,10 +36,9 @@ export function filterFacilities(
     if (f.functionalityLevels.length && !f.functionalityLevels.includes(fac.functionalityLevel)) {
       return false;
     }
-    // Readiness is read through the Domain filter — one rule, in
-    // `facilityBandUnder`. With no domain ticked this is the facility's own
-    // EMR-use band; with domains ticked it is
-    // the weakest of its readings in them, and so is every figure on the page.
+    // Readiness is the facility's overall band whatever the Domain filter
+    // says — the source classifies readiness once, and reports domains as
+    // gap severities. One rule, in `facilityBandUnder`.
     // A ticked gap area is asking "show me the facilities with a problem here",
     // so the control is an OR across its own selection and an AND against the
     // rest of the row — the same grammar as every other multi-select here.
@@ -60,17 +54,6 @@ export function filterFacilities(
     if (f.funding.length) {
       const label = fac.isBHCPF ? 'BHCPF' : 'non-BHCPF';
       if (!f.funding.includes(label)) return false;
-    }
-
-    // Per-theme bands are a link-only escape hatch (`band.<theme>` in the
-    // querystring), not something a control on the page writes any more. They
-    // stay an AND across themes: a link that names two of them is asking for
-    // facilities matching both, and there is no reader in front of it to mean
-    // anything looser.
-    for (const [themeId, bands] of Object.entries(f.bandByTheme)) {
-      if (!bands?.length) continue;
-      const band = fac.themeBands[themeId as FacilityThemeId];
-      if (!band || !bands.includes(band)) return false;
     }
 
     // Search covers the three names on screen, not just the facility's own —
@@ -130,10 +113,6 @@ export interface FilteredMetrics {
   distribution: Record<Band, number>;
   /** The population's own band, by the `dominantBand` rule. */
   band: Band | null;
-  /** Per-domain split, so a page can show *which* domain the not-ready sit in. */
-  themeDistribution: Record<FacilityThemeId, Record<Band, number>>;
-  /** The band each domain lands in across the filtered population. */
-  themeBands: Record<FacilityThemeId, Band | null>;
 }
 
 export function useFilteredData() {
@@ -146,28 +125,11 @@ export function useFilteredData() {
   );
 
   const metrics = useMemo<FilteredMetrics>(() => {
-    const themeDistribution = Object.fromEntries(
-      FACILITY_THEMES.map((t) => [
-        t.id,
-        archetypeDistribution(filtered.map((f) => f.themeBands[t.id as FacilityThemeId])),
-      ]),
-    ) as Record<FacilityThemeId, Record<Band, number>>;
-
-    const themeBands = Object.fromEntries(
-      FACILITY_THEMES.map((t) => [
-        t.id,
-        dominantBand(themeDistribution[t.id as FacilityThemeId]),
-      ]),
-    ) as Record<FacilityThemeId, Band | null>;
-
     const distribution = archetypeDistribution(filtered.map((f) => f.deploymentBand));
-
     return {
       total: filtered.length,
       distribution,
       band: dominantBand(distribution),
-      themeDistribution,
-      themeBands,
     };
   }, [filtered]);
 

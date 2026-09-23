@@ -2,255 +2,335 @@
  * The parts of the ingest that make claims about the source file.
  *
  * These test the *reading*, not the dataset: a fixture stands in for the real
- * 7.8 MB CSV so the behaviour can be pinned without a build. The dataset's own
+ * 8.6 MB CSV so the behaviour can be pinned without a build. The dataset's own
  * invariants are checked in `ingest-assessment.mjs`, against every row, on
  * every run — that is where "does the sheet still mean what the doc says"
  * belongs. What belongs here is the machinery those checks depend on.
  *
- * Three things are worth pinning, and each has a real failure behind it:
+ * Four things are worth pinning, and each has a real failure behind it:
  *
  *   **Positional parsing.** `Intervention 1`, `When action is needed` and
  *   `Cost 1 (₦)` repeat twenty-odd times in the real header and mean different
- *   things each time. A parser that looks a column up by name reads a
- *   plausible, wrong value — the worst kind of bug this pipeline can have,
- *   because nothing downstream can detect it. The fixture reproduces the
- *   duplicate headers so a regression to name-lookup fails here.
+ *   things each time, and the sheet puts helper and scenario columns between
+ *   them. A parser that looks a column up by name, or walks a fixed stride,
+ *   reads a plausible, wrong value. The fixture reproduces both.
  *
- *   **Determinism.** The catalogue is extracted rather than declared, which is
- *   only sound while one gap value implies one set of interventions. If that
- *   stops being true the extraction is ill-defined and the build must stop
- *   rather than keep whichever row it read last.
+ *   **Unit actions.** One cell can buy two desks and a fan, or five tablets,
+ *   for one cost. The split into unit actions must add back to that cost
+ *   exactly, or a total quietly stops reconciling with the sheet.
+ *
+ *   **Severity is per condition.** The deployment band is computed from it, so
+ *   a condition that blocks at one facility and not at another must stop the
+ *   build rather than keep whichever row it read last.
  *
  *   **Blank costs are not zero.** The source writes a real `₦0` for work that
- *   costs nothing and leaves the cell *empty* where the price is unknown. Those
- *   are different claims and the dashboard reports them differently.
+ *   costs nothing and leaves the cell *empty* where the price is unknown.
  */
 
 import { describe, expect, it } from 'vitest';
 import {
-  catalogueInterventions,
+  UNRECORDED_LABEL,
   extractCatalogue,
   extractGapAreas,
   interventionsCost,
+  interventionsInRow,
   parseAssessmentCsv,
   parseMoney,
   resolveLga,
+  splitAction,
 } from './assessment-source.mjs';
 
+/** As wide as the real sheet's fixed columns reach. */
+const WIDTH = 138;
+
+/** The columns the parser asserts, at their real positions. */
+const FIXED = {
+  0: 'Facility UUID',
+  1: 'State',
+  2: 'LGA',
+  3: 'Facility name',
+  4: 'Facility group',
+  5: 'Functionality',
+  6: 'Zone',
+  7: 'Overall readiness for EMR deployment',
+  8: 'Highest Technical Infrastructure gap severity',
+  9: 'Highest Workforce Capacity gap severity',
+  10: 'Highest Workflow and Transition gap severity',
+  11: 'Highest Data Use and Reporting gap severity',
+  75: 'MTN base station',
+  76: 'MTN base-station distance (km)',
+  77: 'MTN serviceability',
+  78: 'MTN 4G signal',
+  79: 'Average Airtel site distance (m)',
+  86: 'Technical intervention cost (₦)',
+  103: 'Workforce intervention cost (₦)',
+  116: 'Workflow intervention cost (₦)',
+  129: 'Data-use intervention cost (₦)',
+  132: 'Moderate gaps (e.g. power or connectivity work)',
+  133: 'Major gaps (e.g. no power or usable connection)',
+  134: 'Long-term gaps (e.g. optional maintenance or improvement)',
+  135: 'Typical daily client load',
+  137: 'Total facility intervention cost (₦)',
+};
+
 /**
- * A miniature of the real file: same four header rows, same duplicate column
- * names, one two-intervention gap and one single-intervention gap.
+ * Three technical blocks and one workforce block. Power carries a helper and a
+ * scenario column between its slot columns, the way the real sheet does.
  */
-function fixture(rows) {
-  const header = [
-    'Facility and readiness overview,,,,,,,,,,,,Technical Infrastructure,,,,,,,Workforce Capacity,,,,Summary',
-    [
-      'Facility UUID',
-      'State',
-      'LGA',
-      'Facility name',
-      'Facility group',
-      'Functionality',
-      'Zone',
-      'Overall readiness for EMR deployment',
-      'Technical infrastructure readiness for EMR use',
-      'Workforce readiness for EMR use',
-      'Workflow readiness for EMR use',
-      'Data-use readiness for EMR use',
-      'Power gap',
-      'Intervention 1',
-      'When action is needed',
-      'Cost 1 (₦)',
-      'Intervention 2',
-      'When action is needed',
-      'Cost 2 (₦)',
-      'Training gap',
-      'Intervention 1',
-      'When action is needed',
-      'Cost 1 (₦)',
-      'Total gaps',
-    ].join(','),
-  ];
-  return ['title', 'scope note', header[0], header[1], ...rows].join('\n');
+const BLOCKS = {
+  12: 'Power gap',
+  13: 'Intervention 1',
+  14: 'Power intervention helper column',
+  15: 'When action is needed',
+  16: 'Solar top-up  only scenario',
+  17: 'Cost 1 (₦)',
+  18: 'Intervention 2',
+  19: 'When action is needed',
+  20: 'Cost 2 (₦)',
+  21: 'Physical service-point gap',
+  22: 'Intervention 1',
+  23: 'When action is needed',
+  24: 'Cost 1 (₦)',
+  25: 'Device-sufficiency gap',
+  26: 'Intervention 1',
+  27: 'When action is needed',
+  28: 'Cost 1 (₦)',
+  87: 'Training gap',
+  88: 'Intervention 1',
+  89: 'When action is needed',
+  90: 'Cost 1 (₦)',
+};
+
+const DOMAIN_ROW = {
+  12: 'Technical Infrastructure',
+  87: 'Workforce Capacity',
+  104: 'Workflow and Transition',
+  117: 'Data Use and Reporting',
+  130: 'Baseline Summary',
+};
+
+const csvCell = (c) => {
+  const v = String(c ?? '');
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+};
+const line = (cells) => {
+  const out = Array(WIDTH).fill('');
+  for (const [k, v] of Object.entries(cells)) out[Number(k)] = v;
+  return out.map(csvCell).join(',');
+};
+
+function fixture(rows, header = { ...FIXED, ...BLOCKS }) {
+  return ['title', 'scope note', line(DOMAIN_ROW), line(header), ...rows].join('\n');
 }
 
-/** One data row. `power` and `training` are [value, ...interventions]. */
-const row = ({ uuid = 'u1', power = ['No gap', '', '', '₦0', '', '', '₦0'], training = ['No gap', '', '', '₦0'] } = {}) =>
-  [
-    uuid,
-    'kano',
-    'dala',
-    'some_health_post',
-    'BHCPF',
-    'Functional L1',
-    'north_west',
-    'Not Ready for EMR deployment',
-    'Not Ready for EMR use',
-    'Ready for EMR use',
-    'Ready for EMR use',
-    'Ready for EMR use',
-    ...power,
-    ...training,
-    '1',
-  ]
-    .map((c) => (String(c).includes(',') ? `"${c}"` : c))
-    .join(',');
-
-const CRITICAL = 'Critical gap to fix before EMR deployment';
+const MAJOR = 'Major gap to fix before EMR deployment';
+const MINOR_BEFORE = 'Minor gap to fix before EMR deployment';
+const MINOR_DURING = 'Minor action to complete during EMR deployment';
 const LONG_TERM = 'Optional long-term improvement after EMR deployment';
 
-const POWER_NONE = [
-  'No functional electricity source or 0 hours/day',
-  'Install solar panels and batteries.',
-  CRITICAL,
-  '₦3000000',
-  'Connect the facility to the electricity grid.',
-  LONG_TERM,
-  '₦500000',
-];
+/** One data row, with any cells overridden by column. */
+const row = (cells = {}) =>
+  line({
+    0: 'u1',
+    1: 'kano',
+    2: 'dala',
+    3: 'some_health_post',
+    4: 'BHCPF',
+    5: 'Functional L1',
+    6: 'north_west',
+    7: 'Not Ready for EMR deployment',
+    12: 'No gap',
+    21: 'No gap',
+    25: 'No gap',
+    87: 'No gap',
+    ...cells,
+  });
+
+const POWER_NONE = {
+  12: 'No functional electricity source or 0 hours/day',
+  13: 'Install solar panels and batteries.',
+  14: 'Full solar system',
+  15: MAJOR,
+  16: MAJOR,
+  17: '3085000',
+  18: 'Connect the facility to the electricity grid.',
+  19: LONG_TERM,
+  20: '500000',
+};
+
+const parse = (...rows) => parseAssessmentCsv(fixture(rows));
 
 describe('parseAssessmentCsv', () => {
-  it('locates gap blocks positionally, not by header name', () => {
-    const { blocks } = parseAssessmentCsv(fixture([row()]));
+  it('locates each slot by walking forward, past helper and scenario columns', () => {
+    const { blocks } = parse(row());
 
-    expect(blocks.map((b) => b.subDomain)).toEqual(['Power', 'Training']);
-    expect(blocks[0]).toMatchObject({ col: 12, domain: 'technical_infrastructure' });
-    expect(blocks[1]).toMatchObject({ col: 19, domain: 'workforce_capacity' });
-
-    // The point of the whole exercise: two blocks, both with columns headed
-    // `Intervention 1` / `When action is needed` / `Cost 1 (₦)`, resolved to
-    // different positions. A name lookup would collapse these.
-    expect(blocks[0].slots).toEqual([
-      { label: 13, when: 14, cost: 15 },
-      { label: 16, when: 17, cost: 18 },
+    expect(blocks.map((b) => b.subDomain)).toEqual([
+      'Power',
+      'Physical service-point',
+      'Device-sufficiency',
+      'Training',
     ]);
-    expect(blocks[1].slots).toEqual([{ label: 20, when: 21, cost: 22 }]);
+    expect(blocks[0]).toMatchObject({ col: 12, domain: 'technical_infrastructure' });
+    // The helper at 14 and the scenario at 16 are skipped: a fixed stride of
+    // three would read the helper as the urgency and the scenario as the cost.
+    expect(blocks[0].slots).toEqual([
+      { label: 13, when: 15, cost: 17 },
+      { label: 18, when: 19, cost: 20 },
+    ]);
+    expect(blocks[3].slots).toEqual([{ label: 88, when: 89, cost: 90 }]);
   });
 
   it('forward-fills the sparse domain row', () => {
-    const { blocks } = parseAssessmentCsv(fixture([row()]));
-    // "Workforce Capacity" is named once, above column 19; Training inherits it.
-    expect(blocks[1].domain).toBe('workforce_capacity');
+    const { blocks } = parse(row());
+    expect(blocks[3].domain).toBe('workforce_capacity');
   });
 
-  it('rejects a file with no gap columns', () => {
-    const noGaps = ['title', 'note', 'Overview', 'Facility UUID,State', 'u1,kano'].join('\n');
-    expect(() => parseAssessmentCsv(noGaps)).toThrow(/No gap columns/);
+  it('refuses a sheet whose fixed columns have moved', () => {
+    const moved = { ...FIXED, ...BLOCKS, 137: 'Something else' };
+    expect(() => parseAssessmentCsv(fixture([row()], moved))).toThrow(/layout has changed/);
   });
 });
 
 describe('extractGapAreas', () => {
   it('gives every gap column an id, its domain and the sheet\u2019s order', () => {
-    const { blocks } = parseAssessmentCsv(fixture([row()]));
-
-    expect(extractGapAreas(blocks)).toEqual([
-      { id: 'power', domain: 'technical_infrastructure', label: 'Power', order: 0 },
-      { id: 'training', domain: 'workforce_capacity', label: 'Training', order: 1 },
+    const { blocks } = parse(row());
+    expect(extractGapAreas(blocks).map((a) => [a.id, a.domain, a.order])).toEqual([
+      ['power', 'technical_infrastructure', 0],
+      ['physical_service_point', 'technical_infrastructure', 1],
+      ['device_sufficiency', 'technical_infrastructure', 2],
+      ['training', 'workforce_capacity', 3],
     ]);
   });
 });
 
-describe('extractCatalogue', () => {
-  it('makes one entry per (area, condition), carrying its interventions', () => {
-    const { blocks, rows } = parseAssessmentCsv(fixture([row({ power: POWER_NONE })]));
-    const catalogue = extractCatalogue(rows, blocks);
+describe('urgency', () => {
+  it('reads the two Minor wordings as one urgency, keeping their phases apart', () => {
+    const { blocks, rows } = parse(
+      row({
+        25: 'No supported computing devices are available',
+        26: 'Procure EMR-capable tablets to close the immediate device gap.',
+        27: MINOR_BEFORE,
+        28: '466666.6667',
+        21: '0% of applicable service points meet all minimum conditions',
+        22: 'Procure 1 desk',
+        23: MINOR_DURING,
+        24: '35000',
+      }),
+    );
+    const tablets = interventionsInRow(rows[0], blocks[2]);
+    const desks = interventionsInRow(rows[0], blocks[1]);
+    expect(tablets[0]).toMatchObject({ horizon: 'minor', phase: 'before' });
+    expect(desks[0]).toMatchObject({ horizon: 'minor', phase: 'during' });
+  });
 
-    expect(catalogue).toHaveLength(1);
-    expect(catalogue[0]).toMatchObject({
+  it('rejects an unrecognised urgency rather than guessing', () => {
+    const { blocks, rows } = parse(row({ ...POWER_NONE, 15: 'Sometime soon' }));
+    expect(() => extractCatalogue(rows, blocks)).toThrow(/Sometime soon/);
+  });
+});
+
+describe('splitAction', () => {
+  it('splits a service-point cell into unit actions that add back to its cost', () => {
+    const parts = splitAction(
+      'Procure 2 desks\nProcure 1 electric fan\nConfirm whether a lockable door is required for 3 affected service points before costing.',
+      130000,
+      'test',
+    );
+    expect(parts.map((p) => [p.key, p.quantity, p.unitCostNGN])).toEqual([
+      ['desk', 2, 35000],
+      ['electric_fan', 1, 60000],
+      ['lockable_door', 3, null],
+    ]);
+  });
+
+  it('prices the plain action as whatever the unit items do not account for', () => {
+    const parts = splitAction(
+      'Fix unsafe or inadequate wiring where EMR equipment will be used.\nInstall 4 socket points',
+      400000,
+      'test',
+    );
+    expect(parts.map((p) => [p.key, p.quantity, p.unitCostNGN])).toEqual([
+      [null, 1, 388000],
+      ['socket', 4, 3000],
+    ]);
+  });
+
+  it('reads the number of tablets off the cost', () => {
+    const [tablets] = splitAction(
+      'Procure EMR-capable tablets to close the immediate device gap.',
+      1166666.667,
+      'test',
+    );
+    expect(tablets).toMatchObject({ key: 'tablet', quantity: 5, unit: 'tablet' });
+  });
+
+  it('refuses a cell whose items do not add up to its cost', () => {
+    expect(() => splitAction('Procure 2 desks', 80000, 'test')).toThrow(/add to ₦70000/);
+  });
+});
+
+describe('extractCatalogue', () => {
+  it('makes one entry per (area, condition), naming the action types it calls for', () => {
+    const { blocks, rows } = parse(row(POWER_NONE));
+    const { gaps, actions } = extractCatalogue(rows, blocks);
+
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0]).toMatchObject({
       domain: 'technical_infrastructure',
       area: 'power',
       label: 'No functional electricity source or 0 hours/day',
       severity: 'blocking',
+      recorded: true,
     });
-    expect(catalogue[0].variants).toHaveLength(1);
-    const actions = catalogueInterventions(catalogue[0]);
-    expect(actions.map((i) => i.horizon)).toEqual(['critical', 'long_term']);
-    expect(actions.map((i) => i.costNGN)).toEqual([3_000_000, 500_000]);
-  });
-
-  it('collapses the same condition across rows into one entry', () => {
-    const { blocks, rows } = parseAssessmentCsv(
-      fixture([row({ uuid: 'u1', power: POWER_NONE }), row({ uuid: 'u2', power: POWER_NONE })]),
-    );
-    const catalogue = extractCatalogue(rows, blocks);
-    expect(catalogue).toHaveLength(1);
-    expect(catalogue[0].variants).toHaveLength(1);
-  });
-
-  it('keeps both ways a condition is costed, as variants of one condition', () => {
-    // The revised costing model's central move: the same gap draws the full
-    // solar install at one facility and a cheaper top-up at another. Two
-    // variants of one condition, not two conditions and not a conflict — a
-    // reader filtering on "no power" must still find both facilities.
-    const cheaper = [...POWER_NONE];
-    cheaper[1] = 'Add solar panels or batteries so EMR equipment has power for at least nine hours.';
-    cheaper[3] = '₦1200000';
-    const { blocks, rows } = parseAssessmentCsv(
-      fixture([row({ uuid: 'u1', power: POWER_NONE }), row({ uuid: 'u2', power: cheaper })]),
-    );
-    const catalogue = extractCatalogue(rows, blocks);
-
-    expect(catalogue).toHaveLength(1);
-    expect(catalogue[0].variants).toHaveLength(2);
-    expect(catalogue[0].variants.map((v) => interventionsCost(v).costNGN)).toEqual([
-      3_500_000, 1_700_000,
+    expect(gaps[0].actions).toHaveLength(2);
+    expect(actions.map((a) => [a.horizon, a.phase, a.unitCostNGN])).toEqual([
+      ['major', 'before', 3_085_000],
+      ['long_term', 'after', 500_000],
     ]);
   });
 
-  it('throws when one condition is blocking at one facility and not at another', () => {
-    // Severity is what the deployment band is computed from, so this is the one
-    // disagreement between variants that cannot be carried. Price may vary;
-    // whether the gap stops a deployment may not.
-    const softened = [...POWER_NONE];
-    softened[2] = LONG_TERM;
-    const { blocks, rows } = parseAssessmentCsv(
-      fixture([row({ uuid: 'u1', power: POWER_NONE }), row({ uuid: 'u2', power: softened })]),
-    );
+  it('collapses the same condition across rows into one entry', () => {
+    const { blocks, rows } = parse(row({ ...POWER_NONE, 0: 'u1' }), row({ ...POWER_NONE, 0: 'u2' }));
+    expect(extractCatalogue(rows, blocks).gaps).toHaveLength(1);
+  });
 
+  it('throws when one condition is blocking at one facility and not at another', () => {
+    const { blocks, rows } = parse(
+      row({ ...POWER_NONE, 0: 'u1' }),
+      row({ ...POWER_NONE, 0: 'u2', 15: LONG_TERM }),
+    );
     expect(() => extractCatalogue(rows, blocks)).toThrow(/blocking at facility/);
     // The message has to name both rows, or nobody can find the disagreement
     // in a 2,806-row sheet.
     expect(() => extractCatalogue(rows, blocks)).toThrow(/u1[\s\S]*u2/);
   });
 
-  it('keeps a gap that has no intervention at all', () => {
-    // 81 real facilities carry a partly working backup power supply with no
-    // action behind it. It still counts toward Total gaps, so it stays in the
-    // catalogue — as a gap that cannot block anything.
-    const { blocks, rows } = parseAssessmentCsv(
-      fixture([row({ training: ['Training over 1 year ago', '', '', '₦0'] })]),
-    );
-    const [gap] = extractCatalogue(rows, blocks);
-
-    expect(catalogueInterventions(gap)).toEqual([]);
-    expect(gap.severity).toBe('partial');
-    expect(interventionsCost(catalogueInterventions(gap))).toEqual({ costNGN: 0, unpriced: 0 });
+  it('keeps a gap that has no action at all, as one that cannot block', () => {
+    const { blocks, rows } = parse(row({ 87: 'Training over 1 year ago' }));
+    const { gaps } = extractCatalogue(rows, blocks);
+    expect(gaps[0]).toMatchObject({ severity: 'partial', actions: [], recorded: true });
   });
 
-  it('rejects an unrecognised urgency rather than guessing', () => {
-    const bad = [...POWER_NONE];
-    bad[2] = 'Sometime soon';
-    const { blocks, rows } = parseAssessmentCsv(fixture([row({ power: bad })]));
-    expect(() => extractCatalogue(rows, blocks)).toThrow(/Sometime soon/);
+  it('files work costed under "No gap" as the area\u2019s unrecorded condition', () => {
+    const { blocks, rows } = parse(
+      row({ 21: 'No gap', 22: 'Procure 1 electric fan', 23: MINOR_DURING, 24: '60000' }),
+    );
+    const { gaps } = extractCatalogue(rows, blocks);
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0]).toMatchObject({ label: UNRECORDED_LABEL, recorded: false });
+  });
+
+  it('reads an action cell of "No gap" as no action', () => {
+    const { blocks, rows } = parse(
+      row({ 21: '0% of applicable service points meet all minimum conditions', 22: 'No gap' }),
+    );
+    expect(interventionsInRow(rows[0], blocks[1])).toEqual([]);
   });
 });
 
-describe('the two source repairs', () => {
-  it('holds the missing-urgency repair to its own column', () => {
-    // A blank urgency is read as `minor` for Physical service-point and nowhere
-    // else. Applied to a power action it would be a guess about a critical
-    // blocker, so the parse stops instead.
-    const blank = [...POWER_NONE];
-    blank[2] = '';
-    expect(() => parseAssessmentCsv(fixture([row({ power: blank })]))).toThrow(
-      /no "when action is needed" value/,
-    );
-  });
-
+describe('the source repair', () => {
   it('holds the `0` repair to its own column', () => {
-    expect(() => parseAssessmentCsv(fixture([row({ training: ['0', '', '', '₦0'] })]))).toThrow(
-      /appears as a Training gap value/,
-    );
+    expect(() => parse(row({ 87: '0' }))).toThrow(/appears as a Training gap value/);
   });
 });
 
