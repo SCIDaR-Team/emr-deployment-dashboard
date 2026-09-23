@@ -104,22 +104,21 @@ export function StatesView({
         : `To reach ${t.pct}% Ready in one state`;
 
   return (
-    <div className="grid lg:h-full lg:grid-cols-[292px_minmax(0,1fr)]">
+    <div className="grid lg:h-full lg:grid-cols-[312px_minmax(0,1fr)]">
       {/* The controls. */}
-      <div className="space-y-3.5 border-b border-border bg-surface-sunk/40 p-3 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
-        <section>
+      <div className="flex flex-col gap-3 border-b border-border bg-surface-sunk/40 p-3 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <section className="flex flex-1 flex-col">
           <PanelLabel aside={<FixActions chosen={chosen} onChange={setFixes} />}>
             Fixes to fund
           </PanelLabel>
-          <div className="mt-2">
-            <FixPicker
-              chosen={chosen}
-              onChange={setFixes}
-              gains={gains}
-              bought={national.bought}
-              limited={t.kind !== 'budget' || t.ngn !== null}
-            />
-          </div>
+          <FixPicker
+            chosen={chosen}
+            onChange={setFixes}
+            gains={gains}
+            bought={national.bought}
+            limited={t.kind !== 'budget' || t.ngn !== null}
+            className="mt-2 flex-1"
+          />
         </section>
         <section>
           <PanelLabel

@@ -71,7 +71,7 @@ export function Chip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'mono rounded-full border px-2 py-0.5 text-tick uppercase tracking-[0.06em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        'mono rounded-full border px-1.5 py-0.5 text-tick uppercase tracking-[0.03em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         active
           ? 'border-foreground bg-foreground font-semibold text-surface'
           : 'border-border bg-surface text-muted-foreground hover:border-foreground/40 hover:text-foreground',
@@ -160,6 +160,7 @@ export function FixPicker({
   bought,
   limited,
   compact,
+  className,
 }: {
   chosen: ReadonlySet<ScenarioComponentId>;
   onChange: (next: ScenarioComponentId[]) => void;
@@ -167,6 +168,9 @@ export function FixPicker({
   bought?: Record<ScenarioComponentId, { facilities: number; costNGN: number }>;
   limited?: boolean;
   compact?: boolean;
+  /** For the full size: given a height (a flex-1 in a column), the three
+   *  rows of tiles share it, so the tiles grow to fill the panel. */
+  className?: string;
 }) {
   const toggle = (id: ScenarioComponentId) =>
     onChange(chosen.has(id) ? [...chosen].filter((c) => c !== id) : [...chosen, id]);
@@ -201,7 +205,9 @@ export function FixPicker({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div
+      className={cn('grid grid-cols-2 grid-rows-[repeat(3,minmax(auto,1fr))] gap-1.5', className)}
+    >
       {FIXES.map((fix) => (
         <FixTile
           key={fix.id}
@@ -240,36 +246,34 @@ function FixTile({
       onClick={onToggle}
       title={`${fix.label} — ${fix.blurb}`}
       className={cn(
-        'group flex min-w-0 flex-col rounded-[6px] border px-2 py-1 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+        'group flex min-w-0 flex-col justify-between gap-1 rounded-[7px] border px-2.5 py-1.5 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
         on
           ? 'border-ready-ink bg-ready-wash shadow-[inset_0_0_0_1px_hsl(var(--ready-ink))]'
           : 'border-border bg-surface hover:border-foreground/30',
       )}
     >
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-start gap-2">
         <span
           className={cn(
-            'flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] transition-colors',
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] transition-colors',
             on
               ? 'bg-ready-ink text-surface'
               : 'bg-surface-sunk text-muted-foreground group-hover:text-foreground',
           )}
         >
-          <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
         </span>
-        <span className="min-w-0 flex-1 truncate text-body font-semibold text-foreground">
+        <span className="min-w-0 flex-1 self-center truncate text-body font-semibold text-foreground">
           {fix.short}
         </span>
-        {on && (
-          <Check className="h-3.5 w-3.5 shrink-0 text-ready-ink" strokeWidth={3} aria-hidden />
-        )}
       </span>
-      <span className="mono mt-0.5 flex items-baseline justify-between gap-1 text-[10.5px] tabular-nums">
+      <span className="mono flex items-baseline justify-between gap-1 text-note tabular-nums">
         <span className="text-muted-foreground">{formatNaira(fix.unitCostNGN, true)}</span>
         {on ? (
           bought?.facilities ? (
-            <span className="truncate font-semibold text-ready-ink">
-              {formatCount(bought.facilities)} Ready
+            <span className="flex min-w-0 items-center gap-0.5 font-semibold text-ready-ink">
+              <Check className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
+              <span className="truncate">{formatCount(bought.facilities)} Ready</span>
             </span>
           ) : (
             <span className="truncate text-muted-foreground">
@@ -594,7 +598,7 @@ export function TargetControl({
         <div className="mt-1.5 flex flex-wrap gap-1">
           {QUICK[target.kind].map((q) => (
             <Chip key={targetLabel(q)} active={same(q, target)} onClick={() => onChange(q)}>
-              {targetLabel(q)}
+              {targetLabel(q).replace(/\.0(?=[a-z])/, '')}
             </Chip>
           ))}
         </div>
