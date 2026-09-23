@@ -46,22 +46,21 @@ export function SingleView({
   const curveH = curve.size.w ? Math.max(150, (curve.size.h * 420) / curve.size.w) : 200;
 
   return (
-    <div className="grid lg:h-full lg:grid-cols-[292px_minmax(0,1fr)_minmax(0,300px)]">
+    <div className="grid lg:h-full lg:grid-cols-[312px_minmax(0,1fr)_minmax(0,300px)]">
       {/* The controls. */}
-      <div className="space-y-3.5 border-b border-border bg-surface-sunk/40 p-3 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
-        <section>
+      <div className="flex flex-col gap-3 border-b border-border bg-surface-sunk/40 p-3 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <section className="flex flex-1 flex-col">
           <PanelLabel aside={<FixActions chosen={chosen} onChange={setFixes} />}>
             Fixes to fund
           </PanelLabel>
-          <div className="mt-2">
-            <FixPicker
-              chosen={chosen}
-              onChange={setFixes}
-              gains={gains}
-              bought={plan.bought}
-              limited={spec.target.kind !== 'budget' || spec.target.ngn !== null}
-            />
-          </div>
+          <FixPicker
+            chosen={chosen}
+            onChange={setFixes}
+            gains={gains}
+            bought={plan.bought}
+            limited={spec.target.kind !== 'budget' || spec.target.ngn !== null}
+            className="mt-2 flex-1"
+          />
         </section>
 
         <section>

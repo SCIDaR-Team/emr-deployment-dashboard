@@ -134,20 +134,20 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
           <span className="mono w-11 shrink-0 text-tick uppercase tracking-[0.07em] text-muted-foreground">
             {row.label}
           </span>
-          <div className="flex h-4 min-w-0 flex-1 gap-[2px] overflow-hidden rounded-[3px]">
+          <div className="flex h-8 min-w-0 flex-1 gap-[2px] overflow-hidden rounded-[4px]">
             {row.segs.map((s) =>
               s.n ? (
                 <span
                   key={s.key}
                   title={`${s.name}: ${formatCount(s.n)} (${formatShare(s.n, total)})`}
                   className={cn(
-                    'mono flex h-full items-center justify-center overflow-hidden whitespace-nowrap text-[9.5px] font-semibold transition-[width] duration-500 ease-out',
+                    'mono flex h-full items-center justify-center overflow-hidden whitespace-nowrap text-note font-semibold transition-[width] duration-500 ease-out',
                     s.cls,
                     s.key === 'x' ? 'text-surface' : 'text-onband',
                   )}
                   style={{ width: `${(s.n / total) * 100}%` }}
                 >
-                  {s.n / total > 0.08 ? formatCount(s.n) : ''}
+                  {s.n / total > 0.05 ? formatCount(s.n) : ''}
                 </span>
               ) : null,
             )}
