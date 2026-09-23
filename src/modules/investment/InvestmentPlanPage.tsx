@@ -24,6 +24,7 @@ import { formatCount, formatNaira, formatShare, formatUnits } from '@/lib/format
 import { HORIZONS, HORIZON_SHORT } from '@/lib/gapCatalogue';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/lib/types';
+import { CostByReadinessSection } from './CostByReadinessSection';
 import { ScenarioSection } from './scenario/ScenarioSection';
 
 /**
@@ -54,6 +55,7 @@ import { ScenarioSection } from './scenario/ScenarioSection';
  * word for them.
  */
 const SECTIONS = [
+  { id: 'cost-by-readiness', label: 'By readiness' },
   { id: 'interventions', label: 'Interventions' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'waves', label: 'Rollout waves' },
@@ -411,6 +413,8 @@ export default function InvestmentPlanPage() {
             scored={scope.facilityCount}
           />
         </SectionCard>
+
+        <CostByReadinessSection facilities={scopedFacilities} />
 
         <SectionCard
           id="interventions"
