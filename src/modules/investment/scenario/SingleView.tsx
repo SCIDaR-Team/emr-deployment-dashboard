@@ -107,7 +107,7 @@ export function SingleView({
               ghost={ghost}
               maxNGN={ghost.reachable.costNGN}
               handleNGN={plan.spendNGN}
-              callout={`${formatNaira(plan.spendNGN, true)} → +${formatCount(plan.newlyReady)} Ready`}
+              callout={`${formatNaira(plan.spendNGN, true)} → +${formatCount(plan.newlyReady)} unlocked`}
               onBudget={(ngn) => onChange({ ...spec, target: { kind: 'budget', ngn } })}
               height={curveH}
             />
@@ -149,7 +149,7 @@ export function SingleView({
           {tab === 'states' && (
             <>
               <p className="mb-1.5 text-note text-muted-foreground">
-                Where this plan&rsquo;s newly Ready facilities are. Light is Ready already.
+                Where this plan&rsquo;s unlocked facilities are. Light is Ready before.
               </p>
               <WhereTheyLand paths={paths} plan={plan} />
             </>

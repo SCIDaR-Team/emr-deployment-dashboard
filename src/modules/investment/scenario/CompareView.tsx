@@ -7,6 +7,7 @@ import { formatCount, formatNaira, formatShare } from '@/lib/format';
 import type { FacilityPath } from '@/lib/scenarios';
 import { FixPicker, StatePicker, TargetControl } from './controls';
 import { planSpec, useStateItems, type SpecPlan } from './planning';
+import { Readiness } from './results';
 import { LETTERS, MAX_COMPARE, type ScenarioSpec } from './scenarioState';
 
 /**
@@ -15,7 +16,7 @@ import { LETTERS, MAX_COMPARE, type ScenarioSpec } from './scenarioState';
  * Each column is a scenario: its fixes, the states it is limited to, and its
  * target, then what it comes to. The result rows line up across the columns
  * and their bars share one scale per row, so the comparison is read straight
- * across — which makes the most facilities Ready, which spends least, which
+ * across — which unlocks the most facilities, which spends least, which
  * gets the most for each naira. Scenarios are named by letter, A to D, rather
  * than by colour: the readiness and urgency colours are already spoken for on
  * this page.
@@ -37,7 +38,6 @@ export function CompareView({
   const stateItems = useStateItems(paths);
 
   const scale = {
-    newly: Math.max(1, ...plans.map((p) => p.plan.newlyReady)),
     spend: Math.max(1, ...plans.map((p) => p.plan.spendNGN)),
     per: Math.max(1, ...plans.map((p) => perFacility(p))),
   };
@@ -129,7 +129,7 @@ function Column({
   spec: ScenarioSpec;
   planned: SpecPlan;
   stateItems: { key: string; label: string; count: number }[];
-  scale: { newly: number; spend: number; per: number };
+  scale: { spend: number; per: number };
   mostReady: boolean;
   bestValue: boolean;
   onChange: (spec: ScenarioSpec) => void;
@@ -204,27 +204,23 @@ function Column({
           over whatever height the column has. */}
       <div className="flex flex-1 flex-col justify-between gap-2 border-t border-border px-3 py-2 tall:gap-2.5 tall:py-2.5">
         <div>
-          <div className="flex items-baseline justify-between gap-2">
-            <p className="mono text-tick uppercase tracking-[0.07em] text-muted-foreground">
-              Ready after
-            </p>
-            {mostReady && <Badge>Most Ready</Badge>}
-          </div>
-          <p className="mono mt-1 text-figure-sm font-semibold leading-none tracking-tight tabular-nums text-foreground">
-            {formatCount(Math.round(shownAfter))}
-            <span className="ml-1.5 text-note font-normal text-muted-foreground">
-              of {formatCount(total)} · {formatShare(readyAfter, total)}
-            </span>
+          {mostReady && (
+            <div className="mb-1 flex justify-end">
+              <Badge>Most unlocked</Badge>
+            </div>
+          )}
+          <Readiness
+            before={plan.readyBefore}
+            unlocked={plan.newlyReady}
+            total={Math.round(shownAfter)}
+            of={total}
+          />
+          <p className="mt-1 text-[10.5px] text-muted-foreground">
+            Total Ready is {formatShare(readyAfter, total)} of {formatCount(total)}
           </p>
           <ReadyBar before={plan.readyBefore} added={plan.newlyReady} total={total} />
         </div>
 
-        <Row
-          label="Newly ready"
-          value={`+${formatCount(plan.newlyReady)}`}
-          share={plan.newlyReady / scale.newly}
-          strong
-        />
         <Row
           label="Spend"
           value={formatNaira(plan.spendNGN, true)}
@@ -246,7 +242,7 @@ function Column({
   );
 }
 
-/** Ready before and newly Ready, of every facility in the scenario's scope,
+/** Ready before and Unlocked, of every facility in the scenario's scope,
  *  thick enough to carry the counts. */
 function ReadyBar({ before, added, total }: { before: number; added: number; total: number }) {
   const segs = [
@@ -256,7 +252,7 @@ function ReadyBar({ before, added, total }: { before: number; added: number; tot
       cls: cn(BAND_CLASSES.ready.bg, 'text-onband'),
       name: 'Ready before',
     },
-    { key: 'added', n: added, cls: 'bg-ready-ink text-surface', name: 'Newly ready' },
+    { key: 'added', n: added, cls: 'bg-ready-ink text-surface', name: 'Unlocked' },
   ];
   return (
     <div className="mt-1.5 flex h-5 gap-[2px] overflow-hidden rounded-[4px] bg-surface-sunk tall:mt-2 tall:h-7">
@@ -283,13 +279,11 @@ function Row({
   label,
   value,
   share,
-  strong,
   badge,
 }: {
   label: string;
   value: string;
   share: number;
-  strong?: boolean;
   badge?: React.ReactNode;
 }) {
   return (
@@ -299,21 +293,13 @@ function Row({
           {label}
           {badge}
         </span>
-        <span
-          className={cn(
-            'mono text-body font-semibold tabular-nums',
-            strong ? 'text-ready-ink' : 'text-foreground',
-          )}
-        >
-          {value}
-        </span>
+        <span className={'mono text-body font-semibold tabular-nums text-foreground'}>{value}</span>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-sunk tall:mt-1.5 tall:h-2.5">
         <div
-          className={cn(
-            'h-full rounded-full transition-[width] duration-500 ease-out',
-            strong ? 'bg-ready-ink' : 'bg-foreground/40',
-          )}
+          className={
+            'h-full rounded-full bg-foreground/40 transition-[width] duration-500 ease-out'
+          }
           style={{ width: `${Math.min(100, share * 100)}%` }}
         />
       </div>
