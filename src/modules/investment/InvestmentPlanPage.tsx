@@ -25,7 +25,7 @@ import { HORIZONS, HORIZON_SHORT } from '@/lib/gapCatalogue';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/lib/types';
 import { CostByReadinessSection } from './CostByReadinessSection';
-import { ScenarioSection } from './ScenarioSection';
+import { ScenarioBuilder } from './scenario/ScenarioBuilder';
 
 /**
  * Investment Plan — what deploying will take, itemised.
@@ -516,7 +516,7 @@ export default function InvestmentPlanPage() {
           )}
         </SectionCard>
 
-        <ScenarioSection facilities={scopedFacilities} />
+        <ScenarioBuilder facilities={scopedFacilities} />
 
         <SectionCard
           id="waves"
