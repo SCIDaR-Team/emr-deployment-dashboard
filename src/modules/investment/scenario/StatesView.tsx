@@ -189,12 +189,17 @@ export function StatesView({
         </div>
 
         <div className="px-3.5 pb-2 pt-0.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-          <table className="w-full border-collapse text-note">
+          {/* Full height on a wide screen, so the rows share the space the
+              panel has rather than bunching at the top. */}
+          <table className="w-full border-collapse text-note lg:h-full">
             <thead className="sticky top-0 z-[1] bg-surface">
-              <tr className="mono text-left text-tick uppercase tracking-[0.07em] text-muted-foreground">
+              <tr className="mono h-8 text-left text-tick uppercase tracking-[0.07em] text-muted-foreground">
                 <th className="w-6 py-1 font-normal">#</th>
                 <th className="py-1 font-normal">State</th>
-                <th className="hidden py-1 font-normal sm:table-cell">Ready before → after</th>
+                <th className="hidden w-[34%] py-1 font-normal sm:table-cell">
+                  Ready before → after
+                </th>
+                <th className="py-1 pr-3 text-right font-normal">Ready before</th>
                 <th className="py-1 text-right font-normal">New</th>
                 <th className="py-1 text-right font-normal">Spend</th>
                 <th className="py-1 text-right font-normal">Per facility</th>
@@ -205,12 +210,12 @@ export function StatesView({
             <tbody>
               {sorted.map((r, i) => (
                 <tr key={r.state} className="border-t border-border">
-                  <td className="mono py-[3px] text-tick tabular-nums text-muted-foreground">
+                  <td className="mono py-[2px] text-tick tabular-nums text-muted-foreground">
                     {i + 1}
                   </td>
-                  <td className="py-[3px] pr-2 font-semibold text-foreground">{r.state}</td>
-                  <td className="hidden py-[3px] pr-3 sm:table-cell">
-                    <div className="flex h-2 min-w-[120px] gap-[2px] overflow-hidden rounded-[3px] bg-surface-sunk">
+                  <td className="py-[2px] pr-2 font-semibold text-foreground">{r.state}</td>
+                  <td className="hidden py-[2px] pr-3 sm:table-cell">
+                    <div className="flex h-5 min-w-[140px] gap-[2px] overflow-hidden rounded-[4px] bg-surface-sunk">
                       <span
                         className={cn('h-full', BAND_CLASSES.ready.bg)}
                         style={{
@@ -225,7 +230,13 @@ export function StatesView({
                       />
                     </div>
                   </td>
-                  <td className="py-[3px] text-right">
+                  <td
+                    className="mono py-[2px] pr-3 text-right tabular-nums text-foreground"
+                    title={`${formatCount(r.plan.readyBefore)} of ${formatCount(r.total)} facilities Ready before any gap is closed`}
+                  >
+                    {formatCount(r.plan.readyBefore)}
+                  </td>
+                  <td className="py-[2px] text-right">
                     <span className="mono inline-flex items-center justify-end gap-1.5 font-semibold tabular-nums text-ready-ink">
                       <span
                         aria-hidden
@@ -237,16 +248,16 @@ export function StatesView({
                       {r.plan.newlyReady ? `+${formatCount(r.plan.newlyReady)}` : '—'}
                     </span>
                   </td>
-                  <td className="mono py-[3px] text-right tabular-nums text-foreground">
+                  <td className="mono py-[2px] text-right tabular-nums text-foreground">
                     {formatNaira(r.plan.spendNGN, true)}
                   </td>
-                  <td className="mono py-[3px] text-right tabular-nums text-foreground">
+                  <td className="mono py-[2px] text-right tabular-nums text-foreground">
                     {r.per ? formatNaira(r.per, true) : '—'}
                   </td>
-                  <td className="mono hidden py-[3px] text-right tabular-nums text-muted-foreground md:table-cell">
+                  <td className="mono hidden py-[2px] text-right tabular-nums text-muted-foreground md:table-cell">
                     {formatShare(r.plan.readyBefore + r.plan.newlyReady, r.total)}
                   </td>
-                  <td className="py-[3px] text-right">
+                  <td className="py-[2px] text-right">
                     <button
                       type="button"
                       disabled={compareFull}
