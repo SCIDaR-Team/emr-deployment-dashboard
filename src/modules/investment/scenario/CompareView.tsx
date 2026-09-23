@@ -52,7 +52,7 @@ export function CompareView({
     onChange([
       ...specs,
       last
-        ? { ...last, name: `${last.name} (copy)`.slice(0, 40) }
+        ? { ...last, name: `Scenario ${LETTERS[specs.length]}` }
         : {
             name: 'Scenario',
             fixes: ['router'],
@@ -184,7 +184,7 @@ function Column({
       </div>
 
       {/* The scenario. */}
-      <div className="space-y-2 bg-surface-sunk/40 px-3 py-2">
+      <div className="space-y-1.5 bg-surface-sunk/40 px-3 py-1.5 tall:space-y-2 tall:py-2">
         <FixPicker compact chosen={chosen} onChange={(fixes) => onChange({ ...spec, fixes })} />
         <StatePicker
           items={stateItems}
@@ -200,8 +200,9 @@ function Column({
         />
       </div>
 
-      {/* What it comes to — rows that line up across the columns. */}
-      <div className="flex flex-1 flex-col gap-2 border-t border-border px-3 py-2">
+      {/* What it comes to — rows that line up across the columns, spread
+          over whatever height the column has. */}
+      <div className="flex flex-1 flex-col justify-between gap-2 border-t border-border px-3 py-2 tall:gap-2.5 tall:py-2.5">
         <div>
           <div className="flex items-baseline justify-between gap-2">
             <p className="mono text-tick uppercase tracking-[0.07em] text-muted-foreground">
@@ -209,26 +210,13 @@ function Column({
             </p>
             {mostReady && <Badge>Most Ready</Badge>}
           </div>
-          <p className="mono mt-0.5 text-figure-sm font-semibold leading-none tracking-tight tabular-nums text-foreground">
+          <p className="mono mt-1 text-figure-sm font-semibold leading-none tracking-tight tabular-nums text-foreground">
             {formatCount(Math.round(shownAfter))}
             <span className="ml-1.5 text-note font-normal text-muted-foreground">
               of {formatCount(total)} · {formatShare(readyAfter, total)}
             </span>
           </p>
-          <div className="mt-1.5 flex h-2 gap-[2px] overflow-hidden rounded-[3px] bg-surface-sunk">
-            <span
-              className={cn('h-full', BAND_CLASSES.ready.bg)}
-              style={{
-                width: `${total ? (plan.readyBefore / total) * 100 : 0}%`,
-              }}
-            />
-            <span
-              className="h-full bg-ready-ink transition-[width] duration-500 ease-out"
-              style={{
-                width: `${total ? (plan.newlyReady / total) * 100 : 0}%`,
-              }}
-            />
-          </div>
+          <ReadyBar before={plan.readyBefore} added={plan.newlyReady} total={total} />
         </div>
 
         <Row
@@ -254,6 +242,39 @@ function Column({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Ready before and newly Ready, of every facility in the scenario's scope,
+ *  thick enough to carry the counts. */
+function ReadyBar({ before, added, total }: { before: number; added: number; total: number }) {
+  const segs = [
+    {
+      key: 'before',
+      n: before,
+      cls: cn(BAND_CLASSES.ready.bg, 'text-onband'),
+      name: 'Ready before',
+    },
+    { key: 'added', n: added, cls: 'bg-ready-ink text-surface', name: 'Newly ready' },
+  ];
+  return (
+    <div className="mt-1.5 flex h-5 gap-[2px] overflow-hidden rounded-[4px] bg-surface-sunk tall:mt-2 tall:h-7">
+      {segs.map((s) =>
+        s.n && total ? (
+          <span
+            key={s.key}
+            title={`${s.name}: ${formatCount(s.n)}`}
+            className={cn(
+              'mono flex h-full items-center justify-center overflow-hidden whitespace-nowrap text-note font-semibold transition-[width] duration-500 ease-out',
+              s.cls,
+            )}
+            style={{ width: `${(s.n / total) * 100}%` }}
+          >
+            {s.n / total > 0.12 ? `${s.key === 'added' ? '+' : ''}${formatCount(s.n)}` : ''}
+          </span>
+        ) : null,
+      )}
     </div>
   );
 }
@@ -287,7 +308,7 @@ function Row({
           {value}
         </span>
       </div>
-      <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-sunk">
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-sunk tall:mt-1.5 tall:h-2.5">
         <div
           className={cn(
             'h-full rounded-full transition-[width] duration-500 ease-out',

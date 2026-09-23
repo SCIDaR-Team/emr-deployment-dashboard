@@ -177,7 +177,7 @@ export function FixPicker({
 
   if (compact) {
     return (
-      <div className="grid grid-cols-6 gap-1">
+      <div className="grid grid-cols-6 gap-1 tall:grid-cols-2">
         {FIXES.map((fix) => {
           const on = chosen.has(fix.id);
           const Icon = fix.icon;
@@ -186,17 +186,19 @@ export function FixPicker({
               key={fix.id}
               type="button"
               aria-pressed={on}
-              aria-label={fix.label}
               title={`${fix.label} · ${formatNaira(fix.unitCostNGN, true)} each`}
               onClick={() => toggle(fix.id)}
               className={cn(
-                'flex h-8 items-center justify-center rounded-[5px] border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+                'flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[5px] border transition-colors tall:h-7 tall:justify-start tall:px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
                 on
                   ? 'border-ready-ink bg-ready-ink text-surface'
                   : 'border-border bg-surface text-muted-foreground hover:border-foreground/40 hover:text-foreground',
               )}
             >
-              <Icon className="h-4 w-4" strokeWidth={1.9} aria-hidden />
+              <Icon className="h-4 w-4 shrink-0" strokeWidth={1.9} aria-hidden />
+              <span className="hidden min-w-0 truncate text-note font-semibold tall:inline">
+                {fix.short}
+              </span>
             </button>
           );
         })}
