@@ -66,10 +66,15 @@ export function CompareView({
 
   return (
     <div className="overflow-x-auto lg:h-full lg:overflow-y-auto">
+      {/* Five shared rows — name, the scenario, readiness, spend, per
+          facility — that every column is a subgrid of, so each row sits at
+          the same height in every column whatever its content. The three
+          result rows share the height left over. */}
       <div
-        className="grid min-w-full gap-px bg-border lg:min-h-full"
+        className="grid min-w-full gap-x-px bg-border lg:h-full"
         style={{
           gridTemplateColumns: `repeat(${columns}, minmax(232px, 1fr))`,
+          gridTemplateRows: 'auto auto minmax(auto, 1.3fr) minmax(auto, 1fr) minmax(auto, 1fr)',
         }}
       >
         {specs.map((spec, i) => (
@@ -90,7 +95,7 @@ export function CompareView({
           />
         ))}
         {specs.length < MAX_COMPARE && (
-          <div className="flex items-center justify-center bg-surface p-3">
+          <div className="row-span-5 flex items-center justify-center bg-surface p-3">
             <button
               type="button"
               onClick={add}
@@ -143,7 +148,7 @@ function Column({
   const shownAfter = useTween(readyAfter);
 
   return (
-    <div className="flex min-w-0 flex-col bg-surface">
+    <div className="row-span-5 grid min-w-0 grid-rows-subgrid bg-surface">
       {/* Name. */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
         <span
@@ -200,43 +205,37 @@ function Column({
         />
       </div>
 
-      {/* What it comes to — rows that line up across the columns, spread
-          over whatever height the column has. */}
-      <div className="flex flex-1 flex-col justify-between gap-2 border-t border-border px-3 py-2 tall:gap-2.5 tall:py-2.5">
-        <div>
-          {mostReady && (
-            <div className="mb-1 flex justify-end">
-              <Badge>Most unlocked</Badge>
-            </div>
-          )}
-          <Readiness
-            before={plan.readyBefore}
-            unlocked={plan.newlyReady}
-            total={Math.round(shownAfter)}
-            of={total}
-          />
-          <p className="mt-1 text-[10.5px] text-muted-foreground">
+      {/* What it comes to: three rows, each centred in its shared row. A
+          target the fixes cannot reach says so in the target control. */}
+      <div className="flex flex-col justify-center border-t border-border px-3 py-2">
+        <Readiness
+          before={plan.readyBefore}
+          unlocked={plan.newlyReady}
+          total={Math.round(shownAfter)}
+          of={total}
+        />
+        <div className="mt-1 flex h-4 items-center justify-between gap-2">
+          <p className="truncate text-[10.5px] text-muted-foreground">
             Total Ready is {formatShare(readyAfter, total)} of {formatCount(total)}
           </p>
-          <ReadyBar before={plan.readyBefore} added={plan.newlyReady} total={total} />
+          {mostReady && <Badge>Most unlocked</Badge>}
         </div>
-
+        <ReadyBar before={plan.readyBefore} added={plan.newlyReady} total={total} />
+      </div>
+      <div className="flex flex-col justify-center px-3 py-2">
         <Row
           label="Spend"
           value={formatNaira(plan.spendNGN, true)}
           share={plan.spendNGN / scale.spend}
         />
+      </div>
+      <div className="flex flex-col justify-center px-3 py-2">
         <Row
           label="Per facility"
           value={per ? formatNaira(per, true) : '—'}
           share={per / scale.per}
           badge={bestValue ? <Badge>Best value</Badge> : undefined}
         />
-        {plan.shortfall > 0 && (
-          <p className="text-[10.5px] leading-snug text-notready-ink">
-            {formatCount(plan.shortfall)} short of the target — add fixes to reach more.
-          </p>
-        )}
       </div>
     </div>
   );

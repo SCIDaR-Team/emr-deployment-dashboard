@@ -90,7 +90,7 @@ export function Readiness({
     </span>
   );
   const term = (label: string, value: string, tone: string, note?: string) => (
-    <div className="min-w-0">
+    <div>
       <p className="mono whitespace-nowrap text-[9.5px] uppercase tracking-[0.04em] text-muted-foreground 2xl:text-tick 2xl:tracking-[0.07em]">
         {label}
       </p>
@@ -110,7 +110,7 @@ export function Readiness({
   );
   const notes = size === 'lg';
   return (
-    <div className="grid grid-cols-[auto_auto_auto_auto_auto] items-start justify-between gap-x-1.5">
+    <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-1.5">
       {term('Ready before', formatCount(before), 'text-foreground', notes ? 'today' : undefined)}
       {op('+')}
       {term(
