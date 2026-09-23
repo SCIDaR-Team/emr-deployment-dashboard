@@ -45,6 +45,8 @@ import {
   DOMAIN_SEVERITY_BY_LABEL,
   HORIZONS,
   PHASES,
+  SCENARIO_COMPONENTS,
+  SCENARIO_PACKAGES,
   SUMMARY_COL,
   WHEN_BY_LABEL,
   conditionInRow,
@@ -56,6 +58,8 @@ import {
   parseAssessmentCsv,
   parseMoney,
   resolveLga,
+  scenarioBand,
+  scenarioComponentsInRow,
   severityOfHorizons,
   slugify,
   titleCase,
@@ -781,7 +785,14 @@ async function main() {
   const { text, origin } = await loadCsv(argv);
   const contentHash = createHash('sha256').update(text).digest('hex').slice(0, 16);
 
-  const { blocks, rows } = parseAssessmentCsv(text);
+  const { blocks, rows, helpers, scenarioCols } = parseAssessmentCsv(text);
+  if (helpers.length !== 2 || Object.keys(scenarioCols).length !== SCENARIO_PACKAGES.length) {
+    throw new Error(
+      `Found ${helpers.length} of 2 scenario helper columns and ` +
+        `${Object.keys(scenarioCols).length} of ${SCENARIO_PACKAGES.length} package ` +
+        `readiness columns. The Investment Plan's scenarios are read from them.`,
+    );
+  }
   process.stderr.write(
     `Parsed ${rows.length} facilities, ${blocks.length} gap columns from ${origin}\n`,
   );
@@ -791,6 +802,20 @@ async function main() {
 
   const { gaps: catalogue, actions: actionTypes } = extractCatalogue(rows, blocks);
   const catalogueById = new Map(catalogue.map((g) => [g.id, g]));
+
+  // Which scenario component each power and connectivity action is, from the
+  // sheet's helper columns. One action type, one component, in every row.
+  const scenarioOf = new Map();
+  for (const row of rows) {
+    for (const [id, component] of Object.entries(scenarioComponentsInRow(row, helpers))) {
+      const seen = scenarioOf.get(id);
+      if (seen && seen !== component) {
+        throw new Error(`Action ${id} is "${seen}" in one row and "${component}" in another`);
+      }
+      scenarioOf.set(id, component);
+    }
+  }
+  for (const a of actionTypes) a.scenario = scenarioOf.get(a.id) ?? null;
   process.stderr.write(
     `Extracted ${gapAreas.length} gap areas, ${catalogue.length} conditions ` +
       `(${catalogue.filter((g) => !g.recorded).length} unrecorded), ` +
@@ -895,16 +920,46 @@ async function main() {
 
   const facilities = [];
   const problems = [];
+  /** Package id → facilities where the workbook's own scenario readiness
+   *  disagrees with `scenarioBand`. See `SCENARIO_PACKAGES.knownMismatches`. */
+  const scenarioMismatches = Object.fromEntries(SCENARIO_PACKAGES.map((p) => [p.id, 0]));
   let roundingDrift = 0;
   let roundedRows = 0;
   for (const row of rows) {
     const facility = buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook);
     const drift = validateRow(row, facility, blocks, problems);
+
+    // The scenarios, row by row against the sheet's own readiness columns.
+    const tagged = facility.interventions.map((iv) => ({
+      ...iv,
+      scenario: scenarioOf.get(iv.id) ?? null,
+    }));
+    for (const p of SCENARIO_PACKAGES) {
+      const stated = BAND_BY_LABEL[String(row[scenarioCols[p.id]] ?? '').trim()];
+      if (!stated) {
+        problems.push(`${facility.uuid}: no readiness under package "${p.label}"`);
+      } else if (stated !== scenarioBand(tagged, p.components)) {
+        scenarioMismatches[p.id] += 1;
+      }
+    }
     if (drift) {
       roundingDrift += drift;
       roundedRows += 1;
     }
     facilities.push(facility);
+  }
+
+  // Ten packages agree with the rule in every row; four disagree by fixed
+  // counts, each for a named reason in the sheet. A count that moves means
+  // the workbook's scenarios changed, and the doc and the page need looking at.
+  for (const p of SCENARIO_PACKAGES) {
+    if (scenarioMismatches[p.id] !== p.knownMismatches) {
+      problems.push(
+        `package "${p.label}": the sheet's readiness disagrees with the rule at ` +
+          `${scenarioMismatches[p.id]} facilities, where ${p.knownMismatches} were ` +
+          `expected — see SCENARIO_PACKAGES in scripts/assessment-source.mjs`,
+      );
+    }
   }
 
   if (problems.length) {
@@ -1083,6 +1138,7 @@ function writeGapCatalogue(catalogue, actionTypes, areas) {
 import type {
   ActionPhase,
   Band,
+  ScenarioComponentId,
   FacilityThemeId,
   GapAreaId,
   GapDomainId,
@@ -1152,6 +1208,9 @@ export interface ActionDef {
   unit: string | null;
   /** Null where the source carries no price. Not zero. */
   unitCostNGN: number | null;
+  /** The scenario component this action is — router, full solar system and
+   *  so on — for the six power and connectivity fixes; null for the rest. */
+  scenario: ScenarioComponentId | null;
 }
 
 export const ACTIONS: ActionDef[] = ${JSON.stringify(actionTypes, null, 2)};
@@ -1365,6 +1424,31 @@ export const SEVERITY_BAND: Record<GapSeverity, Band> = {
 
 /** The four facility domains. */
 export const FACILITY_DOMAIN_IDS: FacilityThemeId[] = ${JSON.stringify(DOMAIN_IDS)};
+
+/** The six power and connectivity fixes the scenarios fund, in the workbook's
+ *  order. */
+export const SCENARIO_COMPONENTS: { id: ScenarioComponentId; label: string }[] = ${JSON.stringify(
+      SCENARIO_COMPONENTS,
+      null,
+      2,
+    )};
+
+export interface ScenarioPackageDef {
+  id: string;
+  label: string;
+  components: ScenarioComponentId[];
+}
+
+/**
+ * The fourteen packages the workbook costs, in its own order. Each funds one
+ * or two of the six fixes; \`scenarioFor\` (src/lib/scenarios.ts) says what
+ * readiness would then be.
+ */
+export const SCENARIO_PACKAGES: ScenarioPackageDef[] = ${JSON.stringify(
+      SCENARIO_PACKAGES.map(({ id, label, components }) => ({ id, label, components })),
+      null,
+      2,
+    )};
 `,
   );
 }

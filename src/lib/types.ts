@@ -90,6 +90,19 @@ export type Horizon = 'major' | 'moderate' | 'minor' | 'long_term';
 export type ActionPhase = 'before' | 'during' | 'after';
 
 /**
+ * The six power and connectivity fixes the Investment Plan's scenarios fund.
+ * Power and facility connectivity are the only areas whose actions decide
+ * readiness, so these are the only fixes that can change it.
+ */
+export type ScenarioComponentId =
+  | 'router'
+  | 'fibrex'
+  | 'solar_topup'
+  | 'full_solar'
+  | 'network_extension'
+  | 'satellite';
+
+/**
  * A domain's highest gap severity at one facility — the sheet's own column,
  * and the only per-domain reading it carries.
  *

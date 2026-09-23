@@ -247,6 +247,96 @@ export const BLANK_GAP_VALUE = '0';
 export const BLANK_GAP_AREA = 'Backup-connectivity';
 
 // ---------------------------------------------------------------------------
+// Scenario packages
+// ---------------------------------------------------------------------------
+
+/**
+ * The six power and connectivity fixes the workbook's scenarios are built
+ * from, keyed by the value its helper columns give each facility's action.
+ *
+ * Power and facility connectivity are the only areas whose actions are ever
+ * Major or Moderate in Technical Infrastructure, so they are the only fixes
+ * that can change a facility's readiness. A scenario funds some of these six
+ * and asks how many facilities would then be Ready.
+ */
+export const SCENARIO_COMPONENT_BY_HELPER = {
+  'Full solar system': 'full_solar',
+  'Solar top-up': 'solar_topup',
+  Router: 'router',
+  FibreX: 'fibrex',
+  'Network Extension': 'network_extension',
+  Satellite: 'satellite',
+};
+
+export const SCENARIO_COMPONENTS = [
+  { id: 'router', label: 'Router' },
+  { id: 'fibrex', label: 'FibreX' },
+  { id: 'solar_topup', label: 'Solar top-up' },
+  { id: 'full_solar', label: 'Full solar system' },
+  { id: 'network_extension', label: 'Network extension' },
+  { id: 'satellite', label: 'Satellite' },
+];
+
+/** Where each helper sits, by its header, and the block whose first action it
+ *  names. */
+export const SCENARIO_HELPERS = [
+  { header: 'Power intervention helper column', area: 'Power' },
+  { header: 'Connectivity intervention helper column', area: 'Facility-connectivity' },
+];
+
+/**
+ * The fourteen packages the workbook costs, in its own order, with the
+ * readiness column each is checked against.
+ *
+ * `sheetGroup` is the label above that package's closure-summary columns.
+ * `knownMismatches` is how many facilities the workbook's own readiness for
+ * the package disagrees with the rule every other number on the dashboard
+ * uses — any Major infrastructure fix left unfunded is Not ready, any
+ * Moderate one Moderately ready. Ten packages agree in every row. Four do not,
+ * each for a reason in the sheet's formulas (see docs/data-queries, query F);
+ * the ingest pins the counts so a change in the workbook is noticed.
+ */
+export const SCENARIO_PACKAGES = [
+  { id: 'router', label: 'Router only', components: ['router'], sheetGroup: 'Router only closure summary', knownMismatches: 645 },
+  { id: 'fibrex', label: 'FibreX only', components: ['fibrex'], sheetGroup: 'FibreX only closure summary', knownMismatches: 77 },
+  { id: 'solar_topup', label: 'Solar top-up only', components: ['solar_topup'], sheetGroup: 'Solar top-up only closure summary', knownMismatches: 0 },
+  { id: 'full_solar', label: 'Full solar system only', components: ['full_solar'], sheetGroup: 'Full solar system only', knownMismatches: 2049 },
+  { id: 'network_extension', label: 'Network extension only', components: ['network_extension'], sheetGroup: 'Network extension only', knownMismatches: 0 },
+  { id: 'satellite', label: 'Satellite only', components: ['satellite'], sheetGroup: 'Satellite', knownMismatches: 0 },
+  { id: 'solar_topup_router', label: 'Solar top-up + Router', components: ['solar_topup', 'router'], sheetGroup: 'Solar top-up  + Router only', knownMismatches: 0 },
+  { id: 'full_solar_router', label: 'Full solar system + Router', components: ['full_solar', 'router'], sheetGroup: 'Full solar system + Router', knownMismatches: 0 },
+  { id: 'solar_topup_fibrex', label: 'Solar top-up + FibreX', components: ['solar_topup', 'fibrex'], sheetGroup: 'Solar top-up + FibreX', knownMismatches: 0 },
+  { id: 'full_solar_fibrex', label: 'Full solar system + FibreX', components: ['full_solar', 'fibrex'], sheetGroup: 'Full solar system + FibreX', knownMismatches: 0 },
+  { id: 'solar_topup_network_extension', label: 'Solar top-up + Network extension', components: ['solar_topup', 'network_extension'], sheetGroup: 'Solar top-up + Network extension closure summary', knownMismatches: 7 },
+  { id: 'full_solar_network_extension', label: 'Full solar system + Network extension', components: ['full_solar', 'network_extension'], sheetGroup: 'Full solar system + Network extension closure summary', knownMismatches: 0 },
+  { id: 'solar_topup_satellite', label: 'Solar top-up + Satellite', components: ['solar_topup', 'satellite'], sheetGroup: 'Solar  top-up + Satellite closure summary', knownMismatches: 0 },
+  { id: 'full_solar_satellite', label: 'Full solar system + Satellite', components: ['full_solar', 'satellite'], sheetGroup: 'Full solar system + Satellite closure summary', knownMismatches: 0 },
+];
+
+/**
+ * A facility's readiness if a package is funded. **The rule**, and the same
+ * one the dashboard's `scenarioBand` applies in the browser.
+ *
+ * Readiness is decided by the Technical Infrastructure actions alone: any
+ * Major is Not ready, any Moderate is Moderately ready. A funded package
+ * closes every action whose scenario component it includes; whatever blocking
+ * action is left decides the band. With nothing funded this is the facility's
+ * own readiness, which the ingest checks in every row.
+ *
+ * `actions` carry `domain`, `horizon` and `scenario` (component id or null).
+ */
+export function scenarioBand(actions, components) {
+  let band = 'ready';
+  for (const a of actions) {
+    if (a.domain !== 'technical_infrastructure') continue;
+    if (a.scenario && components.includes(a.scenario)) continue;
+    if (a.horizon === 'major') return 'not_ready';
+    if (a.horizon === 'moderate') band = 'moderately_ready';
+  }
+  return band;
+}
+
+// ---------------------------------------------------------------------------
 // Unit actions
 // ---------------------------------------------------------------------------
 
@@ -484,7 +574,50 @@ export function parseAssessmentCsv(text) {
     }
   }
 
-  return { header, blocks, rows: data };
+  // The scenario helper columns, and each package's readiness column: the
+  // `Readiness for EMR deployment` under that package's group label. Located
+  // here and *required* by the ingest, which is the one caller that needs
+  // them — so a small fixture without them still parses.
+  const helpers = SCENARIO_HELPERS.map((h) => ({
+    col: header.indexOf(h.header),
+    block: blocks.find((b) => b.subDomain === h.area),
+  })).filter((h) => h.col !== -1 && h.block);
+  const scenarioCols = Object.fromEntries(
+    SCENARIO_PACKAGES.map((p) => [
+      p.id,
+      header.findIndex(
+        (h, j) => h === 'Readiness for EMR deployment' && columnDomain[j] === p.sheetGroup,
+      ),
+    ]).filter(([, col]) => col !== -1),
+  );
+
+  return { header, blocks, rows: data, helpers, scenarioCols };
+}
+
+/**
+ * Which scenario component each of a row's power and connectivity actions is,
+ * from the helper columns: action id → component id.
+ *
+ * The helper names the first action in its block, so the mapping is read off
+ * the first slot. A helper with no action beside it, or an action with no
+ * helper, is a sheet the scenarios cannot be read from, and throws.
+ */
+export function scenarioComponentsInRow(row, helpers) {
+  const out = {};
+  for (const { col, block } of helpers) {
+    const helper = String(row[col] ?? '').trim();
+    const [first] = interventionsInRow(row, { ...block, slots: block.slots.slice(0, 1) });
+    if (!helper && !first) continue;
+    const component = SCENARIO_COMPONENT_BY_HELPER[helper];
+    if (!component || !first) {
+      throw new Error(
+        `${block.subDomain} at facility ${row[0]}: helper ${JSON.stringify(helper)} ` +
+          `beside ${first ? `"${first.label}"` : 'no action'} — the scenarios cannot be read.`,
+      );
+    }
+    out[first.id] = component;
+  }
+  return out;
 }
 
 /**

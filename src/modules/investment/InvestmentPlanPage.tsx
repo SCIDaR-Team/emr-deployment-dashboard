@@ -24,6 +24,7 @@ import { formatCount, formatNaira, formatShare, formatUnits } from '@/lib/format
 import { HORIZONS, HORIZON_SHORT } from '@/lib/gapCatalogue';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/lib/types';
+import { ScenarioSection } from './ScenarioSection';
 
 /**
  * Investment Plan — what deploying will take, itemised.
@@ -53,6 +54,7 @@ import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/li
  * word for them.
  */
 const SECTIONS = [
+  { id: 'scenarios', label: 'Scenarios' },
   { id: 'interventions', label: 'Interventions' },
   { id: 'waves', label: 'Rollout waves' },
 ];
@@ -280,6 +282,15 @@ export default function InvestmentPlanPage() {
     };
   }, [selectedStates, states.data, national.data]);
 
+  /** The facilities the scenarios re-run over: the selected states, or all. */
+  const scopedFacilities = useMemo(
+    () =>
+      selectedStates.length
+        ? facilities.data.filter((f) => selectedStates.includes(f.state))
+        : facilities.data,
+    [facilities.data, selectedStates],
+  );
+
   const totalCost = scope.investments.reduce((sum, i) => sum + (i.totalCostNGN ?? 0), 0);
   const unpriced = scope.investments.filter((i) => i.totalCostNGN == null);
   const unpricedLines = unpriced.length;
@@ -400,6 +411,8 @@ export default function InvestmentPlanPage() {
             scored={scope.facilityCount}
           />
         </SectionCard>
+
+        <ScenarioSection facilities={scopedFacilities} />
 
         <SectionCard
           id="interventions"
