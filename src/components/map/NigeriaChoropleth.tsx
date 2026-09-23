@@ -450,8 +450,8 @@ export function NigeriaChoropleth({
                         datum?.valueLabel
                           ? `, ${datum.valueLabel}`
                           : datum?.band
-                            ? `, ${BAND_LABEL[datum.band]}`
-                            : ', no data'
+                            ? `, ${datum.bandLabel ?? BAND_LABEL[datum.band]}`
+                            : `, ${datum?.bandLabel ?? 'no data'}`
                       }`
                 }
                 style={{ cursor: interactive ? 'pointer' : 'default' }}
@@ -580,9 +580,9 @@ export function NigeriaChoropleth({
                 <p className="mt-0.5 max-w-[200px] italic text-muted-foreground">
                   Secondary evidence — desk review only, no facility-level detail
                 </p>
-              ) : hoverDatum?.band ? (
+              ) : hoverDatum?.band || hoverDatum?.bandLabel ? (
                 <p className="mt-0.5 text-muted-foreground">
-                  {BAND_LABEL[hoverDatum.band]} ·{' '}
+                  {hoverDatum.bandLabel ?? BAND_LABEL[hoverDatum.band!]} ·{' '}
                   {/* The caller names its own unit: this layer carries
                       facilities on one page and LGAs on another, and a tooltip
                       that says "facilities" on a page with no facilities on it

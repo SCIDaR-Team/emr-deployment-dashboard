@@ -1,0 +1,605 @@
+facility_uuid,state,lga,facility,gap_area,action,when_action_is_needed,cost_ngn
+f62188b3-ab16-4eb9-a1a7-fe0b4c1b601a,akwa_ibom,eastern_obolo,emereoko_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+a5a00834-529a-4e6b-a25e-9430828de07e,akwa_ibom,ibeno,itak_abasi_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+9f4141f8-18c6-4ae0-8452-027375207d64,akwa_ibom,ibeno,ndito_eka_iba_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+7fc028b3-cd95-4e17-a4f1-a61651408124,rivers,akuku_toru,kula_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+3b34a5ce-1aef-4099-86b9-55c09ca02d40,niger,rijau,ruth_j_ayuba_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+b0524271-695d-4d95-999d-ba7e17357a25,lagos,epe,owu_primary_health_centre_epe,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+769c0607-1375-45ce-a4b9-3200c932f256,lagos,ibeju_lekki,apakin_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+613ba525-9c32-482d-9404-c6495a57ddc0,lagos,ibeju_lekki,lekki_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+134acd69-0a98-46b2-9e5c-fe67e0d8fcd1,akwa_ibom,itu,nkim_itam_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+f8ca49e4-31dc-46f2-ab6a-ce763fd24a73,imo,ngor_okpala,nguru_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+2c38d098-5e6d-4ef7-ad4b-1064105a640f,lagos,ojo,imude_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+7e9e5de2-6bea-4f28-aaf8-6c2c0b6ec45f,lagos,surulere,coker_aguda_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0b1ea5e5-7608-47d8-8502-5a8012f0cc67,lagos,mushin,itire_ijesha_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+8e7decfa-3b97-41bf-8598-f4ebff0ae480,rivers,obioakpor,elelenwo_fsp,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+bf4cb997-97f9-44a3-a0c1-608d4ae3f25b,lagos,mushin,coker_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b6df695e-f10d-4f22-ae53-64301e26fcde,lagos,oshodi,ajao_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+0c2d6c0f-acc4-47af-9108-a0868a634d20,lagos,surulere,baruwa_primary_health_centre_surulere,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+e5be4679-60ab-4be3-a5f6-bbdbd8983957,lagos,amuwo_odofin,satellite_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+5698627f-a0e7-4301-8811-b3113ed3af9f,lagos,lagos_mainland,aiyetoro_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+1a94cdb7-c783-461c-8f19-9e09f98a44c7,lagos,amuwo_odofin,mile_2_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+66123277-1f66-44bc-98d3-37b1af602525,imo,obowo,umungwa_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+809e94a1-3ef2-4ea5-ac2b-cd034982e9a4,lagos,ajeromi_ifelodun,ibafon_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+be9fd872-a809-4161-8d9c-00801e6b509f,lagos,ajeromi_ifelodun,tolu_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c72b8b70-a091-4f5e-8a0a-93ab94850534,lagos,ajeromi_ifelodun,amukoko_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+92c7881f-0a89-4e05-aab2-bfcd26abb380,lagos,alimosho,baruwa_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+162d0ddc-5c07-43e8-9516-766dadea5d12,lagos,surulere,iponri_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+08e30908-95a8-4521-a20c-867c5664b5a6,lagos,oshodi,okota_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+9836b927-4b82-4746-bf86-d34295e1cb47,lagos,apapa,ijora_oloye_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+108011be-c4d5-4e63-a7f7-303a8bb7d22c,lagos,oshodi,ishaga_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f228331c-923a-4adc-994d-79adcd5ee5d0,lagos,ikeja,ogba_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+f6a629d4-3f41-4f3f-b6be-c3f98ca44db0,lagos,oshodi,isolo_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+71e51159-aaa7-405b-967b-faf9783d5101,rivers,eleme,ogalephc_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+b4d229df-8a09-415d-8d17-0e7ea5442225,lagos,ikeja,ojodu_primary_health_centre,Physical service-point,Procure 2 electric fans,Minor action to complete during EMR deployment,120000
+1c99a443-8e60-415a-aa78-ffd47743415a,lagos,alimosho,isefun_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f6169eb1-0c6e-4945-9457-c4417a3e0d51,akwa_ibom,okobo,okopedi_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+854865ee-13d5-4b7b-ac33-ee5c6517eba8,lagos,ikeja,ikeja_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+de7fe5dd-bc64-4f11-9dec-178d8837dc7f,niger,bosso,beji_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+902baf4c-4e13-4178-8b75-20d25dda418e,imo,ideato_north,ideato_north_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6dfbc5c8-f50c-416e-a610-b8c56c9f981a,jigawa,garki,gwarzo_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair,Minor action to complete during EMR deployment,60000
+0545befb-c636-46d9-b389-df2e4755ca63,rivers,ahoada_west,akinima_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+4e54265b-3bff-466f-b029-c119f15a9db7,imo,oguta,mgbala_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+500ab40a-8aff-4377-8b92-141318940152,nasarawa,doma,akpanaja_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+d300c437-8453-4ef6-9fd4-4d80fc8202aa,niger,rijau,dukku_basic_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0b9c989f-aaf9-4593-a2a2-b68d370364b6,oyo,iseyin,faramora_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+655aa6a3-fe71-4c33-8959-dd927e62ec2e,oyo,orelope,modeke_primary_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+b506545e-7ee9-4095-aa80-96887b6c67ba,lagos,alimosho,cele_apata_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+1e8d4ac6-ea16-4350-802b-007ad2db6c16,lagos,ikorodu,igbalu_igbokuta_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+514872c4-333b-4791-a6df-eec804737939,kano,sumaila,rimi_basic_health_clinic,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+a9e4936c-fc5a-461a-b7cf-da0a17cd2f0e,akwa_ibom,urueoffongoruko,oyoku_ibighi_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+4e91753c-f8dc-4ff9-9a81-b9cadb6f19d3,adamawa,numan,nzumosu_maternal_and_child_health,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+df4b3c6b-946b-47d5-b990-3bf73f8e0637,akwa_ibom,urueoffongoruko,mbukpo_uko_akai_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+3fbbeaaf-180b-40e1-a70f-d926b5f63bca,akwa_ibom,urueoffongoruko,edok_oruko_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+0ab22493-8bc1-4611-83a7-58c9f0654d27,lagos,alimosho,bada_balogun_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f0c4de0c-e407-41c9-a530-def37fbd55c5,lagos,alimosho,ipile_rere_primary_primary_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,50000
+584c853d-f06d-40b3-804c-9af3379a53db,akwa_ibom,ibeno,mkpanak_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+eb1f6eb5-4f95-4912-b497-feabfc41ffaf,akwa_ibom,nsit_ubium,ikot_eyo_health_centre,Physical service-point,Procure 1 desk | Procure 1 electric fan,Minor action to complete during EMR deployment,95000
+627ca831-62dd-479d-b11f-dd9272b357ec,lagos,lagos_island,agarawu_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+cb6159e5-7515-4df7-a8e1-689ad2f82ac0,akwa_ibom,obot_akara,ikot_abia_anwan_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+31905074-e835-4f55-9477-141130840f8a,lagos,badagry,pota_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+9940ca0b-9421-4aa6-af6e-f082564b3498,rivers,ahoada_west,odawu_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+83c311de-577f-412a-98fd-c603a6aadb1b,lagos,lagos_island,oba_adeyinka_oyekan_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+81abea70-4966-480e-ad62-43a6b98332ca,lagos,ifako_ijaiye,aina_ajobo_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+f1300286-6396-4fd7-8bb6-9d2afee843ba,lagos,badagry,ajara_topa_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,95000
+053f429c-d92d-428a-8ea4-201bcd754d59,akwa_ibom,ibesikpoasutan,nung_udoe_operational_base_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+98501740-b561-4fc9-b9b0-8fc771c99b9d,lagos,badagry,ajara_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+bc186188-4d11-4568-be0f-3429b467dacf,imo,isiala_mbano,obollo_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+f91ff681-3b37-4c30-a98a-f0f395b652a8,akwa_ibom,urueoffongoruko,oduonim_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+47580844-5285-40bd-a709-fca205d2313b,imo,okigwe,amuro_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+1ab19a88-a95f-4c01-b856-0d68a7320348,akwa_ibom,etim_ekpo,ikot_obioma_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+661f665a-950c-4b8e-b0ec-8b0270b86fc4,lagos,ikorodu,bayeku_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+c70da8b5-e120-4f19-a71d-ef5bad51a25d,lagos,ikorodu,lasunwon_primary_health_centre,Physical service-point,Procure 2 electric fans,Minor action to complete during EMR deployment,120000
+86b4085a-d5f4-4f20-aaa5-5b858c16b152,imo,ideato_north,umualaoma_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+87b335a6-814e-43cf-8814-16d38f2d0423,nasarawa,nasarawa,odenin_magaji_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+002894ea-aa16-4ad2-b02f-d96476fa917b,lagos,mushin,isolo_raod_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+37f04fea-627e-4d50-b92c-f7966297ed08,imo,isiala_mbano,ibeme_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+dd4d7dec-fcc6-4333-9547-49e947771ae9,akwa_ibom,essien_udim,ukana_east_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+c9b8a5f3-8d51-4841-8a34-a43b4d3650fb,kano,rano,rurum_tsohon_gari_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+599dc946-d535-49cc-a085-89444ccd4401,lagos,ojo,ishasi_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+14f5b6dc-8125-4a53-a306-df16f72d70cf,akwa_ibom,mbo,uda_mbo_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+8d4680db-1b49-46ff-9747-e91afbb2dc73,lagos,ikeja,opebi_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b884fb75-d907-4863-8307-7d477365bac8,anambra,onitsha_north,st_theresa_s_church_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+80b1a509-7d42-4143-b9ac-f2794e64210b,lagos,ojo,ijanikin_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+ddfc9795-b623-4c44-a840-36551a25a6ae,rivers,ahoada_west,upatabo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+004da1ea-d983-4f30-8fe8-3f0a7556108c,imo,nwangele,umuanu_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+147b05ea-3215-4c5a-965d-21e42c8b44a9,imo,isiala_mbano,anara_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+4f065ef3-3d4b-4183-be76-31e56de86fa7,rivers,oyigbo,umusia_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+28f83454-69b0-4c56-8482-ae158332aeb0,rivers,oyigbo,oyigbo_comprehensive_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+15f0389e-c895-4428-ab82-74249dbb3c14,imo,orsu,umuoka_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+56cdc1b8-5c3f-4b23-97ea-752346d62f5a,lagos,alimosho,agodo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+1dd2706f-c7e8-42ba-b695-8497274b79cc,imo,onuimo,umuduru_primary_health_centre_on,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b1bf75b7-bb27-4076-b3a2-cd43b493e012,lagos,badagry,ilogbo_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+5cc18688-1841-4222-bd42-859b8ada4966,akwa_ibom,abak,ikot_akpan_ikpong_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+5e7ee70e-1b0a-40c4-b093-78b20012c9a1,rivers,ahoada_east,okporowo_model_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+24868cec-897e-471f-bd1d-94d731023494,kano,sumaila,sitti_basic_health_clinic,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+839834d7-d35e-4105-a001-4bfc00c34084,bauchi,warji,zurgwai_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+198ddd18-9100-437b-8e9d-f6c82aeb6305,bauchi,warji,dagu_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+43710a3c-48fe-4e66-8d14-1b1cf39d2bcd,bauchi,warji,burarana_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+cb7696ee-a145-49d4-958e-837ee726d2cb,bauchi,warji,katanga_primary_health_centre_warji,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+3d9a9f16-370d-4f41-9e05-35c7b3d060cf,rivers,ahoada_east,odiabidi_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+a1149f56-97e8-4489-b60a-8f97ab38c1bb,akwa_ibom,itu,ekritam_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0bd29362-17d1-4160-a468-ddc13fc2a7b0,akwa_ibom,mkpat_enin,minya_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+8667e7ef-9081-41ba-bf3d-8d494940ac02,imo,ngor_okpala,obiangwu_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+bccf3456-9898-47ca-af93-2d005b4636b0,akwa_ibom,oruk_anam,ikot_otok_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+1564e4f9-bf3d-4cda-9069-769cc5bf3c1f,rivers,opobonkoro,epellema_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+2804ef1e-9f2d-4759-a7b8-95a1e3f78972,akwa_ibom,etim_ekpo,atan_eka_uruk_eshiet_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+c0911e88-cf33-4c20-a673-9136129d3226,kano,rano,madachi_health_post,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+63cc4026-6791-4cf5-9251-a67b1e50fe79,akwa_ibom,oruk_anam,ikot_akpan_essien_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+018adde1-9eb5-4429-b25d-d8d8eb936234,imo,nwangele,umuanya_maternal_and_child_health,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+32892f5d-50dc-4c21-a8da-8d7468fd2b84,anambra,onitsha_south,queen_of_peace_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+489d2183-df06-4702-8f71-b0e8c13ca17b,akwa_ibom,ikono,ibiaku_ntok_okpo_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+35792ec9-2c93-4433-a202-0217a0a3f56d,oyo,atisbo,baasi_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+34465bab-5717-482d-9b82-dca99406c163,lagos,kosofe,mende_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,85000
+bbfdfdfb-f506-4dd0-a0c3-c0dd53629f5c,akwa_ibom,etim_ekpo,ikot_ebo_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+b57b83ce-2087-4aca-a404-73009ab2d99e,kano,makoda,durmawa_health_post_makoda,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+5af621d4-31ed-4e89-9642-48f10cd8bfd3,imo,nwangele,umuozu_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+c6eaad3c-a3a2-4cdc-a7ce-aa67706e595f,imo,ikeduru,avuvu_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+74a52e67-e8f6-44ec-8681-40c63c039eb8,akwa_ibom,onna,edem_idim_ishiet_health_post,Physical service-point,Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,50000
+ef6763de-e0a3-446b-b1c1-34d9b348e229,lagos,epe,papa_primary_health_centre,Physical service-point,Procure 2 electric fans,Minor action to complete during EMR deployment,120000
+c3f2fe6d-108d-4a74-b882-ccca67aca61a,lagos,epe,eredo_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+b2feb542-5489-4083-8ca5-200ea0edba1a,anambra,idemili_north,oraukwu_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+058a42b8-7fba-4f0b-afab-463ade04d57e,imo,onuimo,okwelle_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+4fcbf97b-e6dc-4511-a9a3-fe117dd0dcdd,anambra,idemili_north,ogidi_maternal_and_child_health,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+08694c3d-e4cb-4b08-b3f1-be8ad6a38d8b,lagos,alimosho,isheri_oshun_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+1991d296-b99c-4dd2-8858-b093c0a52056,lagos,alimosho,ijegun_primary_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+d4733a6c-3b4d-45eb-a4d1-be808bdfaa7d,niger,mashegu,kasaga_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+3c976a4b-b23b-4d6a-90f9-e3155eaf2145,lagos,agege,claudia_ibijoke_sanwo_olu_primary_health_centre,Physical service-point,Procure 2 electric fans | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,120000
+aad0e985-71c6-4169-b276-34311bb8b92f,rivers,ogbaegbemandoni,obuburu_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+7850200b-bbbb-4261-a628-333e0391ff25,rivers,ogbaegbemandoni,erema_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+30f4d008-da30-40b0-8de8-922b98145132,kano,garko,gurjiya_primary_health_centre_garko,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+92876f79-ee10-4062-bdb8-5df56e08eaeb,rivers,opobonkoro,opobo_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+00019879-3b17-4d3b-884e-b22ec295b5ab,lagos,kosofe,oworo_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+aa46981f-c988-4f9e-bd5e-cdb23350fc0c,imo,ikeduru,iho_basic_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+eb9c0d27-cea3-4bc1-b312-228685de4c24,kano,garko,garin_ali_basic_health_clinic,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+148d5e6d-6132-421d-a0c7-e557223259c5,imo,ikeduru,eziama_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+e7c7d0f0-90ff-44dd-aec1-b730b407c6af,kano,dawakin_tofa,marke_health_post,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+45e1a58d-48c8-4f4a-aa36-1fe005643016,kano,tudun_wada,fuskar_wambai_health_post,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+6e75e6db-a737-4ade-b9cc-5ed59507f07f,akwa_ibom,ini,odoro_ikpe_operational_base_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+b0371b3b-03a1-40a1-9d97-1ece8ae0795b,kano,karaye,yammedi_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0ea91dd3-40ab-4f09-8f27-9b56b8ada4e3,imo,ikeduru,atta_ii_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+10c0beaa-0524-4100-b097-fc375e5ab3de,akwa_ibom,abak,midim_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+3c05c9a9-3d47-4eba-8a51-10491929a03f,akwa_ibom,ikono,etip_ediene_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+690604a1-d4a1-4a65-8da9-a65889df9ff2,imo,ikeduru,atta_i_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+02dfb603-26cf-49ab-b652-34b6ed192e84,kano,kunchi,kasuwar_kuka_mphc_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+cd446d82-692c-4519-853f-afae21e37e14,akwa_ibom,abak,afaha_obong_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+b20dc8d6-6881-48a6-8914-04b838ac8cc8,adamawa,song,b_clinic_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+91208d38-3855-414e-8d4e-ada03afa8f91,niger,mashegu,makera_primary_health_centre_mphc,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+9d649452-9828-4926-90a6-dfde9c7da50a,kano,karaye,karaye_comprehensive_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+2a9379d0-2815-484b-9127-d14e80783b95,kano,wudil,lajawa_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+d9bc7eaf-42f7-44ec-b039-e123e1cf3db3,kano,garun_malam,dorawar_sallau_health_post,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+6fa05d68-5e8c-4f6d-8fbf-fca6eef28e97,akwa_ibom,onna,ukpana_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f07f719a-7f9d-458b-8d4f-afa14f97e930,kano,karaye,turawa_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f17d0768-84d0-4ff0-bbf8-62724df2c8a3,oyo,ona_ara,amuloko_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+ad32dbee-8532-46af-a786-7f75fa4d3749,kano,kabo,godiya_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+9f7703a0-db78-4cf5-a69a-0be1c6241d52,oyo,ona_ara,olorunsogo_babarere_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+175fda2f-6f52-4242-aa8f-e2770d3137f7,kano,kabo,garo_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+ba9a6f21-1ee8-488d-8a34-bdd8d9d86dc3,akwa_ibom,onna,abat_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+66164375-1d72-4ade-812a-c5898b1a030f,kano,takai,fajewa_m_p_h_c_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+119efc77-a0ae-4206-8068-484c6c2bfffe,akwa_ibom,oruk_anam,ikot_esenam_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+edfda345-5301-44a5-9c41-203c3dd925bb,akwa_ibom,oruk_anam,ekparakwa_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+edfda345-5301-44a5-9c41-203c3dd925bb,akwa_ibom,oruk_anam,ekparakwa_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+864c20ad-067a-4cd2-896d-afa3c283de0b,imo,owerri_west,irette_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair | Procure 1 electric fan,Minor action to complete during EMR deployment,145000
+f70fa62f-b66c-4143-a8ca-de90fd3a606f,akwa_ibom,onna,mkpok_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+e9143952-cfd1-42a6-8bfd-06609c5a2cd1,anambra,nnewi_south,ebenator_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+d636b0eb-a5b1-4749-9237-9d72c1e430f2,adamawa,numan,bamatato_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+2cb2bf70-9d4f-4f69-b458-cf625775d4cc,imo,ezinihitte,eziudo_primary_health_centre,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+17ad418e-eea2-48df-b751-33e4065c5d8d,niger,mashegu,kwatachi_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+8f5fa75e-5862-4530-9014-3d0ecac9c01a,jigawa,garki,kore_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+98aa335b-f558-4978-8e33-fc04137571af,adamawa,song,zumo_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+fb04ebd8-c575-4666-9945-8fe9f1d11372,bauchi,zaki,gumai_maternal_and_child_health,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c3cd99fc-53dd-44d5-8063-ead8b5e6b93a,bauchi,zaki,katagum_town_maternal_and_child_health,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f79e42ad-cf5c-4208-8e8b-761b0e737b1c,bauchi,zaki,mainako_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+e8f78812-7157-4b48-8d5c-5419fb89340d,bauchi,zaki,garingami_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+331a193f-29f1-4fbe-87b2-0bb81460f0fd,imo,ideato_south,umulewe_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b0e22069-f03c-411f-93e8-030dec8b4e05,anambra,njikoka,enugwu_agidi_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+201be8ec-4aae-49b2-b0fd-b046fecefddd,imo,oru_east,amiri_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+201be8ec-4aae-49b2-b0fd-b046fecefddd,imo,oru_east,amiri_primary_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,50000
+3fce4816-0418-4c46-8994-92ade7db6017,niger,magama,auna_primary_clinic_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+6aca4e4c-8d28-4a83-98c7-bdd9f162a29a,imo,owerri_north,naze_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+1c7ea566-01b2-4c57-b696-c96f69323002,bauchi,toro,balarabe_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+7e9860cc-0998-49f5-bc66-47d8525acdf8,kano,karaye,tinkis_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+7e9860cc-0998-49f5-bc66-47d8525acdf8,kano,karaye,tinkis_health_post,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+b5d2c819-b190-4884-b8b1-cb8c6221ff37,kano,kunchi,yandadi_model_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+a6395580-7960-4fef-8bb6-26a0825c8aa2,kano,karaye,daura_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+3d11a284-ece6-49ec-a67e-dd3e4d88df84,kano,karaye,yola_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0cc701df-730f-4c01-8c0f-23be2a8997bb,niger,suleja,madalla_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c48924d5-ef98-4a54-b59d-ac05aa81f664,anambra,njikoka,umudiabor_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+9a59bd6e-a052-41af-89b7-67142a4f0a83,anambra,njikoka,egbengwu_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+deb66c1f-9688-4565-9e63-b60a86215015,oyo,oyo_east,ayedoyin_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+83a77b90-dbc5-4c48-a56a-f6cb173c8bb8,imo,ezinihitte,ife_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+580219cc-6850-4a0b-807f-7a45b1afee69,kano,danbatta,tona_health_clinic,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+5b64b426-082e-4e7b-b959-c3e806205f56,oyo,iwajowa,ajinati_health_post,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+0cd1bbb4-e8ee-40db-be0c-507231f357f7,niger,rafi,kwana_basic_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+d559c1b4-b323-4484-933d-cb6566b213ab,niger,mariga,mariga_comprehensive_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+f50eb1b6-bc97-46a5-85cb-8343286ae94a,jigawa,ringim,kyarama_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+af8068cf-cc90-441a-a89d-37423ca55371,oyo,oyo_east,ajagba_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+f58c393e-2628-457a-ac45-919d64a58668,oyo,ido,ido_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+7572cdd8-c92f-4519-8d17-159ec7ccfad3,niger,magama,kawo_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+9fcf378a-9a26-43e1-a83f-c9c82d2207cb,oyo,ibadan_north_west,abebi_alawo_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,85000
+bc42cf01-117c-4b2c-8071-da909b35590c,rivers,ahoada_east,ochigba_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+e3a1f16f-fe37-4979-afb1-4fa0b827c052,rivers,etche,ulakwo_primary_health_centre_etche,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+c1000222-9722-4460-8589-d4341374e0e9,rivers,eleme,akpajo_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+47e9a965-7b2a-499f-b67d-7e7c37139de3,rivers,gokana,b_dere_primary_health_centre_model,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+e51c2eb5-b31d-40b5-9a2e-ab41672aaac4,oyo,akinyele,oy_ojoo_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+a4784ff3-6eaf-4ed2-bf2a-97ccdbc950f3,imo,owerri_north,umuorii_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+f444e1b8-d25e-4b06-afbb-b55d5f04f64c,imo,isu,isu_okporo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+1aa7bd4a-3261-4a65-8146-66fc78c633fc,adamawa,michika,bokka_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+4f37d819-8347-4ae4-b190-aac8730072d4,oyo,irepo,mapo_primary_health_centre_irepo,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+bb63699b-9d5d-4f03-aafb-381c4e325f4b,oyo,irepo,atipa_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+c190c45a-5240-46bd-95fd-ae975ae6a170,bauchi,ganjuwa,zara_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c190c45a-5240-46bd-95fd-ae975ae6a170,bauchi,ganjuwa,zara_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+6e988216-dbd2-47bf-b58f-d6c91762ab7d,jigawa,malam_madori,g_gabas_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+8c91b545-708a-4ba8-827d-ec63f1c7b896,jigawa,malam_madori,tagwaro_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+db249017-db72-47fc-ab51-dbfe0a6e9da0,jigawa,malam_madori,gandun_sarki_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+73f534aa-1f0e-49ee-8a14-1a30042dac57,rivers,omuma,umuelechi_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c24a1b6d-8713-406c-90e3-f6d348d0245d,oyo,egbeda,owobale_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+2784337f-e97f-4ab8-bf59-facb4ff69108,imo,njaba,atta_ii_health_centre_njaba,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f53a8732-2e1f-426f-921e-534ac2d624d1,nasarawa,nasarawa_eggon,bakyano_primary_health_centre_mphc,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+2540ba42-a59b-4660-858f-90a302daea32,oyo,oyo_east,oba_adeyemi_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+5fb9721a-7e01-4633-a384-7c0286ea3e85,oyo,iseyin,koso_primary_health_centre_iseyin,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+cae3763b-906b-48f9-91e9-e4087d07be51,imo,owerri_north,akwakuma_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+48e9e76d-af00-404b-a836-0bf331dbef17,anambra,njikoka,ezi_amaigbo_abagana_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+d99db7dc-5817-4f74-a482-d8fd9c708c6a,bauchi,gamawa,alagarno_maternal_and_child_health,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+4c507711-e23f-4166-8b97-d27494ddb2a1,anambra,idemili_north,ogbu_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+73daada2-6749-45be-820a-a182749f8c45,anambra,idemili_north,holy_trinity_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+c7c9c4af-61c4-4b50-86db-e4343f80043d,niger,magama,salka_basic_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+196f16f4-d613-42c3-a371-90f79a830497,oyo,iseyin,ado_awaye_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+a2abe4d8-4896-4b4d-ac1c-a41c61427fd2,oyo,oyo_east,jabata_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f80e3a79-9670-4e6b-9ba1-5060de68d629,nasarawa,karu,ara_sabo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f80e3a79-9670-4e6b-9ba1-5060de68d629,nasarawa,karu,ara_sabo_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+c34d5f87-3ec4-4116-b4bb-b98de6131b46,kano,kibiya,kibiya_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+738b4192-4313-42bb-9c5f-344308036070,kano,fagge,jaba_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+738b4192-4313-42bb-9c5f-344308036070,kano,fagge,jaba_model_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+bc1771fa-c1cb-4eb3-896d-be0fc94e0c86,niger,agaie,bororoko_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+0643e6c6-56fa-4850-9bf6-bd2a2043484a,niger,agaie,ekowugi_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0643e6c6-56fa-4850-9bf6-bd2a2043484a,niger,agaie,ekowugi_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+2c1323fb-75d2-419f-aefd-80b5898b4220,kano,fagge,musa_kallah_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+59fb7ee0-83ce-4055-a4a2-e7a6576fe0d4,rivers,emohua,rumuewhor_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+fcaeb008-ee6a-4592-a87c-d4162df35c44,niger,borgu,masud_and_maternity_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+bf3ce713-411d-421a-b3ea-33fed6abbcfd,adamawa,michika,michika_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+de6c2ec0-0644-4321-94a6-d526ce4f4fb8,rivers,omuma,ohim_oyoro_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+e6460eff-20f8-4645-a2b4-e70a4f15c679,bauchi,bauchi,badakoshi_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+a6a81999-b7eb-4d6e-8f91-82d7a3b7e8b0,imo,isu,amure_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+5b0ded11-0cf7-4ccb-840c-f51f7120a507,jigawa,malam_madori,agin_primary_health_centre,Physical service-point,Procure 2 electric fans,Minor action to complete during EMR deployment,120000
+7a24765b-b0c9-43a0-a7d0-c19fb00d18c2,jigawa,kaugama,nuhu_alpha_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+a67e117d-59aa-433f-9d02-4a29886fb9b6,jigawa,kaugama,hadin_primary_health_centre,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+bc7a86ab-da9f-4729-8505-b7af762f7308,jigawa,kaugama,dabuwaran_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+d9afc64a-5e16-4055-ac8a-f78f6095056b,anambra,idemili_south,oba_1_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+1a9ebc66-cfcc-47a6-bd4f-ac3bd00e6314,jigawa,kaugama,marke_primary_health_centre,Physical service-point,Procure 1 staff chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+aff380f7-5dda-429b-a1eb-7e86f5c8d217,anambra,idemili_south,umuochi_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+5a27fa01-a58b-4eed-a0fe-8b211625b6b8,anambra,idemili_south,oba_2_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+5e794379-2d40-4dd0-9655-1221eca5c923,anambra,idemili_south,akwaukwu_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+d76b1974-6593-426d-8db6-9481231af6eb,nasarawa,nasarawa_eggon,akpata_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+85015a84-d5f5-4e16-9f7b-a977bbcdaddb,oyo,saki_east,oje_owode_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6850baa6-9255-424e-acd9-c3acc6172ff6,kano,wudil,indabo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+27637d52-4d2f-4994-95e7-60aca6861f9f,imo,ahiazu_mbaise,ogbe_i_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+3423faed-3357-4f54-9fc3-1d0d6bb8d2fc,rivers,abuaodual,ogbema_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+708f9103-9f3b-491f-827a-e026072af4ae,adamawa,demsa,dwam_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+29e78dc6-8529-4d66-9990-86e84c683474,nasarawa,awe,baure_primary_health_centre_mphc,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+3df9a212-d4c4-451d-8d31-6a993250ac47,anambra,anaocha,nneoha_agulu_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+117407fd-3d7c-42f0-8706-d056ec4ba5f2,kano,dawakin_tofa,kwa_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+aa71022f-ddd5-40dd-8703-e488a9b8d038,kano,dawakin_tofa,danguguwa_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+60c2649c-fd5b-431f-99f9-578f2c1f79f3,oyo,ibarapa_east,ilado_health_clinic,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+8fa7d21a-0c42-433b-bafa-b0ff898391ed,oyo,afijo,akinmorin_jobele_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+d6c0feaa-6c49-40d7-873c-2190f2d6a570,niger,gurara,izom_primary_health_centre,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+3aa45c2a-ce7f-43e5-8111-cee862ffecce,niger,gurara,gwacipe_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+527a49bd-e251-4d2a-9dce-a39511e50c6d,kano,tarauni,jaoji_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+0542535b-3508-4c0c-8b95-bd045f9eb70c,akwa_ibom,ikot_ekpene,ikot_ekpene_operational_base_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0542535b-3508-4c0c-8b95-bd045f9eb70c,akwa_ibom,ikot_ekpene,ikot_ekpene_operational_base_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair | Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,145000
+ae12a843-34ff-4c5d-86b9-5a768897f870,niger,wushishi,gekun_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+f6a6c550-4a07-40d3-9d9d-b8f3610ddb44,kano,fagge,sabo_garba_maternal_child_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c375e06c-aac8-49d5-8320-73565d5ec5dd,niger,paikoro,ishau_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+ff9fb992-2034-40a9-832e-1f0c819274b5,oyo,irepo,koso_primary_health_centre_irepo,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+c2d3cdf0-9931-4256-9dd5-3cd31628bc80,oyo,irepo,ajangba_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0555ddcd-eea3-4fc4-9ccf-8a1ce3f07036,adamawa,demsa,n_demsa_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f31e9c88-b908-4e10-a267-f09cb1e249bc,adamawa,demsa,demsa_primary_health_centre,Physical service-point,Procure 1 desk | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,35000
+622e5ac7-4951-482f-b8a8-0bfb4adf2c18,bauchi,katagum,bulkachuwa_mphc_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+88dfeab1-cb33-4da8-b2a0-f72d656943ca,bauchi,katagum,madachi_primary_health_centre_katagum,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6b7e4627-a469-4576-a5ed-44403867bf25,bauchi,katagum,gambaki_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+618cd436-9e95-4757-805c-f1572b8e1248,oyo,ibarapa_east,owode_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+96fd7617-2b0a-4df7-ac90-ef453880b362,adamawa,michika,kwapale_maternal_and_child_health,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+e1a4841c-1826-4ae5-9ad6-8a56fb2b56ad,bauchi,bauchi,kangere_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+02885fd7-1ad2-4f9b-a1b6-355368b63a39,bauchi,misau,akuyam_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c2f0e701-7820-45bf-a64c-91bf081e86bc,anambra,idemili_south,alor_1_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+a8522d38-ccd0-4cd9-a3c6-ad16fb276e22,anambra,idemili_south,nnokwa_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+62097169-76f9-4f06-ad85-fa76ea167271,oyo,oluyole,oja_ibadan_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+495c26b5-e13b-464b-be10-5fe03e7c4c8c,bauchi,darazo,lago_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+74063f0c-dc09-4aaa-ab12-f79bcc5e50aa,niger,wushishi,barwa_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+1e506b66-4f2a-4a7c-b2d5-b21ce0ab691e,kano,dawakin_tofa,dawanau_basic_health_clinic,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+525e25a9-2ca7-4235-a810-10fcfd56ca9f,kano,dawakin_tofa,dandalama_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+1a853df5-2586-4048-894b-a340d667689a,kano,dawakin_tofa,yumfawa_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+87982c51-3cf8-4958-b83d-d3270ba078a4,kano,dawakin_tofa,tattarawa_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+5f64cff4-b675-4761-a9fa-e18cdd8a37b5,kano,dawakin_tofa,ganduje_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+7565dcb4-d7d6-4d73-a8e4-3421c1f71345,anambra,anambra_west,umueze_anam_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+8b4c2939-09f6-47b3-8213-390741930f0f,kano,tsanyawa,dumbulum_basic_health_clinic,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+ceb5b03a-b6df-4f4f-b1df-ec34faed72bd,imo,ahiazu_mbaise,nnarambia_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+8cdf98e4-0f4b-4d55-88b0-8c06423d4c89,rivers,abuaodual,okoboh_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c3951467-ca9a-462a-a528-d5c7a97a4ccb,niger,wushishi,tashanjirgi_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+c64c0f67-3705-4ce1-af23-e6a809ee33fc,niger,wushishi,maito_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+536675b5-855f-4f3d-addd-e049243fe1bf,niger,wushishi,health_centre_maternal_and_child_health,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+6ddf291a-04e3-452f-8a14-89324c5a4945,anambra,idemili_south,ebenesi_nnobi_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+f4b521ba-9844-405f-ae17-18e4dc1a989b,anambra,idemili_south,awada_nnobi_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+2a284cc1-f282-4af8-9d4f-7495b80e4d36,nasarawa,awe,abuni_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+1a2c149e-f969-42e0-9882-6d9f5d4d8fa5,anambra,idemili_south,ngo_nnobi_primary_health_centre_model,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+59d7ddfa-7837-4d8f-8ff8-3ff4b1152f42,anambra,anaocha,ukunu_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0cda7a24-ff91-4c33-9e34-078da20eb902,niger,paikoro,kwakuti_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+e9e675ff-9547-4140-ad61-75779c21ea93,imo,aboh_mbaise,nkwogwu_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+1a5a2a56-3f48-4678-9470-d2fe64f334a6,kano,tarauni,kauyen_alu_basic_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+68ea053f-a4d8-4a61-974c-549ee66ae4d1,kano,rimin_gado,gulu_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b947bc38-981d-4d74-9234-ba2a7aaef0a1,kano,kibiya,durba_basic_health_clinic,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+f8827d2f-e3d1-42be-a348-6ef72c95e1ad,kano,rimin_gado,karofin_yashi_health_post,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+a2d169c6-48c1-4d6c-8f29-de387268a51b,nasarawa,nasarawa,kurudu_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+ca873ce5-bcf9-4003-b985-4c9d592da328,rivers,okrika,okochiri_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+28b6fd1f-e9cb-4524-a388-3868c3bc327c,anambra,orumba_south,agbudu_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+e0cd9880-151b-49d5-877a-a478d9c8ada8,oyo,ibarapa_east,maya_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+e2cdaec1-d68d-4187-80dd-b0974d4e8044,niger,gurara,diko_comprehensive_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,85000
+50c06a44-7b43-4e7b-8dc1-ef0e22812177,kano,tarauni,tarauni_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+94dd6cc7-7c01-424b-9be5-22ebce2098b6,oyo,irepo,agede_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+dbd20632-edec-4479-91e5-1bd0cdf3b48f,rivers,emohua,ogbakiri_2_primary_health_centre_mphc,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+74e5ea3f-0c93-4d56-b5d6-dda1a72eaed0,kano,kano_minicipal_council,gandu_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+3e8d5877-c5dc-40b8-b578-d836f5a4a93e,kano,fagge,kwachiri_model_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+3719801d-4a8c-4737-82d9-bb0f5bb96835,nasarawa,awe,akiri_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+21d24b2a-375d-444b-98aa-45e1dc3aea1e,oyo,ibarapa_east,oke_imale_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+41396caf-fa8e-4edf-b1bf-164d88c58954,kano,kano_minicipal_council,dan_agundi_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+3f816eab-3814-45ed-bc86-dd89256e638d,oyo,afijo,ilora_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+be4aed62-e5a3-4533-9d51-9171aec43f07,anambra,orumba_south,akpu_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f3b51830-6550-472d-b429-7d794c467edb,kano,kano_minicipal_council,unguwar_gini_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 electric fan,Minor action to complete during EMR deployment,95000
+133a8e99-6a9e-4218-b31a-b56f8ca80704,kano,wudil,utai_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+0accd5d5-9808-488a-aaf8-27c72f32d2d1,kano,wudil,achika_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+1f02ab3c-3096-452b-99b2-69c62c33e2c8,kano,tsanyawa,yanganau_health_post,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+9b209c95-97b8-4624-9756-6f8d3a2e1321,adamawa,lamurde,lafiya_waja_clinic,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+3df4d5fb-02ff-402a-a2ed-91494eb8c011,kano,tudun_wada,baburi_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6ee935b4-fff2-43c3-ac30-80e4731e364d,nasarawa,keffi,k_mada_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+1c54d3ea-49a9-43eb-b6e2-7c3f041943ae,nasarawa,keffi,sabon_gari_primary_health_centre_nasarawa,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+1cad6243-3e90-4721-9cda-a8d0bd991f11,kano,doguwa,tagwaye_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+dd0c7915-842e-40f6-b6e8-004b9e2e4e7a,bauchi,darazo,papa_primary_health_centre_darazo,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+dd0c7915-842e-40f6-b6e8-004b9e2e4e7a,bauchi,darazo,papa_primary_health_centre_darazo,Physical service-point,Procure 1 desk | Procure 1 staff chair | Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,120000
+92622619-6a31-4025-80bd-8c0c2f7c7357,nasarawa,nasarawa_eggon,mada_station_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+cabc6c55-65af-400a-b0e2-f48db2e6feb6,kano,tudun_wada,burum_burum_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 electric fan,Minor action to complete during EMR deployment,95000
+1e0a35a7-fe78-436a-9f88-ea79307fde14,oyo,ibadan_south_west,oke_bola_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+a8e941af-2b6c-47b1-84b0-c7d6ef1856e4,oyo,oluyole,ayetoro_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+ebf50e84-6167-41b2-a9d5-408cb148ad26,oyo,saki_west,oy_eko_kan_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+085edac9-5f40-442a-b29e-bd4c236bb3cc,anambra,njikoka,ifite_nawfia_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+22b9873f-dc1b-487e-b934-f7029abe6677,anambra,njikoka,nawfia_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+d7bef4dc-97a6-40c2-94b8-84b5308b16b5,bauchi,darazo,lanzai_west_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+425e8f13-b560-42de-87de-ef3112400f7e,nasarawa,nasarawa,pada_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+782a3193-e784-4792-8082-8e5612991755,niger,gbako,rural_lemu_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+af4db613-18a8-465f-8420-8a7ba4f509b4,oyo,oluyole,ayegun_primary_health_centre_oluyole,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+9e34ea94-b57b-4d0f-9c55-e393affc938a,anambra,anambra_west,inoma_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+5772a42f-e217-4a2e-ae76-b50eebc2ee6c,niger,gbako,lemu_maternal_and_child_health,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+e150c246-a128-4e69-92ce-e56b72d6335f,niger,borgu,new_awuru_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+d9ebfecb-ff24-4c8d-92ba-0d5b768fcb7c,kano,tsanyawa,yar_gwanda_basic_health_clinic,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+7730c89c-bd6b-4467-8375-3ba7e1cdaa27,oyo,ibadan_north_east,oje_elewa_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+bd227a8d-8f2e-4201-aa08-78fd1ec847db,akwa_ibom,ibesikpoasutan,ikot_akpaedung_health_post,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+9136378a-2060-40be-92b4-1a92bfc57890,oyo,olorunsogo,owode_primary_health_centre_olorunsogo,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+c9afaa82-a0c4-4ed1-83a6-2e6caf850723,oyo,afijo,awe_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+0a55a0d7-914b-4c15-91ab-c5ae47a852ec,jigawa,roni,yarsara_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6ac8a425-0290-455c-94c3-ca2c6340e862,oyo,ibarapa_east,new_eruwa_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+e22738cf-613c-48b3-8b59-df30da28b82d,niger,gbako,mantafien_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6ed0d542-b651-4c4c-bf1f-592fc3d11976,kano,rimin_gado,danshayi_health_clinic,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+31bdb360-3438-4eb8-b0d2-36da9e78781e,oyo,ibadan_north_east,alafara_primary_health_centre,Physical service-point,Procure 1 staff chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+a65a5938-06e8-48b5-860f-256372b87f8b,oyo,itesiwaju,ofu_ibise_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+eefa4a72-188e-49de-9be8-0919e184b1ca,adamawa,demsa,kpsham_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+1b804a37-c41b-4d7b-ba91-d3a20890c05e,oyo,ibarapa_east,anko_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+421201c6-3075-46db-a337-8b2aba6003c6,niger,paikoro,tutungo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+51128ce1-90a8-4d71-92c6-cff7156e1e83,niger,paikoro,almajiri_kwanayi_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+51128ce1-90a8-4d71-92c6-cff7156e1e83,niger,paikoro,almajiri_kwanayi_primary_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+e25521ad-ecca-42db-824b-9e37fa5570f8,oyo,oluyole,ifelodun_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+acaf42a8-17c5-45ec-b27d-39ac1c0dc6e1,oyo,itesiwaju,komu_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+e63b20b9-9e0b-4ed3-96b3-121acec5a405,kano,rimin_gado,yalwa_d_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+1bc35b53-e609-4791-b05f-d6dda80b7aa7,kano,dala,yalwa_madakingini_clinic_maternal_and_child_health,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+405ac122-2e99-4f3a-8705-6f9109fba3d0,oyo,ogbomosho_south,ilogbo_primary_health_centre_oyo,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+2ef4c28f-bf19-4db8-ba1d-bd33321dcc8a,adamawa,jada,mapeo_not_lengdo_centre_health_post_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+4a4c80c9-e72a-4eae-9874-2aee7d5b7c93,jigawa,babura,gasakoli_primary_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,50000
+a7b7df3c-c8cb-4d39-b487-55f725bdde90,jigawa,babura,muhammad_nadoka_primary_healt_primary_health_centre,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+01b99ac2-e277-4d6a-b197-f7a6d5877a57,jigawa,miga,dangyatum_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+3cc0bd00-5faa-4ffa-beaa-5974ebfcc419,anambra,nnewi_south,uboma_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6e080586-e977-4719-9023-84cb19915b04,jigawa,birniwa,matamu_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+3242f87b-839b-4c2f-9ebb-653b4d028269,adamawa,madagali,vemgo_maternal_and_child_health,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+62f3dbeb-c20d-45da-a499-5be6143be9b9,jigawa,auyo,gatafa_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+62f3dbeb-c20d-45da-a499-5be6143be9b9,jigawa,auyo,gatafa_primary_health_centre,Physical service-point,Procure 1 patient chair | Procure 1 electric fan,Minor action to complete during EMR deployment,85000
+03ff4684-aa3f-4b09-a4b6-61f35859faa4,jigawa,auyo,auyakayi_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+24dfb13c-2dee-4a0e-932d-ad7e93b612aa,jigawa,babura,kanya_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+e380ce5b-f5e1-4dd6-9b12-c439ad46be0e,anambra,anaocha,neni_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+7acd88d2-8a71-47b6-bf3b-22f9f4c9f223,anambra,anaocha,akwaeze_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b34e5a53-09b8-4148-9a24-663975814f47,anambra,anaocha,obeledu_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+9660b1cb-0a55-4ef8-98b9-ce9a29907436,anambra,orumba_north,ugwuawgbu_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+9660b1cb-0a55-4ef8-98b9-ce9a29907436,anambra,orumba_north,ugwuawgbu_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+07e92c76-31f8-42ef-bbf2-6b6aeb4c079f,niger,lapai,gupa_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+af73c480-b6d5-4253-8f93-fafa81012164,adamawa,ganye,gangdona_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b59aaeec-4dbb-4c10-ac7c-877e543b3a6d,jigawa,birniwa,kachallari_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+fe9b1f70-492e-4030-968f-8dcbd2371264,jigawa,birniwa,diginsa_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+9e8a357b-cd71-497e-a8d7-6ebe152dbd2b,jigawa,birniwa,nguwa_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+1dcdf911-7a36-4da9-8a79-02eea3a59ed5,adamawa,madagali,wagga_maternal_and_child_health,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b150ee35-33ef-47f5-99d8-8561f0cbf176,adamawa,madagali,hyambula_ii_health_centre,Physical service-point,Procure 3 electric fans,Minor action to complete during EMR deployment,180000
+c0703e6b-ba4c-469c-9212-6c4290837ff8,kano,minjibir,tsakiya_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+75968ecb-c65b-4182-9350-ee1718226a3b,oyo,ogo_oluwa,lagbedu_health_facility,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+b0b668b3-bfeb-4779-bdfe-b632a627a70f,anambra,idemili_north,eziowelle_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+e5c25794-9ffb-418a-a0d2-dc7d9b3192c4,anambra,idemili_north,akuzor_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+220306d6-c319-4ea8-b533-0b5b9b121db3,adamawa,guyuk,boshikiri_maternal_and_child_health,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+2f590bd6-d707-49d5-9ba8-edeb3e483eb5,nasarawa,akwanga,aa_koto_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+2f590bd6-d707-49d5-9ba8-edeb3e483eb5,nasarawa,akwanga,aa_koto_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+38117005-22e6-48b8-ba6a-b36d2725ea69,kano,bebeji,durmawa_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+e1fdefcf-8883-435b-bec1-05cb3d716589,kano,bebeji,kofa_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+37b54881-3dc6-4f13-acf5-576687aae8e8,oyo,saki_west,oy_ajegunle_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c8d15bc9-7534-44b6-97a3-7845e3511eb0,nasarawa,akwanga,ancho_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+415540a7-a198-45aa-9836-969ab4ce0a05,oyo,ibadan_south_west,bode_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+889377f3-17c8-495f-80ac-6d710160d1b0,niger,lapai,zabbo_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+6b11ea20-149f-4ce4-9fe2-9b6f7ae9a198,kano,kano_minicipal_council,datti_wudila_health_clinic,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+3282e2da-a564-4ea7-ad0a-f5cd1340a2be,adamawa,mubi_north,bahuli_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6323fa10-c930-4eb5-b5b6-12e5490ea57d,oyo,ibadan_south_west,akuro_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+e523ef0e-569f-479d-bd73-8e2afdb8db6c,kano,nassarawa,gidan_ruwa_basic_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+6c1495e6-368d-42ce-8838-65857cbc99bc,kano,nassarawa,gama_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+71b50278-05f6-447d-ad93-02d2194be593,kano,nassarawa,mallam_shaibu_t_wada_medical_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+d99a23b6-46a0-43c3-8a26-128a964ad472,kano,nassarawa,hotoro_south_health_post,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+a5b0d523-1202-4445-b839-9c9d670ad113,anambra,nnewi_south,ezeama_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f47e870c-db8e-408b-b425-9bc14195fa25,adamawa,mubi_south,dirbishi_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+72b7f5ba-46b6-4c83-bc70-cfd60f059ee8,anambra,nnewi_south,osumenyi_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+82ebf2e2-8a56-47f6-81e6-674c11e4b3e3,adamawa,yola_north,major_aminu_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+fed68c1c-e086-4ef6-a23f-078654bc54c4,oyo,egbeda,alakia_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+3120631d-bfb1-476d-8978-cfa6ee10fb52,kano,dawakin_kudu,jido_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+3120631d-bfb1-476d-8978-cfa6ee10fb52,kano,dawakin_kudu,jido_health_post,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+3a6971fe-589d-4020-b47b-f1b5816005cf,akwa_ibom,eket,nduo_eduo_health_post,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+7c38ae67-ae29-4d32-a5fe-0de64a46161a,kano,dawakin_tofa,sarkakiya_health_post,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+aa9e3895-254a-4827-92dd-92621c62ed8f,akwa_ibom,nsit_atai,odot_operational_base_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+019c789f-d200-49a5-b512-1ceb60cccffd,kano,minjibir,minjibir_health_post,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+540d263c-8f15-490b-a552-c35caef94119,oyo,ibadan_south_west,isale_osi_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+1c36414f-a536-45f3-86ce-f703d788ca2c,jigawa,kiyawa,balago_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+7e5769a6-d719-4cce-8d76-424327b1ffe7,niger,katcha,edotsu_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+72261874-748d-4879-8a99-8c18873d33d8,akwa_ibom,nsit_ibom,oboetok_health_post,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+a5d53bf8-acae-4ff0-95d3-88b0500c9f79,oyo,egbeda,wakajaye_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+44b1beef-1143-4ea1-b173-00fb034bac7b,akwa_ibom,nsit_ibom,afaha_abia_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+e01bab0a-5b9a-485e-9284-8661fa50ac70,oyo,kajola,kajola_primary_health_centre_kajola,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+3f830fc4-cf17-402b-9d92-9775745e17c9,kano,kano_minicipal_council,zubairiyya_health_clinic,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+f2aeb76e-e55b-42db-8b3f-8c34f953682a,kano,ajingi,balare_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+65283717-fb37-4f8c-8704-d976ab2a3a32,adamawa,madagali,pallam_maternal_and_child_health,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+c4046d40-ade4-4719-8c06-533a265aea96,niger,rijau,genu_basic_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+370a79a0-02dc-410c-8248-119d57242676,niger,rijau,cphc_shambo_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+ef1b57db-d3c5-42f4-a93c-c22a983f8135,niger,rijau,hadari_mamman_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+93bc4f10-d37f-4afc-a033-53775a7fb30c,adamawa,shelleng,kiri_maternal_and_child_health,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+e85c2ca1-8a89-4c9a-ab9f-2047aa5ee701,jigawa,guri,kadira_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+210d019d-f0cf-4ee9-89f6-42bcfadc2052,jigawa,guri,garbagal_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+9584091c-2d10-487a-aeac-fd040a45d213,jigawa,guri,lafiya_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+52e5610f-4151-4ce2-8736-c9e3d3fc4a9c,oyo,surulere,oy_laege_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+48fc383f-5b01-4f81-9ace-b1768a8f8909,jigawa,guri,guri_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+2f9b3597-b9a9-466c-bbe0-0ec3b46a41d3,adamawa,mubi_south,mugulbu_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+36efd219-17ad-444f-95c2-5a802e69cfff,jigawa,kiyawa,andaza_primary_health_centre,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+b86e7ed6-e0df-4aca-937a-525508d2953f,anambra,idemili_north,uke_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+10fb9c68-5f14-4ad9-a58c-6819dc5a9173,kano,ungogo,zaura_babba_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+0108f6ff-4947-4172-8927-e1433729df54,akwa_ibom,uyo,ikot_ebo_health_centre_uyo,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+a6e3e059-ac22-4e77-b768-27047e194180,anambra,orumba_north,okpeze_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+18058a80-b532-4bd3-9f9e-9f4998ca76fe,nasarawa,karu,panda_primary_health_centre_nasarawa,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+a7c6d799-4102-44ac-a078-32059513ff3f,adamawa,fufore,pariya_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+a7c6d799-4102-44ac-a078-32059513ff3f,adamawa,fufore,pariya_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+138fb6ac-af39-4485-b8e4-fb8862797843,kano,ungogo,sabon_garin_rangaza_health_clinic,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+e75d7dce-dae1-4fff-9bb8-38c743dfae71,akwa_ibom,ukanafun,ikot_akpa_nkuk_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+989461ac-81e0-4123-b74f-a8acab30eff6,oyo,ibadan_north_west,ogunpa_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+6b6f67ad-02cf-4504-8884-3448a7a71ac3,kano,garun_malam,garun_babba_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+1b2e2e74-9322-463e-9050-0c1942e49216,niger,tafa,angwan_hausawa_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+e10caf5b-4a07-4e09-a4d3-bd6e30cd1873,kano,gezawa,abasawa_basic_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+eacb60fc-6b21-4c55-9e98-1cdd800c20f1,kano,ungogo,dantamashe_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+028e280f-c3b7-46ee-8222-f2f915c14ef4,kano,warawa,alitini_health_post,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+5e2cb325-dc6f-40ef-917a-312b63e8e9de,akwa_ibom,nsit_ibom,mbiaso_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+83a22f17-69af-4da5-b9a1-49df150264b9,jigawa,kafin_hausa,jabo_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+d1d6e1e4-b834-4fff-bd28-95fd9e7cdafb,oyo,surulere,ajase_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+d0a7e47f-fb1e-40cd-a748-dc1ed74c3cff,niger,tafa,aso_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+173db2fc-ecab-49b3-abd4-25ac179be09a,niger,lapai,saminaka_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+092e37c1-1f71-4f07-9e3a-792a52801ea6,kano,ungogo,gayawa_basic_health_clinic,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+c958abfc-ce44-43d8-bb3d-cc21c704ac91,akwa_ibom,uyo,mbak_etoi_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c9d8447e-e7bd-467c-bc9b-afccb9f4a918,oyo,ibadan_north_west,koseunti_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+7f428379-4102-408e-b632-363d6956a122,kano,ungogo,panisau_health_clinic,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+a1e43feb-7efc-4220-8324-9c56b4a67751,niger,agaie,fogbe_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+aa9a63c1-2c9c-40f6-8ea3-688e16b23e18,nasarawa,toto,nakuse_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+aa9a63c1-2c9c-40f6-8ea3-688e16b23e18,nasarawa,toto,nakuse_primary_health_centre,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+7a63a239-1c38-4493-97f7-345f70aa2309,kano,ungogo,ungogo_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+c38ae8e7-e624-4b73-9ad9-f0b4ff629367,niger,shiroro,kuta_maternal_and_child_health,Physical service-point,Procure 1 desk | Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,95000
+0262b28c-c631-41c3-ac02-986a3250ea36,kano,kabo,malam_gajere_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+2550d62a-42c5-4929-bf8a-315a5511bd70,oyo,kajola,gbonje_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+96ddca97-8a68-4914-a31e-4e1446acc885,kano,rimin_gado,butu_butu_model_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+a5fb07e6-8bf5-4ca3-ad19-3c7748d0efac,kano,madobi,gora_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+ecad36e2-62f2-489b-bc56-d9f0a466f843,niger,lapai,lapai_primary_health_centre_maternal_and_child_health,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+fd5ee588-5a93-415b-8d36-89b83f502668,nasarawa,keffi,jigwada_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+2220c234-5ed3-407b-9a41-c71c6c630f96,kano,ungogo,kadawa_basic_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+fbe76560-d747-4d50-b0b0-a358cc5f54c3,anambra,orumba_south,umunebo_ogbunka_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+ebeecbac-7af9-416c-979c-1a7eb5bdb2fc,adamawa,fufore,farang_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+ebeecbac-7af9-416c-979c-1a7eb5bdb2fc,adamawa,fufore,farang_health_centre,Physical service-point,Procure 1 desk | Procure 1 staff chair | Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,120000
+a4bd0bb3-4e1d-45d8-a0bc-a6219a021056,kano,nassarawa,dawakin_dakata_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+1c02a742-1050-455a-bcde-d3f1a8802742,oyo,ibadan_south_east,owode_primary_health_centre_se,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+26ab90d9-370b-4ada-86a8-a764ff65d784,akwa_ibom,uruan,ibikpe_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+3085d97a-a8bd-481c-98cd-c41817472529,kano,gaya,gamarya_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+3dc42047-34be-4ec1-be2a-db8175de0b75,oyo,kajola,ijo_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+213c0974-3a39-4249-9aae-5dd081e36cbc,kano,ungogo,rijiyar_zaki_basic_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+a3190da7-5804-431f-ad9f-1cc22dfa0d6a,kano,bagwai,gadanya_basic_health_clinic,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+f36f6539-dbae-4daf-867a-b198e0fb0615,niger,agwara,kasabu_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+904f2f6d-2e4f-41a0-9e12-fcfc12508e1d,niger,lapai,lapai_comprehensive_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+0b9be8f4-d0bb-4d9a-8695-aa0f82a3c312,adamawa,ganye,old_market_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+a4547ac0-364b-4b09-bab2-6d8c41388979,anambra,dunukofia,nawgu_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+1ec9e70a-8c5a-4775-a2f5-a9321f6679bc,adamawa,guyuk,lokoro_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+97802d6b-adf8-48cb-b498-c4e18d2d8bec,nasarawa,kokona,kofar_gwari_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+841cf02d-003d-4262-8c65-099594336c1a,adamawa,guyuk,purakayo_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+f9aa955b-a3b6-4b7d-928c-d68adac5a026,jigawa,hadejia,fantai_basic_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+735c996d-0661-42b6-a6e0-ac78c7e6d15d,oyo,surulere,oy_arolu_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+ee196903-83e5-4c12-b35d-e45643a4e703,akwa_ibom,eket,ikot_ebok_poly_operational_base_clinic,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+d29b8713-880f-4949-9f48-cacfd60e274d,akwa_ibom,uyo,ewet_offot_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+1b656c5f-13e8-4af5-8934-0a0d587fc9ed,akwa_ibom,nsit_ibom,afaha_offiong_operational_base_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+cf87d1f5-6e76-4359-8f96-126d2fc5c683,kano,bunkure,gurjiya_primary_health_centre_bunkure,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f4fb965f-6787-4789-a76b-be7b1967fbfe,adamawa,fufore,fufore_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f4fb965f-6787-4789-a76b-be7b1967fbfe,adamawa,fufore,fufore_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+1e5fa43a-197c-4dcc-98c4-6d07db3646c5,kano,madobi,chinkoso_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+e2d9f6f6-7f77-4a67-9d01-52f3e0073239,akwa_ibom,esit_eket,etebi_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+37f136cc-fb59-4cbf-ac2f-5e2700ca1beb,niger,lavun,doko_primary_health_centre_lavun,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+2360d5a0-66fb-4e50-8024-aa8a1f2abc9a,niger,borgu,fhc_new_bussa_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+007df097-acc2-413b-addf-693e6d66d153,oyo,ibarapa_central,oy_isale_oba_ward_8_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+09ce2b33-27de-487a-b5bb-a473854eb9f6,nasarawa,obi,obi_1_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+26d6d3f0-3b9c-4520-b132-4483c6776755,akwa_ibom,uyo,uyo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+17af38e4-4f97-422f-af79-b9d0d24dd36b,oyo,ibadan_north_east,omowumi_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,85000
+5783ca8a-53b4-4e16-9f56-8da3cbd4c092,niger,suleja,maje_comprehensive_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+1d97d3c5-fc5c-4452-ba7a-57b29d037a3e,oyo,saki_west,isale_taba_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+f1f05b5a-a1ab-48e1-88a1-e65de3f228af,oyo,saki_west,adabo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+2bc9c038-ba70-4ac7-959e-67dd990305e6,oyo,saki_west,oy_baabo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6cf106e3-8289-42ba-9d0d-338470e41803,akwa_ibom,essien_udim,odoro_ikot_2_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+37703842-e6ee-4401-80e0-42eb0132e6dd,kano,gwale,kwamitin_makota_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+d9d794ac-d6c0-4ff9-aa07-ab250c9c0719,oyo,ibadan_south_east,boluwaji_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+d9d794ac-d6c0-4ff9-aa07-ab250c9c0719,oyo,ibadan_south_east,boluwaji_primary_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair | Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,145000
+ad72dcac-4aa3-45da-b97f-aebda58432a4,akwa_ibom,ibiono_ibom,ibiaku_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+a26e04a7-39b3-4324-996d-02972ea69dc6,adamawa,yola_south,lamido_aliyu_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+474db2d2-9978-4639-a98f-2da8011d048d,kano,bichi,dutsen_karya_health_post,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+8b44c1d7-1831-4d6e-9918-de8c48d8b170,akwa_ibom,essien_udim,odoro_ikot_1_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+9db12234-05c5-454b-8cc0-5d8c524505d2,adamawa,fufore,chigari_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+bbfe0634-1358-410a-8430-7aacbfc2c27a,kano,bunkure,kumurya_basic_health_clinic,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+6c83f20f-abf6-4010-8342-04b696754e0f,oyo,ibarapa_north,alabi_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+c870c9b6-e8a0-4bf9-9d6f-436a5cfb81c5,kano,madobi,kauran_mata_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+cf768698-9857-4f6d-b322-520164015b85,oyo,iwajowa,iwere_ile_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+fb0ee103-c10f-474d-bcb1-44ef956baa13,nasarawa,toto,kanyehu_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+a3624b7d-77a5-4a9a-bf29-e05de42f6804,adamawa,fufore,choli_health_centre,Physical service-point,Procure 1 desk | Procure 1 patient chair | Procure 1 staff chair,Minor action to complete during EMR deployment,85000
+453b7879-f5bb-4395-85db-9f6599450abe,niger,suleja,maama_gambo_basic_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6a1889c3-5ccd-47c6-9148-3aa4bd4e4439,oyo,ogbomosho_north,jagun_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+d43cba54-6c53-4b59-b41d-b0c2973f86d3,nasarawa,obi,agwatashi_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+220b5e59-24bc-41aa-b78f-1fba4a0422b0,kano,gaya,nafisatu_health_clinic,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+e144ac37-1fd1-46f9-8a31-96a2ecf63af4,jigawa,auyo,kafur_primary_health_centre,Physical service-point,Procure 1 staff chair,Minor action to complete during EMR deployment,25000
+f97b6aad-1b6f-4af7-a7ab-bb77b12fbbc4,kano,kura,hadejia_jamaare_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+9e4c52ef-1b7c-493d-a10e-ef87271bf809,kano,kura,tanawa_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+fddd4d4e-43be-42ae-b203-8a3e8c0420fc,kano,kura,alkalawa_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+fddd4d4e-43be-42ae-b203-8a3e8c0420fc,kano,kura,alkalawa_health_post,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+b9173f13-388a-40ed-91c7-77647a83b1c2,kano,rogo,kauyen_liman_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+3422bf62-becc-409e-bd45-050a338cade3,niger,katcha,sidi_saba_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+468c9b43-7339-4d7a-8d38-07515b906b8c,jigawa,auyo,shinge_gabas_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+6a04d6a2-7412-4964-ac0e-1ebe77f858e6,jigawa,kafin_hausa,shamakeri_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+13d9d978-00b1-4599-8e40-810318da0ead,adamawa,fufore,ribadu_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+9a3a25b5-9732-4c3a-9add-165a575e89da,kano,gabasawa,zakirai_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+16ed3812-90cd-49ba-9413-e5b6c21107cd,adamawa,gombi,boga_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+c0843056-642d-40e6-8086-87a48bd66596,oyo,surulere,oy_iresaadu_comprehensive_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+0ba0d1ca-5bab-434c-a233-48614b234328,kano,gezawa,jogana_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+c0dbc553-3661-400d-941e-ee757df86b0b,anambra,onitsha_north,woliwo_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+cf9fd3b1-8f30-4d50-b5b3-169b396df079,jigawa,birnin_kudu,kantoga_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+21291f5d-3964-41c6-a95d-1239db60525d,kano,bagwai,romo_health_clinic,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+ec71c0d5-96bd-44af-8938-5e240532196a,kano,danbatta,gwarabjawa_health_post,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+9355e73a-938f-4ad9-ac86-49863db3fbfd,adamawa,mayo_belwa,binkola_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+2d083700-d5ef-4e12-a578-d3680ba10743,kano,bagwai,rimin_dako_health_post,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+3ee57ebf-aea6-45b4-9f1f-a2492152d83a,jigawa,buji,falgeri_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+9ebaaa85-a902-4814-aade-371af73967ae,oyo,ibadan_south_east,odinjo_primary_health_centre,Physical service-point,Procure 1 electric fan | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,60000
+5bb5c158-e7d7-470c-a9a7-f1d5cd44cb27,akwa_ibom,ndung_uko,eyofin_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+f2cd8418-e01c-4e7a-83b9-d12d89f7808b,nasarawa,keana,kadarko_primary_health_centre_mphc,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+41ac1fd4-510d-4e3a-8a01-d46788a26e23,kano,gwale,aisami_health_clinic,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+e269a5c7-25da-4c94-b4c2-d6db761ef207,kano,danbatta,ajumawa_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+a794a8be-fdcb-4aa5-b432-5e35b49f368a,anambra,aguata,obiuno_igboukwu_primary_health_centre,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+173c59a9-1d51-49ae-864d-6f9bea6e585c,anambra,anambra_east,nnenyi_umueri_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c2a70e38-379c-46b5-bdee-92f0db4819dc,adamawa,fufore,gurin_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+611dd715-9ad3-492d-a3cf-9fc3f3d9bfb5,akwa_ibom,ndung_uko,eyo_okponung_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+068b0090-d318-4ee8-b020-a662d797415f,kano,gwale,mangwarori_health_clinic,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+24e84cdf-1234-45bc-87fa-7bafa98d1e32,jigawa,hadejia,gawuna_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+4a924691-44af-4461-b238-a3dfe6cd296e,jigawa,birnin_kudu,unguwar_ya_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+4a924691-44af-4461-b238-a3dfe6cd296e,jigawa,birnin_kudu,unguwar_ya_primary_health_centre,Physical service-point,Procure 1 patient chair | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,25000
+0ec6002b-5c98-4f7f-860a-a381b9c7e5ad,niger,katcha,chcc_bakeko_primary_health_centre,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+bc31ee29-0606-42a2-8688-65db0c2bc929,akwa_ibom,etinan,edem_ekpat_primary_health_centre,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+9fc06648-b1ab-420a-978f-9c13a35908a6,kano,albasu,hungu_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+b9ff50f4-67ea-4be6-9327-da84e4bcd782,akwa_ibom,ndung_uko,eyonsek_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+30fc34a9-22f6-4b28-b2ff-9af84b123851,akwa_ibom,oron,oron_ija_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+aa212faf-984f-4727-9f5d-960e78bc3072,kano,dala,kofar_mazugal_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+2bc1cd58-0eb0-4cc8-95e1-52e85ee76d61,jigawa,auyo,auyo_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+bb3217bd-3b90-43cc-98d9-53e665791570,adamawa,mayo_belwa,mayo_farang_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+10e66ca3-a66c-482f-9a3c-11d991c80b48,akwa_ibom,nsit_atai,ikot_uyo_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+e76cd019-0eec-4b46-84e2-707d1a472b2b,jigawa,sule_tankarkar,albasu_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+3a78fdb4-5868-47cf-99f6-53ded1751879,jigawa,sule_tankarkar,yandamo_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+3d78f805-6f52-4018-b58f-ea72d3121685,jigawa,sule_tankarkar,amanga_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+100d1c89-63b3-4955-91b1-5f844b6d5f4c,jigawa,maigatari,dankumbo_primary_health_centre,Physical service-point,Procure 1 desk | Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,35000
+b2650e19-5042-45b1-b9a3-43f70657dc0c,jigawa,maigatari,fulata_primary_health_centre,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+24d68fc7-0dd3-40c7-9bf0-fceec03cff81,kano,gaya,gidan_sarkin_noma_model_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+57738931-8df3-4c4d-9042-ddfb881369a9,kano,warawa,jemagu_health_post,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+22f8ab25-8dcf-4a66-9814-4060b66a8350,kano,warawa,warawa_primary_health_centre,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+40516d30-2863-4de4-b47f-c3672f4268a2,kano,bunkure,bunkure_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+40516d30-2863-4de4-b47f-c3672f4268a2,kano,bunkure,bunkure_primary_health_centre,Physical service-point,Procure 1 electric fan,Minor action to complete during EMR deployment,60000
+374a382e-9884-41c4-9903-ebe16ef39c67,kano,bichi,saye_m_primary_health_centre,Physical service-point,Procure 1 patient chair,Minor action to complete during EMR deployment,25000
+747d2d10-1cec-4a3d-ace5-88318670d98d,kano,warawa,gogel_basic_health_clinic,Physical service-point,Confirm whether a lockable door is required for 1 affected service point before costing.,Minor action to complete during EMR deployment,0
+f38bd138-2067-4cb1-90de-5d88c6a886d0,kano,doguwa,dariyar_shere_health_post,Wiring,Install 5 socket points,Minor action to complete during EMR deployment,15000
+2042c772-db29-4706-a92a-078576f268f9,nasarawa,karu,karu_primary_health_centre_nasarawa,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+816d2680-423b-42a1-bc48-1b4238835a1d,kano,gwale,gwale_maternal_and_child_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+991ad0bd-3cbd-49d3-9ecb-5fe35dd8ef29,kano,shanono,tsaure_basic_health_clinic,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+5d33c803-9b11-4dba-bbb0-0fa4d7f2f3e6,kano,warawa,ganakakum_health_post,Wiring,Install 3 socket points,Minor action to complete during EMR deployment,9000
+c0140a6a-13bd-49b6-8ca4-269a97051262,nasarawa,karu,masaka_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+c11cd941-90c3-42e5-8913-da175dbb5a6c,akwa_ibom,uruan,idu_primary_health_centre,Wiring,Install 4 socket points,Minor action to complete during EMR deployment,12000
+e8c06869-0753-41d4-93df-f2ca36de50c2,kano,tofa,yarimawa_health_post,Wiring,Install 2 socket points,Minor action to complete during EMR deployment,6000
+805182de-4fe0-4303-829f-09388ccf051c,kano,warawa,tamburawan_primary_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000
+30febcfc-1a3c-4085-8b65-55f7ee7ca1d0,kano,dala,kantudu_health_clinic,Physical service-point,Procure 1 desk,Minor action to complete during EMR deployment,35000
+dd984ca1-209f-4254-b85e-a2edd144d5be,kano,dala,dala_maternal_and_child_health_centre,Wiring,Install 1 socket point,Minor action to complete during EMR deployment,3000

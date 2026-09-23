@@ -19,8 +19,9 @@ import { Combobox, LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
 import { useFilteredData } from '@/hooks/useFilteredData';
+import { MATURITY_LABEL, MATURITY_NO_DATA } from '@/lib/bands';
 import { formatCount, formatNaira } from '@/lib/format';
-import { GAP_BY_ID, gapCostNGN, offeredGapIds } from '@/lib/gapCatalogue';
+import { GAP_BY_ID, facilityGapCost, offeredGapIds } from '@/lib/gapCatalogue';
 import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
 import { THEME_BY_ID, facilityLens } from '@/lib/themes';
 import type { FacilitySummary, FacilityThemeId } from '@/lib/types';
@@ -59,11 +60,12 @@ import {
  *
  * ## What each level paints
  *
- * **The national map carries the coverage band; below it, facilities carry
- * their own.** The twelve surveyed states are filled from exactly the reading
- * National Coverage paints them with — `bandOf` off `AreaProfile.coverage`,
- * the same function that page's polygons go through — so Kano is the same red
- * on both maps and a reader crossing between them never has to work out
+ * **The national map carries the state's maturity band; below it, facilities
+ * carry their own readiness.** The twelve surveyed states are filled from
+ * exactly the reading National Coverage paints them with — the State Maturity
+ * band, through `bandOf`, the same function that page's polygons go through,
+ * and under the same `MATURITY_LABEL` names — so Kano is the same amber on both
+ * maps and a reader crossing between them never has to work out
  * whether two pictures of the same country disagree. The other twenty-five
  * keep the desk-review hatch, because this page still has no facility survey
  * for them.
@@ -242,8 +244,11 @@ export default function AssessedStatesPage() {
         let hit = false;
         for (const id of f.gaps) {
           if (!offered.has(id)) continue;
+          const gap = GAP_BY_ID[id]!;
+          costNGN += facilityGapCost(f, gap).costNGN;
+          // Costed but not a gap — see `GapDef.recorded`.
+          if (!gap.recorded) continue;
           gaps += 1;
-          costNGN += gapCostNGN(GAP_BY_ID[id]!, f.gapVariants[id] ?? 0).costNGN;
           hit = true;
         }
         if (hit) affected += 1;
@@ -263,7 +268,7 @@ export default function AssessedStatesPage() {
    * The other 25 take the desk-review hatch, which is the honest reading: this
    * page has no facility-level evidence for them.
    *
-   * The fill is the state's coverage band and nothing else, resolved through
+   * The fill is the state's maturity band and nothing else, resolved through
    * the same `bandOf` National Coverage paints its own polygons with. Reading
    * the field directly would give the same colour today and would be free to
    * drift the day that page changes how it resolves a band; going through the
@@ -286,12 +291,16 @@ export default function AssessedStatesPage() {
       const rows = byState.get(state.id) ?? [];
       const surveyed = state.evidenceGrade === 'primary';
       const n = surveyed ? needOf(rows) : undefined;
+      // Null off the survey, not "no reading": an unsurveyed state has a
+      // maturity band, but painting it here would put a state this page
+      // cannot speak for into the same key as the twelve it can. The layer
+      // hatches it on `evidenceGrade` in any case.
+      const band = surveyed ? bandOf(state) : null;
       data[state.id] = {
-        // Null off the survey, not "no reading": an unsurveyed state has a
-        // coverage band, but painting it here would put a state this page
-        // cannot speak for into the same key as the twelve it can. The layer
-        // hatches it on `evidenceGrade` in any case.
-        band: surveyed ? bandOf(state) : null,
+        band,
+        // Named as maturity, not readiness: this is the state's reading, and
+        // the facilities below it are the ones that carry readiness.
+        bandLabel: !surveyed ? undefined : band ? MATURITY_LABEL[band] : MATURITY_NO_DATA,
         n: rows.length,
         evidenceGrade: state.evidenceGrade,
         label: state.name,
@@ -564,7 +573,12 @@ export default function AssessedStatesPage() {
    */
   const scaleLegend = (
     <div className="rounded border border-border bg-surface/92 px-2.5 py-1.5 backdrop-blur">
-      <MapLegend showSecondary showNoData={surveyed.some((s) => bandOf(s) == null)} />
+      <MapLegend
+        showSecondary
+        labels={MATURITY_LABEL}
+        noDataLabel={MATURITY_NO_DATA}
+        showNoData={surveyed.some((s) => bandOf(s) == null)}
+      />
     </div>
   );
 
@@ -769,24 +783,22 @@ function needLabel(
 
 function subtitleFor(level: AssessmentLevel, domains: FacilityThemeId[]): string {
   // The subtitle names the encoding, and the two map levels no longer share
-  // one: the states are filled by their coverage band, the LGAs beneath them
+  // one: the states are filled by their maturity band, the LGAs beneath them
   // by what they need.
   const scope =
     level === 'all'
-      ? 'The 12 states visited, by readiness band'
+      ? 'The 12 states visited, by maturity band'
       : level === 'state'
         ? 'Local government areas, by investment need'
         : level === 'lga'
           ? 'Every facility surveyed in this LGA'
           : 'One facility';
 
-  // Naming the lens here rather than only in the pane: the map is the page, and
-  // a reader looking at a red Kano needs to know whether that is Kano overall
-  // or Kano's workforce.
-  // Only a single domain names a lens, because only a single domain *is* one.
-  // A combination has no published reading behind it, so the map stays on
-  // investment need for the selected domains and the subtitle says which ones
-  // rather than naming a band the assessment never issued.
+  // Naming the domains here rather than only in the pane: they narrow the
+  // investment need the LGA map is filled with and the gaps the pane counts, so
+  // a reader looking at a deep LGA needs to know whose gaps it is deep in.
+  // Readiness is never re-read through a domain — the source has no band per
+  // domain — so the facility points and the state fills do not move with it.
   const mode = domainSelectionMode(domains);
   if (mode === 'overall') return scope;
   if (mode === 'single') return `${scope} · ${THEME_BY_ID[domains[0]!].label}`;

@@ -3,6 +3,11 @@ import { Search } from 'lucide-react';
 import {
   BAND_CLASSES,
   BAND_LABEL,
+  DOMAIN_SEVERITIES,
+  DOMAIN_SEVERITY_CLASS,
+  DOMAIN_SEVERITY_LABEL,
+  DOMAIN_SEVERITY_MARKER,
+  DOMAIN_SEVERITY_SHORT,
   HORIZON_CLASSES,
   HORIZON_WHEN,
   URGENCY_MARKER,
@@ -17,21 +22,23 @@ import {
   HORIZONS,
   HORIZON_LABEL,
   HORIZON_SHORT,
-  gapAllInterventions,
-  gapCostNGN,
-  gapInterventions,
+  facilityGapActions,
+  facilityGapCost,
+  gapActionDefs,
   gapsInArea,
   offeredGapIds,
+  type FacilityAction,
 } from '@/lib/gapCatalogue';
-import { domainSelectionMode, facilityBandUnder } from '@/lib/archetype';
+import { facilityBandUnder } from '@/lib/archetype';
 import { cn } from '@/lib/cn';
-import { formatCount, formatNaira } from '@/lib/format';
+import { formatCount, formatNaira, formatShare, formatUnits, percentOf } from '@/lib/format';
 import { FACILITY_THEMES, THEME_BY_ID } from '@/lib/themes';
 import { BandBadge, BandCards, EmptyState } from '@/components/ui';
 import { FacilityCoordinates } from '@/components/map';
 import type {
   Band,
   BandDistribution,
+  DomainSeverity,
   FacilitySummary,
   FacilityThemeId,
   GapDomainId,
@@ -41,7 +48,7 @@ import {
   distributionTotal,
   domainOverlap,
   facilityDistribution,
-  facilityDomainDistribution,
+  facilityDomainSeverity,
   type AssessmentScope,
 } from './assessmentScope';
 
@@ -60,17 +67,14 @@ import {
  * else's — so its blocks are its own bands, its own gaps and the things that
  * identify it.
  *
- * ## Two readings, shown together
+ * ## One readiness reading, and a severity per domain
  *
- * Areas carry both overall distributions and a facility carries both overall
- * bands, side by side, rather than a control switching between them. The
- * interesting fact in this dataset is the *distance* between the two — 624
- * facilities are clear to deploy into and 71 are in shape to run an EMR — and
- * distance is only legible when both are on screen.
- *
- * Tick a domain and both collapse to that domain's band. There is no
- * per-domain deployment reading anywhere in the source, so under a domain the
- * pair would be one row printed twice.
+ * The source classifies readiness once: Ready, Moderately ready or Not ready
+ * to deploy, from the Technical Infrastructure actions. It reports each of the
+ * four domains as its *highest gap severity* — Major, Moderate, Minor, or no
+ * gap — which is a different scale and is shown as one, in the urgency inks
+ * rather than the band fills. Ticking a domain narrows the gaps and costs
+ * counted and the severities shown; it never re-reads readiness.
  *
  * Everything counts the facilities actually on screen: the path scope and the
  * filter row together. Reading a band off `AreaProfile` instead would print a
@@ -142,7 +146,6 @@ export function AssessmentPane({
     () => facilityDistribution(facilities, domains),
     [facilities, domains],
   );
-  const lens = lensLabel(domains);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -194,14 +197,17 @@ export function AssessmentPane({
                 <SelectionBlock gapAreas={gapAreas} domains={domains} />
               </Block>
             ) : (
-              <Block title="Assessed facilities" note={lens && `Banded by ${lens}`}>
-                <BandCounts
-                  facilities={facilities}
-                  distribution={distribution}
-                  domains={domains}
-                />
+              <Block title="Assessed facilities" note="Readiness to deploy an EMR">
+                <BandCounts facilities={facilities} distribution={distribution} />
               </Block>
             )}
+
+            <Block
+              title="Gap severity by domain"
+              note="Each facility's worst gap in the domain — the source's own reading, not a readiness band"
+            >
+              <SeveritySplit facilities={facilities} domains={domains} />
+            </Block>
 
             <Block
               title="Gaps and interventions"
@@ -257,11 +263,10 @@ function PaneHeader({ scope, band }: { scope: AssessmentScope; band: Band | null
 /**
  * The single-facility reading. No distribution — it is one row, not a set.
  *
- * Under a domain the block narrows to it: that domain's band, then only its
- * gaps. Every other figure on this page already answers to the Domain filter,
- * and four domain bands standing above a gap list cut down to one would put a
- * reading and its evidence out of step — the bands would answer a question the
- * list beneath them no longer does.
+ * Its readiness band always, then each domain's highest gap severity. Under a
+ * domain the severities narrow to it, and so does the gap list: four
+ * severities standing above a gap list cut down to one would put a reading and
+ * its evidence out of step.
  */
 function FacilityBlocks({
   facility,
@@ -306,15 +311,15 @@ function FacilityBlocks({
     /**
      * The same money, split by when it has to be spent.
      *
-     * Over **interventions, not gaps** — a power gap fires two, a critical
+     * Over **interventions, not gaps** — a power gap fires two, a solar
      * install and an optional grid connection, and they belong in different
      * quarters. So these counts sum to more than the gap count above them, and
      * the column is labelled actions to say so. The costs do sum to the total,
      * because every intervention is counted once.
      *
-     * `scripts/ingest-assessment.mjs` checks exactly this split against the
-     * sheet's own four summary columns in all 2,806 rows, so these are the
-     * source's numbers rather than an interpretation of them.
+     * `scripts/ingest-assessment.mjs` checks the Technical Infrastructure part
+     * of this split against the sheet's own summary columns in all 2,806 rows,
+     * so these are the source's numbers rather than an interpretation of them.
      */
     const byHorizon = new Map<Horizon, { actions: number; cost: number; unpriced: number }>();
     const per = new Map<string, { cost: number; unpriced: number; gaps: typeof rows }>();
@@ -325,16 +330,15 @@ function FacilityBlocks({
       cost: number;
       unpriced: number;
       urgency: number;
-      interventions: ReturnType<typeof gapInterventions>;
+      interventions: FacilityAction[];
     };
     const rows: Row[] = [];
 
     for (const id of mine) {
       const gap = GAP_BY_ID[id]!;
-      /** This facility's own costing of the gap — see `FacilitySummary.gapVariants`. */
-      const variant = facility.gapVariants[id] ?? 0;
-      const actions = gapInterventions(gap, variant);
-      const c = gapCostNGN(gap, variant);
+      /** This facility's own actions and quantities for the gap. */
+      const actions = facilityGapActions(facility, gap);
+      const c = facilityGapCost(facility, gap);
       cost += c.costNGN;
       unpriced += c.unpriced;
       for (const iv of actions) {
@@ -351,7 +355,7 @@ function FacilityBlocks({
         condition: gap.label,
         cost: c.costNGN,
         unpriced: c.unpriced,
-        urgency: gapUrgency(id, variant),
+        urgency: actionsUrgency(actions),
         interventions: actions,
       };
       rows.push(row);
@@ -384,7 +388,9 @@ function FacilityBlocks({
       groups,
       cost,
       unpriced,
-      gapCount: mine.length,
+      // Recorded gaps only: "No gap recorded" is costed, and listed so its cost
+      // has a row, but it is not a gap to close.
+      gapCount: mine.filter((id) => GAP_BY_ID[id]?.recorded).length,
       schedule,
       actionCount: schedule.reduce((sum, h) => sum + h.actions, 0),
     };
@@ -392,32 +398,23 @@ function FacilityBlocks({
 
   return (
     <>
-      <Block
-        title="Readiness"
-        note={
-          picked.length
-            ? picked.length === 1
-              ? 'The domain in view'
-              : 'The domains in view'
-            : undefined
-        }
-      >
+      <Block title="Readiness">
         <div className="space-y-2">
-          {/* The overall reading, and only when no domain is ticked: under a
-              domain it is that domain's band the map is painting, and printing
-              the overall figure above it would invite the two to be read as a
-              comparison. */}
-          {!picked.length && (
-            <>
-              <BandLine label="EMR deployment" band={facility.deploymentBand} />
-              <div className="my-2.5 border-t border-border" />
-            </>
-          )}
+          {/* The one readiness reading, whatever domains are ticked — the
+              source classifies readiness once. */}
+          <BandLine label="EMR deployment" band={facility.deploymentBand} />
+          <div className="my-2.5 border-t border-border" />
+          {/* Beneath it, each domain's worst gap: a severity, in the urgency
+              inks, never a band. Narrowed to the ticked domains, like the gap
+              list under it. */}
+          <p className="eyebrow">
+            Highest gap severity{picked.length ? ' · domains in view' : ''}
+          </p>
           {themes.map((theme) => (
-            <BandLine
+            <SeverityLine
               key={theme.id}
               label={theme.label}
-              band={facility.themeBands[theme.id as FacilityThemeId] ?? null}
+              severity={facility.domainSeverity[theme.id as FacilityThemeId]}
             />
           ))}
         </div>
@@ -535,21 +532,11 @@ function ConnectivityBlock({ facility }: { facility: FacilitySummary }) {
   );
 }
 
-/**
- * A gap's place in the urgency order, for sorting. Most urgent first.
- *
- * Takes a variant because a condition can be costed more than one way, and the
- * cheaper branch of a power gap can carry a different set of horizons. Defaults
- * to the first, which is right wherever the subject is the condition rather
- * than a facility.
- */
-function gapUrgency(id: string, variant = 0): number {
-  const gap = GAP_BY_ID[id];
-  if (!gap) return HORIZONS.length;
+/** A gap's place in the urgency order at one facility, for sorting — the most
+ *  urgent of its actions there. Most urgent first; no action sorts last. */
+function actionsUrgency(actions: FacilityAction[]): number {
   let worst = HORIZONS.length;
-  for (const iv of gapInterventions(gap, variant)) {
-    worst = Math.min(worst, HORIZONS.indexOf(iv.horizon));
-  }
+  for (const iv of actions) worst = Math.min(worst, HORIZONS.indexOf(iv.horizon));
   return worst;
 }
 
@@ -562,6 +549,27 @@ function BandLine({ label, band, note }: { label: string; band: Band | null; not
       <span className="flex shrink-0 items-center gap-2">
         {note && <span className="mono text-note text-muted-foreground">{note}</span>}
         <BandBadge band={band} size="sm" />
+      </span>
+    </div>
+  );
+}
+
+/** Label left, severity right, in the urgency ink with its glyph. The
+ *  severity's own word is always printed, so colour never carries it alone. */
+function SeverityLine({ label, severity }: { label: string; severity: DomainSeverity }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="min-w-0 truncate text-prose text-foreground">{label}</span>
+      <span
+        className={cn(
+          'mono shrink-0 text-note font-semibold uppercase tracking-[0.06em]',
+          DOMAIN_SEVERITY_CLASS[severity],
+        )}
+      >
+        <span aria-hidden className="mr-1">
+          {DOMAIN_SEVERITY_MARKER[severity]}
+        </span>
+        {DOMAIN_SEVERITY_LABEL[severity]}
       </span>
     </div>
   );
@@ -661,15 +669,12 @@ function SelectionBlock({
 function BandCounts({
   facilities,
   distribution,
-  domains,
 }: {
   facilities: FacilitySummary[];
   distribution: BandDistribution;
-  domains: FacilityThemeId[];
 }) {
   const total = facilities.length;
   const scored = distributionTotal(distribution);
-  const mode = domainSelectionMode(domains);
 
   return (
     <div>
@@ -684,27 +689,7 @@ function BandCounts({
         <p className="mt-3 text-prose italic text-muted-foreground">
           None of them carries a readiness band.
         </p>
-      ) : mode === 'multi' ? (
-        /* Two or three domains: one row each, side by side.
-
-           Not a single figure, because the assessment publishes no reading for a
-           combination and this app no longer invents one. The rows are the
-           answer to what the reader asked — how do these domains sit — stated at
-           the grain the data actually carries it. */
-        <PerDomainSplit facilities={facilities} domains={domains} />
       ) : (
-        /**
-         * One reading, in cards, whether a domain is selected or not.
-         *
-         * `distribution` is already the right column either way — the domain's
-         * own band under a selection, the overall band without one — because
-         * `facilityBandUnder` decides that once for the whole page.
-         *
-         * A second row used to sit beside this one, when the source reported
-         * every facility twice. It reports it once now, and the four domain
-         * readings sit on the same scale as the overall one, so ticking a
-         * domain narrows the reading rather than swapping it.
-         */
         <BandCards counts={distribution} showPercent className="mt-5" />
       )}
     </div>
@@ -712,85 +697,139 @@ function BandCounts({
 }
 
 /**
- * Two or three domains, one row each.
+ * Each domain's highest gap severity, across the facilities in scope — four
+ * equal cells per domain, the same form as the readiness cards above.
  *
- * The shape the pane takes when the reader has asked something the source does
- * not answer in a single column. Rather than compose one, the rows put the
- * selected domains beside each other and let the comparison be the reading —
- * which is what the reader was after in ticking more than one.
+ * - **Equal cells, not proportional segments.** Every cell has to carry its
+ *   count and share, and a proportional bar cannot hold "4 · <1%" in a sliver
+ *   without a minimum width that quietly stops the lengths being proportional.
+ *   Equal cells make no claim with their width, and they line the columns up:
+ *   Major sits in the same place on every row, so the comparison that matters
+ *   — which domain has the most facilities with a Major gap — is a read down
+ *   one column.
+ * - **A thin bar along each cell's foot** fills to its share, so the size of
+ *   each level still reads at a glance without distorting the layout.
+ * - **In the readiness colours**, on the sheet's own rule: a Major gap is what
+ *   makes a facility Not ready, a Moderate one Moderately ready, and a Minor
+ *   one leaves it Ready — exactly how the Technical Infrastructure row maps
+ *   onto the readiness split above it. No gap is the neutral well, not a
+ *   fourth colour.
+ * - **Best first**, No gap to Major, the same flow as the readiness cards —
+ *   see `DOMAIN_SEVERITIES`.
+ * - **Every row shows all four cells**, zeros included, so a filter that
+ *   empties a level never shifts the columns.
  *
- * Counts and a bar together, unlike the contribution block above, which is a
- * chooser and can lean on the bar alone. This is the headline: it stands where
- * a figure the size of `formatCount(total)` used to be, and it has to carry the
- * numbers a plan is written from.
+ * Every row counts the same facilities, so each row is the whole population
+ * and the rows do not add up to anything together.
  */
-function PerDomainSplit({
+
+/** Cell fill and ink per severity. The fills are the readiness bands' own; the
+ *  ink on them is `--on-band`, fixed in both schemes because the fills are. */
+const SEVERITY_FILL: Record<DomainSeverity, string> = {
+  major: cn(BAND_CLASSES.not_ready.bg, 'text-onband'),
+  moderate: cn(BAND_CLASSES.moderately_ready.bg, 'text-onband'),
+  minor: cn(BAND_CLASSES.ready.bg, 'text-onband'),
+  none: 'bg-surface-sunk text-foreground',
+};
+
+/** The share's ink, and the share bar's track and fill, per cell. Ink-on-fill
+ *  rather than a colour of its own, so the bar reads on all four. */
+const SEVERITY_SUB: Record<DomainSeverity, { text: string; track: string; bar: string }> = {
+  major: { text: 'text-onband-muted', track: 'bg-onband/15', bar: 'bg-onband/70' },
+  moderate: { text: 'text-onband-muted', track: 'bg-onband/15', bar: 'bg-onband/70' },
+  minor: { text: 'text-onband-muted', track: 'bg-onband/15', bar: 'bg-onband/70' },
+  none: { text: 'text-muted-foreground', track: 'bg-border', bar: 'bg-muted-foreground' },
+};
+
+function SeveritySplit({
   facilities,
   domains,
 }: {
   facilities: FacilitySummary[];
   domains: FacilityThemeId[];
 }) {
-  // Best first, the same order as the `BandCards` this stands in for. The two
-  // states of one block must not run their columns in opposite directions, or
-  // ticking a second domain would mirror the table under the reader.
-  const order: Band[] = ['ready', 'moderately_ready', 'not_ready'];
+  const rows = useMemo(() => {
+    const ids = domains.length ? domains : FACILITY_DOMAIN_IDS;
+    return ids.map((id) => ({
+      id,
+      label: THEME_BY_ID[id].label,
+      dist: facilityDomainSeverity(facilities, id),
+    }));
+  }, [facilities, domains]);
 
-  const rows = useMemo(
-    () =>
-      domains.map((id) => ({
-        id,
-        label: THEME_BY_ID[id].shortLabel,
-        dist: facilityDomainDistribution(facilities, id),
-      })),
-    [facilities, domains],
-  );
+  const total = facilities.length;
+  if (!total) return <Nothing>No facilities in scope.</Nothing>;
 
   return (
-    <div className="mt-5">
-      <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
-        <span className="min-w-0 flex-1">Domain</span>
-        {order.map((b) => (
-          <span key={b} className="w-[52px] shrink-0 text-right">
-            {BAND_LABEL[b].replace('Moderately ready', 'Moderate')}
+    <div>
+      {/* Column heads, doubling as the key: the four levels in the order every
+          row below uses. */}
+      <div className="grid grid-cols-4 gap-px">
+        {DOMAIN_SEVERITIES.map((sev) => (
+          <span
+            key={sev}
+            className="mono flex min-w-0 items-center gap-1.5 text-tick uppercase tracking-[0.06em] text-muted-foreground"
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'block h-2 w-2 shrink-0 rounded-[2px]',
+                SEVERITY_FILL[sev],
+                sev === 'none' && 'ring-1 ring-inset ring-border',
+              )}
+            />
+            <span className="truncate">{DOMAIN_SEVERITY_SHORT[sev]}</span>
           </span>
         ))}
       </div>
 
-      <ul>
+      <ul className="mt-2.5 space-y-3">
         {rows.map(({ id, label, dist }) => (
-          <li
-            key={id}
-            className="flex items-baseline gap-2 border-b border-border py-1.5 last:border-0"
-          >
-            <span className="min-w-0 flex-1 truncate text-prose text-foreground">{label}</span>
-            {order.map((b) => (
-              <span
-                key={b}
-                className={cn(
-                  'mono w-[52px] shrink-0 text-right text-prose font-semibold tabular-nums',
-                  BAND_CLASSES[b].text,
-                )}
-              >
-                {formatCount(dist[b])}
-              </span>
-            ))}
+          <li key={id}>
+            <p className="truncate text-prose text-foreground">{label}</p>
+
+            {/* Rules between cells are `--on-band` at 15% for the reason
+                `BandCards` gives: a hairline in the border colour vanishes
+                against the Ready and Moderate fills. */}
+            <div
+              className="mt-1.5 grid grid-cols-4 gap-px overflow-hidden rounded-[4px] border border-onband/15 bg-onband/15"
+              role="img"
+              aria-label={`${label}: ${DOMAIN_SEVERITIES.map(
+                (sev) =>
+                  `${DOMAIN_SEVERITY_LABEL[sev]} ${formatCount(dist[sev])} (${formatShare(dist[sev], total)})`,
+              ).join(', ')} of ${formatCount(total)} facilities`}
+            >
+              {DOMAIN_SEVERITIES.map((sev) => {
+                const count = dist[sev];
+                const sub = SEVERITY_SUB[sev];
+                return (
+                  <div
+                    key={sev}
+                    className={cn('min-w-0 px-2 pb-1.5 pt-1', SEVERITY_FILL[sev])}
+                    title={`${DOMAIN_SEVERITY_LABEL[sev]}: ${formatCount(count)} of ${formatCount(total)} facilities (${percentOf(count, total, 1)})`}
+                  >
+                    <div className="mono flex items-baseline justify-between gap-1 whitespace-nowrap leading-none tabular-nums">
+                      <span className="text-note font-semibold">{formatCount(count)}</span>
+                      <span className={cn('text-tick', sub.text)}>{formatShare(count, total)}</span>
+                    </div>
+                    {/* The share, as a length. Zero draws an empty track rather
+                        than nothing, so every cell has the same shape. */}
+                    <div aria-hidden className={cn('mt-1 h-[3px] rounded-full', sub.track)}>
+                      <div
+                        className={cn('h-full rounded-full', sub.bar)}
+                        style={{ width: `${(count / total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </li>
         ))}
       </ul>
-
-      {/* Said once, under the rows. Without it the table reads as a breakdown of
-          the facility count above — three columns that sum to the total — when
-          each row is in fact the same facilities counted again under a different
-          domain. */}
-      <p className="mt-2 text-body italic leading-snug text-muted-foreground">
-        Every row counts the same facilities under a different domain, so the rows
-        do not add up. The assessment publishes no combined reading.
-      </p>
     </div>
   );
 }
-
 
 /**
  * Gaps and the interventions that close them — one reading, four depths.
@@ -897,12 +936,20 @@ function GapBlocks({
       for (const id of f.gaps) {
         if (!offered.has(id)) continue;
         const gap = GAP_BY_ID[id]!;
-        gapCount += 1;
-        hit = true;
+        /**
+         * "No gap recorded" is costed and gets its own condition row, so its
+         * money has somewhere to sit — but it is not a gap, so it adds nothing
+         * to the gap count or to the facilities the area and domain say carry
+         * one. See `GapDef.recorded`.
+         */
+        if (gap.recorded) {
+          gapCount += 1;
+          hit = true;
+        }
 
-        /** The actions this facility's own row asks for — which, for four
-         *  conditions, is not the set every facility carrying them gets. */
-        const actions = gapInterventions(gap, f.gapVariants[id] ?? 0);
+        /** The actions this facility's own row asks for, in its own
+         *  quantities. */
+        const actions = facilityGapActions(f, gap);
 
         const condition = perCondition.get(id) ?? { facs: 0, cost: 0, unpriced: 0 };
         condition.facs += 1;
@@ -910,11 +957,15 @@ function GapBlocks({
 
         const area = perArea.get(gap.area) ?? blank();
         const domain = perDomain.get(gap.domain) ?? blank();
-        area.facs.add(f.uuid);
-        domain.facs.add(f.uuid);
+        if (gap.recorded) {
+          area.facs.add(f.uuid);
+          domain.facs.add(f.uuid);
+        }
 
         for (const iv of actions) {
           const horizon = byHorizon.get(iv.horizon) ?? { ...blank(), acts: 0 };
+          // One action at one facility, however many units it buys: five
+          // tablets are one thing to do.
           horizon.acts += 1;
           horizon.facs.add(f.uuid);
           for (const acc of [area, domain, horizon] as Acc[]) {
@@ -973,22 +1024,17 @@ function GapBlocks({
                     cost: pc.cost,
                     unpriced: pc.unpriced,
                     /**
-                     * Most urgent first, not costliest. They are a sequence
-                     * rather than a ranking — install now, connect to the grid
-                     * later — and printing them out of order would misstate the
-                     * plan.
+                     * Every action type the condition can call for, most
+                     * urgent first — a sequence rather than a ranking: install
+                     * now, connect to the grid later. The catalogue already
+                     * holds them in that order.
                      *
-                     * Every action the condition can fire, across all the ways
-                     * it is costed. For the four priced two ways this lists
-                     * alternatives, so the `each` prices under such a condition
-                     * are the branches a facility takes one of — they do not
-                     * multiply out to the total beside them. Hence the label.
+                     * Each carries its *unit* price. Quantities differ facility
+                     * to facility — two tablets here, five there — so the unit
+                     * price never multiplies out to the total beside it by the
+                     * facility count, and the label says per what.
                      */
-                    interventions: [...gapAllInterventions(g)].sort(
-                      (x, y) =>
-                        HORIZONS.indexOf(x.horizon) - HORIZONS.indexOf(y.horizon) ||
-                        (y.costNGN ?? 0) - (x.costNGN ?? 0),
-                    ),
+                    interventions: gapActionDefs(g),
                   };
                 })
                 .sort(byCost),
@@ -1109,15 +1155,15 @@ function GapBlocks({
 
           Urgency belongs to the intervention and not to the gap, so this split
           has no equivalent in the tree below — a power gap has no single
-          horizon to file itself under. The two blocking cards are what a
-          deployment date actually turns on: they are exactly what
-          `FacilitySummary.deploymentBand` is computed from, one level down.
+          horizon to file itself under. The two blocking cards, Major and
+          Moderate, are what a deployment date turns on.
 
-          Facilities on the Critical card is the same population the readiness
-          block above counts as Not ready to deploy, arrived at from the other
-          end — a facility is Not ready precisely because it carries one of
-          these. Both narrow together under a filter, so the two blocks can be
-          read against each other on any selection.
+          They are *not* the Not ready and Moderately ready counts above. The
+          source decides readiness from Technical Infrastructure alone, and the
+          Major card counts Major actions in every domain — a workforce gap
+          graded Major sits here and moves no facility's readiness. With the
+          Domain filter on Technical Infrastructure the Major card's facilities
+          are exactly the Not ready ones.
 
           Two across rather than four: the figures read beside their labels
           rather than under them, and "Interventions 17,555" does not fit in a
@@ -1199,17 +1245,18 @@ function GapBlocks({
                                   <Row
                                     label={iv.label}
                                     horizon={iv.horizon}
-                                    unitCostNGN={iv.costNGN}
+                                    unitCostNGN={iv.unitCostNGN}
+                                    unit={iv.unit}
                                     tone="intervention"
                                   />
                                 </li>
                               ))}
                             </ul>
                           ) : (
-                            /* 55 facilities carry a gap the source records with
-                               no action behind it. Saying so is more honest
-                               than hiding the gap or inventing a fix for it —
-                               see docs/data-queries. */
+                            /* Some gaps the source records carry no action
+                               behind them. Saying so is more honest than
+                               hiding the gap or inventing a fix for it — see
+                               docs/data-queries. */
                             <p className="py-0.5 pl-6 text-body italic leading-snug text-muted-foreground">
                               No intervention recorded.
                             </p>
@@ -1300,6 +1347,7 @@ function Row({
   label,
   horizon,
   unitCostNGN,
+  unit,
   facs,
   cost,
   unpriced,
@@ -1315,6 +1363,8 @@ function Row({
   /** What *one* of this intervention costs, or null where the source does not
    *  price it. Interventions only. */
   unitCostNGN?: number | null;
+  /** What one unit is, for an intervention priced per unit. */
+  unit?: string | null;
   facs?: number;
   cost?: number;
   /**
@@ -1343,7 +1393,9 @@ function Row({
         title={
           unitCostNGN == null
             ? 'The source does not price this action'
-            : 'What one costs. The total on the gap above is this across the facilities on that row.'
+            : unit
+              ? `What one ${unit} costs. Facilities need different numbers of them, so this does not multiply out by the facility count.`
+              : 'What it costs at one facility. The total on the gap above is this across the facilities on that row.'
         }
       >
         {unitCostNGN == null ? (
@@ -1351,7 +1403,9 @@ function Row({
         ) : (
           <>
             {formatNaira(unitCostNGN, true)}
-            <span className="ml-0.5 text-tick uppercase tracking-[0.04em]">each</span>
+            <span className="ml-0.5 text-tick uppercase tracking-[0.04em]">
+              {unit ? `/${unit}` : 'each'}
+            </span>
           </>
         )}
       </span>
@@ -1476,7 +1530,7 @@ function FacilityGaps({
       condition: string;
       cost: number;
       unpriced: number;
-      interventions: { id: string; label: string; horizon: Horizon; costNGN: number | null }[];
+      interventions: FacilityAction[];
     }[];
   }[];
   cost: number;
@@ -1503,10 +1557,10 @@ function FacilityGaps({
           intervention appears in exactly one row here and in exactly one group
           below — so the two totals agree.
 
-          Counted in **actions, not gaps**: a power gap fires a critical install
+          Counted in **actions, not gaps**: a power gap fires a solar install
           and an optional grid connection, and those belong in different
           quarters. That is why these rows sum past the gap count in the
-          heading. */}
+          heading. Five tablets are one action. */}
       <div className="mb-3.5">
         <div className="mono flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
           <span className="min-w-0 flex-1">When</span>
@@ -1576,6 +1630,16 @@ function FacilityGaps({
                           <span className="block text-prose leading-snug text-muted-foreground">
                             {iv.label}
                           </span>
+                          {/* How many, where the action is bought by the unit —
+                              the one figure that makes the cost beside it
+                              checkable. */}
+                          {iv.unit && (
+                            <span className="mono block text-note text-muted-foreground">
+                              {formatUnits(iv.quantity, iv.unit)}
+                              {iv.unitCostNGN != null &&
+                                ` × ${formatNaira(iv.unitCostNGN, true)}`}
+                            </span>
+                          )}
                           <HorizonChip horizon={iv.horizon} />
                         </span>
                         {/* Zero is printed, `null` is named. A gap that costs
@@ -1593,9 +1657,9 @@ function FacilityGaps({
                     ))}
                   </ul>
                 ) : (
-                  /* 55 facilities carry a gap the source records with no action
-                     behind it. Saying so is more honest than hiding the gap or
-                     inventing a fix for it — see docs/data-queries. */
+                  /* Some gaps the source records carry no action behind them.
+                     Saying so is more honest than hiding the gap or inventing a
+                     fix for it — see docs/data-queries. */
                   <p className="mt-1 border-l border-border pl-2.5 text-prose italic text-muted-foreground">
                     No intervention recorded.
                   </p>
@@ -1669,10 +1733,10 @@ function HorizonChip({ horizon, inline }: { horizon: Horizon; inline?: boolean }
       )}
     >
       {/* Shape before word before colour, so the chip ranks itself in
-          greyscale too. Weight no longer carries the blocking/partial split —
+          greyscale too. Weight does not carry the blocking/partial split —
           hue does it better, and leaving the two blocking urgencies bold and
-          the other two grey made Minor look like a footnote when it is 17,555
-          actions and ₦1.3bn. */}
+          the other two grey would make Minor look like a footnote when it is
+          the largest number of actions in the plan. */}
       <span aria-hidden className="mr-1">
         {URGENCY_MARKER[horizon]}
       </span>
@@ -1783,23 +1847,6 @@ function Block({
       <div className="mt-2.5">{children}</div>
     </section>
   );
-}
-
-/**
- * What the headline split is banded by — or nothing, when it is the default.
- *
- * There is no longer a phrase for a combination of domains, because there is no
- * longer a reading for one. "The weakest of 2 domains" named a value this app
- * computed and the assessment never published; the note now either names a
- * single published column or says the headline has fallen back to the overall
- * one. All four ticked reads as the default, which it is: narrowing to
- * everything narrows nothing.
- */
-function lensLabel(domains: FacilityThemeId[]): string | undefined {
-  const mode = domainSelectionMode(domains);
-  if (mode === 'overall') return undefined;
-  if (mode === 'single') return THEME_BY_ID[domains[0]!].label;
-  return undefined;
 }
 
 function Nothing({ children }: { children: React.ReactNode }) {

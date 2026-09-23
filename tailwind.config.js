@@ -69,8 +69,8 @@ export default {
         // Urgency, not readiness — see the note in globals.css. Ink only: these
         // four never fill a shape, they colour a word or a glyph beside one.
         urgency: {
-          critical: 'hsl(var(--urgency-critical) / <alpha-value>)',
           major: 'hsl(var(--urgency-major) / <alpha-value>)',
+          moderate: 'hsl(var(--urgency-moderate) / <alpha-value>)',
           minor: 'hsl(var(--urgency-minor) / <alpha-value>)',
           longterm: 'hsl(var(--urgency-longterm) / <alpha-value>)',
         },

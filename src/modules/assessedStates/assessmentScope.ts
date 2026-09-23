@@ -20,11 +20,11 @@
  */
 
 import { facilityBandUnder } from '@/lib/archetype';
-import { GAP_BY_ID, gapCostNGN } from '@/lib/gapCatalogue';
+import { GAP_BY_ID, facilityGapCost } from '@/lib/gapCatalogue';
 import type {
   AreaProfile,
-  Band,
   BandDistribution,
+  DomainSeverity,
   FacilitySummary,
   FacilityThemeId,
 } from '@/lib/types';
@@ -110,12 +110,11 @@ export function notReadyShare(d: BandDistribution): number | null {
 }
 
 /**
- * Count a facility list into the three bands, under the Domain filter.
+ * Count a facility list into the three readiness bands.
  *
- * Every count on this page comes through here, and every one of them reads the
- * band the same way — `facilityBandUnder`. Pass the ticked domains and the
- * whole page moves onto that reading at once: the pane's split, the polygon
- * fills, the badge on each list row.
+ * Every readiness count on this page comes through here, and every one of them
+ * reads the band the same way — `facilityBandUnder`, which is the facility's
+ * overall band whatever domains are ticked.
  */
 export function facilityDistribution(
   facilities: FacilitySummary[],
@@ -129,16 +128,19 @@ export function facilityDistribution(
   return dist;
 }
 
-/** Count a facility list into the three bands, for one domain. */
-export function facilityDomainDistribution(
+/**
+ * Count a facility list by one domain's highest gap severity.
+ *
+ * The per-domain reading, and the only one the source carries: not a band, a
+ * count of facilities whose worst gap in the domain is Major, Moderate, Minor,
+ * or who have none.
+ */
+export function facilityDomainSeverity(
   facilities: FacilitySummary[],
-  themeId: keyof FacilitySummary['themeBands'],
-): BandDistribution {
-  const dist: BandDistribution = { not_ready: 0, moderately_ready: 0, ready: 0 };
-  for (const f of facilities) {
-    const band: Band | null = f.themeBands[themeId] ?? null;
-    if (band) dist[band] += 1;
-  }
+  themeId: FacilityThemeId,
+): Record<DomainSeverity, number> {
+  const dist: Record<DomainSeverity, number> = { major: 0, moderate: 0, minor: 0, none: 0 };
+  for (const f of facilities) dist[f.domainSeverity[themeId]] += 1;
   return dist;
 }
 
@@ -162,7 +164,7 @@ export function facilityDomainDistribution(
  * leading with the union would look responsive and be inert.
  */
 export interface DomainOverlap {
-  /** Facilities carrying a gap in at least one selected domain. */
+  /** Facilities carrying a recorded gap in at least one selected domain. */
   any: number;
   /** Facilities carrying a gap in every selected domain. */
   all: number;
@@ -191,10 +193,13 @@ export function domainOverlap(
       if (!gap) continue;
       const domain = gap.domain as FacilityThemeId;
       if (!domains.includes(domain)) continue;
-      const priced = gapCostNGN(gap, f.gapVariants[id] ?? 0);
-      gaps += 1;
+      const priced = facilityGapCost(f, gap);
       costNGN += priced.costNGN;
       unpriced += priced.unpriced;
+      // "No gap recorded" is costed but is not a gap: it counts toward the
+      // money and not toward the gaps or the facilities carrying one.
+      if (!gap.recorded) continue;
+      gaps += 1;
       hit.add(domain);
     }
     if (hit.size) any += 1;

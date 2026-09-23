@@ -43,8 +43,8 @@ ERA dataset_v4 (1).xlsx
 # `git add -A` cannot put it back.
 Raw data with readiness level.xlsx
 
-# The state coverage workbook — the source of every readiness band on National
-# Coverage.
+# The state coverage workbook — electricity access and internet subscription
+# for all 37 states.
 #
 # Not committed, for the same reason as the workbooks above: the source stays
 # editable outside the repo and the derived data comes in with it. What *is*
@@ -54,12 +54,17 @@ Raw data with readiness level.xlsx
 # `public/data/` without holding a copy.
 National Coverage.xlsx
 
-# The leadership domain scoring, on the same terms.
+# The ERA dashboard workbook, 54 MB — the source of the State Maturity band on
+# National Coverage and on Assessed States' state map.
 #
-# `npm run data:leadership` extracts and validates it into the committed
-# `scripts/source-data/national-leadership.json` — 27 of the 37 states, the
-# ten unscored ones absent rather than written as zeroes. `data:ingest` reads
+# `npm run data:maturity` extracts and validates its State Maturity sheet into
+# the committed `scripts/source-data/state-maturity.json`. `data:ingest` reads
 # that JSON and never this workbook.
+ERA Dashboard dataset.xlsx
+
+# The leadership domain scoring. Superseded by the State Maturity sheet above,
+# which carries the same four answers for more states; nothing reads it any
+# more.
 National coverage leadership domain scoring.xlsx
 
 # The fetched copy of the assessment sheet (`npm run data:ingest -- --fetch`).

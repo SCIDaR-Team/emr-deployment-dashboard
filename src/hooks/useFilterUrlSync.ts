@@ -16,14 +16,13 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFilterStore } from '@/store/filterStore';
-import { THEMES, DOMAIN_LABEL } from '@/lib/themes';
+import { DOMAIN_LABEL } from '@/lib/themes';
 import { GAP_AREA_BY_ID } from '@/lib/gapCatalogue';
 import type {
   Band,
   DomainId,
   FilterState,
   FunctionalityLevel,
-  ThemeId,
 } from '@/lib/types';
 
 /**
@@ -47,9 +46,6 @@ type ArrayKey = Exclude<keyof typeof KEYS, 'search'>;
 
 const ARRAY_KEYS = Object.keys(KEYS).filter((k) => k !== 'search') as ArrayKey[];
 
-/** Per-theme band filters ride as `band.<themeId>`. */
-const BAND_PREFIX = 'band.';
-const THEME_IDS = THEMES.map((t) => t.id);
 /** Every id `?domain=` may legally carry — the four facility domains plus
  *  Leadership & Governance, which only National Coverage can paint. */
 const DOMAIN_IDS = Object.keys(DOMAIN_LABEL) as DomainId[];
@@ -61,9 +57,6 @@ function serialise(f: FilterState): URLSearchParams {
     if (values.length) p.set(KEYS[key], values.join(','));
   }
   if (f.search.trim()) p.set(KEYS.search, f.search.trim());
-  for (const [themeId, bands] of Object.entries(f.bandByTheme)) {
-    if (bands?.length) p.set(`${BAND_PREFIX}${themeId}`, bands.join(','));
-  }
   return p;
 }
 
@@ -105,13 +98,6 @@ function parse(params: URLSearchParams): Partial<FilterState> {
     patch.gapAreas = list(KEYS.gapAreas).filter((id) => id in GAP_AREA_BY_ID);
   }
   if (params.has(KEYS.search)) patch.search = params.get(KEYS.search) ?? '';
-
-  const bandByTheme: Partial<Record<ThemeId, Band[]>> = {};
-  for (const themeId of THEME_IDS) {
-    const key = `${BAND_PREFIX}${themeId}`;
-    if (params.has(key)) bandByTheme[themeId] = list(key) as Band[];
-  }
-  if (Object.keys(bandByTheme).length) patch.bandByTheme = bandByTheme;
 
   // Filtered rather than cast, because a `?domain=` in a hand-edited or stale
   // link can say anything, and an unrecognised id would reach a band lookup as
@@ -164,7 +150,6 @@ export function useFilterUrlSync(): void {
   const funding = useFilterStore((s) => s.funding);
   const functionalityLevels = useFilterStore((s) => s.functionalityLevels);
   const archetypes = useFilterStore((s) => s.archetypes);
-  const bandByTheme = useFilterStore((s) => s.bandByTheme);
   const domains = useFilterStore((s) => s.domains);
   const gapAreas = useFilterStore((s) => s.gapAreas);
   const search = useFilterStore((s) => s.search);
@@ -179,7 +164,6 @@ export function useFilterUrlSync(): void {
     domains,
     gapAreas,
     archetypes,
-    bandByTheme,
     search,
   }).toString();
 
@@ -189,7 +173,10 @@ export function useFilterUrlSync(): void {
     // and thematic selection in the same querystring.
     const next = new URLSearchParams(window.location.search);
     for (const key of [...next.keys()]) {
-      if (Object.values(KEYS).includes(key as never) || key.startsWith(BAND_PREFIX)) {
+      // `band.<domain>` was a per-domain band filter. The source no longer
+      // carries a band per domain, so an old link's keys are cleared rather
+      // than left in the address bar filtering nothing.
+      if (Object.values(KEYS).includes(key as never) || key.startsWith('band.')) {
         next.delete(key);
       }
     }

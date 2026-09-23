@@ -17,11 +17,10 @@ import {
   HORIZON_PHASES,
   HORIZON_WHEN,
   PHASE_LABEL,
-  PHASE_OF,
   URGENCY_MARKER,
 } from '@/lib/bands';
 import { cn } from '@/lib/cn';
-import { formatCount, formatNaira, formatShare } from '@/lib/format';
+import { formatCount, formatNaira, formatShare, formatUnits } from '@/lib/format';
 import { HORIZONS, HORIZON_SHORT } from '@/lib/gapCatalogue';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/lib/types';
@@ -61,18 +60,19 @@ const SECTIONS = [
 /**
  * The axes a costed plan is read along, plus the flat list.
  *
- * Phase and Urgency are the same axis at two grains, and both are here on
- * purpose. **Phase** is the budgeting question — Before deployment is one
- * cheque, whatever separates Critical from Major inside it, and it is the
- * figure that decides whether a go-live date is real. **Urgency** is the
- * assessment's own four levels, which is what you need once the phase total
- * has been argued about. Phase leads because it answers the first question,
- * and it agrees line-for-line with the "Before deployment" tile above.
+ * Phase and Urgency are related axes, and both are here on purpose.
+ * **Phase** is the budgeting question — Before deployment is one cheque,
+ * whatever separates Major from Minor inside it, and it is the figure that
+ * decides whether a go-live date is real. **Urgency** is the assessment's own
+ * four levels, which is what you need once the phase total has been argued
+ * about. They do not nest: Minor spans two phases, tablets before go-live and
+ * sockets during it. Phase leads because it answers the first question, and it
+ * agrees line-for-line with the "Before deployment" tile above.
  *
  * **Domain** is a genuinely different axis: not when the money is spent but
- * who spends it. It does not nest inside either of the others — nationally the
- * cross-tab is lopsided both ways round (24 of 30 lines are Minor, 18 of 30
- * are Technical Infrastructure), so a two-level tree would spend most of its
+ * who spends it. It does not nest inside either of the others — nationally
+ * every priced line is Technical Infrastructure, and the other three domains'
+ * lines are all ₦0 or unpriced — so a two-level tree would spend most of its
  * depth on one branch whichever way it were built. Hence a switch.
  */
 type GroupMode = 'phase' | 'urgency' | 'domain' | 'cost';
@@ -94,9 +94,9 @@ const GROUP_MODES: { id: GroupMode; label: string }[] = [
  * count of facilities that failed a reading, so no line here is a wish.
  */
 const INTERVENTIONS_SUBTITLE =
-  'Every line is an action the assessment prescribes \u2014 the quantity is the facilities that triggered it';
+  'Every line is an action the assessment prescribes \u2014 the quantity is what the facilities that triggered it need';
 
-type ColumnId = 'item' | 'domain' | 'urgency' | 'facilities' | 'unit' | 'total';
+type ColumnId = 'item' | 'domain' | 'urgency' | 'facilities' | 'quantity' | 'unit' | 'total';
 
 /** The grouping key leaves the row: it is stated once on the group header
  *  instead of repeated down a column that cannot vary within the group. */
@@ -104,10 +104,10 @@ const COLUMNS: Record<GroupMode, ColumnId[]> = {
   // Urgency *stays* a column under Phase, and that is the point of the view:
   // a phase is a merge of urgencies, so the reader has to be able to see which
   // ones the subtotal is made of without switching away.
-  phase: ['item', 'domain', 'urgency', 'facilities', 'unit', 'total'],
-  urgency: ['item', 'domain', 'facilities', 'unit', 'total'],
-  domain: ['item', 'urgency', 'facilities', 'unit', 'total'],
-  cost: ['item', 'domain', 'urgency', 'facilities', 'unit', 'total'],
+  phase: ['item', 'domain', 'urgency', 'facilities', 'quantity', 'unit', 'total'],
+  urgency: ['item', 'domain', 'facilities', 'quantity', 'unit', 'total'],
+  domain: ['item', 'urgency', 'facilities', 'quantity', 'unit', 'total'],
+  cost: ['item', 'domain', 'urgency', 'facilities', 'quantity', 'unit', 'total'],
 };
 
 const COLUMN_LABEL: Record<ColumnId, string> = {
@@ -115,11 +115,17 @@ const COLUMN_LABEL: Record<ColumnId, string> = {
   domain: 'Domain',
   urgency: 'Urgency',
   facilities: 'Facilities',
-  unit: 'Unit',
+  quantity: 'Quantity',
+  unit: 'Unit cost',
   total: 'Total',
 };
 
-const NUMERIC: ReadonlySet<ColumnId> = new Set<ColumnId>(['facilities', 'unit', 'total']);
+const NUMERIC: ReadonlySet<ColumnId> = new Set<ColumnId>([
+  'facilities',
+  'quantity',
+  'unit',
+  'total',
+]);
 
 const WAVE_NOTE: Record<WaveId, string> = {
   1: 'States with the readiest facilities. Deploy while the plan is still being written for the rest.',
@@ -173,21 +179,23 @@ function buildGroups(items: InvestmentItem[], mode: GroupMode, total: number): G
   if (mode === 'phase') {
     // Chronological, and every phase that has lines is shown. No marker on the
     // heading: the urgency markers are per-urgency, and putting one on a group
-    // that merges two would claim the whole phase was Critical.
+    // that merges several would claim the whole phase was Major.
     return HORIZON_PHASES.map((phase) => {
-      const inGroup = items.filter((i) => PHASE_OF[i.horizon] === phase).sort(byCost);
+      const inGroup = items.filter((i) => i.phase === phase).sort(byCost);
       const { cost, unpriced } = summarise(inGroup);
       // Which urgencies are actually in here, worst-first. Named so a reader
-      // sees that Before deployment is Critical *and* Major before they go
-      // looking for the split.
+      // sees that Before deployment is Major, Moderate *and* Minor before they
+      // go looking for the split.
       const made = HORIZONS.filter((h) => inGroup.some((i) => i.horizon === h)).map(
         (h) => HORIZON_SHORT[h],
       );
+      const named =
+        made.length > 1 ? `${made.slice(0, -1).join(', ')} and ${made[made.length - 1]}` : made[0];
       return {
         key: phase,
         heading: {
           label: PHASE_LABEL[phase],
-          note: `${made.join(' and ')} · ${inGroup.length} ${inGroup.length === 1 ? 'line' : 'lines'} · ${formatShare(cost, total)} of the plan`,
+          note: `${named} · ${inGroup.length} ${inGroup.length === 1 ? 'line' : 'lines'} · ${formatShare(cost, total)} of the plan`,
         },
         items: inGroup,
         cost,
@@ -276,35 +284,30 @@ export default function InvestmentPlanPage() {
   const unpriced = scope.investments.filter((i) => i.totalCostNGN == null);
   const unpricedLines = unpriced.length;
   /**
-   * Actions, not lines — because one line can be thousands of them.
+   * Facilities, not lines — because one line can be thousands of them.
    *
-   * The revised costing model left routine device maintenance unpriced at 2,274
+   * Routine device maintenance alone is unpriced at over two thousand
    * facilities, and every one of them rolls up into a single line. "One line
    * carries no indicative price" is true and reads like a rounding note; the
-   * quantity behind it is what says how much of the plan the total is silent
+   * facilities behind it are what say how much of the plan the total is silent
    * about.
    */
-  const unpricedActions = unpriced.reduce((sum, i) => sum + i.quantity, 0);
+  const unpricedActions = unpriced.reduce((sum, i) => sum + i.facilityCount, 0);
   /**
    * Lines the source prices at a real ₦0, which is a different claim from an
-   * unpriced one and now a common one: two of the four domains cost nothing at
-   * all under the revised model. Said out loud so a column of ₦0s reads as a
-   * decision rather than as missing data.
+   * unpriced one and now a common one: workforce, workflow and data-use actions
+   * cost nothing at facility level in the revised model. Said out loud so a
+   * column of ₦0s reads as a decision rather than as missing data.
    */
   const freeLines = scope.investments.filter((i) => i.totalCostNGN === 0).length;
 
   /**
-   * Critical and major together — the sheet's two "before EMR deployment"
-   * urgencies, which are one budget whatever else separates them.
-   *
-   * This tile used to read "High priority", off a priority level we invented by
-   * folding critical and major into one and calling minor "medium". Minor is
-   * the largest bucket in the plan, so that tile implied five-sixths of the
-   * lines were discretionary. The number here is the same; the claim is not.
+   * Everything the sheet says must be done before EMR deployment — Major,
+   * Moderate, and the Minor gaps it also puts before go-live (tablets, device
+   * maintenance, backup-power repair). One budget, whatever separates the
+   * urgencies inside it, and the figure a go-live date turns on.
    */
-  const beforeDeployment = scope.investments.filter(
-    (i) => i.horizon === 'critical' || i.horizon === 'major',
-  );
+  const beforeDeployment = scope.investments.filter((i) => i.phase === 'before');
   const beforeCost = beforeDeployment.reduce((sum, i) => sum + (i.totalCostNGN ?? 0), 0);
 
   const groups = useMemo(
@@ -375,7 +378,7 @@ export default function InvestmentPlanPage() {
           <Tile
             label="Before deployment"
             value={formatNaira(beforeCost, true)}
-            note={`Critical and major · ${formatShare(beforeCost, totalCost)} of the plan in ${beforeDeployment.length} of ${scope.investments.length} lines`}
+            note={`Major, moderate and minor · ${formatShare(beforeCost, totalCost)} of the plan in ${beforeDeployment.length} of ${scope.investments.length} lines`}
           />
           <Tile label="Facilities in scope" value={formatCount(scope.facilityCount)} />
           <Tile
@@ -700,12 +703,21 @@ function InvestmentRow({ item, columns }: { item: InvestmentItem; columns: Colum
           case 'facilities':
             return (
               <td key={c} className="mono td text-right">
-                {formatCount(item.quantity)}
+                {formatCount(item.facilityCount)}
+              </td>
+            );
+          case 'quantity':
+            return (
+              /* Units where the action is bought by the unit — "5,920 tablets" —
+                 and the facility count again where it is one per facility, so
+                 Quantity × Unit cost = Total holds on every row. */
+              <td key={c} className="mono td whitespace-nowrap text-right">
+                {formatUnits(item.quantity, item.unit ?? 'facility')}
               </td>
             );
           case 'unit':
             return (
-              <td key={c} className="mono td text-right">
+              <td key={c} className="mono td whitespace-nowrap text-right">
                 {item.unitCostNGN != null ? formatNaira(item.unitCostNGN) : '—'}
               </td>
             );

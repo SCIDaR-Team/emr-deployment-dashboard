@@ -42,21 +42,21 @@ import {
   COL,
   DOMAINS,
   DOMAIN_IDS,
+  DOMAIN_SEVERITY_BY_LABEL,
   HORIZONS,
-  HORIZON_SUMMARY_COL,
+  PHASES,
+  SUMMARY_COL,
+  WHEN_BY_LABEL,
+  conditionInRow,
   extractCatalogue,
   extractGapAreas,
-  BLANK_GAP_AREA,
-  BLANK_GAP_VALUE,
-  DEFAULT_HORIZON,
-  DEFAULT_HORIZON_AREA,
-  catalogueInterventions,
+  gapValueInRow,
   interventionsCost,
   interventionsInRow,
-  gapValueInRow,
   parseAssessmentCsv,
   parseMoney,
   resolveLga,
+  severityOfHorizons,
   slugify,
   titleCase,
 } from './assessment-source.mjs';
@@ -65,10 +65,9 @@ import { lookupFor, nameKey, parseFacilityWorkbook } from './facility-workbook.m
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'public/data');
 const CACHE = resolve(ROOT, 'scripts/source-data/assessment.csv');
-const COMMITTED = resolve(
-  ROOT,
-  'Revised costing model and roadmap - List of gaps and interventions per facility.csv',
-);
+/** The ERA dashboard workbook's facility gap sheet, exported by `npm run
+ *  data:gaps` and committed. */
+const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv');
 /**
  * The raw ODK export, joined on top of the gaps CSV.
  *
@@ -89,24 +88,13 @@ const WORKBOOK = resolve(ROOT, 'ERA dataset_v4 (1).xlsx');
 const BANDS = ['not_ready', 'moderately_ready', 'ready'];
 
 /**
- * How far a facility's own grand total may sit from the sum of its parts.
+ * How far a facility's figures may sit from the sheet's own, in naira.
  *
- * ₦1, and only ₦1, because the sheet rounds twice. Two interventions carry
- * fractional true values — the device top-up at ₦233,333 (₦700,000 ÷ 3) and the
- * service-point kit at ₦54,378 — and the sheet displays each domain subtotal
- * rounded while computing `Total facility intervention cost` at full precision
- * and rounding once. A facility carrying *both* fractions loses them from the
- * subtotals and keeps them in the grand total, so the two differ by exactly ₦1.
- *
- * It happens in precisely the 1,263 of 2,806 facilities that carry both, and
- * nowhere else: ₦1,263 nationally against ₦6.02bn, or 0.00002%.
- *
- * The dashboard sums the *cells*, not the grand total, because the cells are
- * what the gap catalogue is built from and a facility's cost has to be the sum
- * of the gaps shown beside it. The tolerance is here so that arithmetic can be
- * checked against the sheet without a rounding artefact failing the build — and
- * the drift is totalled in the build report rather than swallowed, so it can
- * never quietly grow into something that is not rounding.
+ * The tablet price is ₦700,000 ÷ 3, which the sheet stores to four decimal
+ * places and this build carries exactly, so a facility buying five tablets
+ * differs from the sheet by a fraction of a kobo. Everything else reconciles
+ * exactly. The drift is totalled in the build report rather than swallowed, so
+ * it can never quietly grow into something that is not rounding.
  */
 const ROUNDING_TOLERANCE = 1;
 
@@ -193,11 +181,21 @@ function distributionOf(facilities, key) {
   return dist;
 }
 
-function themeDistributionOf(facilities) {
+const SEVERITIES = ['none', 'minor', 'moderate', 'major'];
+
+/**
+ * How a population's facilities split across each domain's highest gap
+ * severity.
+ *
+ * The sheet reports a domain as the worst gap in it, not as a readiness band,
+ * so the per-domain reading is a count of facilities per severity and nothing
+ * rolls it up into a band.
+ */
+function severityDistributionOf(facilities) {
   return Object.fromEntries(
     DOMAIN_IDS.map((id) => {
-      const dist = emptyDistribution();
-      for (const f of facilities) if (f.themeBands[id]) dist[f.themeBands[id]] += 1;
+      const dist = Object.fromEntries(SEVERITIES.map((s) => [s, 0]));
+      for (const f of facilities) dist[f.domainSeverity[id]] += 1;
       return [id, dist];
     }),
   );
@@ -264,50 +262,36 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
 
   const gaps = [];
   /**
-   * The actions this facility's own row asks for.
+   * The actions this facility's own row asks for, split into unit actions.
    *
-   * Read from the row rather than looked up from the catalogue, because the
-   * revised costing model gives one condition more than one answer: a facility
-   * with no power draws a ₦3,000,000 solar install, and only the 474 of 571
-   * that are off-grid also draw the ₦500,000 connection. Costing from the
-   * catalogue would charge every one of them the same, and the domain subtotals
-   * would stop reconciling against the sheet — which is precisely how this was
-   * caught.
+   * Read from the row rather than looked up from the catalogue, because no two
+   * facilities need quite the same thing: one buys two tablets and another
+   * five, one needs three desks and a fan. The catalogue says which actions a
+   * condition can call for; the row says how many.
    */
   const interventions = [];
-  const gapVariants = {};
+  /** Action id → quantity. The published form of the list above. */
+  const actions = {};
   const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let costNGN = 0;
   let unpricedInterventions = 0;
+  let recordedGaps = 0;
 
   for (const block of blocks) {
-    const value = gapValueInRow(row, block);
-    if (value === null) continue;
-    const gap = catalogueById.get(gapIdOf(block, value));
-    if (!gap) throw new Error(`Facility ${uuid} carries uncatalogued gap "${value}"`);
+    const condition = conditionInRow(row, block);
+    if (!condition) continue;
+    const gap = catalogueById.get(condition.id);
+    if (!gap) throw new Error(`Facility ${uuid} carries uncatalogued gap "${condition.label}"`);
     gaps.push(gap.id);
+    if (gap.recorded) recordedGaps += 1;
 
-    const actions = interventionsInRow(row, block);
-    for (const iv of actions) interventions.push({ ...iv, domain: gap.domain });
-
-    /**
-     * Which of the condition's variants this facility is on.
-     *
-     * Only recorded where the condition has more than one — four of the 71, all
-     * power — so the map is empty for most facilities and never larger than two
-     * entries. Omitted means variant 0, which keeps the published JSON the size
-     * it was while letting the app cost a facility the way the sheet does.
-     */
-    if (gap.variants.length > 1) {
-      const shape = actions.map((iv) => iv.id).join('+');
-      const index = gap.variants.findIndex((v) => v.map((iv) => iv.id).join('+') === shape);
-      if (index < 0) {
-        throw new Error(`Facility ${uuid} carries an uncatalogued variant of "${gap.label}"`);
-      }
-      if (index > 0) gapVariants[gap.id] = index;
+    const found = interventionsInRow(row, block);
+    for (const iv of found) {
+      interventions.push({ ...iv, domain: gap.domain, recorded: gap.recorded });
+      actions[iv.id] = (actions[iv.id] ?? 0) + iv.quantity;
     }
 
-    const { costNGN: c, unpriced } = interventionsCost(actions);
+    const { costNGN: c, unpriced } = interventionsCost(found);
     costByDomain[gap.domain] += c;
     costNGN += c;
     unpricedInterventions += unpriced;
@@ -358,18 +342,30 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
      * now and showing it twice would say nothing.
      */
     deploymentBand: band(row[COL.deploymentBand], 'EMR-deployment', uuid),
-    themeBands: Object.fromEntries(
-      DOMAINS.map((d) => [d.id, band(row[d.bandCol], d.label, uuid)]),
+    /**
+     * Each domain's highest gap severity, from the sheet's own four columns.
+     * Not a readiness band — the source classifies readiness once, overall.
+     */
+    domainSeverity: Object.fromEntries(
+      DOMAINS.map((d) => {
+        const raw = String(row[d.severityCol] ?? '').trim();
+        const v = DOMAIN_SEVERITY_BY_LABEL[raw];
+        if (!v) throw new Error(`Unknown ${d.label} severity ${JSON.stringify(raw)} for ${uuid}`);
+        return [d.id, v];
+      }),
     ),
 
+    /** Every condition this facility sits under, including an area's "No gap
+     *  recorded" where actions are costed without a gap. */
     gaps,
-    /** Gap id → variant index, for the four conditions the revised model costs
-     *  more than one way. Absent means the first variant. */
-    gapVariants,
-    gapCount: gaps.length,
-    /** This facility's own actions, for the rollups. Not published: the
-     *  per-facility JSON carries `gaps`, `gapVariants` and the costs, and the
-     *  plan lines are aggregated in `deploymentFor`. */
+    /** Action id → how many. Every cost on the page is built from this and the
+     *  unit prices in the catalogue. */
+    actions,
+    /** Gaps the survey recorded — the unrecorded conditions are costed but are
+     *  not gaps. */
+    gapCount: recordedGaps,
+    /** This facility's own actions, for the rollups. Not published: `actions`
+     *  carries the same thing in a fraction of the size. */
     interventions,
     costNGN,
     costByDomain,
@@ -397,12 +393,6 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
 const AREA_LABEL = new Map();
 const areaLabel = (id) => AREA_LABEL.get(id) ?? id;
 
-/** Mirrors `gapId` in assessment-source.mjs. Kept in step by the catalogue
- *  lookup failing loudly if it ever drifts. */
-function gapIdOf(block, value) {
-  return `${slugify(block.subDomain)}__${slugify(value).slice(0, 56)}`.replace(/_+$/, '');
-}
-
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -414,140 +404,101 @@ function gapIdOf(block, value) {
  * means what `docs/ASSESSMENT_DATA.md` says it means. Every one of these held
  * in all 2,806 rows when the dataset was reviewed.
  */
+/**
+ * Facilities whose domain severity the sheet states differently from its own
+ * urgency cells.
+ *
+ * Three, all Technical Infrastructure, all the same shape: a recorded
+ * service-point gap with a Minor action to complete during deployment, and the
+ * severity column reading "No gap present". Every other facility with that
+ * pattern — 2,000-odd of them — reads Minor. The dashboard shows the sheet's
+ * own column, as it does everywhere; these are named here, and listed in
+ * docs/data-queries, so that a fourth fails the build instead of joining them.
+ */
+const SEVERITY_EXCEPTIONS = {
+  'fbe76560-d747-4d50-b0b0-a358cc5f54c3': { domain: 'technical_infrastructure', stated: 'none', implied: 'minor' },
+  'e2aa0af9-c969-4924-8309-7b01f7b85dfe': { domain: 'technical_infrastructure', stated: 'none', implied: 'minor' },
+  'e333ac32-eb1a-4b6c-888c-937b01c94541': { domain: 'technical_infrastructure', stated: 'none', implied: 'minor' },
+};
+const severityExceptions = [];
+
 function validateRow(row, facility, blocks, problems) {
   const uuid = facility.uuid;
   const fail = (msg) => problems.push(`${uuid}: ${msg}`);
-  let drift = 0;
 
-  // 1. Total gaps = the gap columns that fired, plus the sheet's own overcount.
-  //    See SHEET_GAP_OVERCOUNT.
-  const statedGaps = Number(row[COL.totalGaps]);
-  const expectedGaps = facility.gapCount + sheetGapOvercount(row, blocks);
-  if (statedGaps !== expectedGaps) {
-    fail(
-      `sheet says ${statedGaps} gaps; ${facility.gapCount} columns carry one ` +
-        `and the sheet's overcount is ${sheetGapOvercount(row, blocks)}`,
-    );
-  }
-
-  // 2. Each domain subtotal = the sum of that facility's own cost cells.
+  // 1. Each domain subtotal = the sum of that facility's own actions.
   for (const d of DOMAINS) {
     const stated = parseMoney(row[d.costTotalCol]) ?? 0;
-    if (Math.round(stated) !== Math.round(facility.costByDomain[d.id])) {
-      fail(`${d.label} cost: sheet ₦${stated}, gaps sum to ₦${facility.costByDomain[d.id]}`);
+    if (Math.abs(stated - facility.costByDomain[d.id]) > ROUNDING_TOLERANCE) {
+      fail(`${d.label} cost: sheet ₦${stated}, actions sum to ₦${facility.costByDomain[d.id]}`);
     }
   }
 
-  // 3. Facility total = the four domain subtotals, to within the sheet's own
-  //    rounding. See ROUNDING_TOLERANCE.
+  // 2. Facility total = the same actions, all domains. See ROUNDING_TOLERANCE.
   const statedTotal = parseMoney(row[COL.totalCost]) ?? 0;
-  drift = Math.round(statedTotal) - Math.round(facility.costNGN);
+  const drift = statedTotal - facility.costNGN;
   if (Math.abs(drift) > ROUNDING_TOLERANCE) {
-    fail(`total cost: sheet ₦${statedTotal}, gaps sum to ₦${facility.costNGN}`);
+    fail(`total cost: sheet ₦${statedTotal}, actions sum to ₦${facility.costNGN}`);
   }
 
-  // 4. The severity columns count *interventions* by horizon — not gaps, which
-  //    is why they do not sum to `Total gaps`. Two artefacts of the revised
-  //    sheet stand between its minor count and ours; both are named and
-  //    counted rather than tolerated. See sheetMinorOffset.
-  const byHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
-  for (const iv of facility.interventions) byHorizon[iv.horizon] += 1;
-
-  for (const [horizon, col] of Object.entries(HORIZON_SUMMARY_COL)) {
+  // 3. The summary columns count Technical Infrastructure *action cells* —
+  //    before they are split into units — by urgency.
+  const cells = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
+  for (const block of blocks) {
+    if (block.domain !== 'technical_infrastructure') continue;
+    for (const slot of block.slots) {
+      const text = String(row[slot.label] ?? '').trim();
+      if (!text || text === 'No gap') continue;
+      cells[WHEN_BY_LABEL[String(row[slot.when] ?? '').trim()].horizon] += 1;
+    }
+  }
+  for (const [horizon, col] of Object.entries(SUMMARY_COL)) {
     const stated = Number(row[col]);
-    const expected =
-      horizon === DEFAULT_HORIZON
-        ? byHorizon[horizon] + sheetMinorOffset(row, blocks)
-        : byHorizon[horizon];
-    if (stated !== expected) {
-      fail(`${horizon} count: sheet ${stated}, this row's actions imply ${expected}`);
+    if (stated !== cells[horizon]) {
+      fail(`${horizon} count: sheet ${stated}, this row's actions imply ${cells[horizon]}`);
     }
   }
 
-  // 5. Deployment readiness is a function of the blocker counts, exactly.
-  const critical = byHorizon.critical;
-  const major = byHorizon.major;
-  const expected = critical > 0 ? 'not_ready' : major > 0 ? 'moderately_ready' : 'ready';
+  // 4. Deployment readiness is a function of the Technical Infrastructure
+  //    actions alone, exactly: any Major is Not ready, any Moderate is
+  //    Moderately ready. Gaps in the other three domains — some of them Major
+  //    — do not enter it. That is the sheet's rule, checked rather than assumed.
+  const expected =
+    cells.major > 0 ? 'not_ready' : cells.moderate > 0 ? 'moderately_ready' : 'ready';
   if (facility.deploymentBand !== expected) {
     fail(
       `deployment band is ${facility.deploymentBand}; ` +
-        `${critical} critical + ${major} major implies ${expected}`,
+        `${cells.major} major + ${cells.moderate} moderate implies ${expected}`,
     );
   }
 
-  // 6. The overall reading is the technical infrastructure reading. It was the
-  //    *use* band that was defined this way before the revision; the revised
-  //    model brought the deployment band onto the same footing, which is what
-  //    collapsed the two readings into one. Checked, not assumed — if the two
-  //    ever come apart again the dataset has grown a second reading back and
-  //    the dashboard needs to know before it prints one of them as both.
-  if (facility.deploymentBand !== facility.themeBands.technical_infrastructure) {
-    fail(
-      `overall band ${facility.deploymentBand} ≠ technical infrastructure band ` +
-        `${facility.themeBands.technical_infrastructure}`,
-    );
+  // 5. Each domain's severity is the worst urgency written against the gaps
+  //    the survey recorded in it — every urgency cell, including the few with
+  //    no action beside them (a facility already on an annual maintenance
+  //    schedule still gets a Minor there). Actions costed under "No gap
+  //    recorded" raise no severity: the sheet says there is no gap. Three
+  //    facilities break this in the sheet itself; see SEVERITY_EXCEPTIONS.
+  for (const d of DOMAINS) {
+    const horizons = [];
+    for (const block of blocks) {
+      if (block.domain !== d.id || gapValueInRow(row, block) === null) continue;
+      for (const slot of block.slots) {
+        const when = WHEN_BY_LABEL[String(row[slot.when] ?? '').trim()];
+        if (when) horizons.push(when.horizon);
+      }
+    }
+    const implied = severityOfHorizons(horizons);
+    const stated = facility.domainSeverity[d.id];
+    if (stated === implied) continue;
+    const known = SEVERITY_EXCEPTIONS[uuid];
+    if (known && known.domain === d.id && known.stated === stated && known.implied === implied) {
+      severityExceptions.push(uuid);
+      continue;
+    }
+    fail(`${d.label} severity is ${stated}; its urgencies imply ${implied}`);
   }
 
   return drift;
-}
-
-/**
- * How many gaps the sheet counts that this row does not carry.
- *
- * Two, both structural, both uniform across all 2,806 rows — which is what
- * makes them an identity to assert rather than a tolerance to allow:
- *
- * **One everywhere.** `Total gaps` is exactly one higher than the number of gap
- * columns that fired, in every row without exception. A formula in the revised
- * sheet counts a range one wider than it means to; it does not vary, it does
- * not depend on the facility, and no gap is missing behind it.
- *
- * **One more where Backup-connectivity reads `0`.** The sheet counted those 199
- * cells as gaps. This ingest reads them as no gap — see `BLANK_GAP_VALUE` — so
- * for those facilities the difference is two.
- *
- * Written as a function of the row rather than a constant so the check stays a
- * check: if the overcount ever moves, every row says so.
- */
-function sheetGapOvercount(row, blocks) {
-  const backupConnectivity = blocks.find((b) => b.subDomain === BLANK_GAP_AREA);
-  const repaired =
-    backupConnectivity && String(row[backupConnectivity.col] ?? '').trim() === BLANK_GAP_VALUE;
-  return SHEET_GAP_OVERCOUNT + (repaired ? 1 : 0);
-}
-
-/** The sheet's constant, facility-independent overcount of `Total gaps`. */
-const SHEET_GAP_OVERCOUNT = 1;
-
-/**
- * How far the sheet's own Minor count sits from this row's minor actions.
- *
- * Two artefacts, pulling opposite ways, and between them they account for the
- * difference exactly in all 2,806 rows:
- *
- * **Minus one per Physical service-point action.** The sheet leaves the urgency
- * cell blank for all 2,066 of them and does not count them. This ingest reads
- * the blank as `minor` — see `DEFAULT_HORIZON_AREA` — so ours is the higher
- * number, by one per action.
- *
- * **Plus one per actionless Device-maintenance row.** 160 facilities on a
- * formal quarterly or annual maintenance schedule carry a Device-maintenance
- * gap whose urgency cell is filled and whose intervention cell is empty. The
- * sheet counts the urgency; there is no action to count, so we do not.
- */
-function sheetMinorOffset(row, blocks) {
-  let offset = 0;
-  for (const block of blocks) {
-    const value = gapValueInRow(row, block);
-    if (value === null) continue;
-    for (const slot of block.slots) {
-      const label = String(row[slot.label] ?? '').trim();
-      const when = String(row[slot.when] ?? '').trim();
-      if (label && !when && block.subDomain === DEFAULT_HORIZON_AREA) offset -= 1;
-      if (!label && when) offset += 1;
-    }
-  }
-  return offset;
 }
 
 // ---------------------------------------------------------------------------
@@ -572,6 +523,7 @@ function deploymentFor(facilities, catalogueById) {
   const gapCounts = new Map();
   const lines = new Map();
   const costByHorizon = Object.fromEntries(HORIZONS.map((h) => [h, 0]));
+  const costByPhase = Object.fromEntries(PHASES.map((p) => [p, 0]));
   const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let unpriced = 0;
 
@@ -579,13 +531,12 @@ function deploymentFor(facilities, catalogueById) {
     for (const id of f.gaps) gapCounts.set(id, (gapCounts.get(id) ?? 0) + 1);
 
     /**
-     * Lines come from the facilities, not from their gaps.
+     * Lines come from the facilities' own actions, not from their gaps.
      *
-     * The distinction only started to matter with the revised costing model,
-     * which lets one condition fire different actions at different facilities.
-     * Walking the catalogue would give every facility with a power gap the same
-     * line; walking the facility gives it the line its own row asks for, and a
-     * plan that adds up to the sheet's own total.
+     * One line per action type, so a plan reads "5,920 tablets at ₦233,333"
+     * rather than one line per way a facility happened to be costed. The
+     * quantity is units; the facility count beside it is how many facilities
+     * need any.
      */
     for (const iv of f.interventions) {
       const line = lines.get(iv.id) ?? {
@@ -593,22 +544,25 @@ function deploymentFor(facilities, catalogueById) {
         label: iv.label,
         domain: iv.domain,
         horizon: iv.horizon,
-        unitCostNGN: iv.costNGN,
+        phase: iv.phase,
+        unit: iv.unit,
+        unitCostNGN: iv.unitCostNGN,
         quantity: 0,
         facilityCount: 0,
         totalCostNGN: 0,
         /** Lines the sheet does not price. Kept as a flag on the line rather
          *  than folded into a zero, so a reader can see which of them the
          *  total is silent about. */
-        priced: iv.costNGN !== null,
+        priced: iv.unitCostNGN !== null,
       };
-      line.quantity += 1;
+      line.quantity += iv.quantity;
       line.facilityCount += 1;
       if (iv.costNGN === null) {
         unpriced += 1;
       } else {
         line.totalCostNGN += iv.costNGN;
         costByHorizon[iv.horizon] += iv.costNGN;
+        costByPhase[iv.phase] += iv.costNGN;
         costByDomain[iv.domain] += iv.costNGN;
       }
       lines.set(iv.id, line);
@@ -621,12 +575,14 @@ function deploymentFor(facilities, catalogueById) {
 
   return {
     facilityCount: facilities.length,
+    /** Recorded gaps only — the "No gap recorded" conditions are costed, not
+     *  counted. */
     gapCount: facilities.reduce((sum, f) => sum + f.gapCount, 0),
     costNGN: facilities.reduce((sum, f) => sum + f.costNGN, 0),
-    /** Interventions in scope carrying no price. Zero everywhere except where
-     *  one of Query B's 332 facilities is included. */
+    /** Facility actions in scope carrying no price. */
     unpricedInterventions: unpriced,
     costByHorizon,
+    costByPhase,
     costByDomain,
     gaps: [...gapCounts.entries()]
       .map(([id, facilityCount]) => {
@@ -637,6 +593,7 @@ function deploymentFor(facilities, catalogueById) {
           subDomain: areaLabel(g.area),
           label: g.label,
           severity: g.severity,
+          recorded: g.recorded,
           facilityCount,
         };
       })
@@ -652,11 +609,13 @@ function investmentsFor(deployment) {
     label: l.label,
     themeId: l.domain,
     category: DOMAIN_CATEGORY[l.domain],
-    /** The sheet's urgency, carried straight through. It used to be collapsed
-     *  onto a three-level high/medium/low here, which merged critical with
-     *  major — the exact pair the deployment band distinguishes. */
+    /** The sheet's urgency and phase, carried straight through. */
     horizon: l.horizon,
+    phase: l.phase,
+    /** Units — tablets, desks, socket points — or facilities where the action
+     *  is one per facility, in which case `unit` is null. */
     quantity: l.quantity,
+    unit: l.unit,
     unitCostNGN: l.unitCostNGN,
     totalCostNGN: l.priced ? l.totalCostNGN : null,
     facilityCount: l.facilityCount,
@@ -672,39 +631,40 @@ function investmentsFor(deployment) {
  * Assessed States reports it. Staff headcount is absent from this dataset
  * entirely.
  */
-function coverageFor(desk = null, leadership = null) {
+function coverageFor(desk = null, maturity = null) {
   return {
     /**
-     * The band arrives classified, from the coverage workbook, and is copied
-     * across untouched.
+     * The band arrives classified, from the State Maturity sheet, and is
+     * copied across untouched — see `build-maturity.mjs`.
      *
-     * Set on states only — the workbook has no rows below one. An LGA and the
-     * national profile keep a null band here, which is *not measured* rather
-     * than not ready, and National Coverage already paints those differently.
+     * This is the reading National Coverage paints and Assessed States fills
+     * its twelve surveyed states with. It was the coverage workbook's
+     * electricity/internet classification; the maturity sheet scores those
+     * same two rates alongside the four governance answers, so it is the
+     * fuller reading of the same state.
+     *
+     * Set on states only — the sheet has no rows below one. Null on the six
+     * states the sheet marks Not assessed, on every LGA and on the national
+     * profile: *not measured*, which the maps paint as no-data rather than as
+     * the lowest band.
      */
-    band: desk?.band ?? null,
+    band: maturity?.band ?? null,
 
     /**
-     * Technical Infrastructure carries the same band; Workforce Capacity stays
-     * null.
+     * Technical Infrastructure keeps the coverage workbook's band; Workforce
+     * Capacity and Leadership & Governance stay null.
      *
-     * Not a shortcut. The workbook classifies on electricity and internet, both
-     * of which are technical infrastructure and nothing else, so the domain
-     * reading and the overall reading are the same judgement made from the same
-     * two numbers. Saying so lets the Domain lens paint Technical
-     * Infrastructure honestly. Workforce is a question this source never asks,
-     * and a null there is the truthful answer — the lens drops it.
-     *
-     * Leadership & Governance comes from a *second* desk source, the leadership
-     * scoring workbook, and is a genuinely independent reading: it is scored
-     * from four governance answers and knows nothing about electricity. It
-     * covers 27 states, so ten carry a null here — not measured, which the page
-     * paints as no-data rather than as Not ready.
+     * The coverage workbook classifies on electricity and internet, both of
+     * which are technical infrastructure and nothing else, so that band *is*
+     * the domain's reading. The maturity sheet scores the four governance
+     * answers but publishes no band for them on their own — only the six-item
+     * mean — and a band is never rebuilt here from scores, so Leadership
+     * carries none. Its four answers are below, in `leadership`.
      */
     themeBands: {
       technical_infrastructure: desk?.band ?? null,
       workforce_capacity: null,
-      leadership_governance: leadership?.band ?? null,
+      leadership_governance: null,
     },
     measures: {
       staffCount: null,
@@ -728,25 +688,21 @@ function coverageFor(desk = null, leadership = null) {
       : null,
 
     /**
-     * The four answers the Leadership band was scored from.
+     * The four governance answers the maturity band was partly scored from.
      *
-     * The same relationship `internet` has to the internet rate: this is the
-     * arithmetic behind the band directly above it, so a reader told a state is
-     * Not ready for leadership can read down and find which of the four things
-     * it is missing.
+     * The same relationship `internet` has to the internet rate: part of the
+     * arithmetic behind the band at the top, so a reader told a state is Not
+     * mature can read down and find which of the four things it is missing.
      *
-     * Null on the ten unscored states and at every level but the state — the
-     * workbook has no LGA rows and makes no national claim. Null is *not
+     * Null on the six unassessed states and at every level but the state —
+     * the sheet has no LGA rows and makes no national claim. Null is *not
      * measured*, and the pane says so rather than printing four "No"s nobody
      * wrote.
      *
-     * A band per sub-domain, already classified in `build-leadership.mjs` by
-     * the sheet's own cut points — see `LeadershipBands`. The workbook's mean
-     * is validated there and deliberately left there: "bands, not scores" is a
-     * type-level invariant, and this is the one source that could have broken
-     * it.
+     * A band per sub-domain, already classified in `build-maturity.mjs` by the
+     * sheet's own cut points — see `LeadershipBands`.
      */
-    leadership: leadership ? leadership.subDomains : null,
+    leadership: maturity?.subDomains ?? null,
   };
 }
 
@@ -760,7 +716,7 @@ function profileFor({
   catalogueById,
   extra,
   desk,
-  leadership,
+  maturity,
 }) {
   const assessed = facilities.length > 0;
   const deployment = assessed ? deploymentFor(facilities, catalogueById) : null;
@@ -781,16 +737,10 @@ function profileFor({
       ? dominantBand(distributionOf(facilities, 'deploymentBand'))
       : null,
 
-    themeBands: Object.fromEntries(
-      DOMAIN_IDS.map((d) => {
-        const dist = emptyDistribution();
-        for (const f of facilities) if (f.themeBands[d]) dist[f.themeBands[d]] += 1;
-        return [d, assessed ? dominantBand(dist) : null];
-      }),
-    ),
-    themeDistribution: themeDistributionOf(facilities),
+    /** Each domain's highest gap severity, counted over the facilities. */
+    severityDistribution: severityDistributionOf(facilities),
 
-    coverage: coverageFor(desk, leadership),
+    coverage: coverageFor(desk, maturity),
     investments: deployment ? investmentsFor(deployment) : [],
     deployment,
   };
@@ -839,13 +789,12 @@ async function main() {
   const gapAreas = extractGapAreas(blocks);
   for (const a of gapAreas) AREA_LABEL.set(a.id, a.label);
 
-  const catalogue = extractCatalogue(rows, blocks);
+  const { gaps: catalogue, actions: actionTypes } = extractCatalogue(rows, blocks);
   const catalogueById = new Map(catalogue.map((g) => [g.id, g]));
   process.stderr.write(
-    `Extracted ${gapAreas.length} gap areas, ${catalogue.length} conditions, ` +
-      `${new Set(catalogue.flatMap((g) => catalogueInterventions(g).map((i) => i.id))).size} ` +
-      `interventions, ${catalogue.filter((g) => g.variants.length > 1).length} conditions ` +
-      `costed more than one way\n`,
+    `Extracted ${gapAreas.length} gap areas, ${catalogue.length} conditions ` +
+      `(${catalogue.filter((g) => !g.recorded).length} unrecorded), ` +
+      `${actionTypes.length} action types\n`,
   );
 
   // --- The raw workbook -----------------------------------------------------
@@ -912,32 +861,34 @@ async function main() {
   }
   process.stderr.write(`Read desk coverage readings for ${deskByState.size} states\n`);
 
-  // --- The leadership workbook's desk readings ------------------------------
+  // --- The State Maturity sheet's readings ---------------------------------
   //
-  // The second desk source, read the same way: committed JSON, extracted and
-  // validated by `npm run data:leadership`.
+  // The band on National Coverage, and on Assessed States' twelve surveyed
+  // states. Read the same way as coverage: committed JSON, extracted and
+  // validated by `npm run data:maturity`.
   //
-  // Unlike coverage, this one is **deliberately partial**. It scores 27 of the
-  // 37 states, so there is no every-state-or-none check here — a state missing
-  // from this file is a state nobody has assessed for leadership yet, which is
-  // the ordinary case rather than a broken build. What *is* checked is the
-  // other direction: a reading for a state the geography does not have would be
-  // dropped on the floor at merge time with nothing to show it happened.
-  const deskLeadership = readJSON('scripts/source-data/national-leadership.json');
-  const leadershipByState = new Map(deskLeadership.states.map((s) => [s.id, s]));
+  // Every state has a row, and six of them read Not assessed with a null band.
+  // So the check is every-state-or-none, like coverage: a state missing from
+  // the file would render as unassessed without anyone having said so.
+  const deskMaturity = readJSON('scripts/source-data/state-maturity.json');
+  const maturityByState = new Map(deskMaturity.states.map((s) => [s.id, s]));
 
-  const misplaced = [...leadershipByState.keys()].filter((id) => !stateMeta.has(id));
-  if (misplaced.length) {
+  const unscored = [...stateMeta.keys()].filter((id) => !maturityByState.has(id));
+  const misplaced = [...maturityByState.keys()].filter((id) => !stateMeta.has(id));
+  if (unscored.length || misplaced.length) {
     throw new Error(
-      `Leadership reading for unknown state(s): ${misplaced.join(', ')}.\n` +
-        `Re-run \`npm run data:leadership\`; if that succeeds, the geography ` +
-        `and the leadership workbook disagree about the state list.`,
+      `The maturity readings do not line up with the geography.\n` +
+        (unscored.length ? `  no row for: ${unscored.join(', ')}\n` : '') +
+        (misplaced.length ? `  row for unknown state: ${misplaced.join(', ')}\n` : '') +
+        `\nRe-run \`npm run data:maturity\`; if that succeeds, the geography ` +
+        `and the workbook disagree about the state list.`,
     );
   }
 
+  const assessedCount = deskMaturity.states.filter((s) => s.band).length;
   process.stderr.write(
-    `Read desk leadership readings for ${leadershipByState.size} of ` +
-      `${stateMeta.size} states (${stateMeta.size - leadershipByState.size} unscored)\n`,
+    `Read state maturity for ${assessedCount} of ${stateMeta.size} states ` +
+      `(${stateMeta.size - assessedCount} not assessed)\n`,
   );
 
   // --- Facilities -----------------------------------------------------------
@@ -1018,7 +969,7 @@ async function main() {
         facilities: stateFacilities,
         catalogueById,
         desk: deskByState.get(stateId),
-        leadership: leadershipByState.get(stateId),
+        maturity: maturityByState.get(stateId),
         extra: { lgaCount: lgas.length, assessedLgaCount: byLga.size },
       }),
     );
@@ -1090,7 +1041,7 @@ async function main() {
   write('national.json', national);
   write('snapshot.json', snapshot);
 
-  writeGapCatalogue(catalogue, gapAreas);
+  writeGapCatalogue(catalogue, actionTypes, gapAreas);
   writeNationalSplit(
     national.deploymentDistribution,
     facilities.length,
@@ -1104,7 +1055,7 @@ async function main() {
 // Generated modules
 // ---------------------------------------------------------------------------
 
-function writeGapCatalogue(catalogue, areas) {
+function writeGapCatalogue(catalogue, actionTypes, areas) {
   const domains = DOMAINS.map((d) => ({ id: d.id, label: d.label, costed: true }));
 
   writeFileSync(
@@ -1114,9 +1065,12 @@ function writeGapCatalogue(catalogue, areas) {
  *
  * The gap dictionary, extracted from the assessment dataset rather than
  * declared. Three levels, as the source has them: **domain → gap area →
- * condition**. Every entry in \`GAPS\` is a condition the survey actually
- * recorded, sitting in one of the twenty areas and carrying the interventions
- * it triggers at the urgency and price the sheet gives them.
+ * condition** — and beside them the **action types** a condition can call
+ * for, each with its urgency, its phase, its unit and its unit price.
+ *
+ * A facility's own quantities are not here. They are on the facility
+ * (\`FacilitySummary.actions\`), because no two facilities need quite the same
+ * number of tablets or desks; \`facilityGapActions\` joins the two.
  *
  * Emitted rather than fetched: every control that offers a gap needs the whole
  * list before it can render one, so a network round-trip would only buy a
@@ -1127,6 +1081,7 @@ function writeGapCatalogue(catalogue, areas) {
  */
 
 import type {
+  ActionPhase,
   Band,
   FacilityThemeId,
   GapAreaId,
@@ -1135,30 +1090,34 @@ import type {
   Horizon,
 } from './types';
 
-/** Urgencies, worst-first. The source's own four, not a three-level
- *  approximation of them: major and critical are exactly what the deployment
- *  band is computed from. */
+/** Urgencies, worst-first. The source's four: Major and Moderate are what the
+ *  deployment band is computed from. */
 export const HORIZONS: Horizon[] = ${JSON.stringify(HORIZONS)};
 
+/**
+ * An urgency and when it falls. Minor spans two moments — the sheet has minor
+ * gaps to fix *before* deployment and minor actions to complete *during* it —
+ * and an action's own \`phase\` says which.
+ */
 export const HORIZON_LABEL: Record<Horizon, string> = {
-  critical: "Critical — before deployment",
   major: "Major — before deployment",
-  minor: "Minor — during deployment",
+  moderate: "Moderate — before deployment",
+  minor: "Minor — before or during deployment",
   long_term: "Long-term — after deployment",
 };
 
-/** The short form, for a chip beside a gap. */
+/** The short form, for a chip beside an action. */
 export const HORIZON_SHORT: Record<Horizon, string> = {
-  critical: "Critical",
   major: "Major",
+  moderate: "Moderate",
   minor: "Minor",
   long_term: "Long-term",
 };
 
-/** What an intervention's urgency does to its domain's band. */
+/** What an action's urgency does to readiness. */
 export const HORIZON_SEVERITY: Record<Horizon, GapSeverity> = {
-  critical: "blocking",
   major: "blocking",
+  moderate: "blocking",
   minor: "partial",
   long_term: "partial",
 };
@@ -1171,14 +1130,35 @@ export const GAP_DOMAIN_LABEL: Record<GapDomainId, string> = ${JSON.stringify(
       2,
     )};
 
-export interface GapInterventionDef {
+/**
+ * One kind of action — "Procure EMR-capable tablets", "Install a router" — at
+ * one urgency.
+ *
+ * The same work at two urgencies is two action types, because it sits in two
+ * places in the plan: a solar install is Major where a facility has no power
+ * and Moderate where it has a few hours a day.
+ */
+export interface ActionDef {
   id: string;
   label: string;
+  domain: GapDomainId;
+  /** The gap area the action closes. One per action type, which is what lets a
+   *  facility's actions be tied back to its gaps. */
+  area: GapAreaId;
   horizon: Horizon;
-  /** Null where the source carries no price. Not zero — see
-   *  docs/data-queries/README.md, Query B. */
-  costNGN: number | null;
+  phase: ActionPhase;
+  /** What one unit is — "tablet", "desk", "socket point" — or null where the
+   *  action is one per facility. */
+  unit: string | null;
+  /** Null where the source carries no price. Not zero. */
+  unitCostNGN: number | null;
 }
+
+export const ACTIONS: ActionDef[] = ${JSON.stringify(actionTypes, null, 2)};
+
+export const ACTION_BY_ID: Record<string, ActionDef> = Object.fromEntries(
+  ACTIONS.map((a) => [a.id, a]),
+);
 
 export interface GapAreaDef {
   id: GapAreaId;
@@ -1193,12 +1173,12 @@ export interface GapAreaDef {
 /**
  * The gap areas — the level between a domain and a gap.
  *
- * Twenty of them, one per gap column in the source. A facility holds **at most
- * one condition per area**, because a column holds one value, and that is what
- * makes the area the unit a filter and a rollup can count: counting areas
- * counts facilities, where counting conditions counts survey answers.
+ * One per gap column in the source. A facility holds **at most one condition
+ * per area**, because a column holds one value, and that is what makes the area
+ * the unit a filter and a rollup can count: counting areas counts facilities,
+ * where counting conditions counts survey answers.
  *
- * In the sheet's column order, not alphabetical — see \`extractGapAreas\`.
+ * In the sheet's column order, not alphabetical.
  */
 export const GAP_AREAS: GapAreaDef[] = ${JSON.stringify(areas, null, 2)};
 
@@ -1216,22 +1196,23 @@ export function gapAreasForDomains(domains: readonly string[]): GapAreaDef[] {
 export interface GapDef {
   id: string;
   domain: GapDomainId;
-  /** The gap area this condition sits in. An id — the label is on
-   *  \`GAP_AREA_BY_ID\`, so nothing renders a sliced column header. */
+  /** The gap area this condition sits in. */
   area: GapAreaId;
-  /** The condition the survey recorded, verbatim. */
+  /** The condition the survey recorded, verbatim — or "No gap recorded". */
   label: string;
   severity: GapSeverity;
   /**
-   * The action sets this condition fires, one per way the sheet costs it.
+   * False for an area's "No gap recorded" condition.
    *
-   * Almost always one. Four conditions have more, all of them power: the
-   * revised costing model chooses between a ₦3,000,000 solar install and a
-   * ₦1,200,000 top-up, and adds a ₦500,000 grid connection only where the
-   * facility is not already connected. A facility says which one it is on
-   * through \`FacilitySummary.gapVariants\`; absent means the first.
+   * The sheet costs socket points at 380 facilities whose wiring column reads
+   * No gap, and furniture at 224 whose service-point column does. That money
+   * is in the sheet's total and stays in every total here; the condition is
+   * kept so the cost has somewhere to sit, and flagged so a *count of gaps*
+   * leaves it out. Use \`isRecordedGap\` wherever gaps are counted.
    */
-  variants: GapInterventionDef[][];
+  recorded: boolean;
+  /** Every action type this condition calls for anywhere, most urgent first. */
+  actions: string[];
 }
 
 export const GAPS: GapDef[] = ${JSON.stringify(catalogue, null, 2)};
@@ -1239,6 +1220,11 @@ export const GAPS: GapDef[] = ${JSON.stringify(catalogue, null, 2)};
 export const GAP_BY_ID: Record<string, GapDef> = Object.fromEntries(
   GAPS.map((g) => [g.id, g]),
 );
+
+/** Whether a condition is a gap the survey recorded. See \`GapDef.recorded\`. */
+export function isRecordedGap(id: string): boolean {
+  return GAP_BY_ID[id]?.recorded ?? false;
+}
 
 /** Gaps for a domain selection. No domains ticked means every gap. */
 export function gapsForDomains(domains: readonly string[]): GapDef[] {
@@ -1254,10 +1240,9 @@ export function gapsForDomains(domains: readonly string[]): GapDef[] {
  * per-domain rows, the facility card, the list rows and the map's investment
  * fills. That is the point: they cannot disagree about what was selected.
  *
- * Both filters narrow, and a gap area narrows *which gaps are counted*, not
- * only which facilities are in scope. Selecting a domain's areas and selecting
- * the domain give identical figures, because every gap sits in exactly one area
- * and every area in exactly one domain.
+ * Unrecorded conditions are in scope like any other: they carry cost, and a
+ * cost total that dropped them would not reconcile to the sheet. Counts leave
+ * them out through \`isRecordedGap\`.
  */
 export function offeredGapIds(
   domains: readonly string[],
@@ -1282,85 +1267,94 @@ export function gapsInArea(areaId: GapAreaId): GapDef[] {
 /**
  * Whether an area can block deployment at all.
  *
- * The worst severity any of its conditions carries — so \`blocking\` means *some
- * facility here is stopped*, not that every one is. Only 3 of the 20 areas
- * qualify, all in Technical Infrastructure; see docs/GAP_TAXONOMY.md.
+ * The worst severity any of its recorded conditions carries — so \`blocking\`
+ * means *some facility here is stopped*, not that every one is.
  */
 export function gapAreaSeverity(areaId: GapAreaId): GapSeverity {
-  return gapsInArea(areaId).some((g) => g.severity === 'blocking') ? 'blocking' : 'partial';
+  return gapsInArea(areaId).some((g) => g.recorded && g.severity === 'blocking')
+    ? 'blocking'
+    : 'partial';
 }
 
-/** The areas a facility carries a gap in. At most one condition feeds each, so
- *  the length is how many of the 20 areas are a problem here. */
+/** The areas a facility has a recorded gap in. At most one condition feeds
+ *  each, so the length is how many areas are a problem here. */
 export function facilityGapAreas(gapIds: readonly string[]): GapAreaId[] {
   const seen = new Set<GapAreaId>();
   for (const id of gapIds) {
-    const area = GAP_BY_ID[id]?.area;
-    if (area) seen.add(area);
+    const gap = GAP_BY_ID[id];
+    if (gap?.recorded) seen.add(gap.area);
   }
   return GAP_AREAS.filter((a) => seen.has(a.id)).map((a) => a.id);
 }
 
-/** Does this facility carry a gap in any of these areas? The Gap area filter's
- *  own question — OR within the control, like every other multi-select. */
+/** Does this facility carry a recorded gap in any of these areas? The Gap area
+ *  filter's own question — OR within the control, like every other
+ *  multi-select. */
 export function hasGapInAreas(gapIds: readonly string[], areas: readonly string[]): boolean {
   if (!areas.length) return true;
-  return gapIds.some((id) => areas.includes(GAP_BY_ID[id]?.area ?? ''));
+  return gapIds.some((id) => {
+    const gap = GAP_BY_ID[id];
+    return Boolean(gap?.recorded && areas.includes(gap.area));
+  });
+}
+
+/** An action at one facility: the type, how many, and what that comes to. */
+export interface FacilityAction extends ActionDef {
+  quantity: number;
+  /** \`unitCostNGN × quantity\`, or null where the action is unpriced. */
+  costNGN: number | null;
 }
 
 /**
- * The actions one facility's gap asks for.
+ * The actions one facility's gap asks for, with its own quantities.
  *
- * \`variant\` comes from \`FacilitySummary.gapVariants[gapId]\`, and defaults to
- * the first — which is the whole story for 67 of the 71 conditions. Pass it
- * wherever the reading is about a *facility*; omit it only where the subject is
- * the condition itself.
+ * Joined through the area: a facility sits under one condition per area and
+ * every action type belongs to one area, so the facility's actions that the
+ * condition can call for are exactly this gap's.
  */
-export function gapInterventions(gap: GapDef, variant = 0): GapInterventionDef[] {
-  return gap.variants[variant] ?? gap.variants[0] ?? [];
-}
-
-/**
- * What a gap costs at one facility.
- *
- * Nothing in the source is quantity-scaled, so an action costs the same
- * wherever it appears — but which actions a gap fires is no longer the same
- * everywhere, which is what \`variant\` carries. Unpriced interventions are
- * reported separately rather than counted as zero, so a total never silently
- * absorbs a missing price.
- */
-export function gapCostNGN(
+export function facilityGapActions(
+  facility: { actions: Record<string, number> },
   gap: GapDef,
-  variant = 0,
+): FacilityAction[] {
+  const out: FacilityAction[] = [];
+  for (const id of gap.actions) {
+    const quantity = facility.actions[id];
+    if (!quantity) continue;
+    const def = ACTION_BY_ID[id]!;
+    out.push({
+      ...def,
+      quantity,
+      costNGN: def.unitCostNGN === null ? null : def.unitCostNGN * quantity,
+    });
+  }
+  return out;
+}
+
+/**
+ * What a gap costs at one facility. Unpriced actions are reported separately
+ * rather than counted as zero, so a total never silently absorbs a missing
+ * price.
+ */
+export function facilityGapCost(
+  facility: { actions: Record<string, number> },
+  gap: GapDef,
 ): { costNGN: number; unpriced: number } {
   let costNGN = 0;
   let unpriced = 0;
-  for (const iv of gapInterventions(gap, variant)) {
-    if (iv.costNGN === null) unpriced += 1;
-    else costNGN += iv.costNGN;
+  for (const a of facilityGapActions(facility, gap)) {
+    if (a.costNGN === null) unpriced += 1;
+    else costNGN += a.costNGN;
   }
   return { costNGN, unpriced };
 }
 
 /**
- * Every action a condition can trigger, across all the ways it is costed.
- *
- * The union, not a sum — the ₦3,000,000 install and the ₦1,200,000 top-up are
- * alternatives, and a reader looking at the condition rather than at a facility
- * wants to see both. Never use this to cost anything.
+ * Every action type a condition can call for, as definitions. For a reader
+ * looking at the condition rather than at a facility; never use it to cost
+ * anything.
  */
-export function gapAllInterventions(gap: GapDef): GapInterventionDef[] {
-  if (gap.variants.length < 2) return gapInterventions(gap);
-  const seen = new Set<string>();
-  const out: GapInterventionDef[] = [];
-  for (const variant of gap.variants) {
-    for (const iv of variant) {
-      if (seen.has(iv.id)) continue;
-      seen.add(iv.id);
-      out.push(iv);
-    }
-  }
-  return out;
+export function gapActionDefs(gap: GapDef): ActionDef[] {
+  return gap.actions.map((id) => ACTION_BY_ID[id]!).filter(Boolean);
 }
 
 /** Band ranks, so a caller can order gap severity beside a readiness band. */
@@ -1369,7 +1363,7 @@ export const SEVERITY_BAND: Record<GapSeverity, Band> = {
   partial: "moderately_ready",
 };
 
-/** The four domains a facility is banded on. */
+/** The four facility domains. */
 export const FACILITY_DOMAIN_IDS: FacilityThemeId[] = ${JSON.stringify(DOMAIN_IDS)};
 `,
   );
@@ -1398,14 +1392,13 @@ export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = ${JSON.stringify(
 export const NATIONAL_TOTAL = ${total};
 
 /**
- * Actions the source records and does not price — Query A, all of them routine
- * device maintenance.
+ * Facility actions the source records and does not price — routine device
+ * maintenance, naming an EMR focal person, and the lockable-door checks the
+ * sheet leaves "before costing".
  *
- * Generated rather than written into the footer as an adjective, for the reason
- * \`COVERAGE.facilities\` is generated: the front door states that its costs are
- * incomplete, and how incomplete they are must not be able to drift from the
- * dataset saying so. It read "a few critical actions" while the figure was 332;
- * the revised model made it 2,274, and minor rather than critical.
+ * Generated rather than written into the footer as an adjective: the front
+ * door states that its costs are incomplete, and how incomplete they are must
+ * not be able to drift from the dataset saying so.
  */
 export const NATIONAL_UNPRICED_ACTIONS: number = ${unpricedActions};
 `,
@@ -1425,13 +1418,14 @@ function report(facilities, catalogue, national, stateProfiles, rounding) {
   out.push(`  facilities        ${facilities.length.toLocaleString()}`);
   out.push(`  states assessed   ${assessed.length}`);
   out.push(`  LGAs assessed     ${national.assessedLgaCount}`);
-  out.push(`  gap variants      ${catalogue.length}`);
+  out.push(`  conditions        ${catalogue.length}`);
   out.push(`  gap instances     ${national.deployment.gapCount.toLocaleString()}`);
   out.push(`  total investment  ${naira(national.deployment.costNGN)}`);
   out.push(`  unpriced actions  ${national.deployment.unpricedInterventions}`);
+  out.push(`  severity queries  ${severityExceptions.length} (the sheet's own, see SEVERITY_EXCEPTIONS)`);
   out.push(
     `  sheet rounding    ${naira(rounding.roundingDrift)} over ` +
-      `${rounding.roundedRows.toLocaleString()} facilities (the sheet's own ₦1 drift)`,
+      `${rounding.roundedRows.toLocaleString()} facilities (the four-decimal tablet price)`,
   );
   // Reported rather than asserted. A hard floor on coverage would need an
   // arbitrary threshold; a number in the build output and in the committed
@@ -1450,6 +1444,11 @@ function report(facilities, catalogue, national, stateProfiles, rounding) {
       d.moderately_ready,
     ).padStart(13)}${String(d.ready).padStart(12)}`;
   out.push(line('EMR deployment', national.deploymentDistribution));
+  out.push('');
+  out.push('  cost by urgency');
+  for (const h of HORIZONS) {
+    out.push(`    ${h.padEnd(12)}${naira(national.deployment.costByHorizon[h]).padStart(18)}`);
+  }
   out.push('');
   out.push('  investment by state');
   for (const s of [...assessed].sort(

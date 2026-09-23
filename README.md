@@ -5,14 +5,14 @@ healthcare facilities, for **NPHCDA**, in partnership with NTBLCP, The Global
 Fund and Solina.
 
 >  **The figures are the assessment's.** `public/data/` is built by
-> `npm run data:ingest` from
-> `Revised costing model and roadmap - List of gaps and interventions per
-> facility.csv` — 2,806 facilities across 12 states — joined with
-> `ERA dataset_v4 (1).xlsx`, the raw ODK export, for each facility's rural/urban
-> setting and coordinate. See
+> `npm run data:ingest` from `List of gaps and interventions per facility.csv`
+> — the "List of gaps and interventions" sheet of `ERA Dashboard dataset.xlsx`,
+> exported by `npm run data:gaps`; 2,806 facilities across 12 states — joined
+> with `ERA dataset_v4 (1).xlsx`, the raw ODK export, for each facility's
+> rural/urban setting and coordinate. See
 > [`docs/ASSESSMENT_DATA.md`](docs/ASSESSMENT_DATA.md) for what the dataset
-> contains, and [`docs/data-queries/`](docs/data-queries/) for the two things in
-> it the assessment team still needs to settle.
+> contains, and [`docs/data-queries/`](docs/data-queries/) for what the
+> assessment team still needs to settle.
 
 Sibling to `emr-dashboard`, which reports the assessment itself. This one is a
 narrower cut: three pages behind a landing page, no scores, and a deployment
@@ -43,9 +43,9 @@ npm install
 npm run dev
 ```
 
-`public/data/` is committed, so the app runs immediately after install. Run
-`npm run data:ingest` only when the sheet has changed — add `-- --fetch` to
-re-download it first.
+`public/data/` is committed, so the app runs immediately after install. When
+the workbook changes, run `npm run data:gaps` to refresh the committed CSV from
+it, then `npm run data:ingest`.
 
 ### Scripts
 
@@ -54,6 +54,8 @@ re-download it first.
 | `npm run dev` | Vite dev server |
 | `npm run build` | Typecheck and production build |
 | `npm run geo:build` | Rebuild the per-state LGA boundary files |
+| `npm run data:maturity` | Rebuild `scripts/source-data/state-maturity.json` from the State Maturity sheet |
+| `npm run data:gaps` | Export the facility gap sheet to the committed CSV |
 | `npm run data:ingest` | Rebuild `public/data/` from the assessment CSV |
 | `npm run typecheck` | `tsc -b --noEmit` |
 | `npm run lint` | ESLint |
@@ -121,26 +123,33 @@ stand", and the answer is 37 state-level readings from `AreaProfile.coverage` �
 a different claim from the facility survey, which lives on Assessed States. The
 two are held apart in the type system for that reason.
 
-### Three domains, from two desk sources
+### The band is state maturity
+
+Every fill, badge and count on the page is the **State Maturity** sheet of
+`ERA Dashboard dataset.xlsx`, extracted and checked by `npm run data:maturity`
+into the committed `scripts/source-data/state-maturity.json`. The sheet scores
+each state 5 / 3 / 1 on six items — governance structure, data governance
+policy, digital health strategy, financial commitment for EMR, electricity and
+internet — averages them, and cuts the mean at ≥ 4 **Mature**, ≥ 3 **Moderately
+mature**, below that **Not mature**.
+
+Maturity is carried on the band scale (Mature → `ready` and so on), so it takes
+the band colours and icons, and it is labelled in its own words everywhere it
+shows (`MATURITY_LABEL`). Assessed States fills its twelve surveyed states with
+the same band under the same labels, so a state is the same colour on both maps.
+
+It covers 31 states. Gombe, Yobe, Kebbi, Enugu, Delta and Ogun read **Not
+assessed**: their band is null, the map paints them grey with the key switched
+on to say so, and the pane's counts read "31 states classified · 6 not yet
+assessed" rather than three shares of a denominator nobody was given.
+
+The domain blocks under the band keep their own sources:
 
 | Domain | Source | States |
 |---|---|---|
 | Technical Infrastructure | `National Coverage.xlsx` — electricity access and internet subscription | 37 |
 | Workforce Capacity | *no desk reading* — null everywhere | 0 |
-| Leadership & Governance | `National coverage leadership domain scoring.xlsx` | 27 |
-
-Leadership is the one coverage domain with **no facility behind it**. A clinic
-cannot be asked whether its state has a digital health strategy, so it is absent
-from `ThemeId` and present only in `CoverageThemeId` — which is why the shared
-Domain filter now carries `DomainId`, the union of both, and each page narrows
-it to what it can paint (`coverageLens` here, `facilityLens` on Assessed
-States). A Leadership tick set here survives a trip to Assessed States and is
-still set on the way back.
-
-It covers 27 states. The other ten are **absent from the source file, not
-written as zeroes**: their band is null, the map paints them as no-data with the
-key switched on to say so, and the pane's counts read "27 states classified · 10
-not yet assessed" rather than three shares of a denominator nobody was given.
+| Leadership & Governance | the State Maturity sheet's four governance answers | 31 |
 
 ### Sub-domains carry no band
 
@@ -154,12 +163,12 @@ per-facility finding that belongs on Assessed States, where it still is.
 ### The one banded sub-domain, and why the rule bends here
 
 Leadership's four sub-domains — governance structure, data governance policy,
-digital health strategy, financial commitment — **do** carry a readiness band,
+digital health strategy, financial commitment — **do** carry a band,
 and they are the only sub-domains in the model that do. The exception is the
 source's own, not this page's.
 
-The workbook scores each answer Yes 5 / Partial 3 / No 1, and bands a state by
-cutting the mean of the four at ≥ 4 and ≥ 3 — on that same 1–5 scale. So one
+The sheet scores each answer Yes 5 / Partial 3 / No 1, and bands a state by
+cutting the mean of its six items at ≥ 4 and ≥ 3 — on that same 1–5 scale. So one
 answer put through the sheet's own cut points lands exactly on a band name:
 
 | Answer | Score | Sheet's band for that score |
@@ -170,7 +179,7 @@ answer put through the sheet's own cut points lands exactly on a band name:
 
 That is the same function on the same scale, not an analogy — which is what
 separates these from electricity access, where 45% is a *quantity* and calling
-it Not ready would invent a threshold nobody set. `build-leadership.mjs` derives
+it Not ready would invent a threshold nobody set. `build-maturity.mjs` derives
 each sub-domain band by calling the sheet's own banding function rather than
 writing a table, so the mapping cannot be typed in wrongly or drift if the cut
 points move. The Yes/Partial/No wording is dropped entirely: carrying both would
@@ -179,32 +188,17 @@ only raise the question of which is authoritative.
 What it buys is one vocabulary — a reader learns the three bands on the map and
 reads them unchanged down to the last row of the pane.
 
-**The four do not roll up to the fifth.** The sheet *averages* them, which is
-neither of this codebase's rollup rules; worst-wins disagrees with it on 7 of
-27. Rivers is Ready with a Not-ready data governance policy; Kano and Lagos are
-Ready over Moderately-ready rows. That is a finding — a state can be ready
-overall and still be missing the policy that governs the record — so the block
-says the source averages rather than letting a reader who learnt worst-wins on
-the Domain filter read it as a bug. Nothing rebuilds the state band from the
-four. What *is* asserted at build time, in 27 of 27 rows, is containment: a
-state's band always sits between the weakest and strongest of its own four.
+**The four do not roll up to the state's band.** The sheet *averages* them with
+the two access scores, which is neither of this codebase's rollup rules: Rivers
+is Mature with a No on its data governance policy. That is a finding — a state
+can be mature overall and still be missing the policy that governs the record —
+and nothing rebuilds the state band from the four.
 
-They read two ways, by scope. A state shows its own four rows, weakest first,
-each with a band pill; the country shows how the 27 split across each:
-
-| Sub-domain | Has it | |
-|---|---|---|
-| Data governance policy | 5 of 27 | 22 not ready · 4 moderately · 1 ready |
-| Digital health strategy | 6 of 27 | 21 not ready · 1 moderately · 5 ready |
-| Financial commitment | 15 of 27 | 12 not ready · 13 moderately · 2 ready |
-| Governance structure | 16 of 27 | 11 not ready · 16 ready |
-
-That split is the reason the domain earns a national reading. Roughly half the
-scored states have built the *institution* — a body that owns digital health,
-money against an EMR — and almost none have written down what either is for.
-"Leadership is weak" is all the band can say; these four rows say which of the
-four to fund, and they point at a different intervention from the one the band
-implies.
+They read two ways, by scope. A state shows its own four rows, answered Yes /
+Partial / No; the country shows how the 31 scored states split across each, one
+square per state. Roughly half have built the *institution* — a body that owns
+digital health, money against an EMR — and very few have written down what
+either is for.
 
 ## Bands, not scores
 
@@ -219,14 +213,13 @@ underlying evidence does not carry. Removing the number removes the temptation
 structurally: there is no `number` in `AreaProfile` to average, so nothing
 downstream can quietly invent one.
 
-The leadership workbook is the one source that tested this. It scores its four
-answers 5 / 3 / 1, averages them, and bands the mean — so the mean was there for
-the taking. `build-leadership.mjs` checks it against the sheet's own band and
-then drops it: what reaches `AreaProfile` is the state's band and a band per
-sub-domain, which says everything the average does and one thing more, namely
-which of the four is missing. Note the score is dropped even though the
-sub-domain *bands* are kept — a band per row is a classification the source
-made, where a 2.5 against a 2.0 is a distance four answers cannot support.
+The State Maturity sheet is the one source that tested this. It scores its six
+items 5 / 3 / 1, averages them, and bands the mean — so the mean was there for
+the taking. `build-maturity.mjs` checks it against the sheet's own band and then
+drops it: what reaches `AreaProfile` is the state's band and a band per
+governance answer, which says everything the average does and one thing more,
+namely which of the four is missing. A 2.67 against a 2.33 is a distance six
+answers cannot support.
 
 What replaces it is **counts**. Where the sibling ranks states by mean score,
 this one ranks them by how many of their facilities are not ready — a figure a
@@ -242,10 +235,14 @@ not a judgement:
 |---|---|---|---|
 | **EMR deployment** | 744 | 1,892 | 170 |
 
-Any critical gap is Not ready; any major gap and nothing critical is Moderately
-ready; neither is Ready. Only two of the twenty gap areas can produce a critical
-gap — Power and Facility-connectivity — so the bottom band is, in practice,
-*this facility has no electricity or no usable connection*.
+Any **Major** Technical Infrastructure action is Not ready; any **Moderate** one
+and nothing Major is Moderately ready; neither is Ready. Only Power and
+Facility-connectivity produce a Major infrastructure gap, so the bottom band is,
+in practice, *this facility has no electricity or no usable connection*.
+
+The rule reads Technical Infrastructure alone. Workforce, workflow and data-use
+gaps are graded Major, Moderate or Minor too, but do not enter readiness — 131
+Ready facilities carry a Major gap elsewhere, which is raised as a data query.
 
 An earlier costing model reported each facility twice, adding readiness to *run*
 an EMR beside readiness to deploy one, and this dashboard showed the pair
@@ -254,10 +251,21 @@ that column and brought the deployment band onto the same definition — the
 technical infrastructure reading — so the two collapsed into one. The rule that
 came out of it survives: **never show one band twice under two names.**
 
-Tick a domain and the reading becomes that domain's band. All four domain
-readings are on the same scale as the overall one, so a domain narrows the
-question rather than replacing it, and one swatch of colour means one thing
-across the app.
+The source carries no readiness band per domain. It reports each domain as
+its **highest gap severity** — Major, Moderate, Minor or no gap — and Assessed
+States shows that beside readiness, in the urgency inks rather than the band
+fills, because it is the urgency scale: a domain's severity is the worst urgency
+among the actions its gaps call for. Ticking a domain narrows the gaps and
+costs counted; it never re-reads readiness.
+
+### Urgency
+
+Every action carries one of four urgencies, worst first — **Major**,
+**Moderate**, **Minor**, **Long-term** — and a **phase**: before, during or
+after deployment. They are separate because Minor spans two phases: the sheet
+has minor gaps to fix before go-live (tablets, device maintenance, most
+workforce work) and minor actions to complete during it (wiring, sockets,
+furniture). The Investment Plan groups by either.
 
 Two rules do all the rolling up, both in `src/lib/bands.ts`:
 
@@ -282,36 +290,34 @@ facility count would go rather than a zero.
 
 ## What it costs, and what the total leaves out
 
-**₦6.02bn** across the 2,806 facilities, every figure the source's own. The
-Investment Plan itemises it; two properties of the revised costing model are
-worth knowing before reading that page.
+**₦7.26bn** across the 2,806 facilities, every figure the source's own and
+reconciled to the workbook's Cost summary to the naira. The Investment Plan
+itemises it; three properties of the source are worth knowing before reading
+that page.
 
-**Two of the four domains cost nothing.** Every condition in Workforce Capacity
-and Data Use & Reporting still fires an action, and every one of those actions
-is priced ₦0 — recorded work, costed elsewhere or not at all. That is a real
-zero in the source, not a blank, and the schedule says how many of its lines
-carry one so a reader does not read the silence as an omission.
+**All of it is Technical Infrastructure.** Every workforce, workflow and
+data-use action is priced ₦0 or left unpriced — recorded work, costed elsewhere
+or not at all. A real zero is not a blank, and the schedule says how many lines
+carry each.
 
-| Domain | Total |
+| Urgency | Total |
 |---|---:|
-| Technical infrastructure | ₦5,903,938,077 |
-| Workflow and transition | ₦112,344,948 |
-| Workforce capacity | ₦0 |
-| Data use and reporting | ₦0 |
+| Major | ₦2,334,535,000 |
+| Moderate | ₦2,321,235,000 |
+| Minor | ₦2,222,924,333 |
+| Long-term | ₦376,500,000 |
 
-**2,274 actions carry no price at all.** All of them routine device maintenance,
-and they are the only empty cost cells in the file. The total excludes them and
-says so, on the tile and in the row — the schedule prints `unpriced` rather than
-a dash, because an unpriced line and a ₦0 line are different claims and must not
-look alike. See [`docs/data-queries/`](docs/data-queries/).
+**4,654 actions carry no price at all** — routine device maintenance, naming an
+EMR focal person, and the lockable-door checks the sheet leaves "before
+costing". The total excludes them and says so. See
+[`docs/data-queries/`](docs/data-queries/).
 
-**A gap does not have one price.** Four conditions — three in Power, one in
-Backup-power — are costed differently depending on the facility: a site already
-on the grid is not sold a ₦500,000 connection to it, and a site with some supply
-draws a ₦1,200,000 top-up where one with none draws the full ₦3,000,000 install.
-So a facility is costed from its own row, `gapCostNGN` takes a variant carried in
-`FacilitySummary.gapVariants`, and a population's cost is summed rather than
-multiplied out from a count.
+**Some actions are bought by the unit.** One cell can buy five tablets, or two
+desks and a fan, for one cost. The ingest splits each into unit actions — a
+type, a quantity, a unit price — and checks the split adds back to the cell, so
+the plan reads *5,920 tablets at ₦233,333* rather than a line for every
+combination. The quantities live on each facility (`FacilitySummary.actions`),
+the unit prices in the generated catalogue, and `facilityGapActions` joins them.
 
 ## Deployment
 

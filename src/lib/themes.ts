@@ -332,7 +332,7 @@ export const DOMAIN_LABEL: Record<DomainId, string> = {
  * The mirror of `coverageLens`, and it exists for the same reason: the Domain
  * control is shared, and its selection can now name Leadership & Governance,
  * which no facility carries a reading for. Everything on Assessed States reads
- * `facility.themeBands`, so a leadership id has to fall out here rather than
+ * `facility.domainSeverity`, so a leadership id has to fall out here rather than
  * arrive there as an unknown key — and `THEME_BY_ID[id].label` would throw on
  * it outright.
  *

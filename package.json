@@ -15,7 +15,8 @@
     "geo:context": "node scripts/build-state-context.mjs",
     "geo:outlines": "node scripts/build-state-outlines.mjs",
     "data:coverage": "node scripts/build-coverage.mjs",
-    "data:leadership": "node scripts/build-leadership.mjs",
+    "data:maturity": "node scripts/build-maturity.mjs",
+    "data:gaps": "node scripts/build-gaps-csv.mjs",
     "data:ingest": "node scripts/ingest-assessment.mjs",
     "data:taxonomy": "node scripts/gap-taxonomy.mjs"
   },

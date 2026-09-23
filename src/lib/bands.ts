@@ -10,7 +10,7 @@
  * without reaching for an average.
  */
 
-import type { Band, Horizon } from './types';
+import type { Band, DomainSeverity, Horizon } from './types';
 
 export const BANDS: readonly Band[] = ['not_ready', 'moderately_ready', 'ready'] as const;
 
@@ -26,6 +26,23 @@ export const BAND_LABEL: Record<Band, string> = {
   moderately_ready: 'Moderately ready',
   ready: 'Ready',
 };
+
+/**
+ * The same three levels in the State Maturity sheet's own words.
+ *
+ * Maturity is written on the band scale (`build-maturity.mjs`), so it takes the
+ * band's colours and icons, but a state the sheet calls Mature must never read
+ * "Ready". National Coverage and the state level of Assessed States show it
+ * under these labels; everything facility-level keeps `BAND_LABEL`.
+ */
+export const MATURITY_LABEL: Record<Band, string> = {
+  not_ready: 'Not mature',
+  moderately_ready: 'Moderately mature',
+  ready: 'Mature',
+};
+
+/** What a null maturity band means: the sheet has not scored the state. */
+export const MATURITY_NO_DATA = 'Not assessed';
 
 /** The action each band implies — used on the Assessment States donut legend. */
 export const BAND_ACTION: Record<Band, string> = {
@@ -141,15 +158,15 @@ export const BAND_CLASSES: Record<
 // one: nothing on the readiness scale is blue or purple, so a cool chip cannot
 // be a band.
 //
-// Colour is never alone. Every call site prints the word — Critical, Major,
+// Colour is never alone. Every call site prints the word — Major, Moderate,
 // Minor, Long-term — and `URGENCY_MARKER` adds a shape, so the scale survives a
 // colour-vision deficiency, a greyscale print and a chip too small for either.
 
 /** Tailwind ink classes per horizon. Ink only: an urgency colours a word or a
  *  glyph, never a fill, so there is no `bg`/`wash` half the way a band has one. */
 export const HORIZON_CLASSES: Record<Horizon, { text: string; border: string }> = {
-  critical: { text: 'text-urgency-critical', border: 'border-urgency-critical' },
   major: { text: 'text-urgency-major', border: 'border-urgency-major' },
+  moderate: { text: 'text-urgency-moderate', border: 'border-urgency-moderate' },
   minor: { text: 'text-urgency-minor', border: 'border-urgency-minor' },
   long_term: { text: 'text-urgency-longterm', border: 'border-urgency-longterm' },
 };
@@ -167,23 +184,23 @@ export const HORIZON_CLASSES: Record<Horizon, { text: string; border: string }> 
  * them again meaning something else.
  */
 export const URGENCY_MARKER: Record<Horizon, string> = {
-  critical: '\u25c6',
-  major: '\u25b2',
+  major: '\u25c6',
+  moderate: '\u25b2',
   minor: '\u25cf',
   long_term: '\u25cb',
 };
 
 /**
- * Deployment phase — the four urgencies collapsed onto the three moments the
- * sheet's own wording names: before, during, after.
+ * Deployment phase — when an action happens relative to go-live: before,
+ * during or after.
  *
- * This is a *coarsening* of the urgency scale, and the only one we allow. It is
- * legitimate where the old `priority` was not, for one reason: Critical and
- * Major are two urgencies but one budget — both read "to fix before EMR
- * deployment" in the source, and a programme deciding what it must buy to go
- * live at all needs them added together. What the old scale did wrong was
- * collapse them and then *lose* the finer reading; here both survive, in two
- * views of the same rows.
+ * A property of the action, from the sheet's own wording, and **not** a
+ * coarsening of the urgency scale. It used to be one: every urgency mapped to
+ * exactly one phase. The revised sheet broke that on purpose — Minor now
+ * covers gaps to fix *before* deployment (tablets, device maintenance, most
+ * workforce work) and actions to complete *during* it (wiring, sockets,
+ * furniture) — so the phase rides on the action and a plan grouped by phase
+ * reads it from there.
  *
  * Ordered chronologically, not by size. The sequence is the reading.
  */
@@ -197,32 +214,75 @@ export const PHASE_LABEL: Record<HorizonPhase, string> = {
   after: 'After deployment',
 };
 
-/** Which phase each urgency falls in. The one place the mapping is written. */
-export const PHASE_OF: Record<Horizon, HorizonPhase> = {
-  critical: 'before',
-  major: 'before',
-  minor: 'during',
-  long_term: 'after',
-};
-
 /**
- * When an urgency has to happen, as a phrase rather than a level — the phase
- * label, reached from the urgency.
+ * When an urgency's actions happen, as a phrase rather than a level.
  *
  * This is the when-phrase *on its own*, which is why it exists alongside
  * `HORIZON_LABEL`. That one carries the urgency and the phrase in a single
- * string — "Critical — before deployment" — which is right for a row with no
+ * string — "Major — before deployment" — which is right for a row with no
  * other heading. A card or a group band prints the urgency as its own heading,
  * so the full label would set the same word twice, one line apart.
  *
- * Derived from `PHASE_OF` rather than restated, so that a phase can never
- * disagree with the note beside an urgency it contains. Kept here rather than
- * beside `HORIZON_LABEL` because `gapCatalogue.ts` is generated from the sheet
- * and this phrasing is ours.
+ * Minor is the one urgency that spans two phases, and says so.
  */
-export const HORIZON_WHEN = Object.fromEntries(
-  (Object.keys(PHASE_OF) as Horizon[]).map((h) => [h, PHASE_LABEL[PHASE_OF[h]]]),
-) as Record<Horizon, string>;
+export const HORIZON_WHEN: Record<Horizon, string> = {
+  major: PHASE_LABEL.before,
+  moderate: PHASE_LABEL.before,
+  minor: 'Before or during deployment',
+  long_term: PHASE_LABEL.after,
+};
+
+// ---------------------------------------------------------------------------
+// Domain severity
+// ---------------------------------------------------------------------------
+//
+// A domain's highest gap severity at a facility — the sheet's own reading, and
+// not a band. It is drawn in the urgency inks because it *is* the urgency
+// scale: a domain's severity is the worst urgency among the actions its gaps
+// call for. "No gap" takes no colour at all.
+
+/**
+ * Best first — No gap, Minor, Moderate, Major — the same left-to-right flow as
+ * the readiness cards (Ready, Moderately ready, Not ready), so the severity
+ * rows read in the direction a reader has just learned from the block above
+ * them, and each level sits under the band it maps onto.
+ */
+export const DOMAIN_SEVERITIES: readonly DomainSeverity[] = [
+  'none',
+  'minor',
+  'moderate',
+  'major',
+] as const;
+
+export const DOMAIN_SEVERITY_LABEL: Record<DomainSeverity, string> = {
+  major: 'Major gap',
+  moderate: 'Moderate gap',
+  minor: 'Minor gap',
+  none: 'No gap',
+};
+
+/** The short column head, for a table with four of them in 420px. */
+export const DOMAIN_SEVERITY_SHORT: Record<DomainSeverity, string> = {
+  major: 'Major',
+  moderate: 'Moderate',
+  minor: 'Minor',
+  none: 'No gap',
+};
+
+export const DOMAIN_SEVERITY_CLASS: Record<DomainSeverity, string> = {
+  major: HORIZON_CLASSES.major.text,
+  moderate: HORIZON_CLASSES.moderate.text,
+  minor: HORIZON_CLASSES.minor.text,
+  none: 'text-muted-foreground',
+};
+
+/** A glyph per severity, from the urgency set, so the two read as one scale. */
+export const DOMAIN_SEVERITY_MARKER: Record<DomainSeverity, string> = {
+  major: URGENCY_MARKER.major,
+  moderate: URGENCY_MARKER.moderate,
+  minor: URGENCY_MARKER.minor,
+  none: '\u2013',
+};
 
 // ---------------------------------------------------------------------------
 // The non-colour carrier

@@ -95,6 +95,14 @@ export function formatCount(n: number | null | undefined): string {
   return n.toLocaleString('en-NG');
 }
 
+/**
+ * A quantity with its unit — "5 tablets", "1 desk". Every unit the source uses
+ * pluralises with an s.
+ */
+export function formatUnits(n: number, unit: string): string {
+  return `${formatCount(n)} ${n === 1 ? unit : `${unit}s`}`;
+}
+
 export function formatPercent(
   value: number | null | undefined,
   dp = 0,

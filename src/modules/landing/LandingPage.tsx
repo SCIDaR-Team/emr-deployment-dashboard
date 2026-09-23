@@ -114,15 +114,14 @@ const SCORED_TOTAL = NATIONAL_TOTAL;
  *
  * Kept here rather than taken from `BAND_DESCRIPTION` in `bands.ts`, which
  * names the band rather than explaining it. The banding is mechanical and worth
- * stating exactly: critical gaps outstanding → Not ready, else major gaps
- * outstanding → Moderately ready, else Ready. Note Ready requires *both* to be
- * clear — "no critical gap", which is how the mockup put it, describes the top
- * two bands rather than the top one.
+ * stating exactly: a Major infrastructure gap outstanding → Not ready, else a
+ * Moderate one → Moderately ready, else Ready. Note Ready requires *both* to be
+ * clear — "no major gap" describes the top two bands rather than the top one.
  */
 const BAND_RULE: Record<Band, string> = {
-  ready: 'Nothing critical or major outstanding',
-  moderately_ready: 'Major work to close, but nothing critical',
-  not_ready: 'At least one critical gap blocks deployment',
+  ready: 'No major or moderate infrastructure gap outstanding',
+  moderately_ready: 'Moderate infrastructure work to close, nothing major',
+  not_ready: 'At least one major infrastructure gap blocks deployment',
 };
 
 /**
@@ -462,10 +461,11 @@ export default function LandingPage() {
             </p>
             <p className="mt-1.5 text-body leading-relaxed text-muted-foreground">
               A facility&rsquo;s band is a count of the work still outstanding, never a
-              score. Critical gaps — electricity and connectivity, and nothing else — put
-              it in Not ready on their own; major gaps alone pull it to Moderately ready.
-              The two lower bands are different problems, and each takes a different
-              response.
+              score. Major technical infrastructure gaps — no usable power or connection —
+              put it in Not ready on their own; moderate ones alone pull it to Moderately
+              ready. Gaps in workforce, workflow and data use are reported beside readiness,
+              not inside it. The two lower bands are different problems, and each takes a
+              different response.
             </p>
           </div>
         </div>
@@ -482,11 +482,10 @@ export default function LandingPage() {
                 false — but the one thing the dataset does not carry is worth
                 stating once rather than leaving a reader to infer it.
 
-                The count is generated, not written. This read "a few critical
-                actions" against a figure of 332; the revised costing model made
-                it 2,274, and minor rather than critical, so the sentence was
-                wrong twice over. An adjective cannot be kept in step with a
-                dataset — a number read from the ingest can. */}
+                The count is generated, not written. It once read "a few critical
+                actions" against a figure that later grew sevenfold, so the
+                sentence was wrong twice over. An adjective cannot be kept in step
+                with a dataset — a number read from the ingest can. */}
             <strong className="font-semibold text-foreground">
               Costs are indicative and exclude {formatCount(NATIONAL_UNPRICED_ACTIONS)}{' '}
               {NATIONAL_UNPRICED_ACTIONS === 1 ? 'action' : 'actions'} the assessment does
