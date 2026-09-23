@@ -246,6 +246,9 @@ export function planScenario(
   paths: readonly FacilityPath[],
   allowed: ReadonlySet<ScenarioComponentId>,
   budgetNGN: number | null,
+  /** Stop once this many facilities are made Ready. The cheapest-first order
+   *  that maximises facilities for a budget also minimises cost for a count. */
+  countLimit: number | null = null,
 ): ScenarioPlan {
   const eligible = paths
     .filter(
@@ -260,6 +263,7 @@ export function planScenario(
   const funded: FacilityPath[] = [];
   let spendNGN = 0;
   for (const p of eligible) {
+    if (countLimit !== null && funded.length >= countLimit) break;
     if (budgetNGN !== null && spendNGN + p.costNGN > budgetNGN + 0.5) break;
     funded.push(p);
     spendNGN += p.costNGN;
@@ -390,4 +394,46 @@ export function needGroups(paths: readonly FacilityPath[]): NeedGroup[] {
   return [...groups.values()].sort(
     (a, b) => a.costEachNGN - b.costEachNGN || a.key.localeCompare(b.key),
   );
+}
+
+/**
+ * What a scenario is steered by: money, a number of facilities, or a share of
+ * all facilities Ready.
+ *
+ *   budget      spend up to this; `null` is no limit
+ *   facilities  make this many *more* facilities Ready, as cheaply as possible
+ *   share       reach this percentage of all facilities Ready, counting the
+ *               ones Ready already
+ */
+export type ScenarioTarget =
+  | { kind: 'budget'; ngn: number | null }
+  | { kind: 'facilities'; n: number }
+  | { kind: 'share'; pct: number };
+
+export interface TargetPlan extends ScenarioPlan {
+  target: ScenarioTarget;
+  /** Facilities the target asked for that the chosen fixes cannot reach. */
+  shortfall: number;
+}
+
+/** Plan a scenario to its target. See `ScenarioTarget`. */
+export function planForTarget(
+  paths: readonly FacilityPath[],
+  allowed: ReadonlySet<ScenarioComponentId>,
+  target: ScenarioTarget,
+): TargetPlan {
+  if (target.kind === 'budget') {
+    return {
+      ...planScenario(paths, allowed, target.ngn),
+      target,
+      shortfall: 0,
+    };
+  }
+  const readyBefore = paths.filter((p) => p.baseline === 'ready').length;
+  const wanted =
+    target.kind === 'facilities'
+      ? Math.max(0, Math.round(target.n))
+      : Math.max(0, Math.ceil((target.pct / 100) * paths.length) - readyBefore);
+  const plan = planScenario(paths, allowed, null, wanted);
+  return { ...plan, target, shortfall: Math.max(0, wanted - plan.newlyReady) };
 }

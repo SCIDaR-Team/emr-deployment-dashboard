@@ -24,7 +24,7 @@ import { formatCount, formatNaira, formatShare, formatUnits } from '@/lib/format
 import { HORIZONS, HORIZON_SHORT } from '@/lib/gapCatalogue';
 import { THEME_BY_ID } from '@/lib/themes';
 import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/lib/types';
-import { ScenarioBuilder } from './scenario/ScenarioBuilder';
+import { ScenarioSection } from './scenario/ScenarioSection';
 
 /**
  * Investment Plan — what deploying will take, itemised.
@@ -512,7 +512,7 @@ export default function InvestmentPlanPage() {
           )}
         </SectionCard>
 
-        <ScenarioBuilder facilities={scopedFacilities} />
+        <ScenarioSection facilities={scopedFacilities} />
 
         <SectionCard
           id="waves"

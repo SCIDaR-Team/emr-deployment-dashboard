@@ -15,6 +15,7 @@ import {
   facilityPaths,
   needGroups,
   planComposition,
+  planForTarget,
   planScenario,
   scenarioBand,
   scenarioFor,
@@ -165,5 +166,34 @@ describe('planComposition and needGroups', () => {
       for (const m of members) expect(m.costNGN).toBe(g.costEachNGN);
     }
     expect(needGroups(paths).reduce((s, g) => s + g.facilities, 0)).toBe(2636);
+  });
+});
+
+describe('planForTarget', () => {
+  const paths = facilityPaths(facilities);
+  const every = new Set(ALL_FIXES);
+
+  it('makes a number of facilities Ready at the lowest cost', () => {
+    const plan = planForTarget(paths, every, { kind: 'facilities', n: 1125 });
+    expect(plan.newlyReady).toBe(1125);
+    expect(plan.spendNGN).toBe(45_000_000);
+    expect(plan.shortfall).toBe(0);
+  });
+
+  it('reaches a share of all facilities, counting those Ready already', () => {
+    const plan = planForTarget(paths, every, { kind: 'share', pct: 50 });
+    expect(plan.readyBefore + plan.newlyReady).toBe(Math.ceil(0.5 * 2806));
+  });
+
+  it('says how far short a target falls when the fixes cannot reach it', () => {
+    const plan = planForTarget(paths, new Set(['router'] as const), { kind: 'facilities', n: 2000 });
+    expect(plan.newlyReady).toBe(1125);
+    expect(plan.shortfall).toBe(875);
+  });
+
+  it('agrees with a budget when the facilities it buys are asked for by count', () => {
+    const byBudget = planForTarget(paths, every, { kind: 'budget', ngn: 1_200_000_000 });
+    const byCount = planForTarget(paths, every, { kind: 'facilities', n: byBudget.newlyReady });
+    expect(byCount.spendNGN).toBeCloseTo(byBudget.spendNGN, 0);
   });
 });
