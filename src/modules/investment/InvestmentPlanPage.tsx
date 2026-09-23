@@ -54,8 +54,8 @@ import { ScenarioSection } from './ScenarioSection';
  * word for them.
  */
 const SECTIONS = [
-  { id: 'scenarios', label: 'Scenarios' },
   { id: 'interventions', label: 'Interventions' },
+  { id: 'scenarios', label: 'Scenarios' },
   { id: 'waves', label: 'Rollout waves' },
 ];
 
@@ -412,8 +412,6 @@ export default function InvestmentPlanPage() {
           />
         </SectionCard>
 
-        <ScenarioSection facilities={scopedFacilities} />
-
         <SectionCard
           id="interventions"
           title="Costed interventions"
@@ -513,6 +511,8 @@ export default function InvestmentPlanPage() {
             />
           )}
         </SectionCard>
+
+        <ScenarioSection facilities={scopedFacilities} />
 
         <SectionCard
           id="waves"

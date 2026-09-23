@@ -12,19 +12,21 @@ import type { FacilitySummary } from '@/lib/types';
  * packages, each as "fund this, and this many more facilities are Ready, for
  * this much".
  *
- * The question the costed schedule below cannot answer. That table says what
+ * The question the costed schedule above cannot answer. That table says what
  * everything costs; this says which part of it moves the readiness count, and
  * how cheaply. The answer is lopsided — routers alone, at ₦40,000 each, make
- * over a thousand facilities Ready — and a reader deciding what to fund first
- * needs to see that before the full ₦7bn.
+ * over a thousand facilities Ready — which is what a reader who has just
+ * seen the full ₦7bn needs next, to decide what to fund first.
  *
  * - **One row per package**, ranked by facilities made Ready, or by cost per
  *   facility made Ready. The two orders answer "what does the most" and "what
  *   is the best value", and they are not the same list.
- * - **The bar is the whole population in scope.** Ready today is the pale
- *   Ready fill the cards above use, newly Ready the deeper Ready green after
- *   it, so the bar reads as the Ready count growing and the growth is what
- *   stands out.
+ * - **Columns read as a sentence**: Ready before, new Ready, Ready after, then
+ *   the cost and the cost per facility.
+ * - **The bar sits under After and is the whole population in scope.** Ready
+ *   before is the pale Ready fill the cards above use, newly Ready the deeper
+ *   Ready green after it, so the bar reads as the Ready count growing and the
+ *   growth is what stands out.
  * - **Cost is what buys the facilities made Ready**, not the fixes funded
  *   everywhere they are needed. A router at a facility that also needs a solar
  *   system leaves it not ready; that spend is in the hover, not the figure.
@@ -37,7 +39,7 @@ type SortMode = 'unlocked' | 'value';
 /** The row's columns on a wide screen. Shared by the heads and every row so
  *  the two cannot drift. */
 const ROW_GRID =
-  'md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_88px_88px_96px] md:gap-x-4';
+  'md:grid-cols-[minmax(0,1.2fr)_72px_80px_minmax(0,1.6fr)_80px_88px] md:gap-x-4';
 
 /**
  * Ready today is the pale Ready fill; newly Ready is the Ready ink, the deeper
@@ -94,7 +96,7 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border px-4 py-3">
             <p className="text-body leading-snug text-muted-foreground">
               <span className="mono font-semibold text-foreground">{formatCount(readyToday)}</span>{' '}
-              of {formatCount(total)} facilities are Ready today (
+              of {formatCount(total)} facilities are Ready before any package (
               {formatShare(readyToday, total)}). Power and connectivity are the only gaps that
               decide readiness, so these fixes are the only ones that change it.
             </p>
@@ -109,8 +111,9 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
             )}
           >
             <span>Package</span>
-            <span>Ready after</span>
-            <span className="text-right">Newly ready</span>
+            <span className="text-right">Before</span>
+            <span className="text-right">New ready</span>
+            <span>After</span>
             <span className="text-right">Cost</span>
             <span className="text-right">Per facility</span>
           </div>
@@ -134,9 +137,10 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
 }
 
 /**
- * One package. A grid row on a wide screen; stacked on a narrow one — name and
- * the newly-ready count, then the bar, then the money — so nothing scrolls
- * sideways in a phone's width.
+ * One package, read left to right as a sentence: Ready before, how many it
+ * makes newly Ready, Ready after, and what that costs. A grid row on a wide
+ * screen; stacked on a narrow one — name, the three counts on one line, the
+ * bar, then the money — so nothing scrolls sideways in a phone's width.
  */
 function ScenarioRow({ result: r, total }: { result: ScenarioResult; total: number }) {
   const ready = r.distribution.ready;
@@ -144,43 +148,57 @@ function ScenarioRow({ result: r, total }: { result: ScenarioResult; total: numb
   const newPct = (r.unlocked / total) * 100;
   const everywhere = `Funded everywhere it is needed: ${formatNaira(r.costEverywhereNGN)}`;
 
+  const before = (
+    <>
+      {formatCount(r.readyToday)}{' '}
+      <span className="text-muted-foreground">{formatShare(r.readyToday, total)}</span>
+    </>
+  );
   const newly = r.unlocked ? (
     <span className="font-semibold text-foreground">+{formatCount(r.unlocked)}</span>
   ) : (
     <span className="text-muted-foreground">—</span>
   );
+  const after = (
+    <>
+      {formatCount(ready)} <span className="text-muted-foreground">{formatShare(ready, total)}</span>
+    </>
+  );
   const cost = r.unlocked ? formatNaira(r.costNGN, true) : '—';
   const per =
     r.costPerUnlockedNGN != null ? formatNaira(Math.round(r.costPerUnlockedNGN), true) : '—';
 
+  // The whole population in scope: Ready before, then newly Ready.
+  const bar = (
+    <div
+      className="flex h-2.5 min-w-0 flex-1 gap-[2px] overflow-hidden rounded-[3px] bg-surface-sunk"
+      role="img"
+      aria-label={`${formatCount(ready)} of ${formatCount(total)} Ready after: ${formatCount(r.readyToday)} before and ${formatCount(r.unlocked)} newly Ready`}
+    >
+      {r.readyToday > 0 && (
+        <span className={cn('h-full shrink-0', TODAY_FILL)} style={{ width: `${todayPct}%` }} />
+      )}
+      {r.unlocked > 0 && (
+        <span className={cn('h-full shrink-0', NEW_FILL)} style={{ width: `${newPct}%` }} />
+      )}
+    </div>
+  );
+
   return (
     <li className={cn(ROW_GRID, 'items-center border-b border-border px-4 py-2.5 last:border-0 md:grid')}>
-      <div className="flex items-baseline justify-between gap-3 md:block">
-        <span className="text-prose text-foreground">{r.pkg.label}</span>
-        <span className="mono shrink-0 text-body tabular-nums md:hidden">{newly}</span>
-      </div>
+      <span className="block text-prose text-foreground">{r.pkg.label}</span>
 
-      <div className="mt-1.5 flex items-center gap-2.5 md:mt-0">
-        {/* The whole population in scope: Ready today, then newly Ready. */}
-        <div
-          className="flex h-2.5 min-w-0 flex-1 gap-[2px] overflow-hidden rounded-[3px] bg-surface-sunk"
-          role="img"
-          aria-label={`${formatCount(ready)} of ${formatCount(total)} Ready: ${formatCount(r.readyToday)} today and ${formatCount(r.unlocked)} newly Ready`}
-        >
-          {r.readyToday > 0 && (
-            <span className={cn('h-full shrink-0', TODAY_FILL)} style={{ width: `${todayPct}%` }} />
-          )}
-          {r.unlocked > 0 && (
-            <span className={cn('h-full shrink-0', NEW_FILL)} style={{ width: `${newPct}%` }} />
-          )}
-        </div>
+      {/* Wide: one cell each. */}
+      <span className="mono hidden whitespace-nowrap text-right text-body tabular-nums text-foreground md:block">
+        {before}
+      </span>
+      <span className="mono hidden text-right text-body tabular-nums md:block">{newly}</span>
+      <div className="hidden items-center gap-2.5 md:flex">
+        {bar}
         <span className="mono w-[76px] shrink-0 text-right text-body tabular-nums text-foreground">
-          {formatCount(ready)}{' '}
-          <span className="text-muted-foreground">{formatShare(ready, total)}</span>
+          {after}
         </span>
       </div>
-
-      <span className="mono hidden text-right text-body tabular-nums md:block">{newly}</span>
       <span
         className="mono hidden whitespace-nowrap text-right text-body tabular-nums text-foreground md:block"
         title={everywhere}
@@ -191,16 +209,29 @@ function ScenarioRow({ result: r, total }: { result: ScenarioResult; total: numb
         {per}
       </span>
 
-      {/* The money, on one line under the bar on a narrow screen. */}
-      <p className="mono mt-1 text-note tabular-nums text-muted-foreground md:hidden" title={everywhere}>
-        {r.unlocked ? (
-          <>
-            <span className="text-foreground">{cost}</span> · {per} per facility
-          </>
-        ) : (
-          'Unlocks no facility on its own'
-        )}
-      </p>
+      {/* Narrow: the three counts on one line, the bar, then the money. */}
+      <div className="md:hidden">
+        <p className="mono mt-1 flex flex-wrap gap-x-3 text-note tabular-nums text-muted-foreground">
+          <span>
+            Before <span className="text-foreground">{formatCount(r.readyToday)}</span>
+          </span>
+          <span>New ready {newly}</span>
+          <span>
+            After <span className="text-foreground">{formatCount(ready)}</span>{' '}
+            {formatShare(ready, total)}
+          </span>
+        </p>
+        <div className="mt-1.5 flex">{bar}</div>
+        <p className="mono mt-1 text-note tabular-nums text-muted-foreground" title={everywhere}>
+          {r.unlocked ? (
+            <>
+              <span className="text-foreground">{cost}</span> · {per} per facility
+            </>
+          ) : (
+            'Unlocks no facility on its own'
+          )}
+        </p>
+      </div>
     </li>
   );
 }
@@ -210,7 +241,7 @@ function Legend() {
     <ul className="flex shrink-0 items-center gap-4 text-note text-muted-foreground">
       <li className="flex items-center gap-1.5">
         <span aria-hidden className={cn('block h-2.5 w-2.5 rounded-[2px]', TODAY_FILL)} />
-        Ready today
+        Ready before
       </li>
       <li className="flex items-center gap-1.5">
         <span aria-hidden className={cn('block h-2.5 w-2.5 rounded-[2px]', NEW_FILL)} />
