@@ -24,7 +24,7 @@ import {
  * they are.
  */
 
-interface ScenarioUrlState {
+export interface ScenarioUrlState {
   view: ScenarioView;
   single: ScenarioSpec;
   compare: ScenarioSpec[];
@@ -79,6 +79,10 @@ export function useScenarioUrl() {
 
   return {
     ...state,
+    /** Everything at once — what a described scenario sets, and what its
+     *  Undo puts back. */
+    replaceAll: (next: ScenarioUrlState) =>
+      update(() => ({ ...next, compare: next.compare.slice(0, MAX_COMPARE) })),
     setView: (view: ScenarioView) => update((s) => ({ ...s, view })),
     setSingle: (single: ScenarioSpec) => update((s) => ({ ...s, single })),
     setCompare: (compare: ScenarioSpec[]) =>

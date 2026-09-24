@@ -19,11 +19,20 @@ browser ──POST /api/assistant──▶ Lambda (server/assistant) ──▶ O
 | `assistant/data.ts` | Loads and indexes the dashboard data. Coordinates and free-text notes never reach the model. |
 | `assistant/tools.ts` | The eight lookup tools, reusing the dashboard's own calculations (scenario engine, cost split). |
 | `assistant/prompt.ts` | The model's standing instructions. |
+| `assistant/scenario.ts` | "Describe a scenario": words to the Scenarios section's settings, every value checked against the data. |
 | `assistant/agent.ts` | One answer: stream, run the tools the model asks for, repeat. |
 | `assistant/http.ts` | The endpoint: input limits, rate limit, server-sent events, friendly errors. |
 | `assistant/lambda.ts` | AWS Lambda handler (Function URL, response streaming). |
 | `assistant/dev.ts` | The same endpoint inside `npm run dev`. |
 | `src/modules/assistant/` | The chat panel in the dashboard. |
+| `src/modules/investment/scenario/DescribeScenario.tsx` | The "Describe" box in the Scenarios section. |
+
+## Endpoints
+
+| Path | What it does |
+|---|---|
+| `POST /api/assistant` | The chat. `{ messages }` in; a stream of server-sent events out. |
+| `POST /api/assistant/scenario` | Describe a scenario. `{ text }` in; `{ view, specs, summary, ignored }` or `{ error }` out, as JSON. The model only reads the words as settings; the section's own engine computes the figures. |
 
 ## Settings
 
@@ -59,7 +68,7 @@ browser ──POST /api/assistant──▶ Lambda (server/assistant) ──▶ O
 3. **Function URL:** auth type `NONE`, **invoke mode `RESPONSE_STREAM`**.
    Without streaming, the answer arrives all at once at the end.
 4. **CloudFront:** on the site's distribution, add an origin for the Function
-   URL and a behaviour for `/api/assistant`:
+   URL and a behaviour for `/api/assistant*`, so it covers both endpoints:
    - Methods: `GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE`
    - Caching: disabled
    - Origin request policy: `AllViewerExceptHostHeader`
