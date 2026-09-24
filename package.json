@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:assistant": "node scripts/build-assistant.mjs",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc -b --noEmit",
@@ -25,6 +26,7 @@
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.441.0",
+    "openai": "^7.23.0",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

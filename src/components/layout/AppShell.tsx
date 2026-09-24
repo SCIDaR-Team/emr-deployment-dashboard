@@ -3,6 +3,8 @@ import { Outlet } from 'react-router-dom';
 import { MobileNavBar, Sidebar } from './Sidebar';
 import { Toaster } from '@/components/ui';
 import { useFilterUrlSync } from '@/hooks/useFilterUrlSync';
+import { Assistant } from '@/modules/assistant/Assistant';
+import { ASSISTANT_ENABLED } from '@/store/assistantStore';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 /**
@@ -66,6 +68,7 @@ export function AppShell() {
         </main>
       </div>
       <Toaster />
+      {ASSISTANT_ENABLED && <Assistant />}
     </div>
   );
 }

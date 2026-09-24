@@ -1,3 +1,4 @@
+import { AssistantButton } from '@/modules/assistant/AssistantButton';
 import { useCallback, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
@@ -236,6 +237,9 @@ export function MobileNavBar() {
           <p className="mono truncate text-tick uppercase tracking-[0.1em] leading-tight text-muted-foreground">
             {INSTITUTION.abbr} EMR readiness
           </p>
+        </div>
+        <div className="ml-auto">
+          <AssistantButton compact />
         </div>
       </div>
 
