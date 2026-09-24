@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
 import type { AssistantConfig } from './agent';
 import { loadDashboardData, type DashboardData } from './data';
-import { RateLimiter, configFromEnv, handleAssistantRequest } from './http';
+import { RateLimiter, configFromEnv, handleAssistantRequest, handleScenarioRequest } from './http';
 
 /**
  * The assistant inside `npm run dev`, mounted at `/api/assistant` by the Vite
@@ -35,16 +35,21 @@ export async function handleNodeRequest(req: IncomingMessage, res: ServerRespons
   const controller = new AbortController();
   res.on('close', () => controller.abort());
 
-  const result = await handleAssistantRequest(
-    Buffer.concat(chunks).toString('utf8'),
-    req.socket.remoteAddress ?? 'local',
-    {
-      config,
-      data: () => (dataPromise ??= loadDashboardData(resolve(process.cwd(), 'public/data'))),
-      limiter,
-    },
-    controller.signal,
-  );
+  const deps = {
+    config,
+    data: () => (dataPromise ??= loadDashboardData(resolve(process.cwd(), 'public/data'))),
+    limiter,
+  };
+  const body = Buffer.concat(chunks).toString('utf8');
+  const visitor = req.socket.remoteAddress ?? 'local';
+
+  // Mounted at `/api/assistant`, so the path here is what follows it.
+  if (req.url?.startsWith('/scenario')) {
+    const res = await handleScenarioRequest(body, visitor, deps, controller.signal);
+    return json(res.status, res.json);
+  }
+
+  const result = await handleAssistantRequest(body, visitor, deps, controller.signal);
   if ('json' in result) return json(result.status, result.json);
 
   res.statusCode = 200;

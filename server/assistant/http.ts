@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { runAssistant, type AssistantConfig, type AssistantEvent, type ChatMessage } from './agent';
 import type { DashboardData } from './data';
+import { interpretScenario, type InterpretResult } from './scenario';
 
 /**
  * The assistant endpoint, independent of where it runs.
@@ -134,6 +135,44 @@ export async function handleAssistantRequest(
     }
   }
   return { status: 200, events: events() };
+}
+
+/**
+ * `POST /api/assistant/scenario { text }` — a scenario described in words,
+ * back as the Scenarios section's settings (see `scenario.ts`). JSON, not a
+ * stream: the answer is one small object. Shares the rate limit with the chat.
+ */
+export async function handleScenarioRequest(
+  bodyText: string,
+  visitor: string,
+  deps: { config: AssistantConfig; data: () => Promise<DashboardData>; limiter: RateLimiter },
+  signal?: AbortSignal,
+): Promise<{ status: number; json: InterpretResult }> {
+  if (!deps.limiter.take(visitor)) {
+    return {
+      status: 429,
+      json: { error: 'You have asked a lot in a short time. Try again in a few minutes.' },
+    };
+  }
+  let text: unknown;
+  try {
+    text = (JSON.parse(bodyText) as { text?: unknown }).text;
+  } catch {
+    return { status: 400, json: { error: 'The request was not valid JSON.' } };
+  }
+  if (typeof text !== 'string' || !text.trim()) {
+    return { status: 400, json: { error: 'Describe a scenario.' } };
+  }
+  if (text.length > 500) return { status: 400, json: { error: 'Keep it under 500 characters.' } };
+  try {
+    return {
+      status: 200,
+      json: await interpretScenario(deps.config, await deps.data(), text.trim(), signal),
+    };
+  } catch (e) {
+    console.error('scenario error', e);
+    return { status: 502, json: { error: friendlyError(e) } };
+  }
 }
 
 /** The assistant's settings from the environment; throws naming what is

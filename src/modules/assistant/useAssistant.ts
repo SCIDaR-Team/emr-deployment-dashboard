@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ASSISTANT_ENDPOINT } from './api';
 import { createSseReader, type AssistantLink } from './sse';
 
 /**
@@ -22,7 +23,6 @@ export interface Turn {
 }
 
 const STORAGE_KEY = 'era-assistant-conversation';
-const ENDPOINT = import.meta.env.VITE_ASSISTANT_URL || '/api/assistant';
 /** The last turns sent with a question — enough to follow up on, and what the
  *  endpoint accepts. */
 const HISTORY = 16;
@@ -79,7 +79,7 @@ export function useAssistant() {
       const controller = new AbortController();
       abort.current = controller;
       try {
-        const res = await fetch(ENDPOINT, {
+        const res = await fetch(ASSISTANT_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: history }),

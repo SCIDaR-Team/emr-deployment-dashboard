@@ -3,7 +3,9 @@ import { Columns3, CopyPlus, MapPin, Square } from 'lucide-react';
 import { SectionCard } from '@/components/ui';
 import { facilityPaths } from '@/lib/scenarios';
 import type { FacilitySummary } from '@/lib/types';
+import { ASSISTANT_ENABLED } from '@/store/assistantStore';
 import { CompareView } from './CompareView';
+import { DescribeScenario } from './DescribeScenario';
 import { Segmented } from './controls';
 import { SingleView } from './SingleView';
 import { StatesView } from './StatesView';
@@ -46,6 +48,12 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
       bodyClassName="p-0"
       action={
         <div className="flex items-center gap-2">
+          {ASSISTANT_ENABLED && (
+            <DescribeScenario
+              current={{ view: s.view, single: s.single, compare: s.compare }}
+              onApply={s.replaceAll}
+            />
+          )}
           {s.view === 'single' && (
             <button
               type="button"
