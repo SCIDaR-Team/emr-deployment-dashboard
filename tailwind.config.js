@@ -9,6 +9,9 @@ export default {
         // rather than a 768px one. Panels sized to the viewport (Scenarios)
         // use it to grow their marks where there is room.
         tall: { raw: '(min-height: 760px)' },
+        // A laptop at 1366 and up. Named, not `min-[1360px]:` — Tailwind
+        // drops arbitrary min/max variants once any screen is a raw query.
+        wide: '1360px',
       },
       colors: {
         // Semantic tokens — every value resolves through a CSS variable in
