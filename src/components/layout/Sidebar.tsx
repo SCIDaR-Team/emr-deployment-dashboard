@@ -56,7 +56,9 @@ function BrandBlock({
       onClick={onNavigate}
       title={`${INSTITUTION.abbr} EMR Readiness Assessment — landing page`}
       className={cn(
-        'flex min-h-[58px] items-center gap-2.5 border-b border-border px-4 transition-colors',
+        // 52px, the page header's title row, so the two hairlines under them
+        // meet as one line across the screen.
+        'flex h-[52px] shrink-0 items-center gap-2.5 border-b border-border px-4 transition-colors',
         'hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
         collapsed && 'justify-center px-0',
       )}
