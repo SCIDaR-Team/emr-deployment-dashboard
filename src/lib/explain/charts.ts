@@ -34,6 +34,11 @@ export const CHARTS = {
     howToRead:
       'Gaps and the interventions that close them. Headline: gaps to close, interventions to close them (one gap can call for more than one), facilities with a gap, and what the interventions cost. By urgency: Major and Moderate are needed before deployment, Minor before or during, Long-term after. Then by domain and gap area: the facilities carrying the gap, and the cost of closing it, costliest first. A cost excludes interventions the source does not price.',
   },
+  'assessment-notes': {
+    page: 'Assessed States',
+    howToRead:
+      'Themes raised in the free-text notes assessors wrote at each facility visit — access, security, the building, staffing, water, power and so on — as tagged by an AI model and checked by a person. For each theme, the facilities in scope whose note raises it as a problem or a need, and their share of the facilities with a note. A note can raise several themes, so the shares do not add up to 100%. These come from what assessors wrote, not from the structured survey questions.',
+  },
   'investment-interventions': {
     page: 'Investment Plan',
     howToRead:

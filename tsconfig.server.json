@@ -18,5 +18,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["server", "scripts/draft-briefs.ts"]
+  "include": ["server", "scripts/draft-briefs.ts", "scripts/note-*.ts"]
 }

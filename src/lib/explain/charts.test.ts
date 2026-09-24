@@ -30,7 +30,7 @@ describe('parseSnapshot', () => {
   it('knows only its own charts', () => {
     expect(isChartId('scenario-states')).toBe(true);
     expect(isChartId('toString')).toBe(false);
-    expect(Object.keys(CHARTS)).toHaveLength(10);
+    expect(Object.keys(CHARTS)).toHaveLength(11);
   });
 });
 
