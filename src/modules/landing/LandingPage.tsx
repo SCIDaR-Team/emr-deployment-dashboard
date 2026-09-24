@@ -57,14 +57,12 @@ import type { Band } from '@/lib/types';
  * is `NATIONAL_DEPLOYMENT_SPLIT`, and every module behind the door reports the
  * same one.
  *
- * **On the palette.** This page follows a mockup drawn with a dark-green
- * wordmark, green eyebrows and a green primary button. It is not built that
- * way, and the reason is the rule at the top of `globals.css`: green, amber and
- * red are *status*, and green is Ready. Spending it on furniture is exactly how
- * the previous design lost the ability to mean anything by it. So the mark is
- * ink, the three module cards are `brand-500` blue on a `brand-50` ground like
- * every other control in the product, and the only *status* colour here is the
- * three bands and the figures reporting them.
+ * **On the palette.** Green, amber and red are *status* here, and green is
+ * Ready — so the frame's green is a different one: the cool mint the whole
+ * app's frame uses (hue ~150, well away from Ready's 96.7). The three module
+ * cards are white with an emerald hairline, glyph and arrow, filling pale mint
+ * on hover — accents of the rail's colour; the only *status* colour on the
+ * page is still the three bands and the figures reporting them.
  */
 
 const ICONS: Record<string, LucideIcon> = {
@@ -194,12 +192,10 @@ export default function LandingPage() {
         **They are filled, not outlined.** Drawn as bordered cards on the
         surface they were the same weight as every rule and box further down the
         page, and the one thing a reader arrives to do read as chrome — three
-        pale rectangles in a top bar are furniture until they are hovered. A
-        `brand-50` ground with a `brand-500` hairline and a blue glyph makes
-        them the only saturated cool block above the fold, which is what
-        separates "these are the doors" from "this is a header". Blue is the
-        colour that can be spent this way: green, amber and red are readiness
-        bands, and `brand-500` is already what every control in the product is.
+        pale rectangles in a top bar are furniture until they are hovered. An
+        emerald hairline, glyph and arrow make them the one coloured object
+        above the fold, which is what separates "these are the doors" from
+        "this is a header" — in the frame's cool green, not Ready's.
       */}
       <header className="border-b border-border bg-surface">
         <div
@@ -245,10 +241,10 @@ export default function LandingPage() {
                 <NavLink
                   key={mod.path}
                   to={mod.path}
-                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-brand-500 bg-brand-50 px-3.5 py-2 transition-colors hover:bg-brand-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-chrome-ink bg-surface px-3.5 py-2 transition-colors hover:bg-chrome-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <Icon
-                    className="h-[18px] w-[18px] shrink-0 text-brand-500"
+                    className="h-[18px] w-[18px] shrink-0 text-chrome-ink"
                     aria-hidden
                   />
                   <span className="flex min-w-0 flex-col leading-tight">
@@ -260,7 +256,7 @@ export default function LandingPage() {
                     </span>
                   </span>
                   <ArrowRight
-                    className="ml-3 block h-4 w-4 shrink-0 text-brand-500 transition-transform group-hover:translate-x-0.5 md:hidden xl:block"
+                    className="ml-3 block h-4 w-4 shrink-0 text-chrome-ink transition-transform group-hover:translate-x-0.5 md:hidden xl:block"
                     aria-hidden
                   />
                 </NavLink>

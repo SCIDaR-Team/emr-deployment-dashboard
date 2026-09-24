@@ -59,6 +59,15 @@
      * stay below the page it is cut into, and the rail has to stay between the
      * two, so dropping the page alone would have collapsed both against it.
      */
+    /*
+     * One strong green, everything else calm. The rail is a solid emerald —
+     * the product's colour, and the only large green block — while the page
+     * stays near-neutral, the header rows white, and green elsewhere is an
+     * accent: the active tab's underline, the module cards' hairline and
+     * glyph. A cool green (hue ~150), kept apart from Ready's yellow-green
+     * (96.7), and never on a card, so the band fills stay the most colourful
+     * things in the content area.
+     */
     --page: 100 9% 93.5%;
     --surface: 80 20% 99%;
     --surface-sunk: 90 8% 90%;
@@ -90,16 +99,34 @@
     --brand-900: 160 14% 5%;
 
     /*
-     * The navigation rail. Light now, in both schemes, and separated from the
-     * content by tone plus a hairline rather than by being a dark slab.
-     *
-     * `--sidebar-foreground` is ink rather than white, which keeps every
-     * existing `bg-sidebar-foreground/10` in Sidebar.tsx working: a 10% ink
-     * tint on a light rail is exactly the soft hover wash those rules wanted,
-     * the same way a 10% white tint was on the dark one.
+     * The navigation rail: solid emerald in light mode (white text 7.6:1),
+     * a dark green in dark mode.
+     * Its hue sits with the page's, not with Ready's, and it holds no data —
+     * only the modules — so it cannot be read as a band. Inside it, `.rail`
+     * swaps in the rail's own ladder (below) — its text, hairlines, hover lift
+     * and active edge — without the components knowing.
      */
-    --sidebar: 90 8% 91%;
-    --sidebar-foreground: 160 12% 8%;
+    --sidebar: 150 42% 26%;
+    --sidebar-foreground: 0 0% 100%;
+
+    /* The header rows and section strip: white, like the cards. The active
+       section is an emerald underline and emerald text; `--chrome-active` is
+       the pale mint a module card fills with on hover. */
+    --chrome: 80 20% 99%;
+    --chrome-active: 146 48% 90%;
+    --chrome-active-foreground: 150 55% 22%;
+    /* Emerald as an ink: the underline, hairlines, icons and arrows. 6:1 on
+       white. */
+    --chrome-ink: 150 55% 28%;
+
+    /* The rail's own ladder, which `.rail` puts in place of the page's inside
+       the rail — its text, hairlines, hover lift and active edge — so the rail
+       components keep their ordinary token classes on a dark ground. */
+    --rail-foreground: 0 0% 100%;
+    --rail-muted-foreground: 140 30% 93%;
+    --rail-surface: 150 36% 34%;
+    --rail-border: 150 34% 32%;
+    --rail-accent: 146 70% 78%;
 
     /*
      * The band colours, supplied by the client as RGB:
@@ -346,8 +373,19 @@
     --brand-700: 140 12% 94%;
     --brand-900: 140 14% 97%;
 
-    --sidebar: 156 8% 14%;
-    --sidebar-foreground: 140 12% 94%;
+    --sidebar: 150 32% 13%;
+    --sidebar-foreground: 140 20% 94%;
+
+    --chrome: 156 8% 10%;
+    --chrome-active: 148 34% 20%;
+    --chrome-active-foreground: 140 50% 86%;
+    --chrome-ink: 146 50% 62%;
+
+    --rail-foreground: 140 20% 94%;
+    --rail-muted-foreground: 140 18% 86%;
+    --rail-surface: 150 30% 20%;
+    --rail-border: 150 26% 19%;
+    --rail-accent: 146 55% 60%;
 
     /* The fills do not move — a Ready polygon is the same colour in both
        schemes. What moves is the pair around them: the ink comes up towards
@@ -451,6 +489,17 @@
 }
 
 @layer components {
+  /* The rail: its own ladder in place of the page's, so `text-foreground`,
+     `text-muted-foreground`, `bg-surface`, `border-border` and the active
+     edge all resolve to light-on-deep-green inside it. */
+  .rail {
+    --foreground: var(--rail-foreground);
+    --muted-foreground: var(--rail-muted-foreground);
+    --surface: var(--rail-surface);
+    --border: var(--rail-border);
+    --brand-500: var(--rail-accent);
+  }
+
   /* Hierarchy comes from hairlines and vertical rhythm, not from shadow. The
      one exception is `.sheet` in the report preview, which is standing in for a
      printed page and is allowed to look like one. */

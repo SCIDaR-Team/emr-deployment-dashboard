@@ -56,7 +56,9 @@ function BrandBlock({
       onClick={onNavigate}
       title={`${INSTITUTION.abbr} EMR Readiness Assessment — landing page`}
       className={cn(
-        'flex min-h-[58px] items-center gap-2.5 border-b border-border px-4 transition-colors',
+        // 52px, the page header's title row, so the two hairlines under them
+        // meet as one line across the screen.
+        'flex h-[52px] shrink-0 items-center gap-2.5 border-b border-border px-4 transition-colors',
         'hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
         collapsed && 'justify-center px-0',
       )}
@@ -81,9 +83,10 @@ function BrandBlock({
 /**
  * The rail's contents, shared by the fixed desktop rail and the mobile panel.
  *
- * The active item is marked by a blue left edge and a lift onto `bg-surface`.
- * Blue rather than green: green is a readiness colour now and cannot also be
- * the furniture, or a selected nav item reads as a Ready badge.
+ * The active item is marked by a pale mint left edge and a lift onto
+ * `bg-surface`, which `.rail` resolves to a lighter emerald than the rail. The mint is
+ * the frame's cool green, not Ready's yellow-green, so a selected item does
+ * not read as a Ready badge.
  */
 function NavContents({
   collapsed = false,
@@ -117,7 +120,7 @@ function NavContents({
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 border-l-2 border-transparent py-2 pl-3.5 pr-4 text-prose text-muted-foreground transition-colors',
+                    'flex items-center gap-3 border-l-2 border-transparent py-2 pl-3.5 pr-4 text-prose font-medium text-muted-foreground transition-colors',
                     'hover:bg-surface hover:text-foreground',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                     collapsed && 'justify-center px-0 pl-2',
@@ -141,11 +144,10 @@ function NavContents({
 /**
  * The fixed navigation rail.
  *
- * Light in both colour schemes, separated from the content by tone and a
- * hairline rather than by being a dark slab. The dark green rail was the
- * loudest object on every screen and it spent the brand hue on furniture; with
- * green reserved for readiness, the rail recedes and the data is what carries
- * colour.
+ * Emerald in light mode and dark green in dark — the dashboard's colour, a cool
+ * green kept apart from Ready's. The `rail` class re-points the ordinary
+ * tokens (text, muted text, surface, border, accent) at the rail's own values,
+ * so everything inside is written with the same classes as the rest of the app.
  *
  * Desktop only. At 375px it was 68% of the viewport, so below `lg` navigation
  * moves into `MobileNavBar` — the rail is not narrowed *there*, because a
@@ -161,7 +163,7 @@ export function Sidebar() {
     <nav
       aria-label="Main"
       className={cn(
-        'hidden shrink-0 flex-col border-r border-border bg-sidebar lg:flex',
+        'rail hidden shrink-0 flex-col border-r border-border bg-sidebar lg:flex',
         // Width only — animating anything else here would drag the map and the
         // charts through a resize on every frame of the transition.
         'transition-[width] duration-200 ease-out',
@@ -214,7 +216,7 @@ export function MobileNavBar() {
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-3 py-2.5 lg:hidden">
+      <div className="rail flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-3 py-2.5 lg:hidden">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -246,7 +248,7 @@ export function MobileNavBar() {
           />
           <nav
             aria-label="Main"
-            className="fixed bottom-0 left-0 top-0 z-[95] flex w-64 max-w-[85vw] flex-col border-r border-border bg-sidebar shadow-pop animate-slide-in-left lg:hidden"
+            className="rail fixed bottom-0 left-0 top-0 z-[95] flex w-64 max-w-[85vw] flex-col border-r border-border bg-sidebar shadow-pop animate-slide-in-left lg:hidden"
           >
             <div className="flex items-stretch">
               <div className="min-w-0 flex-1">

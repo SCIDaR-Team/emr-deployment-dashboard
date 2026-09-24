@@ -31,7 +31,7 @@ export function Figures({ plan, total }: { plan: TargetPlan; total: number }) {
 
   return (
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-border bg-border sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="col-span-2 bg-ready-wash px-3 py-2.5 sm:col-span-1">
+      <div className="col-span-2 bg-ready-wash px-3 py-2.5 shadow-[inset_3px_0_0_hsl(var(--ready-ink))] sm:col-span-1 2xl:px-4 2xl:py-3">
         <Readiness
           before={plan.readyBefore}
           unlocked={Math.round(shownNew)}
@@ -77,54 +77,70 @@ export function Readiness({
   of: number;
   size?: 'md' | 'lg';
 }) {
-  const figure = size === 'lg' ? 'text-[20px] 2xl:text-figure-sm' : 'text-lead tall:text-[19px]';
+  const lg = size === 'lg';
+  const figure = lg ? 'text-[20px] 2xl:text-[32px]' : 'text-lead tall:text-[19px]';
+  const label = (text: string) => (
+    <p
+      className={cn(
+        'mono whitespace-nowrap uppercase text-muted-foreground',
+        lg
+          ? 'text-[9.5px] tracking-[0.04em] 2xl:text-note 2xl:tracking-[0.07em]'
+          : 'text-[9.5px] tracking-[0.04em] 2xl:text-tick 2xl:tracking-[0.07em]',
+      )}
+    >
+      {text}
+    </p>
+  );
+  const value = (text: string, tone: string) => (
+    <p
+      className={cn(
+        'mono mt-1 font-semibold leading-none tracking-tight tabular-nums',
+        figure,
+        tone,
+      )}
+    >
+      {text}
+    </p>
+  );
+  /** On the figures' own line, so the sum reads as one. */
   const op = (sign: string) => (
     <span
       aria-hidden
       className={cn(
-        'mono self-end pb-[3px] text-muted-foreground',
-        size === 'lg' ? 'text-lead' : 'text-body',
+        'mono mt-1 self-center font-medium leading-none text-foreground/45',
+        lg ? 'text-[18px] 2xl:text-[28px]' : 'text-body',
       )}
     >
       {sign}
     </span>
   );
-  const term = (label: string, value: string, tone: string, note?: string) => (
-    <div>
-      <p className="mono whitespace-nowrap text-[9.5px] uppercase tracking-[0.04em] text-muted-foreground 2xl:text-tick 2xl:tracking-[0.07em]">
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mono mt-1 font-semibold leading-none tracking-tight tabular-nums',
-          figure,
-          tone,
-        )}
-      >
-        {value}
-      </p>
-      {note !== undefined && (
-        <p className="mt-1 whitespace-nowrap text-[10.5px] text-muted-foreground">{note}</p>
-      )}
-    </div>
+  const note = (text: string) => (
+    <p className="mt-1 whitespace-nowrap text-[10.5px] text-muted-foreground 2xl:text-note">
+      {text}
+    </p>
   );
-  const notes = size === 'lg';
+  // Three rows — labels, figures, notes — so the operators sit on the figure
+  // line rather than floating between the notes.
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-1.5">
-      {term('Ready before', formatCount(before), 'text-foreground', notes ? 'today' : undefined)}
+    <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-1.5 2xl:gap-x-3">
+      {label('Ready before')}
+      <span />
+      {label('Unlocked')}
+      <span />
+      {label('Total Ready')}
+      {value(formatCount(before), 'text-foreground')}
       {op('+')}
-      {term(
-        'Unlocked',
-        `+${formatCount(unlocked)}`,
-        'text-ready-ink',
-        notes ? 'by this plan' : undefined,
-      )}
+      {value(`+${formatCount(unlocked)}`, 'text-ready-ink')}
       {op('=')}
-      {term(
-        'Total Ready',
-        formatCount(total),
-        'text-foreground',
-        notes ? `of ${formatCount(of)} · ${formatShare(total, of)}` : undefined,
+      {value(formatCount(total), 'font-bold text-foreground')}
+      {lg && (
+        <>
+          {note('today')}
+          <span />
+          {note('by this plan')}
+          <span />
+          {note(`of ${formatCount(of)} · ${formatShare(total, of)}`)}
+        </>
       )}
     </div>
   );
@@ -144,7 +160,7 @@ function Figure({
       <p className="mono truncate text-tick uppercase tracking-[0.07em] text-muted-foreground">
         {label}
       </p>
-      <p className="mono mt-1 text-[20px] font-semibold leading-none tracking-tight tabular-nums text-foreground 2xl:text-figure-sm">
+      <p className="mono mt-1 text-[20px] font-semibold leading-none tracking-tight tabular-nums text-foreground 2xl:text-[32px]">
         {children}
       </p>
       <p className="mt-1 truncate text-[10.5px] text-muted-foreground">{note}</p>
@@ -199,17 +215,17 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
     <div className="space-y-1.5">
       {rows.map((row) => (
         <div key={row.label} className="flex items-center gap-2.5">
-          <span className="mono w-11 shrink-0 text-tick uppercase tracking-[0.07em] text-muted-foreground">
+          <span className="mono w-14 shrink-0 text-note font-semibold uppercase tracking-[0.07em] text-muted-foreground">
             {row.label}
           </span>
-          <div className="flex h-8 min-w-0 flex-1 gap-[2px] overflow-hidden rounded-[4px]">
+          <div className="flex h-10 min-w-0 flex-1 gap-[2px] overflow-hidden rounded-[5px] tall:h-12">
             {row.segs.map((s) =>
               s.n ? (
                 <span
                   key={s.key}
                   title={`${s.name}: ${formatCount(s.n)} (${formatShare(s.n, total)})`}
                   className={cn(
-                    'mono flex h-full items-center justify-center overflow-hidden whitespace-nowrap text-note font-semibold transition-[width] duration-500 ease-out',
+                    'mono flex h-full items-center justify-center overflow-hidden whitespace-nowrap text-[13px] font-bold tabular-nums transition-[width] duration-500 ease-out tall:text-[15px]',
                     s.cls,
                     s.key === 'x' ? 'text-surface' : 'text-onband',
                   )}
@@ -222,7 +238,7 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
           </div>
         </div>
       ))}
-      <ul className="flex flex-wrap gap-x-3 gap-y-0.5 pl-[54px] text-[10.5px] text-muted-foreground">
+      <ul className="flex flex-wrap gap-x-3 gap-y-0.5 pl-[66px] text-note text-muted-foreground">
         {[
           { cls: BAND_CLASSES.ready.bg, name: 'Ready before' },
           { cls: 'bg-ready-ink', name: 'Unlocked' },

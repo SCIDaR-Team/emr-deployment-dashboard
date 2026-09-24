@@ -186,7 +186,7 @@ export function SectionTabs({
       ref={listRef}
       aria-label="Sections on this page"
       className={cn(
-        'flex items-center gap-1 overflow-x-auto border-b border-border bg-surface px-4 py-1.5 sm:px-5',
+        'flex items-end gap-4 overflow-x-auto border-b border-border bg-chrome px-4 sm:px-5',
         // The row is one line and must stay one line: it is a wayfinding strip,
         // and a strip that wraps to two rows on a narrow screen costs more of
         // the fold than the scrolling it saves.
@@ -204,11 +204,11 @@ export function SectionTabs({
             onClick={() => go(section.id)}
             aria-current={isActive ? 'true' : undefined}
             className={cn(
-              'shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-body transition-colors',
+              '-mb-px shrink-0 whitespace-nowrap border-b-2 px-0.5 pb-2 pt-2.5 text-body transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
               isActive
-                ? 'bg-brand-50 font-medium text-brand-700'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                ? 'border-chrome-ink font-medium text-chrome-active-foreground'
+                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
             )}
           >
             {section.label}
