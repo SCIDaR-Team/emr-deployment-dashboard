@@ -123,7 +123,7 @@
        the rail — its text, hairlines, hover lift and active edge — so the rail
        components keep their ordinary token classes on a dark ground. */
     --rail-foreground: 0 0% 100%;
-    --rail-muted-foreground: 146 28% 84%;
+    --rail-muted-foreground: 140 30% 93%;
     --rail-surface: 150 36% 34%;
     --rail-border: 150 34% 32%;
     --rail-accent: 146 70% 78%;
@@ -382,7 +382,7 @@
     --chrome-ink: 146 50% 62%;
 
     --rail-foreground: 140 20% 94%;
-    --rail-muted-foreground: 146 12% 68%;
+    --rail-muted-foreground: 140 18% 86%;
     --rail-surface: 150 30% 20%;
     --rail-border: 150 26% 19%;
     --rail-accent: 146 55% 60%;

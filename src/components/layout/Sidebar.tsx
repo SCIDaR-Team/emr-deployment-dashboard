@@ -120,7 +120,7 @@ function NavContents({
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 border-l-2 border-transparent py-2 pl-3.5 pr-4 text-prose text-muted-foreground transition-colors',
+                    'flex items-center gap-3 border-l-2 border-transparent py-2 pl-3.5 pr-4 text-prose font-medium text-muted-foreground transition-colors',
                     'hover:bg-surface hover:text-foreground',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                     collapsed && 'justify-center px-0 pl-2',
