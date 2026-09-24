@@ -3,7 +3,13 @@ import type { Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import type { AssistantConfig } from './agent';
 import { loadDashboardData, type DashboardData } from './data';
-import { RateLimiter, configFromEnv, handleAssistantRequest, handleScenarioRequest } from './http';
+import {
+  RateLimiter,
+  configFromEnv,
+  handleAssistantRequest,
+  handleExplainRequest,
+  handleScenarioRequest,
+} from './http';
 
 /**
  * The assistant on AWS Lambda, behind a Function URL with response streaming
@@ -78,14 +84,17 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
   const visitor =
     event.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || event.requestContext.http.sourceIp;
 
-  // `/api/assistant/scenario` turns words into scenario settings; anything
-  // else under `/api/assistant` is the chat.
+  // `/api/assistant/scenario` turns words into scenario settings, and
+  // `/api/assistant/explain` explains a chart; anything else under
+  // `/api/assistant` is the chat.
   if (event.rawPath?.endsWith('/scenario')) {
     const res = await handleScenarioRequest(body, visitor, { config, data, limiter });
     return reply(res.status, res.json);
   }
 
-  const res = await handleAssistantRequest(body, visitor, { config, data, limiter });
+  const res = event.rawPath?.endsWith('/explain')
+    ? await handleExplainRequest(body, visitor, { config, limiter })
+    : await handleAssistantRequest(body, visitor, { config, data, limiter });
   if ('json' in res) return reply(res.status, res.json);
 
   const out = awslambda.HttpResponseStream.from(responseStream, {

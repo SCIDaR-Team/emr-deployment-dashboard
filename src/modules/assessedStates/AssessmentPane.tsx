@@ -44,6 +44,13 @@ import type {
   GapDomainId,
   Horizon,
 } from '@/lib/types';
+import type { ChartId } from '@/lib/explain/charts';
+import {
+  ExplainButton,
+  ExplainPanel,
+  ExplainProvider,
+} from '@/modules/explain/explain';
+import { useExplainHost, useExplainTables, useExplaining } from '@/modules/explain/context';
 import {
   distributionTotal,
   domainOverlap,
@@ -197,13 +204,18 @@ export function AssessmentPane({
                 <SelectionBlock gapAreas={gapAreas} domains={domains} />
               </Block>
             ) : (
-              <Block title="Assessed facilities" note="Readiness to deploy an EMR">
+              <Block
+                title="Assessed facilities"
+                note="Readiness to deploy an EMR"
+                explain="assessment-facilities"
+              >
                 <BandCounts facilities={facilities} distribution={distribution} />
               </Block>
             )}
 
             <Block
               title="Gap severity by domain"
+              explain="assessment-severity"
               note="Each facility's worst gap in the domain — the source's own reading, not a readiness band"
             >
               <SeveritySplit facilities={facilities} domains={domains} />
@@ -211,6 +223,7 @@ export function AssessmentPane({
 
             <Block
               title="Gaps and interventions"
+              explain="assessment-gaps"
               note="What is wrong, what closes it, when, and what that costs"
             >
               <GapBlocks facilities={facilities} domains={domains} gapAreas={gapAreas} />
@@ -676,6 +689,28 @@ function BandCounts({
   const total = facilities.length;
   const scored = distributionTotal(distribution);
 
+  const explaining = useExplaining();
+  const tables = useMemo(
+    () =>
+      explaining
+        ? [
+            {
+              columns: ['Readiness', 'Facilities', 'Share'],
+              rows: [
+                ['Facilities in scope', formatCount(total), ''],
+                ...(['ready', 'moderately_ready', 'not_ready'] as Band[]).map((b) => [
+                  BAND_LABEL[b],
+                  formatCount(distribution[b]),
+                  scored ? percentOf(distribution[b], scored, 1) : '—',
+                ]),
+              ],
+            },
+          ]
+        : null,
+    [explaining, total, scored, distribution],
+  );
+  useExplainTables('bands', tables);
+
   return (
     <div>
       <p className="mono text-figure font-semibold leading-none tracking-tight text-foreground">
@@ -758,6 +793,27 @@ function SeveritySplit({
   }, [facilities, domains]);
 
   const total = facilities.length;
+  const explaining = useExplaining();
+  const tables = useMemo(
+    () =>
+      explaining && total
+        ? [
+            {
+              title: `Worst gap per domain, of ${formatCount(total)} facilities`,
+              columns: ['Domain', ...DOMAIN_SEVERITIES.map((sev) => DOMAIN_SEVERITY_LABEL[sev])],
+              rows: rows.map(({ label, dist }) => [
+                label,
+                ...DOMAIN_SEVERITIES.map(
+                  (sev) => `${formatCount(dist[sev])} (${formatShare(dist[sev], total)})`,
+                ),
+              ]),
+            },
+          ]
+        : null,
+    [explaining, total, rows],
+  );
+  useExplainTables('severity', tables);
+
   if (!total) return <Nothing>No facilities in scope.</Nothing>;
 
   return (
@@ -1097,6 +1153,48 @@ function GapBlocks({
    * Keyed on the selection so re-picking a different single area opens that one
    * instead of leaving the first one hanging open.
    */
+  const explaining = useExplaining();
+  const tables = useMemo(() => {
+    if (!explaining || !tree.length) return null;
+    const money = (cost: number, unpriced: number) =>
+      unpriced && !cost ? 'unpriced' : `${formatNaira(cost, true)}${unpriced ? ' + unpriced' : ''}`;
+    return [
+      {
+        title: 'Headline',
+        columns: ['Measure', 'Value'],
+        rows: [
+          ['Gaps to close', formatCount(gapCount)],
+          ['Interventions to close them', formatCount(actCount)],
+          ['Facilities with a gap', formatCount(affected)],
+          ['Cost of those interventions', formatNaira(cost, true)],
+          ...(overlap
+            ? [[`Facilities with a gap in all ${domains.length} selected domains`, formatCount(overlap.all)]]
+            : []),
+        ],
+      },
+      {
+        title: 'By urgency',
+        columns: ['Urgency', 'When', 'Interventions', 'Facilities', 'Cost'],
+        rows: schedule.map((r) => [
+          HORIZON_SHORT[r.horizon],
+          HORIZON_WHEN[r.horizon],
+          formatCount(r.acts),
+          formatCount(r.facs),
+          money(r.cost, r.unpriced),
+        ]),
+      },
+      {
+        title: 'By domain and gap area, costliest first',
+        columns: ['Domain', 'Gap area', 'Facilities', 'Cost'],
+        rows: tree.flatMap((d) => [
+          [d.label, 'All gap areas', formatCount(d.facs), money(d.cost, d.unpriced)],
+          ...d.areas.map((a) => [d.label, a.label, formatCount(a.facs), money(a.cost, a.unpriced)]),
+        ]),
+      },
+    ];
+  }, [explaining, tree, schedule, gapCount, actCount, affected, cost, overlap, domains.length]);
+  useExplainTables('gaps', tables);
+
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const auto = gapAreas.length === 1 ? gapAreas[0]! : null;
   const open = new Set(
@@ -1832,19 +1930,29 @@ function PaneListBlock({ list }: { list: PaneList }) {
 function Block({
   title,
   note,
+  explain,
   children,
 }: {
   title: string;
   note?: string;
+  /** Offer "Explain" on this block, as this chart. */
+  explain?: ChartId;
   children: React.ReactNode;
 }) {
+  const host = useExplainHost(explain, title);
   return (
     <section className="border-b border-border px-4 py-3">
-      <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
-        {title}
-      </h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
+          {title}
+        </h3>
+        <ExplainButton host={host} className="-my-0.5" />
+      </div>
       {note && <p className="mt-0.5 text-body leading-snug text-muted-foreground">{note}</p>}
-      <div className="mt-2.5">{children}</div>
+      <ExplainPanel host={host} className="mt-2.5" />
+      <div className="mt-2.5">
+        <ExplainProvider host={host}>{children}</ExplainProvider>
+      </div>
     </section>
   );
 }

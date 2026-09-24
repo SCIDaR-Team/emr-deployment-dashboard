@@ -2,7 +2,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
 import type { AssistantConfig } from './agent';
 import { loadDashboardData, type DashboardData } from './data';
-import { RateLimiter, configFromEnv, handleAssistantRequest, handleScenarioRequest } from './http';
+import {
+  RateLimiter,
+  configFromEnv,
+  handleAssistantRequest,
+  handleExplainRequest,
+  handleScenarioRequest,
+} from './http';
 
 /**
  * The assistant inside `npm run dev`, mounted at `/api/assistant` by the Vite
@@ -49,7 +55,9 @@ export async function handleNodeRequest(req: IncomingMessage, res: ServerRespons
     return json(res.status, res.json);
   }
 
-  const result = await handleAssistantRequest(body, visitor, deps, controller.signal);
+  const result = req.url?.startsWith('/explain')
+    ? await handleExplainRequest(body, visitor, deps, controller.signal)
+    : await handleAssistantRequest(body, visitor, deps, controller.signal);
   if ('json' in result) return json(result.status, result.json);
 
   res.statusCode = 200;

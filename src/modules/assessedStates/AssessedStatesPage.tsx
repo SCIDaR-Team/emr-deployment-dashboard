@@ -31,6 +31,8 @@ import type { FacilitySummary, FacilityThemeId } from '@/lib/types';
 // guarantee that is to resolve the band through the same function rather than
 // to keep a second copy of the rule in step by hand.
 import { bandOf } from '@/modules/nationalCoverage/coverageScope';
+import { ExplainScope } from '@/modules/explain/context';
+import { describeFilters } from '@/modules/explain/scope';
 import { AssessmentPane, type PaneList, type PaneRow } from './AssessmentPane';
 import {
   assessedStates,
@@ -127,6 +129,22 @@ export default function AssessedStatesPage() {
   const scope = useMemo(
     () => resolveAssessmentScope(states.data, lgas.data, facilities, stateId, lgaId, facilityId),
     [states.data, lgas.data, facilities, stateId, lgaId, facilityId],
+  );
+
+  /** Where the reader is, for "Explain" on the pane's blocks. */
+  const filterState = useFilterStore();
+  const explainScope = useMemo(
+    () => [
+      `Area: ${
+        scope.level === 'all'
+          ? 'All 12 assessed states'
+          : scope.level === 'state'
+            ? `${scope.state.name} State`
+            : `${scope.lga.name} LGA, ${scope.state.name} State`
+      }`,
+      ...describeFilters(filterState),
+    ],
+    [scope, filterState],
   );
 
   /**
@@ -760,13 +778,15 @@ export default function AssessedStatesPage() {
         </div>
 
         <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[480px] lg:border-l lg:border-t-0">
-          <AssessmentPane
-            scope={scope}
-            facilities={scoped}
-            domains={domains}
-            gapAreas={gapAreas}
-            list={list}
-          />
+          <ExplainScope value={explainScope}>
+            <AssessmentPane
+              scope={scope}
+              facilities={scoped}
+              domains={domains}
+              gapAreas={gapAreas}
+              list={list}
+            />
+          </ExplainScope>
         </aside>
       </div>
     </div>
