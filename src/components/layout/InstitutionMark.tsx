@@ -37,6 +37,10 @@ import { INSTITUTION } from '@/lib/constants';
  * of the rail: furniture stays quiet so state can be loud.
  */
 const SIZES = {
+  lg: {
+    tile: 'h-12 w-12 rounded-[6px] p-[4px]',
+    monogram: 'h-12 w-12 rounded-[6px] bg-foreground text-prose text-surface',
+  },
   md: {
     tile: 'h-[38px] w-[38px] rounded-[4px] p-[3px]',
     monogram:
