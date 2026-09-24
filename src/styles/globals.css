@@ -59,7 +59,15 @@
      * stay below the page it is cut into, and the rail has to stay between the
      * two, so dropping the page alone would have collapsed both against it.
      */
-    --page: 100 9% 93.5%;
+    /*
+     * Mint. The page, the header rows and the section strip carry a clear
+     * green, and the rail a deep one — the dashboard's own colour, on its
+     * frame. It is a *cool* green, hue ~146, well away from Ready's
+     * yellow-green at 96.7, and the frame never holds data: every card stays
+     * near-white, so the band fills sit on the same ground they always did and
+     * a mint page cannot be read as a Ready one.
+     */
+    --page: 146 36% 93%;
     --surface: 80 20% 99%;
     --surface-sunk: 90 8% 90%;
     --foreground: 160 12% 8%;
@@ -90,16 +98,30 @@
     --brand-900: 160 14% 5%;
 
     /*
-     * The navigation rail. Light now, in both schemes, and separated from the
-     * content by tone plus a hairline rather than by being a dark slab.
-     *
-     * `--sidebar-foreground` is ink rather than white, which keeps every
-     * existing `bg-sidebar-foreground/10` in Sidebar.tsx working: a 10% ink
-     * tint on a light rail is exactly the soft hover wash those rules wanted,
-     * the same way a 10% white tint was on the dark one.
+     * The navigation rail: deep green, the strongest use of the frame's mint.
+     * Its hue sits with the page's, not with Ready's, and it holds no data —
+     * only the modules — so it cannot be read as a band. Inside it, `.rail`
+     * swaps in the rail's own ladder (below) so text, hairlines and hover
+     * washes come out light-on-dark without the components knowing.
      */
-    --sidebar: 90 8% 91%;
-    --sidebar-foreground: 160 12% 8%;
+    --sidebar: 148 52% 17%;
+    --sidebar-foreground: 140 35% 96%;
+
+    /* The header rows and section strip: a lighter mint than the page, so the
+       header reads as one band above it, with the active section in a deeper
+       mint rather than the accent blue. */
+    --chrome: 146 40% 96.5%;
+    --chrome-active: 146 48% 83%;
+    --chrome-active-foreground: 150 60% 15%;
+
+    /* The rail's own ladder, which `.rail` puts in place of the page's inside
+       the rail — its text, hairlines, hover lift and active edge — so the rail
+       components keep their ordinary token classes on a dark ground. */
+    --rail-foreground: 140 35% 96%;
+    --rail-muted-foreground: 146 24% 74%;
+    --rail-surface: 148 44% 25%;
+    --rail-border: 148 38% 24%;
+    --rail-accent: 146 60% 68%;
 
     /*
      * The band colours, supplied by the client as RGB:
@@ -329,7 +351,7 @@
   }
 
   .dark {
-    --page: 150 10% 6%;
+    --page: 150 22% 6%;
     --surface: 156 8% 10%;
     --surface-sunk: 156 8% 14%;
     --foreground: 140 12% 94%;
@@ -346,8 +368,18 @@
     --brand-700: 140 12% 94%;
     --brand-900: 140 14% 97%;
 
-    --sidebar: 156 8% 14%;
-    --sidebar-foreground: 140 12% 94%;
+    --sidebar: 150 40% 9%;
+    --sidebar-foreground: 140 20% 94%;
+
+    --chrome: 150 20% 9%;
+    --chrome-active: 148 34% 20%;
+    --chrome-active-foreground: 140 50% 86%;
+
+    --rail-foreground: 140 20% 94%;
+    --rail-muted-foreground: 146 12% 68%;
+    --rail-surface: 150 34% 15%;
+    --rail-border: 150 28% 15%;
+    --rail-accent: 146 55% 60%;
 
     /* The fills do not move — a Ready polygon is the same colour in both
        schemes. What moves is the pair around them: the ink comes up towards
@@ -451,6 +483,17 @@
 }
 
 @layer components {
+  /* The rail: its own ladder in place of the page's, so `text-foreground`,
+     `text-muted-foreground`, `bg-surface`, `border-border` and the active
+     edge all resolve to light-on-deep-green inside it. */
+  .rail {
+    --foreground: var(--rail-foreground);
+    --muted-foreground: var(--rail-muted-foreground);
+    --surface: var(--rail-surface);
+    --border: var(--rail-border);
+    --brand-500: var(--rail-accent);
+  }
+
   /* Hierarchy comes from hairlines and vertical rhythm, not from shadow. The
      one exception is `.sheet` in the report preview, which is standing in for a
      printed page and is allowed to look like one. */

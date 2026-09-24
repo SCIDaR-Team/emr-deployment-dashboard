@@ -81,9 +81,10 @@ function BrandBlock({
 /**
  * The rail's contents, shared by the fixed desktop rail and the mobile panel.
  *
- * The active item is marked by a blue left edge and a lift onto `bg-surface`.
- * Blue rather than green: green is a readiness colour now and cannot also be
- * the furniture, or a selected nav item reads as a Ready badge.
+ * The active item is marked by a mint left edge and a lift onto `bg-surface`,
+ * which `.rail` resolves to a lighter green than the rail itself. The mint is
+ * the frame's cool green, not Ready's yellow-green, so a selected item does
+ * not read as a Ready badge.
  */
 function NavContents({
   collapsed = false,
@@ -141,11 +142,10 @@ function NavContents({
 /**
  * The fixed navigation rail.
  *
- * Light in both colour schemes, separated from the content by tone and a
- * hairline rather than by being a dark slab. The dark green rail was the
- * loudest object on every screen and it spent the brand hue on furniture; with
- * green reserved for readiness, the rail recedes and the data is what carries
- * colour.
+ * Deep green in both colour schemes — the dashboard's frame colour, a cool
+ * green kept apart from Ready's. The `rail` class re-points the ordinary
+ * tokens (text, muted text, surface, border, accent) at the rail's own values,
+ * so everything inside is written with the same classes as the rest of the app.
  *
  * Desktop only. At 375px it was 68% of the viewport, so below `lg` navigation
  * moves into `MobileNavBar` — the rail is not narrowed *there*, because a
@@ -161,7 +161,7 @@ export function Sidebar() {
     <nav
       aria-label="Main"
       className={cn(
-        'hidden shrink-0 flex-col border-r border-border bg-sidebar lg:flex',
+        'rail hidden shrink-0 flex-col border-r border-border bg-sidebar lg:flex',
         // Width only — animating anything else here would drag the map and the
         // charts through a resize on every frame of the transition.
         'transition-[width] duration-200 ease-out',
@@ -214,7 +214,7 @@ export function MobileNavBar() {
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-3 py-2.5 lg:hidden">
+      <div className="rail flex shrink-0 items-center gap-3 border-b border-border bg-sidebar px-3 py-2.5 lg:hidden">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -246,7 +246,7 @@ export function MobileNavBar() {
           />
           <nav
             aria-label="Main"
-            className="fixed bottom-0 left-0 top-0 z-[95] flex w-64 max-w-[85vw] flex-col border-r border-border bg-sidebar shadow-pop animate-slide-in-left lg:hidden"
+            className="rail fixed bottom-0 left-0 top-0 z-[95] flex w-64 max-w-[85vw] flex-col border-r border-border bg-sidebar shadow-pop animate-slide-in-left lg:hidden"
           >
             <div className="flex items-stretch">
               <div className="min-w-0 flex-1">

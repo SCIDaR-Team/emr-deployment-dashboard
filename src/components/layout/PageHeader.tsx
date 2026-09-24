@@ -79,7 +79,7 @@ export function PageHeader({
     // scroll behaviour untouched. z-30 clears the panels and tables that scroll
     // beneath it but stays under the drawer/toast layer at z-90+.
     <header ref={ref} className={cn('sticky top-0 z-30 shrink-0', className)}>
-      <div className="flex min-h-[52px] items-center gap-4 border-b border-border bg-surface px-4 sm:px-5">
+      <div className="flex min-h-[52px] items-center gap-4 border-b border-border bg-chrome px-4 sm:px-5">
         <div className="flex min-w-0 items-baseline gap-3">
           {back}
           <h1 className="shrink-0 text-lead font-semibold tracking-tight text-foreground">
@@ -101,7 +101,7 @@ export function PageHeader({
       </div>
 
       {children && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-2 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-chrome px-4 py-2 sm:px-5">
           {children}
         </div>
       )}
