@@ -98,14 +98,15 @@
     --brand-900: 160 14% 5%;
 
     /*
-     * The navigation rail: a mid green, the strongest use of the frame's mint.
+     * The navigation rail: the deeper mint — the same shade as a module card
+     * on hover — in light mode, a dark green in dark mode.
      * Its hue sits with the page's, not with Ready's, and it holds no data —
      * only the modules — so it cannot be read as a band. Inside it, `.rail`
-     * swaps in the rail's own ladder (below) so text, hairlines and hover
-     * washes come out light-on-dark without the components knowing.
+     * swaps in the rail's own ladder (below) — its text, hairlines, hover lift
+     * and active edge — without the components knowing.
      */
-    --sidebar: 148 36% 31%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar: 146 48% 83%;
+    --sidebar-foreground: 160 12% 8%;
 
     /* The header rows and section strip: a lighter mint than the page, so the
        header reads as one band above it, with the active section in a deeper
@@ -120,11 +121,11 @@
     /* The rail's own ladder, which `.rail` puts in place of the page's inside
        the rail — its text, hairlines, hover lift and active edge — so the rail
        components keep their ordinary token classes on a dark ground. */
-    --rail-foreground: 0 0% 100%;
-    --rail-muted-foreground: 146 32% 86%;
-    --rail-surface: 148 34% 37%;
-    --rail-border: 148 28% 38%;
-    --rail-accent: 146 72% 82%;
+    --rail-foreground: 160 12% 8%;
+    --rail-muted-foreground: 150 22% 26%;
+    --rail-surface: 146 50% 93%;
+    --rail-border: 146 32% 72%;
+    --rail-accent: 150 55% 28%;
 
     /*
      * The band colours, supplied by the client as RGB:

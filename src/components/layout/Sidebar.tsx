@@ -142,7 +142,7 @@ function NavContents({
 /**
  * The fixed navigation rail.
  *
- * Green in both colour schemes — the dashboard's frame colour, a cool
+ * Mint in light mode and dark green in dark — the dashboard's frame colour, a cool
  * green kept apart from Ready's. The `rail` class re-points the ordinary
  * tokens (text, muted text, surface, border, accent) at the rail's own values,
  * so everything inside is written with the same classes as the rest of the app.
