@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FilterBar } from '@/components/filters/FilterBar';
 import {
-  DistributionBar,
   EmptyState,
   LoadError,
   SectionCard,
@@ -70,8 +69,7 @@ const SECTIONS = [
  * decides whether a go-live date is real. **Urgency** is the assessment's own
  * four levels, which is what you need once the phase total has been argued
  * about. They do not nest: Minor spans two phases, tablets before go-live and
- * sockets during it. Phase leads because it answers the first question, and it
- * agrees line-for-line with the "Before deployment" tile above.
+ * sockets during it. Phase leads because it answers the first question.
  *
  * **Domain** is a genuinely different axis: not when the money is spent but
  * who spends it. It does not nest inside either of the others — nationally
@@ -314,15 +312,6 @@ export default function InvestmentPlanPage() {
    */
   const freeLines = scope.investments.filter((i) => i.totalCostNGN === 0).length;
 
-  /**
-   * Everything the sheet says must be done before EMR deployment — Major,
-   * Moderate, and the Minor gaps it also puts before go-live (tablets, device
-   * maintenance, backup-power repair). One budget, whatever separates the
-   * urgencies inside it, and the figure a go-live date turns on.
-   */
-  const beforeDeployment = scope.investments.filter((i) => i.phase === 'before');
-  const beforeCost = beforeDeployment.reduce((sum, i) => sum + (i.totalCostNGN ?? 0), 0);
-
   const groups = useMemo(
     () => buildGroups(scope.investments, groupMode, totalCost),
     [scope.investments, groupMode, totalCost],
@@ -363,56 +352,19 @@ export default function InvestmentPlanPage() {
       </PageHeader>
 
       <div className="space-y-4 p-4 sm:p-5">
-        {/* Total investment leads; the other three qualify it.
-
-            All four were the same size, which made the row a list of facts and
-            left the reader to work out which one the page was for. It is for
-            the total: this page answers "what will deploying cost", and the
-            other three tiles are that number divided up — what part of it is
-            due before go-live, what population it covers, and what it comes to
-            per facility. None of them is an answer on its own, so none of them
-            should be set like one.
-
-            Spanning the full row rather than sitting in a wider column, so the
-            hairline underneath reads as the line between the answer and its
-            breakdown. */}
-        <TileRow className="sm:grid-cols-3">
-          {/* Compact in the tiles, exact in the table below. A ten-digit naira
-              figure set at tile size is unreadable and, worse, unmemorable —
-              nobody carries ₦9,442,810,000 out of the room, but they carry
-              ₦9.4bn. The schedule is where the exact number belongs. */}
+        {/* The page's answer, on its own: what deploying will cost. The
+            sections below divide it up — by readiness, by line, by what it
+            buys — so the header does not repeat them. Compact here, exact in
+            the schedule: nobody carries ₦9,442,810,000 out of the room, but
+            they carry ₦9.4bn. */}
+        <TileRow>
           <Tile
             lead
             label="Total investment"
             value={formatNaira(totalCost, true)}
             count={{ to: totalCost, format: (n) => formatNaira(n, true) }}
-            className="sm:col-span-3"
-          />
-          <Tile
-            label="Before deployment"
-            value={formatNaira(beforeCost, true)}
-            note={`Major, moderate and minor · ${formatShare(beforeCost, totalCost)} of the plan in ${beforeDeployment.length} of ${scope.investments.length} lines`}
-          />
-          <Tile label="Facilities in scope" value={formatCount(scope.facilityCount)} />
-          <Tile
-            label="Per facility, average"
-            value={
-              scope.facilityCount
-                ? formatNaira(Math.round(totalCost / scope.facilityCount))
-                : '—'
-            }
           />
         </TileRow>
-
-        <SectionCard
-          title="What is being invested against"
-          subtitle="Deployment readiness of the facilities the plan is costed over"
-        >
-          <DistributionBar
-            distribution={scope.distribution}
-            scored={scope.facilityCount}
-          />
-        </SectionCard>
 
         <CostByReadinessSection facilities={scopedFacilities} />
 
