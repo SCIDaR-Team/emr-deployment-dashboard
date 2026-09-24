@@ -47,6 +47,7 @@ export default {
           DEFAULT: 'hsl(var(--chrome) / <alpha-value>)',
           active: 'hsl(var(--chrome-active) / <alpha-value>)',
           'active-foreground': 'hsl(var(--chrome-active-foreground) / <alpha-value>)',
+          ink: 'hsl(var(--chrome-ink) / <alpha-value>)',
         },
 
         // Readiness bands. These three carry meaning across every surface —

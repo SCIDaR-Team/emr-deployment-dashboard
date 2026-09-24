@@ -98,14 +98,14 @@
     --brand-900: 160 14% 5%;
 
     /*
-     * The navigation rail: deep green, the strongest use of the frame's mint.
+     * The navigation rail: a mid green, the strongest use of the frame's mint.
      * Its hue sits with the page's, not with Ready's, and it holds no data —
      * only the modules — so it cannot be read as a band. Inside it, `.rail`
      * swaps in the rail's own ladder (below) so text, hairlines and hover
      * washes come out light-on-dark without the components knowing.
      */
-    --sidebar: 148 52% 17%;
-    --sidebar-foreground: 140 35% 96%;
+    --sidebar: 148 36% 31%;
+    --sidebar-foreground: 0 0% 100%;
 
     /* The header rows and section strip: a lighter mint than the page, so the
        header reads as one band above it, with the active section in a deeper
@@ -113,15 +113,18 @@
     --chrome: 146 40% 96.5%;
     --chrome-active: 146 48% 83%;
     --chrome-active-foreground: 150 60% 15%;
+    /* Mint's ink: borders, icons and arrows on mint grounds (the landing
+       page's module cards). */
+    --chrome-ink: 150 55% 28%;
 
     /* The rail's own ladder, which `.rail` puts in place of the page's inside
        the rail — its text, hairlines, hover lift and active edge — so the rail
        components keep their ordinary token classes on a dark ground. */
-    --rail-foreground: 140 35% 96%;
-    --rail-muted-foreground: 146 24% 74%;
-    --rail-surface: 148 44% 25%;
-    --rail-border: 148 38% 24%;
-    --rail-accent: 146 60% 68%;
+    --rail-foreground: 0 0% 100%;
+    --rail-muted-foreground: 146 32% 86%;
+    --rail-surface: 148 34% 37%;
+    --rail-border: 148 28% 38%;
+    --rail-accent: 146 72% 82%;
 
     /*
      * The band colours, supplied by the client as RGB:
@@ -368,17 +371,18 @@
     --brand-700: 140 12% 94%;
     --brand-900: 140 14% 97%;
 
-    --sidebar: 150 40% 9%;
+    --sidebar: 150 32% 13%;
     --sidebar-foreground: 140 20% 94%;
 
     --chrome: 150 20% 9%;
     --chrome-active: 148 34% 20%;
     --chrome-active-foreground: 140 50% 86%;
+    --chrome-ink: 146 50% 62%;
 
     --rail-foreground: 140 20% 94%;
     --rail-muted-foreground: 146 12% 68%;
-    --rail-surface: 150 34% 15%;
-    --rail-border: 150 28% 15%;
+    --rail-surface: 150 30% 20%;
+    --rail-border: 150 26% 19%;
     --rail-accent: 146 55% 60%;
 
     /* The fills do not move — a Ready polygon is the same colour in both
