@@ -16,6 +16,7 @@ const AssessedStatesPage = lazy(
 const InvestmentPlanPage = lazy(
   () => import('@/modules/investment/InvestmentPlanPage'),
 );
+const BriefPage = lazy(() => import('@/modules/briefs/BriefPage'));
 
 function page(node: React.ReactNode) {
   return <Suspense fallback={<PageSkeleton />}>{node}</Suspense>;
@@ -43,6 +44,9 @@ export default function App() {
               click: the hero CTA in, the sidebar wordmark out.
             */}
             <Route path="/" element={page(<LandingPage />)} />
+            {/* A state brief is a page to print, so it sits outside the shell
+                with the landing page. */}
+            <Route path="/brief/:stateId" element={page(<BriefPage />)} />
             <Route element={<AppShell />}>
               {/* Two levels, one page: national → state. The path is the
                   scope, so a link to either level is a link to what the reader

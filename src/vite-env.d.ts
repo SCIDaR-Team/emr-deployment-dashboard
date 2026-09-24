@@ -13,6 +13,9 @@ interface ImportMetaEnv {
   /** Where the assistant endpoint is; defaults to `/api/assistant` on the
    *  dashboard's own origin. */
   readonly VITE_ASSISTANT_URL?: string;
+  /** Show draft state briefs, for review. `npm run dev` always does; the
+   *  live site shows approved briefs only. */
+  readonly VITE_SHOW_DRAFT_BRIEFS?: 'true' | 'false';
 }
 
 interface ImportMeta {

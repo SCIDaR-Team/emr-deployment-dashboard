@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, FileText } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { offersBrief } from '@/lib/briefs/content';
 import { PageHeader, Field } from '@/components/layout/PageHeader';
 import { FILTER_FIELD, FilterBar } from '@/components/filters/FilterBar';
 import {
@@ -605,6 +606,19 @@ export default function AssessedStatesPage() {
       <PageHeader
         title="Assessed States"
         subtitle={subtitleFor(scope.level, domains)}
+        actions={
+          // The state's one-page brief, once a state is in view and a brief
+          // is offered for it (approved on the live site; any, in review).
+          scope.level !== 'all' && offersBrief(scope.state.id) ? (
+            <Link
+              to={`/brief/${scope.state.id}`}
+              className="hidden items-center gap-1.5 rounded-full border border-chrome-ink/60 px-3 py-1 text-body font-semibold text-chrome-active-foreground transition-colors hover:bg-chrome-active/50 sm:inline-flex"
+            >
+              <FileText className="h-4 w-4" aria-hidden />
+              State brief
+            </Link>
+          ) : undefined
+        }
         back={
           scope.level !== 'all' ? (
             <button
