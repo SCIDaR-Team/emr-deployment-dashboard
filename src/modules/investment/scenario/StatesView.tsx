@@ -21,7 +21,10 @@ import { stateId, type ScenarioSpec } from './scenarioState';
  * sent to Compare as a scenario of its own.
  */
 
-type SortKey = 'newly' | 'per' | 'share';
+/** A–Z by default: each state keeps its row, so its Ready before stays put
+ *  and only what the scenario changes — Unlocked, Total Ready — moves. The
+ *  rankings are there to ask for. */
+type SortKey = 'name' | 'newly' | 'per' | 'share';
 
 interface StateRow {
   state: string;
@@ -45,7 +48,7 @@ export function StatesView({
   onCompare: (spec: ScenarioSpec) => void;
   compareFull: boolean;
 }) {
-  const [sort, setSort] = useState<SortKey>('newly');
+  const [sort, setSort] = useState<SortKey>('name');
   const chosen = useMemo(() => new Set(spec.fixes), [spec.fixes]);
 
   const national = useMemo(
@@ -75,6 +78,7 @@ export function StatesView({
 
   const sorted = useMemo(() => {
     const by: Record<SortKey, (a: StateRow, b: StateRow) => number> = {
+      name: () => 0,
       newly: (a, b) => b.plan.newlyReady - a.plan.newlyReady || a.per - b.per,
       // Cheapest per facility first; states the scenario makes no one Ready in last.
       per: (a, b) =>
@@ -181,6 +185,7 @@ export function StatesView({
             value={sort}
             onChange={setSort}
             options={[
+              { id: 'name', label: 'A–Z' },
               { id: 'newly', label: 'Most unlocked' },
               { id: 'per', label: 'Best value' },
               { id: 'share', label: '% After' },
