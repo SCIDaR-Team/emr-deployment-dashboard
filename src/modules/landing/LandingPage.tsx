@@ -59,9 +59,9 @@ import type { Band } from '@/lib/types';
  *
  * **On the palette.** Green, amber and red are *status* here, and green is
  * Ready — so the frame's green is a different one: the cool mint the whole
- * app's frame uses (hue ~146, well away from Ready's 96.7). The three module
- * cards are mint on a mint ground with a mint-ink hairline and glyph, part of
- * the frame like the rail and the header; the only *status* colour on the
+ * app's frame uses (hue ~150, well away from Ready's 96.7). The three module
+ * cards are white with an emerald hairline, glyph and arrow, filling pale mint
+ * on hover — accents of the rail's colour; the only *status* colour on the
  * page is still the three bands and the figures reporting them.
  */
 
@@ -192,11 +192,10 @@ export default function LandingPage() {
         **They are filled, not outlined.** Drawn as bordered cards on the
         surface they were the same weight as every rule and box further down the
         page, and the one thing a reader arrives to do read as chrome — three
-        pale rectangles in a top bar are furniture until they are hovered. A
-        mint ground with a mint-ink hairline and glyph makes them the one
-        coloured block above the fold, which is what separates "these are the
-        doors" from "this is a header" — in the frame's cool green, not
-        Ready's.
+        pale rectangles in a top bar are furniture until they are hovered. An
+        emerald hairline, glyph and arrow make them the one coloured object
+        above the fold, which is what separates "these are the doors" from
+        "this is a header" — in the frame's cool green, not Ready's.
       */}
       <header className="border-b border-border bg-surface">
         <div
@@ -242,7 +241,7 @@ export default function LandingPage() {
                 <NavLink
                   key={mod.path}
                   to={mod.path}
-                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-chrome-ink/60 bg-chrome px-3.5 py-2 transition-colors hover:border-chrome-ink hover:bg-chrome-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="group flex min-w-0 items-center gap-3 rounded-[5px] border border-chrome-ink bg-surface px-3.5 py-2 transition-colors hover:bg-chrome-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <Icon
                     className="h-[18px] w-[18px] shrink-0 text-chrome-ink"

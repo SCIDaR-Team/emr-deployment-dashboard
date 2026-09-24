@@ -81,8 +81,8 @@ function BrandBlock({
 /**
  * The rail's contents, shared by the fixed desktop rail and the mobile panel.
  *
- * The active item is marked by a mint left edge and a lift onto `bg-surface`,
- * which `.rail` resolves to a lighter green than the rail itself. The mint is
+ * The active item is marked by a pale mint left edge and a lift onto
+ * `bg-surface`, which `.rail` resolves to a lighter emerald than the rail. The mint is
  * the frame's cool green, not Ready's yellow-green, so a selected item does
  * not read as a Ready badge.
  */
@@ -142,7 +142,7 @@ function NavContents({
 /**
  * The fixed navigation rail.
  *
- * Mint in light mode and dark green in dark — the dashboard's frame colour, a cool
+ * Emerald in light mode and dark green in dark — the dashboard's colour, a cool
  * green kept apart from Ready's. The `rail` class re-points the ordinary
  * tokens (text, muted text, surface, border, accent) at the rail's own values,
  * so everything inside is written with the same classes as the rest of the app.

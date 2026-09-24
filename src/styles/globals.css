@@ -60,14 +60,15 @@
      * two, so dropping the page alone would have collapsed both against it.
      */
     /*
-     * Mint. The page, the header rows and the section strip carry a clear
-     * green, and the rail a deep one — the dashboard's own colour, on its
-     * frame. It is a *cool* green, hue ~146, well away from Ready's
-     * yellow-green at 96.7, and the frame never holds data: every card stays
-     * near-white, so the band fills sit on the same ground they always did and
-     * a mint page cannot be read as a Ready one.
+     * One strong green, everything else calm. The rail is a solid emerald —
+     * the product's colour, and the only large green block — while the page
+     * stays near-neutral, the header rows white, and green elsewhere is an
+     * accent: the active tab's underline, the module cards' hairline and
+     * glyph. A cool green (hue ~150), kept apart from Ready's yellow-green
+     * (96.7), and never on a card, so the band fills stay the most colourful
+     * things in the content area.
      */
-    --page: 146 36% 93%;
+    --page: 100 9% 93.5%;
     --surface: 80 20% 99%;
     --surface-sunk: 90 8% 90%;
     --foreground: 160 12% 8%;
@@ -98,34 +99,34 @@
     --brand-900: 160 14% 5%;
 
     /*
-     * The navigation rail: the deeper mint — the same shade as a module card
-     * on hover — in light mode, a dark green in dark mode.
+     * The navigation rail: solid emerald in light mode (white text 7.6:1),
+     * a dark green in dark mode.
      * Its hue sits with the page's, not with Ready's, and it holds no data —
      * only the modules — so it cannot be read as a band. Inside it, `.rail`
      * swaps in the rail's own ladder (below) — its text, hairlines, hover lift
      * and active edge — without the components knowing.
      */
-    --sidebar: 146 48% 83%;
-    --sidebar-foreground: 160 12% 8%;
+    --sidebar: 150 42% 26%;
+    --sidebar-foreground: 0 0% 100%;
 
-    /* The header rows and section strip: a lighter mint than the page, so the
-       header reads as one band above it, with the active section in a deeper
-       mint rather than the accent blue. */
-    --chrome: 146 40% 96.5%;
-    --chrome-active: 146 48% 83%;
-    --chrome-active-foreground: 150 60% 15%;
-    /* Mint's ink: borders, icons and arrows on mint grounds (the landing
-       page's module cards). */
+    /* The header rows and section strip: white, like the cards. The active
+       section is an emerald underline and emerald text; `--chrome-active` is
+       the pale mint a module card fills with on hover. */
+    --chrome: 80 20% 99%;
+    --chrome-active: 146 48% 90%;
+    --chrome-active-foreground: 150 55% 22%;
+    /* Emerald as an ink: the underline, hairlines, icons and arrows. 6:1 on
+       white. */
     --chrome-ink: 150 55% 28%;
 
     /* The rail's own ladder, which `.rail` puts in place of the page's inside
        the rail — its text, hairlines, hover lift and active edge — so the rail
        components keep their ordinary token classes on a dark ground. */
-    --rail-foreground: 160 12% 8%;
-    --rail-muted-foreground: 150 22% 26%;
-    --rail-surface: 146 50% 93%;
-    --rail-border: 146 32% 72%;
-    --rail-accent: 150 55% 28%;
+    --rail-foreground: 0 0% 100%;
+    --rail-muted-foreground: 146 28% 84%;
+    --rail-surface: 150 36% 34%;
+    --rail-border: 150 34% 32%;
+    --rail-accent: 146 70% 78%;
 
     /*
      * The band colours, supplied by the client as RGB:
@@ -355,7 +356,7 @@
   }
 
   .dark {
-    --page: 150 22% 6%;
+    --page: 150 10% 6%;
     --surface: 156 8% 10%;
     --surface-sunk: 156 8% 14%;
     --foreground: 140 12% 94%;
@@ -375,7 +376,7 @@
     --sidebar: 150 32% 13%;
     --sidebar-foreground: 140 20% 94%;
 
-    --chrome: 150 20% 9%;
+    --chrome: 156 8% 10%;
     --chrome-active: 148 34% 20%;
     --chrome-active-foreground: 140 50% 86%;
     --chrome-ink: 146 50% 62%;
