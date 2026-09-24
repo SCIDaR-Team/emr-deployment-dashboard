@@ -51,6 +51,8 @@ import {
   ExplainProvider,
 } from '@/modules/explain/explain';
 import { useExplainHost, useExplainTables, useExplaining } from '@/modules/explain/context';
+import { FacilityNoteThemes, NoteThemesSummary } from './NoteThemes';
+import { useNoteThemes } from './useNoteThemes';
 import {
   distributionTotal,
   domainOverlap,
@@ -153,6 +155,7 @@ export function AssessmentPane({
     () => facilityDistribution(facilities, domains),
     [facilities, domains],
   );
+  const noteThemes = useNoteThemes();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -228,6 +231,16 @@ export function AssessmentPane({
             >
               <GapBlocks facilities={facilities} domains={domains} gapAreas={gapAreas} />
             </Block>
+
+            {noteThemes && (
+              <Block
+                title="What assessors noted"
+                explain="assessment-notes"
+                note="Problems raised in the notes written at each visit"
+              >
+                <NoteThemesSummary facilities={facilities} file={noteThemes} />
+              </Block>
+            )}
           </>
         )}
 
@@ -291,6 +304,7 @@ function FacilityBlocks({
   gapAreas: string[];
 }) {
   const picked: readonly GapDomainId[] = domains;
+  const noteThemes = useNoteThemes();
 
   const themes = picked.length
     ? FACILITY_THEMES.filter((t) => picked.includes(t.id))
@@ -458,6 +472,12 @@ function FacilityBlocks({
           scoped={picked.length > 0}
         />
       </Block>
+
+      {noteThemes && (
+        <Block title="What the assessor noted" note="Themes from the note written at the visit">
+          <FacilityNoteThemes facility={facility} file={noteThemes} />
+        </Block>
+      )}
 
       <Block title="This facility">
         <dl className="space-y-1.5 text-prose">

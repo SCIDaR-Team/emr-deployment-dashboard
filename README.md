@@ -57,6 +57,8 @@ it, then `npm run data:ingest`.
 | `npm run data:maturity` | Rebuild `scripts/source-data/state-maturity.json` from the State Maturity sheet |
 | `npm run data:gaps` | Export the facility gap sheet to the committed CSV |
 | `npm run data:ingest` | Rebuild `public/data/` from the assessment CSV |
+| `npm run briefs:draft` | Draft the state briefs with OpenAI, for review (`src/content/briefs/README.md`) |
+| `npm run notes:themes` | Tag the assessors' notes with themes, for review — personal details removed before anything is sent; `--dry-run` sends nothing (`scripts/note-themes.ts`) |
 | `npm run typecheck` | `tsc -b --noEmit` |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |

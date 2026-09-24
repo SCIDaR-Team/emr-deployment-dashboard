@@ -151,6 +151,9 @@ export const DATA_PATHS = {
   states: '/data/states.json',
   lgas: '/data/lgas.json',
   national: '/data/national.json',
+  /** Themes tagged in the assessors' notes (`npm run notes:themes`). Optional:
+   *  absent until the script has been run. */
+  noteThemes: '/data/note-themes.json',
   statesGeo: '/geo/nigeria-states.geojson',
   /**
    * The same 37 outlines, simplified to about a kilometre — 65 kB against the

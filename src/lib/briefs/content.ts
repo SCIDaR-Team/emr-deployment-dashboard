@@ -1,3 +1,4 @@
+import { SHOW_DRAFTS } from '../drafts';
 import { parseBrief, type BriefDocument } from './document';
 
 /**
@@ -16,8 +17,7 @@ const FILES = import.meta.glob('/src/content/briefs/*.md', {
   eager: true,
 }) as Record<string, string>;
 
-export const SHOW_DRAFT_BRIEFS =
-  import.meta.env.DEV || import.meta.env.VITE_SHOW_DRAFT_BRIEFS === 'true';
+export const SHOW_DRAFT_BRIEFS = SHOW_DRAFTS;
 
 const BY_STATE = new Map<string, BriefDocument>();
 for (const [path, text] of Object.entries(FILES)) {

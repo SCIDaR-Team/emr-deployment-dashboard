@@ -76,3 +76,8 @@ National coverage leadership domain scoring.xlsx
 # whenever the sheet moves.
 scripts/source-data/assessment.csv
 dist-server
+
+# The assessors' notes review (`npm run notes:themes`). It holds note text,
+# with personal details removed, for checking the tags — it stays on the
+# machine that ran the script. Only public/data/note-themes.json is committed.
+note-themes-review.md
