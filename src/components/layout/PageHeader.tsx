@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 import { SectionTabs, type PageSection } from './SectionTabs';
+import { AssistantButton } from '@/modules/assistant/AssistantButton';
 import { ThemeToggle } from './ThemeToggle';
 
 interface PageHeaderProps {
@@ -96,6 +97,7 @@ export function PageHeader({
             was one more thing in the corner of every screen. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {actions}
+          <AssistantButton />
           <ThemeToggle />
         </div>
       </div>

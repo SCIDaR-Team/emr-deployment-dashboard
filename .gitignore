@@ -75,3 +75,4 @@ National coverage leadership domain scoring.xlsx
 # back to. Committing both says the same thing twice. Delete it and re-fetch
 # whenever the sheet moves.
 scripts/source-data/assessment.csv
+dist-server
