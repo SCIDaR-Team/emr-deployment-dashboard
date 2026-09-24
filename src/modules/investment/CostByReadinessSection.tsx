@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BandIcon, SectionCard } from '@/components/ui';
+import { ExplainFigures } from '@/modules/explain/explain';
 import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import {
@@ -61,7 +62,48 @@ export function CostByReadinessSection({ facilities }: { facilities: FacilitySum
       subtitle="The plan's cost, by the readiness of the facilities it is spent on"
       action={<BreakdownSwitch value={breakdown} onChange={setBreakdown} />}
       bodyClassName="p-0"
+      explain="investment-cost-by-readiness"
     >
+      <ExplainFigures
+        id="cost-by-readiness"
+        build={() =>
+          facilities.length
+            ? [
+                {
+                  title: 'By readiness',
+                  columns: ['Readiness', 'Cost', 'Share of the plan', 'Facilities', 'Per facility'],
+                  rows: [
+                    ...ORDER.map((band) => {
+                      const cost = totals.cost[band];
+                      const count = totals.facilities[band];
+                      return [
+                        BAND_LABEL[band],
+                        formatNaira(cost, true),
+                        formatShare(cost, totals.total),
+                        formatCount(count),
+                        count ? formatNaira(Math.round(cost / count), true) : '—',
+                      ];
+                    }),
+                    ['Total', formatNaira(totals.total, true), '', '', ''],
+                  ],
+                },
+                {
+                  title: `By ${BREAKDOWNS.find((b) => b.id === breakdown)?.label.toLowerCase()}`,
+                  columns: [
+                    BREAKDOWNS.find((b) => b.id === breakdown)?.label ?? 'Group',
+                    ...ORDER.map((b) => BAND_LABEL[b]),
+                    'Total',
+                  ],
+                  rows: rows.map((row) => [
+                    row.label,
+                    ...ORDER.map((b) => formatNaira(row.cost[b], true)),
+                    formatNaira(row.total, true),
+                  ]),
+                },
+              ]
+            : null
+        }
+      />
       {!facilities.length ? (
         <p className="px-4 py-6 text-prose italic text-muted-foreground">No facilities in scope.</p>
       ) : (

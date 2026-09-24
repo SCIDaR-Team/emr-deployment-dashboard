@@ -26,12 +26,16 @@ browser ──POST /api/assistant──▶ Lambda (server/assistant) ──▶ O
 | `assistant/dev.ts` | The same endpoint inside `npm run dev`. |
 | `src/modules/assistant/` | The chat panel in the dashboard. |
 | `src/modules/investment/scenario/DescribeScenario.tsx` | The "Describe" box in the Scenarios section. |
+| `assistant/explain.ts` | "Explain this chart": one call, no tools, from the figures a section is showing. |
+| `src/lib/explain/charts.ts` | The charts that can be explained, how each is read, and the request's limits. |
+| `src/modules/explain/` | The Explain button and panel, and how sections hand over their figures. |
 
 ## Endpoints
 
 | Path | What it does |
 |---|---|
 | `POST /api/assistant` | The chat. `{ messages }` in; a stream of server-sent events out. |
+| `POST /api/assistant/explain` | Explain a chart. `{ chart, title, scope, tables }` in — the figures the section shows, as text; a stream of server-sent events out, like the chat. The chart must be one in `src/lib/explain/charts.ts`, and the request is capped in size. |
 | `POST /api/assistant/scenario` | Describe a scenario. `{ text }` in; `{ view, specs, summary, ignored }` or `{ error }` out, as JSON. The model only reads the words as settings; the section's own engine computes the figures. |
 
 ## Settings
@@ -99,6 +103,8 @@ Layered controls:
 - The results of the lookups the model asks for. These are names, places,
   readiness bands, gaps and costs from the published dashboard data. They
   **never include facility coordinates or assessors' free-text notes.**
+- For "Explain", the totals a section shows (counts, shares, costs by state,
+  band or group), the area, and the active filters. No facility-level rows.
 
 Requests are sent with `store: false`, so OpenAI does not keep the conversation
 as a stored response.

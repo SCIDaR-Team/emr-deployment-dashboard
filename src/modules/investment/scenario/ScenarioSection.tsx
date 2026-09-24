@@ -4,8 +4,10 @@ import { SectionCard } from '@/components/ui';
 import { facilityPaths } from '@/lib/scenarios';
 import type { FacilitySummary } from '@/lib/types';
 import { ASSISTANT_ENABLED } from '@/store/assistantStore';
+import { ExplainFigures } from '@/modules/explain/explain';
 import { CompareView } from './CompareView';
 import { DescribeScenario } from './DescribeScenario';
+import { scenarioExplainTables } from './explainTables';
 import { Segmented } from './controls';
 import { SingleView } from './SingleView';
 import { StatesView } from './StatesView';
@@ -46,6 +48,7 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
       title="Scenarios"
       subtitle="Choose the fixes to fund and a target — money, facilities or a share Ready — and see who it makes Ready"
       bodyClassName="p-0"
+      explain={`scenario-${s.view}`}
       action={
         <div className="flex items-center gap-2">
           {ASSISTANT_ENABLED && (
@@ -73,6 +76,10 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
         </div>
       }
     >
+      <ExplainFigures
+        id="scenario"
+        build={() => scenarioExplainTables(s.view, paths, s.single, s.compare)}
+      />
       {!facilities.length ? (
         <p className="px-4 py-6 text-prose italic text-muted-foreground">No facilities in scope.</p>
       ) : (

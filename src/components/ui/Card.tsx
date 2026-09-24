@@ -1,4 +1,11 @@
 import { cn } from '@/lib/cn';
+import type { ChartId } from '@/lib/explain/charts';
+import {
+  ExplainButton,
+  ExplainPanel,
+  ExplainProvider,
+} from '@/modules/explain/explain';
+import { useExplainHost } from '@/modules/explain/context';
 
 /**
  * Panels.
@@ -32,6 +39,9 @@ interface SectionCardProps {
   action?: React.ReactNode;
   className?: string;
   bodyClassName?: string;
+  /** Offer "Explain" on this panel, as this chart. The figures come from the
+   *  components inside it — see `modules/explain`. */
+  explain?: ChartId;
   children: React.ReactNode;
 }
 
@@ -61,8 +71,10 @@ export function SectionCard({
   action,
   className,
   bodyClassName,
+  explain,
   children,
 }: SectionCardProps) {
+  const host = useExplainHost(explain, title);
   return (
     <section id={id} data-section={id ? '' : undefined} className={cn('card', className)}>
       <div className="flex min-h-[52px] flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-3">
@@ -73,9 +85,17 @@ export function SectionCard({
           <h2 className="text-prose font-semibold text-foreground">{title}</h2>
           {subtitle && <p className="text-body text-muted-foreground">{subtitle}</p>}
         </div>
-        {action && <div className="ml-auto">{action}</div>}
+        {(action || host.snapshot) && (
+          <div className="ml-auto flex items-center gap-2">
+            <ExplainButton host={host} className="py-1" />
+            {action}
+          </div>
+        )}
       </div>
-      <div className={cn('p-4', bodyClassName)}>{children}</div>
+      <ExplainPanel host={host} className="mx-4 mt-3 max-w-[760px]" />
+      <div className={cn('p-4', bodyClassName)}>
+        <ExplainProvider host={host}>{children}</ExplainProvider>
+      </div>
     </section>
   );
 }

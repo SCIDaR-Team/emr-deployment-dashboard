@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { BAND_CLASSES, MATURITY_LABEL, MATURITY_NO_DATA } from '@/lib/bands';
 import { cn } from '@/lib/cn';
-import { formatCompactCount, formatCount, formatPercent } from '@/lib/format';
+import { formatCompactCount, formatCount, formatPercent, percentOf } from '@/lib/format';
 import {
   COVERAGE_THEMES,
   INTERNET_GROUPS,
@@ -36,6 +36,13 @@ import type {
   InternetSubscriptions,
   LeadershipBands,
 } from '@/lib/types';
+import type { ChartId } from '@/lib/explain/charts';
+import {
+  ExplainButton,
+  ExplainPanel,
+  ExplainProvider,
+} from '@/modules/explain/explain';
+import { useExplainHost, useExplainTables, useExplaining } from '@/modules/explain/context';
 import { bandOf, countByBand, countLeadershipBands, totalOf, type Scope } from './coverageScope';
 
 /**
@@ -131,7 +138,7 @@ export function CoveragePane({
             domain blocks no longer carrying a band of their own, it is the
             reader's one answer to "how does the country stand" and always
             shows. */}
-        <Block title="Maturity band">
+        <Block title="Maturity band" explain="coverage-maturity">
           {isNational ? (
             <CountRows counts={countByBand(states)} unit="states" of={states.length} />
           ) : (
@@ -140,7 +147,7 @@ export function CoveragePane({
         </Block>
 
         {themes.map((theme) => (
-          <Block key={theme.id} title={theme.label}>
+          <Block key={theme.id} title={theme.label} explain="coverage-domain">
             <SubDomains themeId={theme.id} measures={measures} />
             {/* The counts behind the internet rate, directly beneath it: Access
                 rates is the only sub-domain this domain has, so appending here
@@ -223,13 +230,27 @@ function PaneHeader({
   );
 }
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+function Block({
+  title,
+  explain,
+  children,
+}: {
+  title: string;
+  /** Offer "Explain" on this block, as this chart. */
+  explain?: ChartId;
+  children: React.ReactNode;
+}) {
+  const host = useExplainHost(explain, title);
   return (
     <section className="border-b border-border px-4 py-3.5">
-      <h3 className="mono mb-2.5 text-note font-bold uppercase tracking-[0.11em] text-foreground">
-        {title}
-      </h3>
-      {children}
+      <div className="mb-2.5 flex items-start justify-between gap-2">
+        <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
+          {title}
+        </h3>
+        <ExplainButton host={host} className="-my-0.5" />
+      </div>
+      <ExplainPanel host={host} className="mb-2.5" />
+      <ExplainProvider host={host}>{children}</ExplainProvider>
     </section>
   );
 }
@@ -271,6 +292,31 @@ function CountRows({
   const total = totalOf(counts);
   const unclassified = of != null && of > total ? of - total : 0;
 
+  const explaining = useExplaining();
+  const tables = useMemo(
+    () =>
+      explaining
+        ? [
+            {
+              columns: ['Maturity band', unit[0]!.toUpperCase() + unit.slice(1), 'Share'],
+              rows: [
+                ...(['ready', 'moderately_ready', 'not_ready'] as Band[]).map((b) => [
+                  MATURITY_LABEL[b],
+                  formatCount(counts[b]),
+                  total ? percentOf(counts[b], total, 1) : '—',
+                ]),
+                [`${unit[0]!.toUpperCase() + unit.slice(1)} classified`, formatCount(total), ''],
+                ...(unclassified
+                  ? [['Not yet assessed', formatCount(unclassified), '']]
+                  : []),
+              ],
+            },
+          ]
+        : null,
+    [explaining, counts, total, unclassified, unit],
+  );
+  useExplainTables('bands', tables);
+
   return (
     <div>
       <BandCards counts={counts} labels={MATURITY_LABEL} showPercent />
@@ -309,6 +355,18 @@ function CountRows({
  * same icon — one card instead of three, because there is one reading.
  */
 function Reading({ band }: { band: Band | null }) {
+  const explaining = useExplaining();
+  useExplainTables(
+    'reading',
+    explaining
+      ? [
+          {
+            columns: ['Measure', 'Value'],
+            rows: [['State maturity band', band ? MATURITY_LABEL[band] : MATURITY_NO_DATA]],
+          },
+        ]
+      : null,
+  );
   if (!band) {
     return (
       <div className="border border-border bg-surface-sunk px-2.5 py-2.5">
@@ -366,6 +424,37 @@ function SubDomains({
   measures: CoverageMeasures;
 }) {
   const subs = subDomainsFor(themeId);
+  const explaining = useExplaining();
+  // Only where something was measured: a block of dashes has nothing to explain.
+  const measured = subs.some((sub) => sub.measures.some((m) => measures[m.key] != null));
+  const tables = useMemo(
+    () =>
+      explaining && measured
+        ? [
+            {
+              title: 'Measures',
+              columns: ['Sub-domain', 'Measure', 'Value', 'Of'],
+              rows: subs.flatMap((sub) =>
+                sub.measures.map((m) => {
+                  const v = measures[m.key];
+                  return [
+                    sub.label,
+                    m.label,
+                    v == null
+                      ? 'not measured'
+                      : m.format === 'percent'
+                        ? `${v.toFixed(1)}%`
+                        : formatCount(v),
+                    m.caption,
+                  ];
+                }),
+              ),
+            },
+          ]
+        : null,
+    [explaining, measured, subs, measures],
+  );
+  useExplainTables('measures', tables);
   if (!subs.length) return null;
 
   return (
@@ -568,6 +657,43 @@ function ProviderMark({ provider }: { provider: ProviderDef }) {
 }
 
 function InternetProviders({ internet }: { internet: InternetSubscriptions | null }) {
+  const explaining = useExplaining();
+  const tables = useMemo(() => {
+    if (!explaining || !internet) return null;
+    const { total, population, byProvider } = internet;
+    return [
+      {
+        title: 'Internet subscriptions',
+        columns: ['Technology', 'Operator', 'Subscriptions', 'Share of all subscriptions'],
+        rows: [
+          ['All', 'All operators', formatCompactCount(total), ''],
+          ['Population (NBS 2025)', '', formatCompactCount(population), ''],
+          ...INTERNET_GROUPS.flatMap((g) => {
+            const reporting = g.providers.filter((p) => byProvider[p.id] != null);
+            const subtotal = reporting.reduce((sum, p) => sum + (byProvider[p.id] ?? 0), 0);
+            return [
+              [
+                g.label,
+                'All operators',
+                reporting.length ? formatCompactCount(subtotal) : 'not reported',
+                reporting.length ? shareOfSubs(subtotal, total) : '',
+              ],
+              ...reporting
+                .sort((a, b) => (byProvider[b.id] ?? 0) - (byProvider[a.id] ?? 0))
+                .map((p) => [
+                  g.label,
+                  p.label,
+                  formatCount(byProvider[p.id] ?? 0),
+                  shareOfSubs(byProvider[p.id] ?? 0, total),
+                ]),
+            ];
+          }),
+        ],
+      },
+    ];
+  }, [explaining, internet]);
+  useExplainTables('internet', tables);
+
   if (!internet) return null;
   const { total, population, byProvider } = internet;
 
@@ -837,6 +963,22 @@ function CommitmentCard({
  * country should meet them in the same order.
  */
 function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
+  const explaining = useExplaining();
+  useExplainTables(
+    'leadership',
+    explaining && bands
+      ? [
+          {
+            title: 'Leadership commitments',
+            columns: ['Commitment', 'Answer'],
+            rows: LEADERSHIP_SUB_DOMAINS.map((sub) => [
+              sub.label,
+              LEADERSHIP_ANSWER_LABEL[bands[sub.id]],
+            ]),
+          },
+        ]
+      : null,
+  );
   if (!bands) return null;
 
   return (
@@ -908,6 +1050,24 @@ function LeadershipBandRows({ bands }: { bands: LeadershipBands | null }) {
  */
 function LeadershipSpread({ states }: { states: AreaProfile[] }) {
   const { scored, bySubDomain } = useMemo(() => countLeadershipBands(states), [states]);
+  const explaining = useExplaining();
+  const tables = useMemo(
+    () =>
+      explaining && scored
+        ? [
+            {
+              title: `Leadership commitments, states answering each way, of ${formatCount(scored)} states`,
+              columns: ['Commitment', ...LEADERSHIP_ANSWER_ORDER.map((b) => LEADERSHIP_ANSWER_LABEL[b])],
+              rows: LEADERSHIP_SUB_DOMAINS.map((sub) => [
+                sub.label,
+                ...LEADERSHIP_ANSWER_ORDER.map((b) => formatCount(bySubDomain[sub.id]?.[b] ?? 0)),
+              ]),
+            },
+          ]
+        : null,
+    [explaining, scored, bySubDomain],
+  );
+  useExplainTables('leadership', tables);
 
   if (!scored) return null;
 

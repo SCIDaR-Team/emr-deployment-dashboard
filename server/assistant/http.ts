@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { runAssistant, type AssistantConfig, type AssistantEvent, type ChatMessage } from './agent';
 import type { DashboardData } from './data';
+import { EXPLAIN_LIMITS, parseSnapshot } from '../../src/lib/explain/charts';
+import { explainChart } from './explain';
 import { interpretScenario, type InterpretResult } from './scenario';
 
 /**
@@ -173,6 +175,50 @@ export async function handleScenarioRequest(
     console.error('scenario error', e);
     return { status: 502, json: { error: friendlyError(e) } };
   }
+}
+
+/**
+ * `POST /api/assistant/explain { chart, title, scope, tables }` — explain one
+ * chart from the figures it is showing (see `explain.ts`). Streams like the
+ * chat. Shares the rate limit with the chat.
+ */
+export async function handleExplainRequest(
+  bodyText: string,
+  visitor: string,
+  deps: { config: AssistantConfig; limiter: RateLimiter },
+  signal?: AbortSignal,
+): Promise<AssistantResponse> {
+  if (!deps.limiter.take(visitor)) {
+    return {
+      status: 429,
+      json: { error: 'You have asked a lot in a short time. Try again in a few minutes.' },
+    };
+  }
+  if (bodyText.length > EXPLAIN_LIMITS.bodyChars) {
+    return { status: 413, json: { error: 'This chart has too many figures to explain.' } };
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyText);
+  } catch {
+    return { status: 400, json: { error: 'The request was not valid JSON.' } };
+  }
+  const parsed = parseSnapshot(body);
+  if ('error' in parsed) return { status: 400, json: parsed };
+  const snapshot = parsed;
+
+  async function* events(): AsyncGenerator<string> {
+    try {
+      for await (const event of explainChart(deps.config, snapshot, signal)) {
+        yield sse(event);
+      }
+    } catch (e) {
+      if (signal?.aborted) return;
+      console.error('explain error', e);
+      yield sse({ type: 'error', message: friendlyError(e) });
+    }
+  }
+  return { status: 200, events: events() };
 }
 
 /** The assistant's settings from the environment; throws naming what is

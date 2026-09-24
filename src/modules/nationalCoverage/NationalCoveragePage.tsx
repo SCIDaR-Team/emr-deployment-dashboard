@@ -17,6 +17,7 @@ import { formatPercent } from '@/lib/format';
 import type { GeoDatum } from '@/components/map';
 import type { AreaProfile } from '@/lib/types';
 import { CoverageFilters } from './CoverageFilters';
+import { ExplainScope } from '@/modules/explain/context';
 import { CoveragePane } from './CoveragePane';
 import { bandOf, hasUnbanded, resolveScope } from './coverageScope';
 
@@ -84,6 +85,16 @@ export default function NationalCoveragePage() {
   const { states, national } = useDataContext();
 
   const scope = useMemo(() => resolveScope(states.data, stateId), [states.data, stateId]);
+
+  /** Where the reader is, for "Explain" on the pane's blocks. */
+  const explainScope = useMemo(
+    () => [
+      scope.level === 'state'
+        ? `Area: ${scope.state.name} State`
+        : `Area: Nigeria, all ${states.data.length} states`,
+    ],
+    [scope, states.data.length],
+  );
 
   /** Navigation that carries the querystring with it — changing scope must
    *  never silently drop whatever else is in the link. */
@@ -319,19 +330,21 @@ export default function NationalCoveragePage() {
         {/* Fixed width, wide enough for a full state name and a band label on
             one line without the count rows wrapping. */}
         <aside className="min-h-0 shrink-0 border-t border-border bg-surface lg:h-full lg:w-[480px] lg:border-l lg:border-t-0">
-          <CoveragePane
-            scope={scope}
-            national={national.data}
-            states={states.data}
-            // Read at national level only — the pane drops the list once a
-            // state is open. Handed over unconditionally because the rows are
-            // the same 37 either way and the decision about whether to draw
-            // them belongs with the pane that draws them.
-            listAreas={states.data}
-            listLabel="States"
-            selectedListId={scope.state?.id ?? null}
-            onSelectListItem={(area: AreaProfile) => selectState(area.id)}
-          />
+          <ExplainScope value={explainScope}>
+            <CoveragePane
+              scope={scope}
+              national={national.data}
+              states={states.data}
+              // Read at national level only — the pane drops the list once a
+              // state is open. Handed over unconditionally because the rows are
+              // the same 37 either way and the decision about whether to draw
+              // them belongs with the pane that draws them.
+              listAreas={states.data}
+              listLabel="States"
+              selectedListId={scope.state?.id ?? null}
+              onSelectListItem={(area: AreaProfile) => selectState(area.id)}
+            />
+          </ExplainScope>
         </aside>
       </div>
     </div>
