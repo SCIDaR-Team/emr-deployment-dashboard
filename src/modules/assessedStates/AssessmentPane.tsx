@@ -27,6 +27,7 @@ import {
   gapActionDefs,
   gapsInArea,
   offeredGapIds,
+  type ActionDef,
   type FacilityAction,
 } from '@/lib/gapCatalogue';
 import { facilityBandUnder } from '@/lib/archetype';
@@ -44,12 +45,8 @@ import type {
   GapDomainId,
   Horizon,
 } from '@/lib/types';
-import type { ChartId } from '@/lib/explain/charts';
-import {
-  ExplainButton,
-  ExplainPanel,
-  ExplainProvider,
-} from '@/modules/explain/explain';
+import type { ChartId, ExplainTable } from '@/lib/explain/charts';
+import { ExplainFigures, ExplainFooter, ExplainProvider } from '@/modules/explain/explain';
 import { useExplainHost, useExplainTables, useExplaining } from '@/modules/explain/context';
 import { FacilityNoteThemes, NoteThemesSummary } from './NoteThemes';
 import { useNoteThemes } from './useNoteThemes';
@@ -226,7 +223,6 @@ export function AssessmentPane({
 
             <Block
               title="Gaps and interventions"
-              explain="assessment-gaps"
               note="What is wrong, what closes it, when, and what that costs"
             >
               <GapBlocks facilities={facilities} domains={domains} gapAreas={gapAreas} />
@@ -1167,54 +1163,45 @@ function GapBlocks({
   );
 
   /**
+   * Two kinds of Explain, each under what it explains: one for the headline
+   * figures and the urgency cards, and one per domain in the tree below
+   * (`DomainGaps`), for its gap areas, gaps and interventions.
+   */
+  const summary = useExplainHost('assessment-gaps', 'Gaps and interventions');
+  const summaryTables = (): ExplainTable[] => [
+    {
+      title: 'Headline',
+      columns: ['Measure', 'Value'],
+      rows: [
+        ['Gaps to close', formatCount(gapCount)],
+        ['Interventions to close them', formatCount(actCount)],
+        ['Facilities with a gap', formatCount(affected)],
+        ['Cost of those interventions', formatNaira(cost, true)],
+        ...(overlap
+          ? [[`Facilities with a gap in all ${domains.length} selected domains`, formatCount(overlap.all)]]
+          : []),
+      ],
+    },
+    {
+      title: 'By urgency',
+      columns: ['Urgency', 'When', 'Interventions', 'Facilities', 'Cost'],
+      rows: schedule.map((r) => [
+        HORIZON_SHORT[r.horizon],
+        HORIZON_WHEN[r.horizon],
+        formatCount(r.acts),
+        formatCount(r.facs),
+        moneyCell(r.cost, r.unpriced),
+      ]),
+    },
+  ];
+
+  /**
    * Which sub-domains are showing their gaps.
    *
    * Collapsed by default, opened by the one-area filter — see the block note.
    * Keyed on the selection so re-picking a different single area opens that one
    * instead of leaving the first one hanging open.
    */
-  const explaining = useExplaining();
-  const tables = useMemo(() => {
-    if (!explaining || !tree.length) return null;
-    const money = (cost: number, unpriced: number) =>
-      unpriced && !cost ? 'unpriced' : `${formatNaira(cost, true)}${unpriced ? ' + unpriced' : ''}`;
-    return [
-      {
-        title: 'Headline',
-        columns: ['Measure', 'Value'],
-        rows: [
-          ['Gaps to close', formatCount(gapCount)],
-          ['Interventions to close them', formatCount(actCount)],
-          ['Facilities with a gap', formatCount(affected)],
-          ['Cost of those interventions', formatNaira(cost, true)],
-          ...(overlap
-            ? [[`Facilities with a gap in all ${domains.length} selected domains`, formatCount(overlap.all)]]
-            : []),
-        ],
-      },
-      {
-        title: 'By urgency',
-        columns: ['Urgency', 'When', 'Interventions', 'Facilities', 'Cost'],
-        rows: schedule.map((r) => [
-          HORIZON_SHORT[r.horizon],
-          HORIZON_WHEN[r.horizon],
-          formatCount(r.acts),
-          formatCount(r.facs),
-          money(r.cost, r.unpriced),
-        ]),
-      },
-      {
-        title: 'By domain and gap area, costliest first',
-        columns: ['Domain', 'Gap area', 'Facilities', 'Cost'],
-        rows: tree.flatMap((d) => [
-          [d.label, 'All gap areas', formatCount(d.facs), money(d.cost, d.unpriced)],
-          ...d.areas.map((a) => [d.label, a.label, formatCount(a.facs), money(a.cost, a.unpriced)]),
-        ]),
-      },
-    ];
-  }, [explaining, tree, schedule, gapCount, actCount, affected, cost, overlap, domains.length]);
-  useExplainTables('gaps', tables);
-
   const [manual, setManual] = useState<Record<string, boolean>>({});
   const auto = gapAreas.length === 1 ? gapAreas[0]! : null;
   const open = new Set(
@@ -1230,93 +1217,98 @@ function GapBlocks({
 
   return (
     <div>
-      {/* Four figures on one line, and each answers a question the others
-          cannot. Gaps is what is wrong; Interventions is what has to be done
-          about it, and runs ahead of the first because one gap can call for two
-          actions. Facilities is how wide it goes. Cost is what the second
-          column comes to — it prices interventions, never gaps, which is why
-          the two counts are worth carrying separately at the top of a block
-          that spends the rest of its height reconciling them.
+      <ExplainProvider host={summary}>
+        <ExplainFigures id="gaps" build={summaryTables} />
+        {/* Four figures on one line, and each answers a question the others
+            cannot. Gaps is what is wrong; Interventions is what has to be done
+            about it, and runs ahead of the first because one gap can call for two
+            actions. Facilities is how wide it goes. Cost is what the second
+            column comes to — it prices interventions, never gaps, which is why
+            the two counts are worth carrying separately at the top of a block
+            that spends the rest of its height reconciling them.
 
-          Not the shared `Tile`: its padding and label size are set for a
-          three-across row and would truncate "Interventions" at the quarter
-          width this one needs. */}
-      <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
-        <HeadFigure label="Gaps" value={formatCount(gapCount)} note="to close" />
-        <HeadFigure
-          label="Interventions"
-          value={formatCount(actCount)}
-          note="to close them"
-        />
-        <HeadFigure label="Facilities" value={formatCount(affected)} note="with a gap" />
-        <HeadFigure
-          label="Cost"
-          value={formatNaira(cost, true)}
-          note={unpriced ? 'excludes unpriced' : 'for those interventions'}
-        />
-      </div>
+            Not the shared `Tile`: its padding and label size are set for a
+            three-across row and would truncate "Interventions" at the quarter
+            width this one needs. */}
+        <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
+          <HeadFigure label="Gaps" value={formatCount(gapCount)} note="to close" />
+          <HeadFigure
+            label="Interventions"
+            value={formatCount(actCount)}
+            note="to close them"
+          />
+          <HeadFigure label="Facilities" value={formatCount(affected)} note="with a gap" />
+          <HeadFigure
+            label="Cost"
+            value={formatNaira(cost, true)}
+            note={unpriced ? 'excludes unpriced' : 'for those interventions'}
+          />
+        </div>
 
-      {/* The intersection, against the union in the figures above.
+        {/* The intersection, against the union in the figures above.
 
-          Only from two domains up: with one selected the two are the same
-          facilities, and drawing the distinction would imply one is being made. */}
-      {overlap && (
-        <p className="mt-2 text-body leading-snug text-muted-foreground">
-          <span className="mono font-semibold tabular-nums text-foreground">
-            {formatCount(overlap.all)}
-          </span>{' '}
-          of them carry a gap in <em>all {domains.length}</em> selected domains.
-        </p>
-      )}
+            Only from two domains up: with one selected the two are the same
+            facilities, and drawing the distinction would imply one is being made. */}
+        {overlap && (
+          <p className="mt-2 text-body leading-snug text-muted-foreground">
+            <span className="mono font-semibold tabular-nums text-foreground">
+              {formatCount(overlap.all)}
+            </span>{' '}
+            of them carry a gap in <em>all {domains.length}</em> selected domains.
+          </p>
+        )}
 
-      {/* When the work has to happen, before what the work is.
+        {/* When the work has to happen, before what the work is.
 
-          Urgency belongs to the intervention and not to the gap, so this split
-          has no equivalent in the tree below — a power gap has no single
-          horizon to file itself under. The two blocking cards, Major and
-          Moderate, are what a deployment date turns on.
+            Urgency belongs to the intervention and not to the gap, so this split
+            has no equivalent in the tree below — a power gap has no single
+            horizon to file itself under. The two blocking cards, Major and
+            Moderate, are what a deployment date turns on.
 
-          They are *not* the Not ready and Moderately ready counts above. The
-          source decides readiness from Technical Infrastructure alone, and the
-          Major card counts Major actions in every domain — a workforce gap
-          graded Major sits here and moves no facility's readiness. With the
-          Domain filter on Technical Infrastructure the Major card's facilities
-          are exactly the Not ready ones.
+            They are *not* the Not ready and Moderately ready counts above. The
+            source decides readiness from Technical Infrastructure alone, and the
+            Major card counts Major actions in every domain — a workforce gap
+            graded Major sits here and moves no facility's readiness. With the
+            Domain filter on Technical Infrastructure the Major card's facilities
+            are exactly the Not ready ones.
 
-          Two across rather than four: the figures read beside their labels
-          rather than under them, and "Interventions 17,555" does not fit in a
-          quarter of 420px. */}
-      <div className="mt-5 grid grid-cols-2 gap-px border border-border bg-border">
-        {schedule.map((row) => (
-          <div key={row.horizon} className="min-w-0 bg-surface px-3 py-3">
-            <p
-              className={cn(
-                'mono text-tick font-bold uppercase tracking-[0.07em]',
-                HORIZON_CLASSES[row.horizon].text,
-              )}
-            >
-              <span aria-hidden className="mr-1">
-                {URGENCY_MARKER[row.horizon]}
-              </span>
-              {HORIZON_SHORT[row.horizon]}
-            </p>
-            <p className="text-note leading-tight text-muted-foreground">
-              {HORIZON_WHEN[row.horizon]}
-            </p>
-            <dl className="mt-2.5 space-y-1">
-              <CardFigure label="Interventions" value={formatCount(row.acts)} />
-              <CardFigure label="Facilities" value={formatCount(row.facs)} />
-              <CardFigure
-                label="Cost"
-                value={row.unpriced && !row.cost ? 'n/p' : formatNaira(row.cost, true)}
-                suffix={row.unpriced && row.cost ? '+' : undefined}
-              />
-            </dl>
-          </div>
-        ))}
-      </div>
+            Two across rather than four: the figures read beside their labels
+            rather than under them, and "Interventions 17,555" does not fit in a
+            quarter of 420px. */}
+        <div className="mt-5 grid grid-cols-2 gap-px border border-border bg-border">
+          {schedule.map((row) => (
+            <div key={row.horizon} className="min-w-0 bg-surface px-3 py-3">
+              <p
+                className={cn(
+                  'mono text-tick font-bold uppercase tracking-[0.07em]',
+                  HORIZON_CLASSES[row.horizon].text,
+                )}
+              >
+                <span aria-hidden className="mr-1">
+                  {URGENCY_MARKER[row.horizon]}
+                </span>
+                {HORIZON_SHORT[row.horizon]}
+              </p>
+              <p className="text-note leading-tight text-muted-foreground">
+                {HORIZON_WHEN[row.horizon]}
+              </p>
+              <dl className="mt-2.5 space-y-1">
+                <CardFigure label="Interventions" value={formatCount(row.acts)} />
+                <CardFigure label="Facilities" value={formatCount(row.facs)} />
+                <CardFigure
+                  label="Cost"
+                  value={row.unpriced && !row.cost ? 'n/p' : formatNaira(row.cost, true)}
+                  suffix={row.unpriced && row.cost ? '+' : undefined}
+                />
+              </dl>
+            </div>
+          ))}
+        </div>
+      </ExplainProvider>
+      <ExplainFooter host={summary} className="mt-3" />
 
-      {/* The tree: domain → sub-domain → gap → intervention. */}
+      {/* The tree: domain → sub-domain → gap → intervention. Each domain has
+          its own Explain, under its rows. */}
       <div className="mono mt-5 flex items-baseline gap-2 border-b border-border pb-1 text-tick uppercase tracking-[0.07em] text-muted-foreground">
         <span className="min-w-0 flex-1">Gap and intervention</span>
         <span className="w-[70px] shrink-0 text-right">Facilities</span>
@@ -1325,70 +1317,150 @@ function GapBlocks({
 
       <div className="mt-1.5">
         {tree.map((domain) => (
-          <div key={domain.id} className="border-b border-border py-1.5 last:border-0">
-            <Row
-              label={domain.label}
-              facs={domain.facs}
-              cost={domain.cost}
-              unpriced={domain.unpriced}
-              tone="domain"
-            />
-            <ul className="mt-1">
-              {domain.areas.map((area) => (
-                <li key={area.id}>
-                  <Row
-                    label={area.label}
-                    facs={area.facs}
-                    cost={area.cost}
-                    unpriced={area.unpriced}
-                    tone="area"
-                    expanded={open.has(area.id)}
-                    onToggle={() => toggle(area.id)}
-                  />
-                  {open.has(area.id) && (
-                    <ul className="mb-1 ml-3 border-l border-border pl-2">
-                      {area.conditions.map((c) => (
-                        <li key={c.id} className="mb-1 last:mb-0">
-                          <Row
-                            label={c.label}
-                            facs={c.facs}
-                            cost={c.cost}
-                            unpriced={c.unpriced}
-                            tone="condition"
-                          />
-                          {c.interventions.length ? (
-                            <ul>
-                              {c.interventions.map((iv) => (
-                                <li key={iv.id}>
-                                  <Row
-                                    label={iv.label}
-                                    horizon={iv.horizon}
-                                    unitCostNGN={iv.unitCostNGN}
-                                    unit={iv.unit}
-                                    tone="intervention"
-                                  />
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            /* Some gaps the source records carry no action
-                               behind them. Saying so is more honest than
-                               hiding the gap or inventing a fix for it — see
-                               docs/data-queries. */
-                            <p className="py-0.5 pl-6 text-body italic leading-snug text-muted-foreground">
-                              No intervention recorded.
-                            </p>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <DomainGaps key={domain.id} domain={domain} open={open} toggle={toggle} />
         ))}
       </div>
+    </div>
+  );
+}
+
+/** A cost cell for an explanation: the priced sum, and whether any is unpriced. */
+const moneyCell = (cost: number, unpriced: number) =>
+  unpriced && !cost ? 'unpriced' : `${formatNaira(cost, true)}${unpriced ? ' + unpriced' : ''}`;
+
+interface GapNode {
+  id: string;
+  label: string;
+  facs: number;
+  cost: number;
+  unpriced: number;
+}
+interface GapDomainNode extends GapNode {
+  areas: (GapNode & { conditions: (GapNode & { interventions: ActionDef[] })[] })[];
+}
+
+/**
+ * One domain of the tree, with its own Explain under its rows. The
+ * explanation covers every gap area, gap and intervention in the domain,
+ * including those folded away on screen — one click from view, and the
+ * domain's story is incomplete without them.
+ */
+function DomainGaps({
+  domain,
+  open,
+  toggle,
+}: {
+  domain: GapDomainNode;
+  open: Set<string>;
+  toggle: (id: string) => void;
+}) {
+  const host = useExplainHost('assessment-gap-domain', `${domain.label}: gaps and interventions`);
+  const tables = (): ExplainTable[] =>
+    [
+      {
+        title: `${domain.label}, all gap areas together`,
+        columns: ['Measure', 'Value'],
+        rows: [
+          ['Facilities with a gap in this domain', formatCount(domain.facs)],
+          ['Cost of closing its gaps', moneyCell(domain.cost, domain.unpriced)],
+        ],
+      },
+      {
+        title: 'Gap areas, costliest first',
+        columns: ['Gap area', 'Facilities', 'Cost'],
+        rows: domain.areas.map((a) => [a.label, formatCount(a.facs), moneyCell(a.cost, a.unpriced)]),
+      },
+      {
+        title: 'Gaps within each area, costliest first',
+        columns: ['Gap area', 'Gap', 'Facilities', 'Cost'],
+        rows: domain.areas.flatMap((a) =>
+          a.conditions.map((c) => [a.label, c.label, formatCount(c.facs), moneyCell(c.cost, c.unpriced)]),
+        ),
+      },
+      {
+        title: 'Interventions each gap calls for, most urgent first',
+        columns: ['Gap', 'Intervention', 'Urgency', 'Unit price'],
+        rows: domain.areas.flatMap((a) =>
+          a.conditions.flatMap((c) =>
+            c.interventions.map((iv) => [
+              c.label,
+              iv.label,
+              HORIZON_SHORT[iv.horizon],
+              iv.unitCostNGN == null
+                ? 'unpriced'
+                : `${formatNaira(iv.unitCostNGN, true)} ${iv.unit ? `per ${iv.unit}` : 'each'}`,
+            ]),
+          ),
+        ),
+      },
+    ].filter((t) => t.rows.length);
+
+  return (
+    <div className="border-b border-border py-1.5 last:border-0">
+      <ExplainProvider host={host}>
+        <ExplainFigures id="domain" build={tables} />
+        <Row
+          label={domain.label}
+          facs={domain.facs}
+          cost={domain.cost}
+          unpriced={domain.unpriced}
+          tone="domain"
+        />
+        <ul className="mt-1">
+          {domain.areas.map((area) => (
+            <li key={area.id}>
+              <Row
+                label={area.label}
+                facs={area.facs}
+                cost={area.cost}
+                unpriced={area.unpriced}
+                tone="area"
+                expanded={open.has(area.id)}
+                onToggle={() => toggle(area.id)}
+              />
+              {open.has(area.id) && (
+                <ul className="mb-1 ml-3 border-l border-border pl-2">
+                  {area.conditions.map((c) => (
+                    <li key={c.id} className="mb-1 last:mb-0">
+                      <Row
+                        label={c.label}
+                        facs={c.facs}
+                        cost={c.cost}
+                        unpriced={c.unpriced}
+                        tone="condition"
+                      />
+                      {c.interventions.length ? (
+                        <ul>
+                          {c.interventions.map((iv) => (
+                            <li key={iv.id}>
+                              <Row
+                                label={iv.label}
+                                horizon={iv.horizon}
+                                unitCostNGN={iv.unitCostNGN}
+                                unit={iv.unit}
+                                tone="intervention"
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        /* Some gaps the source records carry no action
+                           behind them. Saying so is more honest than
+                           hiding the gap or inventing a fix for it — see
+                           docs/data-queries. */
+                        <p className="py-0.5 pl-6 text-body italic leading-snug text-muted-foreground">
+                          No intervention recorded.
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </ExplainProvider>
+      <ExplainFooter host={host} className="mb-1 mt-2" />
     </div>
   );
 }
@@ -1962,17 +2034,14 @@ function Block({
   const host = useExplainHost(explain, title);
   return (
     <section className="border-b border-border px-4 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
-          {title}
-        </h3>
-        <ExplainButton host={host} className="-my-0.5" />
-      </div>
+      <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
+        {title}
+      </h3>
       {note && <p className="mt-0.5 text-body leading-snug text-muted-foreground">{note}</p>}
-      <ExplainPanel host={host} className="mt-2.5" />
       <div className="mt-2.5">
         <ExplainProvider host={host}>{children}</ExplainProvider>
       </div>
+      <ExplainFooter host={host} className="mt-3" />
     </section>
   );
 }

@@ -37,11 +37,7 @@ import type {
   LeadershipBands,
 } from '@/lib/types';
 import type { ChartId } from '@/lib/explain/charts';
-import {
-  ExplainButton,
-  ExplainPanel,
-  ExplainProvider,
-} from '@/modules/explain/explain';
+import { ExplainFooter, ExplainProvider } from '@/modules/explain/explain';
 import { useExplainHost, useExplainTables, useExplaining } from '@/modules/explain/context';
 import { bandOf, countByBand, countLeadershipBands, totalOf, type Scope } from './coverageScope';
 
@@ -243,14 +239,11 @@ function Block({
   const host = useExplainHost(explain, title);
   return (
     <section className="border-b border-border px-4 py-3.5">
-      <div className="mb-2.5 flex items-start justify-between gap-2">
-        <h3 className="mono text-note font-bold uppercase tracking-[0.11em] text-foreground">
-          {title}
-        </h3>
-        <ExplainButton host={host} className="-my-0.5" />
-      </div>
-      <ExplainPanel host={host} className="mb-2.5" />
+      <h3 className="mono mb-2.5 text-note font-bold uppercase tracking-[0.11em] text-foreground">
+        {title}
+      </h3>
       <ExplainProvider host={host}>{children}</ExplainProvider>
+      <ExplainFooter host={host} className="mt-3" />
     </section>
   );
 }

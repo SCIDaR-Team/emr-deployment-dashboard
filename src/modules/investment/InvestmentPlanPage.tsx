@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { PAGE_GUIDES } from '@/content/pageGuides';
 import { FilterBar } from '@/components/filters/FilterBar';
 import {
   EmptyState,
@@ -350,6 +351,7 @@ export default function InvestmentPlanPage() {
     <>
       <PageHeader
         title="Investment Plan"
+        guide={PAGE_GUIDES.investment}
         subtitle={scope.name}
         sections={SECTIONS}
       >

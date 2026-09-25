@@ -32,7 +32,12 @@ export const CHARTS = {
   'assessment-gaps': {
     page: 'Assessed States',
     howToRead:
-      'Gaps and the interventions that close them. Headline: gaps to close, interventions to close them (one gap can call for more than one), facilities with a gap, and what the interventions cost. By urgency: Major and Moderate are needed before deployment, Minor before or during, Long-term after. Then by domain and gap area: the facilities carrying the gap, and the cost of closing it, costliest first. A cost excludes interventions the source does not price.',
+      'Gaps and the interventions that close them, in total. Headline: gaps to close, interventions to close them, facilities with a gap, and what the interventions cost. The two counts need not match either way: one gap can call for more than one intervention, and some recorded gaps have no intervention recorded against them. By urgency, for the interventions: Major and Moderate are needed before deployment, Minor before or during, Long-term after; each card counts the interventions, the facilities that need at least one, and their cost. Urgency belongs to an intervention, not a gap. A cost excludes interventions the source does not price. Each domain below these figures has its own explanation.',
+  },
+  'assessment-gap-domain': {
+    page: 'Assessed States',
+    howToRead:
+      'One assessment domain’s gaps and the interventions that close them, for the facilities in scope. Its gap areas, costliest first: the facilities carrying a gap in the area and the cost of closing it. Within each area, each gap the assessment records, with its facilities and cost. Then the interventions each gap calls for, most urgent first — Major and Moderate before deployment, Minor before or during, Long-term after — with the price of one unit. Facilities need different quantities, so a unit price does not multiply out by the facility count. A cost excludes interventions the source does not price. Some of these rows may be folded away on screen.',
   },
   'assessment-notes': {
     page: 'Assessed States',
@@ -52,7 +57,7 @@ export const CHARTS = {
   'scenario-single': {
     page: 'Investment Plan · Scenarios',
     howToRead:
-      'One funding scenario. The chosen power and connectivity fixes are funded facility by facility, cheapest to make Ready first, up to a target: a budget, a number of facilities, or a share Ready. A facility becomes Ready only when every fix it needs is funded. Read as Ready before + Unlocked = Total Ready. The spending queue groups the facilities not yet Ready by the fixes they need, cheapest first, with what one facility in the group costs.',
+      'One funding scenario. The chosen power and connectivity fixes are funded facility by facility, cheapest to make Ready first, up to a target: a budget, a number of facilities, or a share Ready. A facility becomes Ready only when every fix it needs is funded. Read as Ready before + Unlocked = Total Ready. How the money is spent: per fix, the facilities it goes to and its cost; the costs add up to the spend, and a facility needing two fixes counts under both. The spending queue lists every facility not yet Ready, grouped by the fixes it needs, cheapest first, with what one facility in the group costs and how many of the group this scenario funds — groups it funds none of are waiting, not bought.',
   },
   'scenario-compare': {
     page: 'Investment Plan · Scenarios',
@@ -96,7 +101,7 @@ export const EXPLAIN_LIMITS = {
   tables: 6,
   columns: 10,
   rows: 80,
-  cellChars: 160,
+  cellChars: 240,
 };
 
 const text = (v: unknown, max: number): string | null =>

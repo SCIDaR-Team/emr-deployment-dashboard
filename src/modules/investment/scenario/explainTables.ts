@@ -1,7 +1,7 @@
 import type { ExplainTable } from '@/lib/explain/charts';
 import { formatCount, formatNaira, formatShare } from '@/lib/format';
 import { needGroups, planForTarget, type FacilityPath, type TargetPlan } from '@/lib/scenarios';
-import { groupLabel } from './fixes';
+import { FIXES, groupLabel } from './fixes';
 import { planSpec } from './planning';
 import {
   LETTERS,
@@ -60,6 +60,12 @@ function single(paths: readonly FacilityPath[], spec: ScenarioSpec): ExplainTabl
   for (const p of plan.funded)
     landing.set(p.facility.state, (landing.get(p.facility.state) ?? 0) + 1);
   const chosen = new Set(spec.fixes);
+  // How many of each need group the money reaches — the queue lists every
+  // facility waiting, and without this a reader (or a model) takes the whole
+  // queue for what is bought.
+  const fundedByGroup = new Map<string, number>();
+  for (const p of plan.funded) fundedByGroup.set(p.groupKey, (fundedByGroup.get(p.groupKey) ?? 0) + 1);
+  const bought = FIXES.filter((f) => plan.bought[f.id].facilities);
   return [
     {
       title: 'Scenario',
@@ -94,16 +100,29 @@ function single(paths: readonly FacilityPath[], spec: ScenarioSpec): ExplainTabl
           : []),
       ],
     },
+    ...(bought.length
+      ? [
+          {
+            title: 'How the money is spent, per fix',
+            columns: ['Fix', 'Facilities it goes to', 'Cost'],
+            rows: bought.map((f) => [
+              f.label,
+              formatCount(plan.bought[f.id].facilities),
+              naira(plan.bought[f.id].costNGN),
+            ]),
+          },
+        ]
+      : []),
     {
-      title: 'Spending queue: facilities not yet Ready, by the fixes they need, cheapest first',
-      columns: ['Needs', 'Facilities', 'Cost each', 'Cost for all', 'All its fixes chosen'],
+      title: 'Spending queue: every facility not yet Ready, by the fixes it needs, cheapest first',
+      columns: ['Needs', 'In the group', 'Funded by this scenario', 'Cost each', 'All its fixes chosen'],
       rows: needGroups(scoped)
         .slice(0, 16)
         .map((g) => [
           groupLabel(g.needs),
           formatCount(g.facilities),
+          formatCount(fundedByGroup.get(g.key) ?? 0),
           naira(g.costEachNGN),
-          naira(g.costNGN),
           g.needs.every((n) => chosen.has(n)) ? 'Yes' : 'No',
         ]),
     },

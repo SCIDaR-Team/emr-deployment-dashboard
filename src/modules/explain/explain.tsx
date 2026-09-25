@@ -9,16 +9,17 @@ import { createSseReader } from '@/modules/assistant/sse';
 import { SlotContext, useExplaining, useExplainTables, type ExplainHost } from './context';
 
 /**
- * "Explain this chart" — a button on a section's header that has an AI model
+ * "Explain this chart" — a button under a section's chart that has an AI model
  * say what the section shows and what stands out in it, for the scope and
- * filters the reader has on screen.
+ * filters the reader has on screen. The explanation opens below the button, so
+ * the chart is read first and the words follow it (`ExplainFooter`).
  *
  * Three parts, so the words are written from exactly what the reader sees:
  *
  * - **The page** says where the reader is (`ExplainScope`): the area, and the
  *   filters that narrow it.
  * - **The section** is the host (`useExplainHost`): it owns the button and
- *   the panel, and says which chart it is. How that chart is read is ours, in
+ *   the panel, under its chart, and says which chart it is. How that chart is read is ours, in
  *   `lib/explain/charts`.
  * - **The figures** come from the components that draw them
  *   (`useExplainTables`), as the formatted strings they print — so the model
@@ -75,6 +76,28 @@ export function ExplainButton({ host, className }: { host: ExplainHost; classNam
   );
 }
 
+/**
+ * The button and, once opened, the explanation — under the section's chart.
+ * Renders nothing when the section can't be explained.
+ */
+export function ExplainFooter({
+  host,
+  className,
+  panelClassName,
+}: {
+  host: ExplainHost;
+  className?: string;
+  panelClassName?: string;
+}) {
+  if (!host.snapshot) return null;
+  return (
+    <div className={className}>
+      <ExplainButton host={host} className="py-1" />
+      <ExplainPanel host={host} className={cn('mt-2.5', panelClassName)} />
+    </div>
+  );
+}
+
 /** Explanations already written in this visit, by the exact view they explain. */
 const CACHE = new Map<string, string>();
 
@@ -90,6 +113,7 @@ export function ExplainPanel({ host, className }: { host: ExplainHost; className
   const [explained, setExplained] = useState<{ key: string; snapshot: ChartSnapshot } | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const abort = useRef<AbortController | null>(null);
+  const region = useRef<HTMLDivElement>(null);
 
   const run = useCallback(async (snap: ChartSnapshot, key: string, again = false) => {
     abort.current?.abort();
@@ -156,6 +180,13 @@ export function ExplainPanel({ host, className }: { host: ExplainHost; className
   }, [open, snapshot, current, explained, run]);
   useEffect(() => () => abort.current?.abort(), []);
 
+  // Under a tall chart the panel can open below the fold; bring it into view.
+  useEffect(() => {
+    if (!open) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    region.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [open]);
+
   if (!open || !snapshot || !current) return null;
 
   const text = status.kind === 'idle' ? '' : status.text;
@@ -167,6 +198,7 @@ export function ExplainPanel({ host, className }: { host: ExplainHost; className
 
   return (
     <div
+      ref={region}
       role="region"
       aria-label={`Explanation of ${snapshot.title}`}
       aria-live="polite"

@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
-import { Columns3, CopyPlus, MapPin, Square } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CircleHelp, Columns3, CopyPlus, MapPin, Square } from 'lucide-react';
 import { SectionCard } from '@/components/ui';
+import { GuideDrawer } from '@/components/layout/PageGuide';
+import { SCENARIO_GUIDE } from '@/content/pageGuides';
 import { facilityPaths } from '@/lib/scenarios';
 import type { FacilitySummary } from '@/lib/types';
 import { ASSISTANT_ENABLED } from '@/store/assistantStore';
@@ -41,6 +43,7 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
   const s = useScenarioUrl();
   const paths = useMemo(() => facilityPaths(facilities), [facilities]);
   const compareFull = s.compare.length >= MAX_COMPARE;
+  const [howOpen, setHowOpen] = useState(false);
 
   return (
     <SectionCard
@@ -51,6 +54,23 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
       explain={`scenario-${s.view}`}
       action={
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setHowOpen(true)}
+            aria-haspopup="dialog"
+            title="How the builder decides which facilities are funded, and how to read it"
+            className="mono inline-flex items-center gap-1.5 rounded-[4px] border border-border px-2 py-1 text-tick uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+          >
+            <CircleHelp className="h-3 w-3" aria-hidden />
+            How it works
+          </button>
+          <GuideDrawer
+            open={howOpen}
+            onClose={() => setHowOpen(false)}
+            title="Scenarios: how it works"
+            subtitle="How the builder decides who is funded, and how to read it"
+            content={SCENARIO_GUIDE}
+          />
           {ASSISTANT_ENABLED && (
             <DescribeScenario
               current={{ view: s.view, single: s.single, compare: s.compare }}

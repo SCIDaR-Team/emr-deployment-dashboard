@@ -102,6 +102,37 @@ describe('scenarios', () => {
     expect(r.states[0].unlocked).toBe(203);
     expect(r.spreadAcrossAllStates.unlocked).toBe(500);
   });
+
+  it('says how the money is spent: per fix, and in the order it is spent', () => {
+    const r = call('rank_states_for_scenario', {
+      fixes: ALL,
+      target_kind: 'budget',
+      target_value: 20_000_000,
+    });
+    const jigawa = r.states[0];
+    expect(jigawa.spend).toBe('₦19.8m');
+    // The fixes bought add up to the spend: 7.76 + 8.4 + 2.88 + 0.75.
+    expect(jigawa.spentOnEachFix).toEqual([
+      { fix: 'Router', facilities: 194, cost: '₦7.8m' },
+      { fix: 'FibreX', facilities: 8, cost: '₦2.9m' },
+      { fix: 'Solar top-up', facilities: 4, cost: '₦8.4m' },
+      { fix: 'Network extension', facilities: 1, cost: '₦750.0k' },
+    ]);
+    // Cheapest first; the 4 needing a top-up and a router count under both.
+    const order = jigawa.spendingOrder.map(
+      (g: { fixesNeeded: string; facilities: number }) => [g.fixesNeeded, g.facilities],
+    );
+    expect(order).toEqual([
+      ['Router', 190],
+      ['FibreX', 8],
+      ['Network extension', 1],
+      ['Solar top-up + Router', 4],
+    ]);
+    expect(jigawa.budgetLeftOver).toBe('₦210.0k');
+    // The order is only spelled out for the top three.
+    expect(r.states[3].spendingOrder).toBeUndefined();
+    expect(r.states[3].spentOnEachFix).toBeDefined();
+  });
 });
 
 describe('cost_breakdown', () => {

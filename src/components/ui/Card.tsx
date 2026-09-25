@@ -1,11 +1,7 @@
 import { cn } from '@/lib/cn';
 import type { ChartId } from '@/lib/explain/charts';
-import {
-  ExplainButton,
-  ExplainPanel,
-  ExplainProvider,
-} from '@/modules/explain/explain';
-import { useExplainHost } from '@/modules/explain/context';
+import { ExplainFooter, ExplainProvider } from '@/modules/explain/explain';
+import { ExplainHostContext, useExplainHost } from '@/modules/explain/context';
 
 /**
  * Panels.
@@ -76,27 +72,28 @@ export function SectionCard({
 }: SectionCardProps) {
   const host = useExplainHost(explain, title);
   return (
-    <section id={id} data-section={id ? '' : undefined} className={cn('card', className)}>
-      <div className="flex min-h-[52px] flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-3">
-        {/* Title and subtitle keep their own baseline relationship — the
-            subtitle is set smaller and reads as a continuation of the heading,
-            which top- or centre-aligning it would break. */}
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-prose font-semibold text-foreground">{title}</h2>
-          {subtitle && <p className="text-body text-muted-foreground">{subtitle}</p>}
-        </div>
-        {(action || host.snapshot) && (
-          <div className="ml-auto flex items-center gap-2">
-            <ExplainButton host={host} className="py-1" />
-            {action}
+    <ExplainHostContext.Provider value={host}>
+      <section id={id} data-section={id ? '' : undefined} className={cn('card', className)}>
+        <div className="flex min-h-[52px] flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-3">
+          {/* Title and subtitle keep their own baseline relationship — the
+              subtitle is set smaller and reads as a continuation of the heading,
+              which top- or centre-aligning it would break. */}
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="text-prose font-semibold text-foreground">{title}</h2>
+            {subtitle && <p className="text-body text-muted-foreground">{subtitle}</p>}
           </div>
-        )}
-      </div>
-      <ExplainPanel host={host} className="mx-4 mt-3 max-w-[760px]" />
-      <div className={cn('p-4', bodyClassName)}>
-        <ExplainProvider host={host}>{children}</ExplainProvider>
-      </div>
-    </section>
+          {action && <div className="ml-auto flex items-center gap-2">{action}</div>}
+        </div>
+        <div className={cn('p-4', bodyClassName)}>
+          <ExplainProvider host={host}>{children}</ExplainProvider>
+        </div>
+        <ExplainFooter
+          host={host}
+          className="border-t border-border px-4 py-3"
+          panelClassName="max-w-[760px]"
+        />
+      </section>
+    </ExplainHostContext.Provider>
   );
 }
 

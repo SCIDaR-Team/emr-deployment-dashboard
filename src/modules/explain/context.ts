@@ -40,6 +40,15 @@ export interface ExplainHost {
   setOpen: (open: boolean) => void;
 }
 
+/**
+ * The section's host, for controls in its header rather than its body — the
+ * Scenarios section's "Describe" narrates the view it has just set up with it.
+ */
+export const ExplainHostContext = createContext<ExplainHost | null>(null);
+export function useSectionExplainHost(): ExplainHost | null {
+  return useContext(ExplainHostContext);
+}
+
 /** A section that can be explained. `chart` undefined leaves it as it was. */
 export function useExplainHost(chart: ChartId | undefined, title: string): ExplainHost {
   const parts = useRef(new Map<string, { tables: ExplainTable[]; json: string }>());
