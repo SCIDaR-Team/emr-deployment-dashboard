@@ -323,10 +323,13 @@ the unit prices in the generated catalogue, and `facilityGapActions` joins them.
 
 ## Deployment
 
-Vercel, static, from `vercel.json`. The build is `npm run build`; the output is
-`dist/`. The rewrite rule sends everything that is not `/data`, `/geo`,
-`/assets` or the favicon to `index.html`, which is what a client-side router
-needs to survive a hard refresh on a deep link.
+Vercel for now; AWS is the final home (`server/README.md` covers both). The
+build is `npm run build:vercel`, set in `vercel.json`: `npm run build` writes
+`dist/`, then `scripts/build-vercel.mjs` writes Vercel's build output — the
+site, the AI assistant's endpoint as a function, and the routes. The routes
+live in that script, not `vercel.json`. Everything that is not `/api`, `/data`,
+`/geo`, `/assets` or the favicon goes to `index.html`, which is what a
+client-side router needs to survive a hard refresh on a deep link.
 
 One invariant is worth repeating here, because the intuitive change breaks
 production silently: **`public/data/` is committed, generated though it is.**

@@ -7,7 +7,7 @@ tools over the published JSON (`public/data`) and quotes what they return. It
 never answers figures from memory. Each answer links to the page that shows it.
 
 ```
-browser ──POST /api/assistant──▶ Lambda (server/assistant) ──▶ OpenAI Responses API
+browser ──POST /api/assistant──▶ Vercel function or Lambda ──▶ OpenAI Responses API
    ▲                                 │   ▲
    └────── streamed answer ◀─────────┘   └── tools over facilities-summary / states / national JSON
 ```
@@ -22,7 +22,9 @@ browser ──POST /api/assistant──▶ Lambda (server/assistant) ──▶ O
 | `assistant/scenario.ts` | "Describe a scenario": words to the Scenarios section's settings, every value checked against the data. |
 | `assistant/agent.ts` | One answer: stream, run the tools the model asks for, repeat. |
 | `assistant/http.ts` | The endpoint: input limits, rate limit, server-sent events, friendly errors. |
+| `assistant/node.ts` | The endpoint as a Node `(req, res)` handler, shared by dev and Vercel. |
 | `assistant/lambda.ts` | AWS Lambda handler (Function URL, response streaming). |
+| `assistant/vercel.ts` | Vercel function handler. |
 | `assistant/dev.ts` | The same endpoint inside `npm run dev`. |
 | `src/modules/assistant/` | The chat panel in the dashboard. |
 | `src/modules/investment/scenario/DescribeScenario.tsx` | The "Describe" box in the Scenarios section. |
@@ -42,8 +44,9 @@ browser ──POST /api/assistant──▶ Lambda (server/assistant) ──▶ O
 
 | Variable | Where | Required | Meaning |
 |---|---|---|---|
-| `OPENAI_API_KEY` | server | yes | OpenAI project key. Keep it in AWS Secrets Manager. |
-| `OPENAI_MODEL` | server | yes | The OpenAI model to use. Pick a current model that supports function calling. |
+| `OPENAI_API_KEY` | server | yes | OpenAI project key, or the key for the provider in `OPENAI_BASE_URL`. On AWS, keep it in Secrets Manager. |
+| `OPENAI_MODEL` | server | yes | The model to use. Pick a current model that supports function calling and JSON-schema output. |
+| `OPENAI_BASE_URL` | server | no | Another provider with an OpenAI-compatible Responses API. Groq: `https://api.groq.com/openai/v1` with `openai/gpt-oss-120b`. Leave `OPENAI_REASONING_EFFORT` unset there — it asks for OpenAI's encrypted reasoning. Unset means OpenAI. |
 | `OPENAI_REASONING_EFFORT` | server | no | `low` / `medium` / `high`. Set this **only** for a reasoning model; leave unset otherwise. |
 | `OPENAI_MAX_OUTPUT_TOKENS` | server | no | Cap on one response's length. Default 1500. |
 | `ASSISTANT_ALLOWED_ORIGIN` | server | no | Only if the page and the endpoint are on different origins (see CORS below). |
@@ -58,6 +61,23 @@ browser ──POST /api/assistant──▶ Lambda (server/assistant) ──▶ O
 2. `npm run dev`. The endpoint is served at `/api/assistant` by the dev server,
    and the "Ask the data" button is at the bottom right of every module page
    (not the landing page). Without a key, the panel shows what is missing.
+
+## Deploy on Vercel (for now)
+
+`vercel.json` already sets the build command, `npm run build:vercel`. It builds
+the site and bundles the endpoint as a Vercel function at `/api/assistant`
+(with `/scenario` and `/explain`), with the data beside it.
+
+1. In the Vercel project's **Settings → Environment Variables**, add
+   `OPENAI_API_KEY`, `OPENAI_MODEL`, and `OPENAI_BASE_URL` if not OpenAI.
+   Mark the key **Sensitive**.
+2. Add `VITE_ASSISTANT_ENABLED=true` to show the panel. It is read at build
+   time, so redeploy after adding it.
+3. Redeploy. The function answers from the data in that deployment, so a data
+   change ships with the site as usual.
+
+The function runs for up to 60 seconds per answer and streams it. Nothing is
+needed for CORS: the endpoint is on the site's own origin.
 
 ## Deploy on AWS
 
@@ -108,6 +128,9 @@ Layered controls:
 
 Requests are sent with `store: false`, so OpenAI does not keep the conversation
 as a stored response.
+
+With `OPENAI_BASE_URL` set, all of this goes to that provider instead, under
+its own data terms.
 
 There is no agreed data policy yet for sending facility data to a model
 provider. Confirm with NPHCDA before going live.

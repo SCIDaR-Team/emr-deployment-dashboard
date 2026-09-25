@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:assistant": "node scripts/build-assistant.mjs",
+    "build:vercel": "npm run build && node scripts/build-vercel.mjs",
     "briefs:draft": "vite-node scripts/draft-briefs.ts",
     "notes:themes": "vite-node scripts/note-themes.ts",
     "preview": "vite preview",
