@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { formatCount, formatNaira, formatShare } from '@/lib/format';
 import type { FacilityPath } from '@/lib/scenarios';
 import { FixPicker, StatePicker, TargetControl } from './controls';
+import { FIXES } from './fixes';
 import { planSpec, useStateItems, type SpecPlan } from './planning';
 import { Readiness } from './results';
 import { LETTERS, MAX_COMPARE, type ScenarioSpec } from './scenarioState';
@@ -68,13 +69,14 @@ export function CompareView({
     <div className="overflow-x-auto lg:h-full lg:overflow-y-auto">
       {/* Five shared rows — name, the scenario, readiness, spend, per
           facility — that every column is a subgrid of, so each row sits at
-          the same height in every column whatever its content. The three
-          result rows share the height left over. */}
+          the same height in every column whatever its content. Each row is as
+          tall as its content; any height left over goes to the last, under
+          its content, rather than opening bands between the results. */}
       <div
         className="grid min-w-full gap-x-px bg-border lg:h-full"
         style={{
           gridTemplateColumns: `repeat(${columns}, minmax(232px, 1fr))`,
-          gridTemplateRows: 'auto auto minmax(auto, 1.3fr) minmax(auto, 1fr) minmax(auto, 1fr)',
+          gridTemplateRows: 'auto auto auto auto minmax(auto, 1fr)',
         }}
       >
         {specs.map((spec, i) => (
@@ -87,6 +89,7 @@ export function CompareView({
             scale={scale}
             mostReady={plans[i]!.plan.newlyReady === most && most > 0}
             bestValue={perFacility(plans[i]!) === best && best > 0}
+            best={best}
             onChange={(s) => set(i, s)}
             onRemove={
               specs.length > 1 ? () => onChange(specs.filter((_, j) => j !== i)) : undefined
@@ -126,6 +129,7 @@ function Column({
   scale,
   mostReady,
   bestValue,
+  best,
   onChange,
   onRemove,
   onOpen,
@@ -137,6 +141,8 @@ function Column({
   scale: { spend: number; per: number };
   mostReady: boolean;
   bestValue: boolean;
+  /** The lowest cost per facility among the columns, or -1 with one column. */
+  best: number;
   onChange: (spec: ScenarioSpec) => void;
   onRemove?: () => void;
   onOpen: () => void;
@@ -205,9 +211,10 @@ function Column({
         />
       </div>
 
-      {/* What it comes to: three rows, each centred in its shared row. A
-          target the fixes cannot reach says so in the target control. */}
-      <div className="flex flex-col justify-center border-t border-border px-3 py-2">
+      {/* What it comes to: readiness, then what it spends and on what, then
+          what each facility costs. A target the fixes cannot reach says so in
+          the target control. */}
+      <div className="flex flex-col border-t border-border px-3 py-2.5">
         <Readiness
           before={plan.readyBefore}
           unlocked={plan.newlyReady}
@@ -222,22 +229,82 @@ function Column({
         </div>
         <ReadyBar before={plan.readyBefore} added={plan.newlyReady} total={total} />
       </div>
-      <div className="flex flex-col justify-center px-3 py-2">
+      <div className="border-t border-border px-3 py-2.5">
         <Row
           label="Spend"
           value={formatNaira(plan.spendNGN, true)}
           share={plan.spendNGN / scale.spend}
         />
+        <SpendBreakdown plan={plan} />
+        {plan.overBudget.facilities > 0 && (
+          <p className="mt-2 text-[10.5px] leading-snug text-muted-foreground 2xl:text-note">
+            Beyond this target, these fixes could make{' '}
+            {formatCount(plan.overBudget.facilities)} more Ready for{' '}
+            {formatNaira(plan.overBudget.costNGN, true)} more.
+          </p>
+        )}
       </div>
-      <div className="flex flex-col justify-center px-3 py-2">
+      <div className="border-t border-border px-3 py-2.5">
         <Row
           label="Per facility"
           value={per ? formatNaira(per, true) : '—'}
           share={per / scale.per}
           badge={bestValue ? <Badge>Best value</Badge> : undefined}
         />
+        {per > 0 && best > 0 && (
+          <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground 2xl:text-note">
+            {bestValue
+              ? 'The lowest cost per facility made Ready here.'
+              : `${timesOf(per, best)} the best value here (${formatNaira(best, true)}).`}
+          </p>
+        )}
       </div>
     </div>
+  );
+}
+
+/** "1.9×" or "17×": how many times the best cost per facility this is. */
+function timesOf(value: number, best: number): string {
+  const x = value / best;
+  return `${x < 10 ? x.toFixed(1) : Math.round(x)}×`;
+}
+
+/**
+ * What the spend buys, per fix: the facilities each goes to and its cost, with
+ * a bar for its share of this column's spend. The costs add up to the spend; a
+ * facility needing two fixes counts under both. This is why two columns that
+ * unlock similar numbers can spend very different amounts.
+ */
+function SpendBreakdown({ plan }: { plan: SpecPlan['plan'] }) {
+  const rows = FIXES.filter((f) => plan.bought[f.id].facilities);
+  if (!rows.length) return null;
+  return (
+    <ul className="mt-2.5 space-y-1.5">
+      {rows.map((f) => {
+        const b = plan.bought[f.id];
+        const Icon = f.icon;
+        return (
+          <li key={f.id}>
+            <div className="flex items-baseline gap-1.5 text-note">
+              <Icon className="h-3 w-3 shrink-0 self-center text-muted-foreground" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-foreground">{f.short}</span>
+              <span className="mono shrink-0 tabular-nums text-muted-foreground">
+                {formatCount(b.facilities)} ×
+              </span>
+              <span className="mono w-[58px] shrink-0 text-right font-semibold tabular-nums text-foreground">
+                {formatNaira(b.costNGN, true)}
+              </span>
+            </div>
+            <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-surface-sunk">
+              <div
+                className="h-full rounded-full bg-foreground/30 transition-[width] duration-500 ease-out"
+                style={{ width: `${plan.spendNGN ? (b.costNGN / plan.spendNGN) * 100 : 0}%` }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -292,9 +359,13 @@ function Row({
           {label}
           {badge}
         </span>
-        <span className={'mono text-body font-semibold tabular-nums text-foreground'}>{value}</span>
+        {/* The same size as the readiness figures above, so the three
+            results read as one set. */}
+        <span className="mono text-lead font-semibold leading-none tracking-tight tabular-nums text-foreground tall:text-[19px]">
+          {value}
+        </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-sunk tall:mt-1.5 tall:h-2.5">
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-sunk tall:mt-2 tall:h-3">
         <div
           className={
             'h-full rounded-full bg-foreground/40 transition-[width] duration-500 ease-out'
