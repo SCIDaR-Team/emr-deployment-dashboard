@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, Loader2, Sparkles, Undo2, X } from 'lucide-react';
 import { useDismissable } from '@/hooks/useDismissable';
 import { cn } from '@/lib/cn';
 import { ASSISTANT_ENDPOINT } from '@/modules/assistant/api';
+import { useSectionExplainHost } from '@/modules/explain/context';
+import { ExplainPanel } from '@/modules/explain/explain';
 import type { ScenarioSpec, ScenarioView } from './scenarioState';
 import type { ScenarioUrlState } from './useScenarioUrl';
 
@@ -17,6 +19,11 @@ import type { ScenarioUrlState } from './useScenarioUrl';
  *
  * What was understood is stated back, one line per scenario, with an Undo that
  * puts the section as it was — a misread is visible and one click from gone.
+ *
+ * Then the outcome is narrated under it: once the section has computed the new
+ * view, the section's own Explain is run on it — the same figures, the same
+ * check of every number against them, and the same cache, so pressing Explain
+ * on that view afterwards costs nothing more.
  */
 
 const EXAMPLES = [
@@ -53,6 +60,43 @@ export function DescribeScenario({
   const input = useRef<HTMLInputElement>(null);
   const abort = useRef<AbortController | null>(null);
 
+  /**
+   * The narration. It waits for the section's figures to show the view just
+   * set up: `from` is the snapshot as it stood when the words were sent, and
+   * the narration opens once the snapshot differs from it — or, if the new
+   * view happens to match the old one exactly, shortly after.
+   */
+  const host = useSectionExplainHost();
+  const snapshotKey = useMemo(
+    () => (host?.snapshot ? JSON.stringify(host.snapshot) : null),
+    [host?.snapshot],
+  );
+  const [narrate, setNarrate] = useState<{
+    from: string | null;
+    phase: 'waiting' | 'open' | 'closed';
+  } | null>(null);
+  useEffect(() => {
+    if (narrate?.phase !== 'waiting') return;
+    if (snapshotKey !== null && snapshotKey !== narrate.from) {
+      setNarrate({ ...narrate, phase: 'open' });
+      return;
+    }
+    const t = setTimeout(
+      () => setNarrate((n) => (n?.phase === 'waiting' ? { ...n, phase: 'open' } : n)),
+      600,
+    );
+    return () => clearTimeout(t);
+  }, [narrate, snapshotKey]);
+  const narration =
+    host && narrate && narrate.phase !== 'closed'
+      ? {
+          ...host,
+          open: narrate.phase === 'open' && host.snapshot !== null,
+          setOpen: (o: boolean) =>
+            setNarrate((n) => (n ? { ...n, phase: o ? 'open' : 'closed' } : n)),
+        }
+      : null;
+
   const close = useCallback(() => setOpen(false), []);
   useDismissable(open, close, box);
   useEffect(() => {
@@ -65,6 +109,7 @@ export function DescribeScenario({
     if (!q || status.kind === 'loading') return;
     setText(q);
     setStatus({ kind: 'loading' });
+    setNarrate(null);
     const controller = new AbortController();
     abort.current = controller;
     try {
@@ -90,6 +135,7 @@ export function DescribeScenario({
           : { view: body.view, single: body.specs[0]!, compare: current.compare };
       onApply(next);
       setStatus({ kind: 'done', result: body, previous });
+      setNarrate({ from: snapshotKey, phase: 'waiting' });
     } catch {
       if (!controller.signal.aborted) {
         setStatus({ kind: 'error', message: 'Describing scenarios is not available right now.' });
@@ -215,6 +261,7 @@ export function DescribeScenario({
                   onClick={() => {
                     onApply(status.previous);
                     setStatus({ kind: 'idle' });
+                    setNarrate(null);
                   }}
                   className="inline-flex items-center gap-1 rounded-[4px] border border-border bg-surface px-2 py-0.5 text-note text-foreground hover:border-foreground/40"
                 >
@@ -232,9 +279,22 @@ export function DescribeScenario({
             </div>
           )}
 
+          {status.kind === 'done' && narration && (
+            <div className="mt-2.5 max-h-[45vh] overflow-y-auto">
+              {narration.open ? (
+                <ExplainPanel host={narration} />
+              ) : (
+                <p className="flex items-center gap-1.5 text-note text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  Working out the result…
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="mt-2.5 text-[10.5px] leading-snug text-muted-foreground">
-            An AI model (OpenAI) reads your words as the builder&rsquo;s settings; the figures are
-            the builder&rsquo;s own.
+            An AI model reads your words as the builder&rsquo;s settings and describes the result;
+            the figures are the builder&rsquo;s own.
           </p>
         </div>
       )}

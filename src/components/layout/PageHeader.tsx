@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 import { SectionTabs, type PageSection } from './SectionTabs';
 import { AssistantButton } from '@/modules/assistant/AssistantButton';
+import type { PageGuide } from '@/content/pageGuides';
+import { PageGuideButton } from './PageGuide';
 import { ThemeToggle } from './ThemeToggle';
 
 interface PageHeaderProps {
@@ -24,6 +26,9 @@ interface PageHeaderProps {
    * not render.
    */
   sections?: PageSection[];
+  /** What is on the page and what each part does, behind a "Page guide"
+   *  button beside "Ask the data". */
+  guide?: PageGuide;
   className?: string;
 }
 
@@ -43,6 +48,7 @@ export function PageHeader({
   children,
   actions,
   sections,
+  guide,
   className,
 }: PageHeaderProps) {
   const ref = useRef<HTMLElement>(null);
@@ -97,6 +103,7 @@ export function PageHeader({
             was one more thing in the corner of every screen. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {actions}
+          {guide && <PageGuideButton guide={guide} page={title} />}
           <AssistantButton />
           <ThemeToggle />
         </div>

@@ -70,6 +70,17 @@ export default function BriefPage() {
             {facts.state} on Assessed States
           </Link>
           <div className="ml-auto flex items-center gap-2">
+            {/* In review, a state with no words yet: said in the toolbar, not
+                above the brief, so the page still reads as the document it
+                exports. The live site never offers such a page. */}
+            {!brief && (
+              <span
+                title={`The figures are live from the data. Draft the words with: npm run briefs:draft -- --state ${stateId}`}
+                className="rounded-full bg-moderate-wash px-2 py-0.5 text-tick font-bold uppercase tracking-[0.08em] text-moderate-ink"
+              >
+                No narrative yet
+              </span>
+            )}
             {brief && (
               <span
                 className={cn(
@@ -116,39 +127,30 @@ export default function BriefPage() {
       </div>
 
       <main className="mx-auto max-w-[860px] px-4 py-6 print:max-w-none print:p-0">
-        {/* Review notes — not printed, and never on an approved, current brief. */}
-        {(!brief || brief.status !== 'approved' || stale || unknown.length > 0) && (
+        {/* Review notes on a draft — not printed, and never on an approved,
+            current brief. */}
+        {brief && (brief.status !== 'approved' || stale || unknown.length > 0) && (
           <div className="mb-4 flex gap-2.5 rounded-[10px] border border-moderate/60 bg-moderate-wash px-4 py-3 text-body text-foreground print:hidden">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-moderate-ink" aria-hidden />
             <div className="space-y-1">
-              {!brief ? (
+              {brief.status !== 'approved' && (
                 <p>
-                  <strong>No narrative yet.</strong> The figures below are live from the data. Draft
-                  the words with{' '}
-                  <code className="mono">npm run briefs:draft -- --state {stateId}</code>.
+                  <strong>Draft — not on the live site.</strong> Review{' '}
+                  <code className="mono">src/content/briefs/{stateId}.md</code>, then set{' '}
+                  <code className="mono">status: approved</code> and your name.
                 </p>
-              ) : (
-                <>
-                  {brief.status !== 'approved' && (
-                    <p>
-                      <strong>Draft — not on the live site.</strong> Review{' '}
-                      <code className="mono">src/content/briefs/{stateId}.md</code>, then set{' '}
-                      <code className="mono">status: approved</code> and your name.
-                    </p>
-                  )}
-                  {stale && (
-                    <p>
-                      <strong>Out of date:</strong> the data has changed since this was written.
-                      Redraft or re-check the figures, then approve again.
-                    </p>
-                  )}
-                  {unknown.length > 0 && (
-                    <p>
-                      <strong>Check these figures</strong> — they are not in the data:{' '}
-                      {unknown.join(', ')}.
-                    </p>
-                  )}
-                </>
+              )}
+              {stale && (
+                <p>
+                  <strong>Out of date:</strong> the data has changed since this was written.
+                  Redraft or re-check the figures, then approve again.
+                </p>
+              )}
+              {unknown.length > 0 && (
+                <p>
+                  <strong>Check these figures</strong> — they are not in the data:{' '}
+                  {unknown.join(', ')}.
+                </p>
               )}
             </div>
           </div>

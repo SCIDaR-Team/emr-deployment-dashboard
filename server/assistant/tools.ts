@@ -649,10 +649,45 @@ function summarisePlan(plan: ReturnType<typeof planForTarget>, total: number) {
   };
 }
 
+/**
+ * How a plan's money is spent, so an answer can go past the totals: per fix,
+ * the facilities it goes to and its cost (these add up to the spend; a
+ * facility needing two fixes counts under both), and the order the money
+ * reaches facilities — grouped by the fixes they need, cheapest first, as the
+ * Scenarios section's spending queue shows it.
+ */
+function spendBreakdown(plan: ReturnType<typeof planForTarget>) {
+  const order = new Map<string, { fixes: string; facilities: number; eachNGN: number }>();
+  for (const p of plan.funded) {
+    const g = order.get(p.groupKey) ?? {
+      fixes: p.needs.map((f) => FIX_LABEL[f]).join(' + '),
+      facilities: 0,
+      eachNGN: p.costNGN,
+    };
+    g.facilities += 1;
+    order.set(p.groupKey, g);
+  }
+  const budget = plan.target.kind === 'budget' ? plan.target.ngn : null;
+  return {
+    spentOnEachFix: FIXES.filter((f) => plan.bought[f].facilities).map((f) => ({
+      fix: FIX_LABEL[f],
+      facilities: plan.bought[f].facilities,
+      cost: naira(plan.bought[f].costNGN),
+    })),
+    spendingOrder: [...order.values()].map((g) => ({
+      fixesNeeded: g.fixes,
+      facilities: g.facilities,
+      costEach: naira(g.eachNGN),
+      cost: naira(g.eachNGN * g.facilities),
+    })),
+    budgetLeftOver: budget === null ? undefined : naira(budget - plan.spendNGN),
+  };
+}
+
 const runScenario: ToolDef = {
   name: 'run_scenario',
   description:
-    'Fund power and connectivity fixes toward a target and see what it unlocks: Ready before, Unlocked, Total Ready, spend and cost per facility. Money goes to the cheapest facilities to make Ready first. Optionally limited to some states.',
+    'Fund power and connectivity fixes toward a target and see what it unlocks: Ready before, Unlocked, Total Ready, spend and cost per facility, and how the money is spent — per fix and in the order it reaches facilities. Money goes to the cheapest facilities to make Ready first. Optionally limited to some states.',
   parameters: obj({
     fixes: FIXES_ARG,
     ...TARGET_ARGS,
@@ -683,6 +718,7 @@ const runScenario: ToolDef = {
       scope: states.length ? states.join(', ') : 'All 12 assessed states',
       fixes: fixes.map((f) => FIX_LABEL[f]),
       ...summarisePlan(plan, facilities.length),
+      ...spendBreakdown(plan),
       unlockedByState: Object.fromEntries([...byState].sort((a, b) => b[1] - a[1])),
       links: [
         {
@@ -697,7 +733,7 @@ const runScenario: ToolDef = {
 const rankStates: ToolDef = {
   name: 'rank_states_for_scenario',
   description:
-    'Run the same scenario in each assessed state on its own and rank them — e.g. "with ₦20m in one state, which unlocks the most?" Also gives the same target spread across all states for comparison.',
+    'Run the same scenario in each assessed state on its own and rank them — e.g. "with ₦20m in one state, which unlocks the most?" Each state says what the money buys per fix; the top three also give the order it is spent in. Also gives the same target spread across all states for comparison.',
   parameters: obj({ fixes: FIXES_ARG, ...TARGET_ARGS }),
   run(data, args) {
     const { fixes, target } = parseScenario(args);
@@ -712,7 +748,12 @@ const rankStates: ToolDef = {
           ? b.unlocked - a.unlocked || a.raw.spendNGN - b.raw.spendNGN
           : Number(!!a.shortfall) - Number(!!b.shortfall) || a.raw.spendNGN - b.raw.spendNGN,
       )
-      .map(({ raw: _raw, ...r }) => r);
+      // What the money buys in every state; the order it is spent in only for
+      // the top three, which are the ones an answer goes into.
+      .map(({ raw, ...r }, i) => {
+        const { spentOnEachFix, spendingOrder, budgetLeftOver } = spendBreakdown(raw);
+        return { ...r, spentOnEachFix, ...(i < 3 ? { spendingOrder, budgetLeftOver } : {}) };
+      });
     const all = planForTarget(facilityPaths(data.facilities), allowed, target);
     const spec = { name: 'Asked', fixes, target, states: [] };
     return {

@@ -3,6 +3,7 @@ import { ArrowLeft, FileText } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { offersBrief } from '@/lib/briefs/content';
 import { PageHeader, Field } from '@/components/layout/PageHeader';
+import { PAGE_GUIDES } from '@/content/pageGuides';
 import { FILTER_FIELD, FilterBar } from '@/components/filters/FilterBar';
 import {
   LGAFacilityMap,
@@ -623,6 +624,7 @@ export default function AssessedStatesPage() {
     <div className="flex min-h-0 flex-col lg:h-full">
       <PageHeader
         title="Assessed States"
+        guide={PAGE_GUIDES.assessment}
         subtitle={subtitleFor(scope.level, domains)}
         actions={
           // The state's one-page brief, once a state is in view and a brief
@@ -816,21 +818,22 @@ function needLabel(
 }
 
 function subtitleFor(level: AssessmentLevel, domains: FacilityThemeId[]): string {
-  // The subtitle names the encoding, and the two map levels no longer share
-  // one: the states are filled by their maturity band, the LGAs beneath them
-  // by what they need.
+  // The subtitle names what the map draws. The national map fills the states
+  // by their maturity band; from a state down it plots every facility in its
+  // readiness band, with the LGAs outlined but not filled (see the note at the
+  // top of this file).
   const scope =
     level === 'all'
       ? 'The 12 states visited, by maturity band'
       : level === 'state'
-        ? 'Local government areas, by investment need'
+        ? 'Every facility surveyed in this state, by readiness'
         : level === 'lga'
-          ? 'Every facility surveyed in this LGA'
+          ? 'Every facility surveyed in this LGA, by readiness'
           : 'One facility';
 
-  // Naming the domains here rather than only in the pane: they narrow the
-  // investment need the LGA map is filled with and the gaps the pane counts, so
-  // a reader looking at a deep LGA needs to know whose gaps it is deep in.
+  // Naming the domains here rather than only in the pane: they narrow the gaps
+  // the pane counts and the need the areas are ranked and hovered by, so a
+  // reader looking at a costly LGA needs to know whose gaps it is costly in.
   // Readiness is never re-read through a domain — the source has no band per
   // domain — so the facility points and the state fills do not move with it.
   const mode = domainSelectionMode(domains);

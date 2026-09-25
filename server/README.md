@@ -59,8 +59,10 @@ browser ──POST /api/assistant──▶ Vercel function or Lambda ──▶ O
 1. Copy `.env.example` to `.env.local` and fill in `OPENAI_API_KEY` and
    `OPENAI_MODEL`. `.env.local` is git-ignored.
 2. `npm run dev`. The endpoint is served at `/api/assistant` by the dev server,
-   and the "Ask the data" button is at the bottom right of every module page
-   (not the landing page). Without a key, the panel shows what is missing.
+   and the "Ask the data" button is at the top right of every module page's
+   header (not the landing page or the state briefs), or press `/`. Below
+   1024px wide it is the icon in the top bar. Without a key, the panel shows
+   what is missing.
 
 ## Deploy on Vercel (for now)
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { PAGE_GUIDES } from '@/content/pageGuides';
 import {
   MapLegend,
   NigeriaChoropleth,
@@ -265,6 +266,7 @@ export default function NationalCoveragePage() {
     <div className="flex min-h-0 flex-col lg:h-full">
       <PageHeader
         title="National Coverage"
+        guide={PAGE_GUIDES.coverage}
         subtitle={subtitleFor(scope.level)}
         back={
           scope.level !== 'national' ? (
