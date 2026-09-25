@@ -580,6 +580,30 @@ export function NigeriaChoropleth({
                 <p className="mt-0.5 max-w-[200px] italic text-muted-foreground">
                   Secondary evidence — desk review only, no facility-level detail
                 </p>
+              ) : hoverDatum?.tooltipGroups ? (
+                <>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {hoverDatum.bandLabel ??
+                      (hoverDatum.band ? BAND_LABEL[hoverDatum.band] : 'No data')}
+                  </p>
+                  {hoverDatum.tooltipGroups.map((group) => (
+                    <div key={group.title} className="mt-2 min-w-[220px]">
+                      <p className="mono text-tick font-bold uppercase tracking-[0.09em] text-muted-foreground">
+                        {group.title}
+                      </p>
+                      <dl className="mt-0.5 space-y-px">
+                        {group.rows.map((row) => (
+                          <div key={row.label} className="flex items-baseline justify-between gap-4">
+                            <dt className="text-note text-muted-foreground">{row.label}</dt>
+                            <dd className="mono text-note font-semibold tabular-nums text-foreground">
+                              {row.value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ))}
+                </>
               ) : hoverDatum?.band || hoverDatum?.bandLabel ? (
                 <p className="mt-0.5 text-muted-foreground">
                   {hoverDatum.bandLabel ?? BAND_LABEL[hoverDatum.band!]} ·{' '}

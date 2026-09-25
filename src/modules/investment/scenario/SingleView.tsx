@@ -58,6 +58,9 @@ export function SingleView({
             onChange={setFixes}
             gains={gains}
             bought={plan.bought}
+            gainCaption={
+              spec.target.kind === 'budget' ? 'more Ready if added' : 'more in reach if added'
+            }
             limited={spec.target.kind !== 'budget' || spec.target.ngn !== null}
             className="mt-2 flex-1"
           />

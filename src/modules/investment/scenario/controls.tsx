@@ -149,9 +149,10 @@ export function FixActions({
 }
 
 /**
- * The six fixes as switches. Full size: a tile each, with the unit price and a
- * live hint — how many more facilities adding it would make Ready now, or what
- * it is buying. Compact: an icon each, for a comparison column.
+ * The six fixes as switches. Full size: a tile each, led by its live figure —
+ * how many more facilities adding it would make Ready (or bring in reach), or
+ * how many it is making Ready — with the unit price under it. Compact: an icon
+ * each, for a comparison column.
  */
 export function FixPicker({
   chosen,
@@ -159,12 +160,16 @@ export function FixPicker({
   gains,
   bought,
   limited,
+  gainCaption = 'more Ready if added',
   compact,
   className,
 }: {
   chosen: ReadonlySet<ScenarioComponentId>;
   onChange: (next: ScenarioComponentId[]) => void;
   gains?: Partial<Record<ScenarioComponentId, number>>;
+  /** What an unchosen tile's figure means: more Ready at the budget, or —
+   *  under a facilities or share target — more in reach at all. */
+  gainCaption?: string;
   bought?: Record<ScenarioComponentId, { facilities: number; costNGN: number }>;
   limited?: boolean;
   compact?: boolean;
@@ -216,6 +221,7 @@ export function FixPicker({
           fix={fix}
           on={chosen.has(fix.id)}
           gain={gains?.[fix.id]}
+          gainCaption={gainCaption}
           bought={bought?.[fix.id]}
           limited={Boolean(limited)}
           onToggle={() => toggle(fix.id)}
@@ -229,6 +235,7 @@ function FixTile({
   fix,
   on,
   gain,
+  gainCaption,
   bought,
   limited,
   onToggle,
@@ -236,11 +243,29 @@ function FixTile({
   fix: FixDef;
   on: boolean;
   gain: number | undefined;
+  gainCaption: string;
   bought: { facilities: number; costNGN: number } | undefined;
   limited: boolean;
   onToggle: () => void;
 }) {
   const Icon = fix.icon;
+  /*
+   * The figure is the tile's point, so it is the biggest thing in it: the
+   * tiles share the panel's height, and the room that used to sit empty
+   * between the name and a line of small print now carries the number. The
+   * caption under it says what the number counts; the unit price follows.
+   */
+  const figure = on
+    ? bought?.facilities
+      ? { value: formatCount(bought.facilities), caption: 'made Ready with it', tone: 'ready' as const }
+      : {
+          value: '—',
+          caption: limited ? 'not reached by the target' : 'needs another fix too',
+          tone: 'muted' as const,
+        }
+    : gain
+      ? { value: `+${formatCount(gain)}`, caption: gainCaption, tone: 'ready' as const }
+      : { value: '—', caption: 'adds none', tone: 'muted' as const };
   return (
     <button
       type="button"
@@ -248,7 +273,7 @@ function FixTile({
       onClick={onToggle}
       title={`${fix.label} — ${fix.blurb}`}
       className={cn(
-        'group flex min-w-0 flex-col justify-between gap-1 rounded-[7px] border px-2.5 py-1.5 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+        'group flex min-w-0 flex-col justify-between gap-1.5 rounded-[7px] border px-2.5 py-2 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
         on
           ? 'border-ready-ink bg-ready-wash shadow-[inset_0_0_0_1px_hsl(var(--ready-ink))]'
           : 'border-border bg-surface hover:border-foreground/30',
@@ -269,24 +294,25 @@ function FixTile({
           {fix.short}
         </span>
       </span>
-      <span className="mono flex items-baseline justify-between gap-1 text-note tabular-nums">
-        <span className="text-muted-foreground">{formatNaira(fix.unitCostNGN, true)}</span>
-        {on ? (
-          bought?.facilities ? (
-            <span className="flex min-w-0 items-center gap-0.5 font-semibold text-ready-ink">
-              <Check className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
-              <span className="truncate">{formatCount(bought.facilities)} Ready</span>
-            </span>
-          ) : (
-            <span className="truncate text-muted-foreground">
-              {limited ? 'not reached' : 'needs more'}
-            </span>
-          )
-        ) : gain ? (
-          <span className="truncate font-semibold text-ready-ink">+{formatCount(gain)}</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
+      <span className="flex min-w-0 flex-col">
+        <span
+          className={cn(
+            'mono flex items-center gap-1 text-[22px] font-semibold leading-none tracking-tight tabular-nums tall:text-[26px]',
+            figure.tone === 'ready' ? 'text-ready-ink' : 'text-muted-foreground',
+          )}
+        >
+          {on && figure.tone === 'ready' && (
+            <Check className="h-4 w-4 shrink-0 tall:h-5 tall:w-5" strokeWidth={3} aria-hidden />
+          )}
+          <span className="truncate">{figure.value}</span>
+        </span>
+        <span className="mt-0.5 truncate text-note leading-snug text-muted-foreground">
+          {figure.caption}
+        </span>
+        <span className="mono mt-1.5 truncate text-body font-medium tabular-nums text-foreground">
+          {formatNaira(fix.unitCostNGN, true)}
+          <span className="ml-1 font-sans text-note font-normal text-muted-foreground">each</span>
+        </span>
       </span>
     </button>
   );

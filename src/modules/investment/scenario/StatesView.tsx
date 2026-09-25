@@ -120,6 +120,9 @@ export function StatesView({
             onChange={setFixes}
             gains={gains}
             bought={national.bought}
+            gainCaption={
+              t.kind === 'budget' ? 'more Ready if added' : 'more in reach if added'
+            }
             limited={t.kind !== 'budget' || t.ngn !== null}
             className="mt-2 flex-1"
           />

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PAGE_GUIDES } from '@/content/pageGuides';
 import { FilterBar } from '@/components/filters/FilterBar';
@@ -257,6 +258,18 @@ export default function InvestmentPlanPage() {
   const { states, facilities, national } = useDataContext();
   const selectedStates = useFilterStore((s) => s.states);
   const [groupMode, setGroupMode] = useState<GroupMode>('phase');
+  /** Costed interventions' folded groups, by grouping and group — so a new
+   *  grouping opens with every group expanded. */
+  const [folded, setFolded] = useState<Set<string>>(() => new Set());
+  const foldKey = (groupKey: string) => `${groupMode}:${groupKey}`;
+  const toggleFold = (groupKey: string) =>
+    setFolded((prev) => {
+      const next = new Set(prev);
+      const k = foldKey(groupKey);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
 
   /** Scope: the selected states, or the whole country when nothing is picked.
    *  The national profile is used verbatim for "everywhere" rather than
@@ -380,7 +393,21 @@ export default function InvestmentPlanPage() {
             id="interventions"
             title="Costed interventions"
             subtitle={INTERVENTIONS_SUBTITLE}
-            action={<GroupSwitch value={groupMode} onChange={setGroupMode} />}
+            action={
+              <div className="flex items-center gap-2">
+                {/* Only where there are groups to fold: the flat Cost view is
+                    one list. */}
+                {groups.some((g) => g.heading) && (
+                  <FoldAll
+                    allFolded={groups.every((g) => !g.heading || folded.has(foldKey(g.key)))}
+                    onChange={(fold) =>
+                      setFolded(fold ? new Set(groups.map((g) => foldKey(g.key))) : new Set())
+                    }
+                  />
+                )}
+                <GroupSwitch value={groupMode} onChange={setGroupMode} />
+              </div>
+            }
             bodyClassName="p-0"
             explain="investment-interventions"
           >
@@ -441,24 +468,34 @@ export default function InvestmentPlanPage() {
                         ))}
                       </tr>
                     </thead>
-                    {groups.map((group) => (
-                      <tbody key={group.key}>
-                        {group.heading && (
-                          <GroupHeader heading={group.heading} span={columns.length} />
-                        )}
-                        {group.items.map((item) => (
-                          <InvestmentRow key={item.id} item={item} columns={columns} />
-                        ))}
-                        {group.heading && (
-                          <GroupSubtotal
-                            label={group.heading.label}
-                            cost={group.cost}
-                            unpriced={group.unpriced}
-                            span={columns.length - 1}
-                          />
-                        )}
-                      </tbody>
-                    ))}
+                    {groups.map((group) => {
+                      const isFolded = Boolean(group.heading) && folded.has(foldKey(group.key));
+                      return (
+                        <tbody key={group.key}>
+                          {group.heading && (
+                            <GroupHeader
+                              heading={group.heading}
+                              span={columns.length}
+                              open={!isFolded}
+                              lines={group.items.length}
+                              onToggle={() => toggleFold(group.key)}
+                            />
+                          )}
+                          {!isFolded &&
+                            group.items.map((item) => (
+                              <InvestmentRow key={item.id} item={item} columns={columns} />
+                            ))}
+                          {group.heading && (
+                            <GroupSubtotal
+                              label={group.heading.label}
+                              cost={group.cost}
+                              unpriced={group.unpriced}
+                              span={columns.length - 1}
+                            />
+                          )}
+                        </tbody>
+                      );
+                    })}
                     {/* The closing sum.
                       Right-aligned against its figure, like every group
                       subtotal above it — it used to sit flush left at the far
@@ -625,32 +662,73 @@ function GroupSwitch({
  * read and how the grand total in the `tfoot` already works. So the header
  * names the group and `GroupSubtotal` adds it up.
  */
+/**
+ * A group's heading, and the switch that folds it: folded, its lines are
+ * hidden and its subtotal stays, so a fully folded table reads as the groups
+ * and what each costs, down to the grand total.
+ */
 function GroupHeader({
   heading,
   span,
+  open,
+  lines,
+  onToggle,
 }: {
   heading: NonNullable<Group['heading']>;
   span: number;
+  open: boolean;
+  lines: number;
+  onToggle: () => void;
 }) {
   return (
     <tr className="border-b border-border bg-muted/40">
-      <td className="td" colSpan={span}>
-        <span
-          className={cn(
-            'mono text-note font-bold uppercase tracking-[0.07em]',
-            heading.className ?? 'text-foreground',
-          )}
+      <td className="p-0" colSpan={span}>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          title={open ? `Fold ${heading.label}` : `Show the ${lines} lines in ${heading.label}`}
+          className="td flex w-full items-center gap-1.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         >
-          {heading.marker && (
-            <span aria-hidden className="mr-1">
-              {heading.marker}
-            </span>
-          )}
-          {heading.label}
-        </span>
-        <span className="ml-2 text-note text-muted-foreground">{heading.note}</span>
+          <ChevronRight
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
+              open && 'rotate-90',
+            )}
+            aria-hidden
+          />
+          <span
+            className={cn(
+              'mono text-note font-bold uppercase tracking-[0.07em]',
+              heading.className ?? 'text-foreground',
+            )}
+          >
+            {heading.marker && (
+              <span aria-hidden className="mr-1">
+                {heading.marker}
+              </span>
+            )}
+            {heading.label}
+          </span>
+          <span className="ml-1 text-note text-muted-foreground">{heading.note}</span>
+        </button>
       </td>
     </tr>
+  );
+}
+
+/** Fold or open every group of Costed interventions at once. */
+function FoldAll({ allFolded, onChange }: { allFolded: boolean; onChange: (fold: boolean) => void }) {
+  const Icon = allFolded ? ChevronsUpDown : ChevronsDownUp;
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!allFolded)}
+      className="mono inline-flex items-center gap-1.5 rounded-[3px] border border-border px-2 py-1 text-tick uppercase tracking-[0.09em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+    >
+      <Icon className="h-3 w-3" aria-hidden />
+      {allFolded ? 'Expand all' : 'Collapse all'}
+    </button>
   );
 }
 
