@@ -153,6 +153,12 @@ export interface GeoDatum {
   /** Pre-formatted measure for the tooltip, e.g. "54.1% not ready". */
   valueLabel?: string;
   /**
+   * Labelled groups of figures for the tooltip, under the band — National
+   * Coverage's state readings by domain. When set they replace `valueLabel` in
+   * the tooltip (which still names the shape for screen readers and exports).
+   */
+  tooltipGroups?: { title: string; rows: { label: string; value: string }[] }[];
+  /**
    * The band's name, where the caller's band is not a readiness band — the
    * state maps show maturity on the band scale, and a Mature state must not
    * hover as "Ready". Also names a null band ("Not assessed") where the caller

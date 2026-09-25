@@ -15,8 +15,9 @@ import { LoadError, Skeleton } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
 import { MATURITY_LABEL, MATURITY_NO_DATA } from '@/lib/bands';
 import { formatPercent } from '@/lib/format';
+import { LEADERSHIP_ANSWER_LABEL, LEADERSHIP_SUB_DOMAINS } from '@/lib/themes';
 import type { GeoDatum } from '@/components/map';
-import type { AreaProfile } from '@/lib/types';
+import type { AreaProfile, LeadershipSubDomainId } from '@/lib/types';
 import { CoverageFilters } from './CoverageFilters';
 import { ExplainScope } from '@/modules/explain/context';
 import { CoveragePane } from './CoveragePane';
@@ -143,6 +144,7 @@ export default function NationalCoveragePage() {
         // The two access rates behind two of the six maturity items, or the
         // measure's own name where a state carries neither.
         valueLabel: coverageRates(state) ?? MAP_MEASURE,
+        tooltipGroups: hoverGroups(state),
       };
     }
     return data;
@@ -166,6 +168,7 @@ export default function NationalCoveragePage() {
         evidenceGrade: 'primary',
         label: scope.state.name,
         valueLabel: coverageRates(scope.state) ?? MAP_MEASURE,
+        tooltipGroups: hoverGroups(scope.state),
       }
     );
   }, [nationalMapData, scope.state]);
@@ -364,16 +367,15 @@ function maturityLabel(area: AreaProfile): string {
 }
 
 /**
- * The two access rates, for the hover.
+ * The two access rates, as one line — the map names each shape with it for
+ * screen readers and exports; the hover card lays them out in `hoverGroups`.
  *
  * The band on its own says a state is Not mature and stops there. Electricity
  * and internet are two of the six items it was scored from, and the two that
- * are measurements, so the hover prints them; the four governance answers are
- * in the pane.
+ * are measurements; the other four are the governance answers.
  *
  * Deliberately not colour-coded and deliberately not banded. These are
- * measurements sitting *beside* a judgement, and the tooltip renders this
- * string in muted body text for that reason — see the note on
+ * measurements sitting *beside* a judgement — see the note on
  * `CoverageMeasures`. Internet subscription can exceed 100% (per-SIM counting),
  * which is why it is printed as a plain figure and never as a bar.
  *
@@ -388,6 +390,43 @@ function coverageRates(area: AreaProfile): string | null {
     `Electricity ${formatPercent(electricityAccessPct, 1)} · ` +
     `Internet ${formatPercent(internetSubscriptionPct, 1)}`
   );
+}
+
+/** The four commitments, named short enough for the hover card. */
+const COMMITMENT_SHORT: Record<LeadershipSubDomainId, string> = {
+  governance_structure: 'Governance structure',
+  data_governance_policy: 'Data governance policy',
+  digital_health_strategy: 'Digital health strategy',
+  financial_commitment: 'Financial commitment for EMR',
+};
+
+/**
+ * The hover card under the band: the state's readings in the pane's order —
+ * Leadership & Governance's four commitments, answered Yes / Partial / No,
+ * then Technical Infrastructure's two access rates. Plain text, like the
+ * pane's figures: colour on this map means maturity and nothing else.
+ */
+function hoverGroups(area: AreaProfile): NonNullable<GeoDatum['tooltipGroups']> {
+  const { leadership, measures } = area.coverage;
+  const pct = (v: number | null | undefined) => (v == null ? '—' : formatPercent(v, 1));
+  return [
+    {
+      title: 'Leadership & Governance',
+      rows: leadership
+        ? LEADERSHIP_SUB_DOMAINS.map((sub) => ({
+            label: COMMITMENT_SHORT[sub.id],
+            value: LEADERSHIP_ANSWER_LABEL[leadership[sub.id]],
+          }))
+        : [{ label: 'Commitments', value: 'Not assessed' }],
+    },
+    {
+      title: 'Technical Infrastructure',
+      rows: [
+        { label: 'Electricity access', value: pct(measures.electricityAccessPct) },
+        { label: 'Internet subscriptions per head', value: pct(measures.internetSubscriptionPct) },
+      ],
+    },
+  ];
 }
 
 /** What the fills mean — named on the map's export. */

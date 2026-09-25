@@ -35,23 +35,19 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
       },
       {
         name: 'Map',
-        text: 'Each state is shaded by its maturity band: Mature, Moderately mature, Not mature, or Not assessed. Click a state to open it. The tools beside the map zoom, go full screen, find a place, change the map layers and save the map as an image.',
+        text: 'Each state is shaded by its maturity band: Mature, Moderately mature, Not mature, or Not assessed. Hover over a state for its band, its four governance commitments and its electricity and internet rates; click it to open it. The tools beside the map zoom, go full screen, find a place, change the map layers and save the map as an image.',
       },
       {
         name: 'Maturity band',
         text: 'Nationally, how many states are in each band and their share of the states classified; states not yet assessed are counted apart. For one state, its band.',
       },
       {
-        name: 'Technical Infrastructure',
-        text: 'Electricity access and internet subscriptions per head, from national sources, then subscriptions by type (mobile, fixed broadband, enterprise wi-fi) and by operator.',
-      },
-      {
-        name: 'Workforce Capacity',
-        text: 'Health workforce figures, where the source has them.',
-      },
-      {
         name: 'Leadership & Governance',
         text: 'Four commitments — a governance structure, a data governance policy, a digital health strategy and financial commitment for EMR — answered Yes, Partial or No. Nationally, how many states gave each answer, one square per state.',
+      },
+      {
+        name: 'Technical Infrastructure',
+        text: 'Electricity access and internet subscriptions per head, from national sources, then subscriptions by type (mobile, fixed broadband, enterprise wi-fi) and by operator.',
       },
       {
         name: 'States',

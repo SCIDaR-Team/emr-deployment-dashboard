@@ -18,7 +18,7 @@ import { BAND_CLASSES, MATURITY_LABEL, MATURITY_NO_DATA } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { formatCompactCount, formatCount, formatPercent, percentOf } from '@/lib/format';
 import {
-  COVERAGE_THEMES,
+  COVERAGE_THEME_BY_ID,
   INTERNET_GROUPS,
   LEADERSHIP_ANSWER_LABEL,
   LEADERSHIP_ANSWER_ORDER,
@@ -70,6 +70,9 @@ import { bandOf, countByBand, countLeadershipBands, totalOf, type Scope } from '
  * states there are none, and a heading over nothing is worse than silence.
  */
 
+/** The pane's domain blocks, in order — see the note in `CoveragePane`. */
+const PANE_THEMES = ['leadership_governance', 'technical_infrastructure'] as const;
+
 interface CoveragePaneProps {
   scope: Scope;
   national: AreaProfile | null;
@@ -99,23 +102,22 @@ export function CoveragePane({
   const measures = area.coverage.measures;
 
   /*
-   * Every domain gets a block, with one exception.
+   * The domains the pane shows, governance first — at the client's direction:
+   * the commitments a state has made come before the infrastructure it has.
    *
-   * Leadership & Governance is the only domain with no rows in `SUB_DOMAINS` —
-   * its whole content is the governance rows, and those exist only where the
-   * source scored the area. Nationally that is 31 states, so the block shows;
-   * inside one of the six unscored states it would be a heading over nothing,
-   * so it is dropped.
+   * Workforce Capacity is left out. Its one figure, `staffCount`, is null
+   * throughout the workbook as it stands, so its block was a heading over an
+   * em dash. Put it back here when the source carries a headcount.
    *
-   * The other two always show. Note that `staffCount` is null throughout the
-   * workbook as it stands, so Workforce Capacity's one figure reads as an em
-   * dash — which is a measurement nobody has taken, said out loud, and is not
-   * a reason to hide the domain.
+   * Leadership & Governance's whole content is the governance rows, and those
+   * exist only where the source scored the area. Nationally that is 31 states,
+   * so the block shows; inside one of the six unscored states it would be a
+   * heading over nothing, so it is dropped.
    */
   const hasGovernance = isNational
     ? states.some((st) => st.coverage.leadership)
     : Boolean(area.coverage.leadership);
-  const themes = COVERAGE_THEMES.filter(
+  const themes = PANE_THEMES.map((id) => COVERAGE_THEME_BY_ID[id]).filter(
     (t) => t.id !== 'leadership_governance' || hasGovernance,
   );
 
