@@ -5,7 +5,7 @@ import path from 'node:path';
 /**
  * The AI assistant's endpoint during `npm run dev`, at `/api/assistant`. The
  * handler is loaded through Vite on each request, so edits to `server/` apply
- * without a restart. In production the same handler runs on AWS Lambda.
+ * without a restart. Deployed, the same endpoint runs on Vercel or AWS Lambda.
  */
 function assistantDevServer(): Plugin {
   return {
