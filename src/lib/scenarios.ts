@@ -5,7 +5,7 @@
  * Readiness is decided by the Technical Infrastructure actions alone, and only
  * power and facility connectivity ever produce a Major or Moderate one there —
  * so funding the six fixes those areas call for (router, FibreX, solar top-up,
- * full solar system, network extension, satellite) is what moves a facility's
+ * full solar system, network extension, Starlink) is what moves a facility's
  * band. A package funds one or two of them; this says what readiness would then
  * be, and what it costs.
  *

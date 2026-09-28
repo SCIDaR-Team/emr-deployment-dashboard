@@ -17,7 +17,7 @@ import type { ScenarioComponentId } from '@/lib/types';
  * few characters a query string carries unescaped:
  *
  *   fixes    one letter each: R router, F FibreX, T solar top-up,
- *            S full solar system, N network extension, X satellite
+ *            S full solar system, N network extension, X Starlink
  *   target   b<naira> budget, b alone for no limit; f<count> facilities;
  *            p<percent> share Ready, whole per cent
  *   states   state ids joined by `-`; empty for every state

@@ -81,3 +81,8 @@ dist-server
 # with personal details removed, for checking the tags — it stays on the
 # machine that ran the script. Only public/data/note-themes.json is committed.
 note-themes-review.md
+
+# The published ERA dashboard workbook as `npm run data:sync` last downloaded
+# it (55 MB). The link in ERA_WORKBOOK_URL is the source; this is a cache.
+scripts/source-data/era-dashboard.xlsx
+scripts/source-data/era-dashboard.xlsx.partial

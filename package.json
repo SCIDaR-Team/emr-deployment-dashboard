@@ -22,6 +22,7 @@
     "data:maturity": "node scripts/build-maturity.mjs",
     "data:gaps": "node scripts/build-gaps-csv.mjs",
     "data:ingest": "node scripts/ingest-assessment.mjs",
+    "data:sync": "node scripts/sync-data.mjs",
     "data:taxonomy": "node scripts/gap-taxonomy.mjs"
   },
   "dependencies": {

@@ -164,7 +164,7 @@ export const SCENARIO_GUIDE: GuideContent = {
       entries: [
         {
           name: 'What makes a facility Ready',
-          text: 'A facility is Ready once it has no Major or Moderate Technical Infrastructure gap left. In this assessment those gaps are all in power and facility connectivity, and six fixes close them: full solar system, solar top-up, router, FibreX, network extension and satellite.',
+          text: 'A facility is Ready once it has no Major or Moderate Technical Infrastructure gap left. In this assessment those gaps are all in power and facility connectivity, and six fixes close them: full solar system, solar top-up, router, FibreX, network extension and Starlink (satellite internet).',
         },
         {
           name: 'What the builder leaves out',

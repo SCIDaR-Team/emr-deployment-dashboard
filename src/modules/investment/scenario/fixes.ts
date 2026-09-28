@@ -78,9 +78,9 @@ export const FIXES: FixDef[] = [
   },
   {
     id: 'satellite',
-    label: 'Satellite',
-    short: 'Satellite',
-    blurb: 'Satellite internet where no network reaches',
+    label: 'Starlink',
+    short: 'Starlink',
+    blurb: 'Starlink satellite internet where no network reaches',
     group: 'connectivity',
     icon: Satellite,
     unitCostNGN: unitCost('satellite'),

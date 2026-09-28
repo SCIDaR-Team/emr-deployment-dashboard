@@ -36,13 +36,13 @@ describe('briefDocx', () => {
     for (const text of [
       'Kano State',
       '72 (16%)',
-      '₦1.2bn',
+      '₦1.1bn',
       'Summary',
       '438',
       '72 are Ready',
       'not yet reviewed',
-      'Satellite',
-      'All connectivity (Router + FibreX + Network extension + Satellite)',
+      'Starlink',
+      'All connectivity (Router + FibreX + Network extension + Starlink)',
     ]) {
       expect(xml).toContain(text);
     }

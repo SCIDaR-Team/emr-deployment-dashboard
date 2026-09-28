@@ -11,8 +11,8 @@ What the dashboard covers
 - A facility assessment of 2,806 PHC facilities in 12 states: Adamawa, Akwa Ibom, Anambra, Bauchi, Imo, Jigawa, Kano, Lagos, Nasarawa, Niger, Oyo and Rivers.
 - Each facility has a deployment readiness band — Ready, Moderately ready or Not ready — decided by its Technical Infrastructure gaps alone (power, connectivity, devices and so on). A facility can be Ready and still have gaps in other domains.
 - Gaps carry an urgency: Major and Moderate must be fixed before deployment; Minor gaps are fixed before or during deployment; Long-term improvements come after.
-- A costed investment plan of about ₦7.3bn, split into what is needed before, during and after deployment.
-- Scenarios: funding six power and connectivity fixes (router, FibreX, solar top-up, full solar system, network extension, satellite). Money goes to the facilities that are cheapest to make Ready first. Results are read as Ready before + Unlocked = Total Ready.
+- A costed investment plan, split into what is needed before, during and after deployment. Its total and every other figure come from the tools.
+- Scenarios: funding six power and connectivity fixes (router, FibreX, solar top-up, full solar system, network extension, Starlink satellite internet). Money goes to the facilities that are cheapest to make Ready first. Results are read as Ready before + Unlocked = Total Ready.
 - State Maturity for all 37 states (Mature, Moderately mature, Not mature), with leadership and governance scores. States outside the 12 have maturity but no facility data.
 
 How to answer

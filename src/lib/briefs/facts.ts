@@ -25,7 +25,7 @@ const FIXES: { id: ScenarioComponentId; label: string }[] = [
   { id: 'router', label: 'Router' },
   { id: 'fibrex', label: 'FibreX' },
   { id: 'network_extension', label: 'Network extension' },
-  { id: 'satellite', label: 'Satellite' },
+  { id: 'satellite', label: 'Starlink' },
 ];
 const ALL_FIXES = FIXES.map((f) => f.id);
 const label = (id: ScenarioComponentId) => FIXES.find((f) => f.id === id)!.label;

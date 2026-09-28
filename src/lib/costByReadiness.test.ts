@@ -1,6 +1,8 @@
 /**
  * The cost split by readiness, against the workbook's own Cost summary sheet.
- * Every figure below is that sheet's, rounded to the naira.
+ * Every figure below is that sheet's, rounded to the naira — as of the
+ * workbook's September 2026 revision (Starlink, the new FibreX and wiring
+ * prices).
  */
 
 import { readFileSync } from 'node:fs';
@@ -25,8 +27,8 @@ const expectSplit = (cost: Record<Band, number>, [r, m, n]: Split, what: string)
 describe('readinessTotals', () => {
   it('splits the whole plan as the workbook does', () => {
     const t = readinessTotals(facilities);
-    expectSplit(t.cost, [108_896_333, 3_603_089_667, 3_543_208_333], 'overall');
-    expect(Math.round(t.total)).toBe(7_255_194_333);
+    expectSplit(t.cost, [105_532_333, 3_505_383_667, 3_113_599_333], 'overall');
+    expect(Math.round(t.total)).toBe(6_724_515_333);
     expect(t.facilities).toEqual({ ready: 170, moderately_ready: 1892, not_ready: 744 });
   });
 });
@@ -36,8 +38,8 @@ describe('readinessCostBy', () => {
     [
       'category',
       {
-        'Power and wiring': [12_388_000, 2_322_938_000, 2_426_835_000],
-        'Connectivity and resilience': [0, 111_760_000, 594_880_000],
+        'Power and wiring': [9_024_000, 2_263_662_000, 2_369_531_000],
+        'Connectivity and resilience': [0, 73_330_000, 222_575_000],
         'Devices and maintenance': [76_533_333, 933_566_667, 371_233_333],
         'Service-point furniture': [19_975_000, 234_825_000, 150_260_000],
         'Data backup': [0, 0, 0],
@@ -46,36 +48,36 @@ describe('readinessCostBy', () => {
     [
       'group',
       {
-        BHCPF: [104_294_000, 3_339_113_000, 2_609_862_333],
-        'Non-BHCPF': [4_602_333, 263_976_667, 933_346_000],
+        BHCPF: [101_162_000, 3_247_290_000, 2_320_762_333],
+        'Non-BHCPF': [4_370_333, 258_093_667, 792_837_000],
       },
     ],
     [
       'functionality',
       {
-        'Functional L2': [32_553_667, 703_434_000, 230_983_667],
-        'Functional L1': [62_156_333, 2_426_445_000, 1_696_695_333],
-        'Partially Functional': [14_186_333, 473_210_667, 1_615_529_333],
+        'Functional L2': [31_625_667, 681_737_000, 203_320_667],
+        'Functional L1': [60_184_333, 2_362_419_000, 1_484_129_333],
+        'Partially Functional': [13_722_333, 461_227_667, 1_426_149_333],
       },
     ],
     [
       'zone',
       {
-        'North West': [60_700_667, 741_203_333, 726_535_000],
-        'North Central': [2_134_333, 581_546_667, 689_498_333],
-        'North East': [6_512_667, 454_899_000, 549_903_333],
-        'South West': [11_718_000, 576_624_667, 237_954_000],
-        'South East': [24_012_333, 760_213_333, 566_232_667],
-        'South South': [3_818_333, 488_602_667, 773_085_000],
+        'North West': [59_540_667, 714_249_333, 664_520_000],
+        'North Central': [2_018_333, 569_763_667, 519_484_333],
+        'North East': [6_396_667, 443_216_000, 452_729_333],
+        'South West': [11_138_000, 560_879_667, 196_030_000],
+        'South East': [22_620_333, 738_500_333, 555_460_667],
+        'South South': [3_818_333, 478_774_667, 725_375_000],
       },
     ],
     [
       'state',
       {
-        Kano: [55_702_333, 552_187_333, 560_906_667],
-        'Akwa Ibom': [0, 360_204_000, 582_940_333],
-        Lagos: [11_358_667, 256_937_667, 47_746_667],
-        Imo: [0, 410_896_333, 331_524_333],
+        Kano: [54_542_333, 529_609_333, 520_723_667],
+        'Akwa Ibom': [0, 354_172_000, 561_584_333],
+        Lagos: [10_778_667, 247_937_667, 46_702_667],
+        Imo: [0, 407_648_333, 326_536_333],
       },
     ],
   ];
@@ -89,6 +91,6 @@ describe('readinessCostBy', () => {
     }
     // Every breakdown is the whole plan, cut differently.
     const sum = rows.reduce((s, r) => s + r.total, 0);
-    expect(Math.round(sum), `${breakdown} total`).toBe(7_255_194_333);
+    expect(Math.round(sum), `${breakdown} total`).toBe(6_724_515_333);
   });
 });
