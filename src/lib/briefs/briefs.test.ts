@@ -26,7 +26,7 @@ describe('briefFacts', () => {
     expect(kano.readiness.not_ready.facilities).toBe('115');
     expect(kano.readyRank).toMatch(/^\d+ of 12$/);
     expect(kano.unlocks.allFixes.totalReady).toBe('438');
-    expect(kano.plan.total).toBe('₦1.2bn');
+    expect(kano.plan.total).toBe('₦1.1bn');
   });
 
   it('says what each fix alone and four combinations unlock', () => {
@@ -38,7 +38,7 @@ describe('briefFacts', () => {
       'Router',
       'FibreX',
       'Network extension',
-      'Satellite',
+      'Starlink',
     ]);
     expect(fixes.find((u) => u.label === 'Router')).toMatchObject({
       unlocked: '111',

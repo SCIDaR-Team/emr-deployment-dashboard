@@ -131,14 +131,14 @@ export const ACTIONS: ActionDef[] = [
     "scenario": "network_extension"
   },
   {
-    "id": "install_satellite_internet_4f78d",
+    "id": "install_satellite_internet_6e4d2",
     "label": "Install satellite internet at the facility.",
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 3000000,
+    "unitCostNGN": 590000,
     "scenario": "satellite"
   },
   {
@@ -186,14 +186,14 @@ export const ACTIONS: ActionDef[] = [
     "scenario": "full_solar"
   },
   {
-    "id": "upgrade_the_facility_aa02d",
+    "id": "upgrade_the_facility_89b5a",
     "label": "Upgrade the facility-managed connection to at least 5 Mbps.",
     "domain": "technical_infrastructure",
     "area": "facility_connectivity",
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 360000,
+    "unitCostNGN": 45000,
     "scenario": "fibrex"
   },
   {
@@ -208,14 +208,14 @@ export const ACTIONS: ActionDef[] = [
     "scenario": null
   },
   {
-    "id": "fix_unsafe_or_fefdb",
+    "id": "fix_unsafe_or_5da1f",
     "label": "Fix unsafe or inadequate wiring where EMR equipment will be used.",
     "domain": "technical_infrastructure",
     "area": "wiring",
     "horizon": "minor",
     "phase": "during",
     "unit": null,
-    "unitCostNGN": 388000,
+    "unitCostNGN": 272000,
     "scenario": null
   },
   {
@@ -799,7 +799,7 @@ export const GAPS: GapDef[] = [
     "recorded": true,
     "severity": "partial",
     "actions": [
-      "fix_unsafe_or_fefdb",
+      "fix_unsafe_or_5da1f",
       "install_socket_points_bcc65"
     ]
   },
@@ -811,7 +811,7 @@ export const GAPS: GapDef[] = [
     "recorded": true,
     "severity": "partial",
     "actions": [
-      "fix_unsafe_or_fefdb",
+      "fix_unsafe_or_5da1f",
       "install_socket_points_bcc65"
     ]
   },
@@ -834,7 +834,7 @@ export const GAPS: GapDef[] = [
     "recorded": true,
     "severity": "blocking",
     "actions": [
-      "install_satellite_internet_4f78d"
+      "install_satellite_internet_6e4d2"
     ]
   },
   {
@@ -867,7 +867,7 @@ export const GAPS: GapDef[] = [
     "recorded": true,
     "severity": "blocking",
     "actions": [
-      "upgrade_the_facility_aa02d"
+      "upgrade_the_facility_89b5a"
     ]
   },
   {
@@ -1729,7 +1729,7 @@ export const SCENARIO_COMPONENTS: { id: ScenarioComponentId; label: string }[] =
   },
   {
     "id": "satellite",
-    "label": "Satellite"
+    "label": "Starlink"
   }
 ];
 
@@ -1782,7 +1782,7 @@ export const SCENARIO_PACKAGES: ScenarioPackageDef[] = [
   },
   {
     "id": "satellite",
-    "label": "Satellite only",
+    "label": "Starlink only",
     "components": [
       "satellite"
     ]
@@ -1837,7 +1837,7 @@ export const SCENARIO_PACKAGES: ScenarioPackageDef[] = [
   },
   {
     "id": "solar_topup_satellite",
-    "label": "Solar top-up + Satellite",
+    "label": "Solar top-up + Starlink",
     "components": [
       "solar_topup",
       "satellite"
@@ -1845,7 +1845,7 @@ export const SCENARIO_PACKAGES: ScenarioPackageDef[] = [
   },
   {
     "id": "full_solar_satellite",
-    "label": "Full solar system + Satellite",
+    "label": "Full solar system + Starlink",
     "components": [
       "full_solar",
       "satellite"

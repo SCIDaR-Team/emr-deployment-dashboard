@@ -265,6 +265,9 @@ export const SCENARIO_COMPONENT_BY_HELPER = {
   Router: 'router',
   FibreX: 'fibrex',
   'Network Extension': 'network_extension',
+  // Renamed Starlink in the workbook in September 2026; the old name is kept
+  // so an older export still reads.
+  Starlink: 'satellite',
   Satellite: 'satellite',
 };
 
@@ -274,7 +277,7 @@ export const SCENARIO_COMPONENTS = [
   { id: 'solar_topup', label: 'Solar top-up' },
   { id: 'full_solar', label: 'Full solar system' },
   { id: 'network_extension', label: 'Network extension' },
-  { id: 'satellite', label: 'Satellite' },
+  { id: 'satellite', label: 'Starlink' },
 ];
 
 /** Where each helper sits, by its header, and the block whose first action it
@@ -292,25 +295,27 @@ export const SCENARIO_HELPERS = [
  * `knownMismatches` is how many facilities the workbook's own readiness for
  * the package disagrees with the rule every other number on the dashboard
  * uses — any Major infrastructure fix left unfunded is Not ready, any
- * Moderate one Moderately ready. Ten packages agree in every row. Four do not,
- * each for a reason in the sheet's formulas (see docs/data-queries, query F);
- * the ingest pins the counts so a change in the workbook is noticed.
+ * Moderate one Moderately ready. Since the workbook's September 2026 revision
+ * all fourteen agree in every row; before it, four did not (Router only 645,
+ * FibreX only 77, Full solar system only 2,049, Solar top-up + Network
+ * extension 7 — see docs/data-queries, query F). The ingest pins the counts so
+ * a change in the workbook is noticed.
  */
 export const SCENARIO_PACKAGES = [
-  { id: 'router', label: 'Router only', components: ['router'], sheetGroup: 'Router only closure summary', knownMismatches: 645 },
-  { id: 'fibrex', label: 'FibreX only', components: ['fibrex'], sheetGroup: 'FibreX only closure summary', knownMismatches: 77 },
+  { id: 'router', label: 'Router only', components: ['router'], sheetGroup: 'Router only closure summary', knownMismatches: 0 },
+  { id: 'fibrex', label: 'FibreX only', components: ['fibrex'], sheetGroup: 'FibreX only closure summary', knownMismatches: 0 },
   { id: 'solar_topup', label: 'Solar top-up only', components: ['solar_topup'], sheetGroup: 'Solar top-up only closure summary', knownMismatches: 0 },
-  { id: 'full_solar', label: 'Full solar system only', components: ['full_solar'], sheetGroup: 'Full solar system only', knownMismatches: 2049 },
+  { id: 'full_solar', label: 'Full solar system only', components: ['full_solar'], sheetGroup: 'Full solar system only', knownMismatches: 0 },
   { id: 'network_extension', label: 'Network extension only', components: ['network_extension'], sheetGroup: 'Network extension only', knownMismatches: 0 },
-  { id: 'satellite', label: 'Satellite only', components: ['satellite'], sheetGroup: 'Satellite', knownMismatches: 0 },
+  { id: 'satellite', label: 'Starlink only', components: ['satellite'], sheetGroup: 'Starlink', knownMismatches: 0 },
   { id: 'solar_topup_router', label: 'Solar top-up + Router', components: ['solar_topup', 'router'], sheetGroup: 'Solar top-up  + Router only', knownMismatches: 0 },
   { id: 'full_solar_router', label: 'Full solar system + Router', components: ['full_solar', 'router'], sheetGroup: 'Full solar system + Router', knownMismatches: 0 },
   { id: 'solar_topup_fibrex', label: 'Solar top-up + FibreX', components: ['solar_topup', 'fibrex'], sheetGroup: 'Solar top-up + FibreX', knownMismatches: 0 },
   { id: 'full_solar_fibrex', label: 'Full solar system + FibreX', components: ['full_solar', 'fibrex'], sheetGroup: 'Full solar system + FibreX', knownMismatches: 0 },
-  { id: 'solar_topup_network_extension', label: 'Solar top-up + Network extension', components: ['solar_topup', 'network_extension'], sheetGroup: 'Solar top-up + Network extension closure summary', knownMismatches: 7 },
+  { id: 'solar_topup_network_extension', label: 'Solar top-up + Network extension', components: ['solar_topup', 'network_extension'], sheetGroup: 'Solar top-up + Network extension closure summary', knownMismatches: 0 },
   { id: 'full_solar_network_extension', label: 'Full solar system + Network extension', components: ['full_solar', 'network_extension'], sheetGroup: 'Full solar system + Network extension closure summary', knownMismatches: 0 },
-  { id: 'solar_topup_satellite', label: 'Solar top-up + Satellite', components: ['solar_topup', 'satellite'], sheetGroup: 'Solar  top-up + Satellite closure summary', knownMismatches: 0 },
-  { id: 'full_solar_satellite', label: 'Full solar system + Satellite', components: ['full_solar', 'satellite'], sheetGroup: 'Full solar system + Satellite closure summary', knownMismatches: 0 },
+  { id: 'solar_topup_satellite', label: 'Solar top-up + Starlink', components: ['solar_topup', 'satellite'], sheetGroup: 'Solar  top-up + Satellite closure summary', knownMismatches: 0 },
+  { id: 'full_solar_satellite', label: 'Full solar system + Starlink', components: ['full_solar', 'satellite'], sheetGroup: 'Full solar system + Satellite closure summary', knownMismatches: 0 },
 ];
 
 /**

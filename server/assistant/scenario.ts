@@ -40,7 +40,7 @@ const FIX_LABEL: Record<ScenarioComponentId, string> = {
   solar_topup: 'Solar top-up',
   full_solar: 'Full solar',
   network_extension: 'Network extension',
-  satellite: 'Satellite',
+  satellite: 'Starlink',
 };
 
 const SCHEMA = {
@@ -91,7 +91,7 @@ function instructions(data: DashboardData): string {
   const zones = [...new Set(assessed.map((s) => s.zone).filter(Boolean))].sort();
   return `Turn a description of an EMR-readiness funding scenario into settings for the dashboard's scenario builder. Output only the JSON.
 
-The builder funds six power and connectivity fixes: router, fibrex, solar_topup, full_solar, network_extension, satellite. "Power" or "solar" means solar_topup and full_solar. "Connectivity" or "internet" means router, fibrex, network_extension and satellite. If no fix is named, use all six.
+The builder funds six power and connectivity fixes: router, fibrex, solar_topup, full_solar, network_extension, satellite (Starlink satellite internet; "Starlink" or "satellite" means satellite). "Power" or "solar" means solar_topup and full_solar. "Connectivity" or "internet" means router, fibrex, network_extension and satellite. If no fix is named, use all six.
 
 A target is one of:
 - budget: spend up to target_value naira. "₦20m" = 20000000, "1.5bn" = 1500000000. No amount or "no limit" means target_value null.

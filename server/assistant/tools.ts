@@ -58,7 +58,7 @@ const FIX_LABEL: Record<ScenarioComponentId, string> = {
   solar_topup: 'Solar top-up',
   full_solar: 'Full solar system',
   network_extension: 'Network extension',
-  satellite: 'Satellite',
+  satellite: 'Starlink',
 };
 const HORIZONS: Horizon[] = ['major', 'moderate', 'minor', 'long_term'];
 const LEVELS: FunctionalityLevel[] = ['Functional L1', 'Functional L2', 'Partially Functional'];
