@@ -198,7 +198,7 @@ export const SCENARIO_GUIDE: GuideContent = {
       entries: [
         {
           name: 'Fixes to fund',
-          text: 'Tick the fixes to pay for; each tile shows the fix’s unit price. A chosen tile shows how many facilities it goes to. An unchosen one shows how many more facilities adding it would make Ready — at your budget, or at all under a facilities or share target.',
+          text: 'Tick the fixes to pay for. Each shows its price per facility and one live figure: unticked, how many more facilities ticking it would make Ready now (at your budget; under a facilities or share target, how many more come in reach); ticked, how many it is making Ready.',
         },
         {
           name: 'Target',
@@ -222,8 +222,8 @@ export const SCENARIO_GUIDE: GuideContent = {
           text: 'Facilities Ready today, the ones this scenario makes Ready, and the total, with its share of all facilities in view.',
         },
         {
-          name: 'Spend and per facility',
-          text: 'What the scenario spends, and that spend divided by the facilities it unlocks.',
+          name: 'Spend and average per facility',
+          text: 'What the scenario spends, and the average per facility: that spend divided by the facilities it unlocks. Facilities cost different amounts, by the fixes each needs — from one router to full solar and a router — so no single facility need cost the average. Each facility’s own cost is in the queue, per group.',
         },
         {
           name: 'The curve',
@@ -245,7 +245,7 @@ export const SCENARIO_GUIDE: GuideContent = {
         { name: 'Single', text: 'One scenario in full.' },
         {
           name: 'Compare',
-          text: 'Up to four scenarios side by side, each with its own fixes, states and target. Add to compare copies the Single scenario in.',
+          text: 'Up to four scenarios side by side, each with its own fixes, states and target.',
         },
         {
           name: 'By state',

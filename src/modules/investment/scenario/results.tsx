@@ -52,7 +52,13 @@ export function Figures({ plan, total }: { plan: TargetPlan; total: number }) {
       >
         {formatNaira(shownSpend, true)}
       </Figure>
-      <Figure label="Per facility" note="unlocked">
+      {/* An average: the facilities unlocked cost anything from one router to
+          full solar and a router; a facility's own cost is in the queue. */}
+      <Figure
+        label="Avg. per facility"
+        note="unlocked"
+        title="Average per facility unlocked: the spend divided by the facilities unlocked. Facilities cost different amounts, by the fixes each needs."
+      >
         {plan.newlyReady ? formatNaira(shownPer, true) : '—'}
       </Figure>
     </div>
@@ -149,15 +155,20 @@ export function Readiness({
 function Figure({
   label,
   note,
+  title,
   children,
 }: {
   label: string;
   note: string;
+  /** Spelled out on hover, where the label is abbreviated. */
+  title?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 bg-surface px-3 py-2.5">
-      <p className="mono truncate text-tick uppercase tracking-[0.07em] text-muted-foreground">
+    <div className="min-w-0 bg-surface px-3 py-2.5" title={title}>
+      {/* Wraps rather than truncating: on a 1440px screen the box is too
+          narrow for "Avg. per facility" on one line. */}
+      <p className="mono text-tick uppercase leading-tight tracking-[0.07em] text-muted-foreground">
         {label}
       </p>
       <p className="mono mt-1 text-[20px] font-semibold leading-none tracking-tight tabular-nums text-foreground 2xl:text-[32px]">
@@ -341,13 +352,21 @@ export function SpendingQueue({
                     })}
                     <span className="truncate">{groupLabel(g.needs)}</span>
                   </span>
-                  <span className="mono shrink-0 text-note font-semibold tabular-nums text-foreground">
+                  {/* The group's total, bold; the queue is ordered by the line
+                      under it, the cost of making one of its facilities Ready. */}
+                  <span className="mono shrink-0 text-note font-bold tabular-nums text-foreground">
                     {formatNaira(g.costNGN, true)}
                   </span>
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-2 text-[10.5px]">
-                  <span className="mono tabular-nums text-muted-foreground">
-                    {formatCount(g.facilities)} × {formatNaira(g.costEachNGN, true)}
+                  {/* In full naira: groups a few thousand apart would all read
+                      "₦3.1m" rounded, and the order would look arbitrary. */}
+                  <span className="tabular-nums text-muted-foreground">
+                    <span className="mono font-semibold text-foreground">
+                      {formatNaira(g.costEachNGN)}
+                    </span>{' '}
+                    per facility · {formatCount(g.facilities)}{' '}
+                    {g.facilities === 1 ? 'facility' : 'facilities'}
                   </span>
                   <span className="mono shrink-0 tabular-nums">
                     {state === 'full' && <span className="text-ready-ink">All funded</span>}

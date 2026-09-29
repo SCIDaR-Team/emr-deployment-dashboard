@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CircleHelp, Columns3, CopyPlus, MapPin, Square } from 'lucide-react';
+import { CircleHelp, Columns3, MapPin, Square } from 'lucide-react';
 import { SectionCard } from '@/components/ui';
 import { GuideDrawer } from '@/components/layout/PageGuide';
 import { SCENARIO_GUIDE } from '@/content/pageGuides';
@@ -49,7 +49,7 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
     <SectionCard
       id="scenarios"
       title="Scenarios"
-      subtitle="Choose the fixes to fund and a target — money, facilities or a share Ready — and see who it makes Ready"
+      subtitle="Fund fixes toward a target and see who it makes Ready"
       bodyClassName="p-0"
       explain={`scenario-${s.view}`}
       action={
@@ -77,21 +77,6 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
               onApply={s.replaceAll}
             />
           )}
-          {s.view === 'single' && (
-            <button
-              type="button"
-              onClick={() => s.addToCompare({ ...s.single, name: s.single.name || 'Scenario' })}
-              title={
-                compareFull
-                  ? 'Compare holds four; this replaces the oldest'
-                  : 'Copy this scenario into Compare'
-              }
-              className="mono inline-flex items-center gap-1.5 rounded-[4px] border border-border px-2 py-1 text-tick uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
-            >
-              <CopyPlus className="h-3 w-3" aria-hidden />
-              Add to compare
-            </button>
-          )}
           <Segmented value={s.view} onChange={s.setView} options={VIEWS} />
         </div>
       }
@@ -103,7 +88,10 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
       {!facilities.length ? (
         <p className="px-4 py-6 text-prose italic text-muted-foreground">No facilities in scope.</p>
       ) : (
-        <div className="lg:h-[calc(100dvh-var(--page-header-h,52px)-78px)] lg:min-h-[380px] lg:max-h-[760px]">
+        <div className="lg:h-[calc(100dvh-var(--page-header-h,52px)-124px)] lg:min-h-[380px] lg:max-h-[760px]">
+          {/* Sized to the screen less the page header and what the card puts
+              around this: the gap above it (12px), its title bar (52px), the
+              Explain strip under it (49px) and a little room below (11px). */}
           {s.view === 'single' && (
             <SingleView paths={paths} spec={s.single} onChange={s.setSingle} />
           )}
