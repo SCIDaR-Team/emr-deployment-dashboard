@@ -1,12 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tests read deep into loosely shaped tool results and recorded requests. */
 import { resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { formatNaira } from '../../src/lib/format';
+import { facilityPaths, planForTarget } from '../../src/lib/scenarios';
+import type { ScenarioComponentId } from '../../src/lib/types';
 import { loadDashboardData, type DashboardData } from './data';
 import { TOOLS, runTool } from './tools';
 
 /**
- * The tools against the published data, checked on figures the pages
- * already show — so an assistant answer and the page it links to agree.
+ * The tools against the published data, each checked against the same figure
+ * worked out the way its page works it out — so an assistant answer and the
+ * page it links to agree. No figure is written down here, so a new revision of
+ * the data needs no change.
  */
 
 let data: DashboardData;
@@ -15,6 +20,7 @@ beforeAll(async () => {
 });
 
 const ALL = ['router', 'fibrex', 'solar_topup', 'full_solar', 'network_extension', 'satellite'];
+const naira = (n: number) => formatNaira(n, true);
 const call = (name: string, args: Record<string, unknown>) =>
   runTool(data, name, args) as Record<string, any>;
 
@@ -35,17 +41,19 @@ describe('tool schemas', () => {
 describe('get_overview', () => {
   it('gives the national readiness split and plan total', () => {
     const r = call('get_overview', { state: null });
-    expect(r.facilities).toBe(2806);
-    expect(r.readiness.ready.facilities).toBe(170);
-    expect(r.readiness.moderately_ready.facilities).toBe(1892);
-    expect(r.readiness.not_ready.facilities).toBe(744);
-    expect(r.plan.total).toBe('₦6.7bn');
+    expect(r.facilities).toBe(data.facilities.length);
+    for (const band of ['ready', 'moderately_ready', 'not_ready'] as const) {
+      expect(r.readiness[band].facilities, band).toBe(
+        data.facilities.filter((f) => f.deploymentBand === band).length,
+      );
+    }
+    expect(r.plan.total).toBe(naira(data.facilities.reduce((s, f) => s + f.costNGN, 0)));
   });
 
   it('forgives case and "State" for a state name', () => {
     const r = call('get_overview', { state: 'kano state' });
     expect(r.scope).toBe('Kano');
-    expect(r.facilities).toBe(438);
+    expect(r.facilities).toBe(data.facilitiesByState.get('Kano')!.length);
     expect(r.links[0].href).toBe('/assessment?state=Kano');
   });
 
@@ -73,64 +81,81 @@ describe('find_facilities', () => {
       sort: 'cost_desc',
       limit: 5,
     });
-    expect(r.matching).toBe(115);
-    expect(r.facilities).toHaveLength(5);
+    const kano = data.facilitiesByState.get('Kano')!;
+    expect(r.matching).toBe(kano.filter((f) => f.deploymentBand === 'not_ready').length);
+    expect(r.facilities).toHaveLength(Math.min(5, r.matching));
     expect(r.facilities[0]).not.toHaveProperty('lat');
   });
 });
 
+/**
+ * The scenario tools against the Scenarios section's own engine, run here on
+ * the same data — so an answer and the page it links to agree, whatever the
+ * figures are.
+ */
 describe('scenarios', () => {
-  it('matches the builder: routers alone unlock 1,125 for ₦45m', () => {
+  const BUDGET = 20_000_000;
+  const planFor = (facilities: typeof data.facilities, fixes: string[], ngn: number | null) =>
+    planForTarget(facilityPaths(facilities), new Set(fixes as ScenarioComponentId[]), {
+      kind: 'budget',
+      ngn,
+    });
+
+  it('matches the builder: routers alone, no budget limit', () => {
     const r = call('run_scenario', {
       fixes: ['router'],
       target_kind: 'budget',
       target_value: null,
       states: null,
     });
-    expect(r.unlocked).toBe(1125);
-    expect(r.spend).toBe('₦45.0m');
+    const plan = planFor(data.facilities, ['router'], null);
+    expect(r.unlocked).toBe(plan.newlyReady);
+    expect(r.readyBefore).toBe(plan.readyBefore);
+    expect(r.spend).toBe(naira(plan.spendNGN));
     expect(r.links[0].href).toContain('#scenarios');
   });
 
-  it('ranks states for ₦20m: Jigawa unlocks the most', () => {
+  it('ranks states by what the same budget unlocks in each', () => {
     const r = call('rank_states_for_scenario', {
       fixes: ALL,
       target_kind: 'budget',
-      target_value: 20_000_000,
+      target_value: BUDGET,
     });
-    expect(r.states[0].state).toBe('Jigawa');
-    expect(r.states[0].unlocked).toBe(207);
-    expect(r.spreadAcrossAllStates.unlocked).toBe(500);
+    const unlocked = r.states.map((s: { unlocked: number }) => s.unlocked);
+    expect(unlocked).toEqual([...unlocked].sort((a, b) => b - a));
+    expect(r.states).toHaveLength(data.facilitiesByState.size);
+    for (const s of r.states) {
+      expect(s.unlocked, s.state).toBe(
+        planFor(data.facilitiesByState.get(s.state)!, ALL, BUDGET).newlyReady,
+      );
+    }
+    expect(r.spreadAcrossAllStates.unlocked).toBe(planFor(data.facilities, ALL, BUDGET).newlyReady);
   });
 
   it('says how the money is spent: per fix, and in the order it is spent', () => {
     const r = call('rank_states_for_scenario', {
       fixes: ALL,
       target_kind: 'budget',
-      target_value: 20_000_000,
+      target_value: BUDGET,
     });
-    const jigawa = r.states[0];
-    expect(jigawa.spend).toBe('₦18.1m');
-    // The fixes bought add up to the spend: 7.72 + 0.36 + 6.3 + 0.75 + 2.95.
-    expect(jigawa.spentOnEachFix).toEqual([
-      { fix: 'Router', facilities: 193, cost: '₦7.7m' },
-      { fix: 'FibreX', facilities: 8, cost: '₦360.0k' },
-      { fix: 'Solar top-up', facilities: 3, cost: '₦6.3m' },
-      { fix: 'Network extension', facilities: 1, cost: '₦750.0k' },
-      { fix: 'Starlink', facilities: 5, cost: '₦3.0m' },
-    ]);
-    // Cheapest first; the 3 needing a top-up and a router count under both.
-    const order = jigawa.spendingOrder.map(
-      (g: { fixesNeeded: string; facilities: number }) => [g.fixesNeeded, g.facilities],
+    const top = r.states[0];
+    const plan = planFor(data.facilitiesByState.get(top.state)!, ALL, BUDGET);
+    expect(top.spend).toBe(naira(plan.spendNGN));
+    expect(top.budgetLeftOver).toBe(naira(BUDGET - plan.spendNGN));
+    // Per fix, what the plan buys; a facility needing two counts under both.
+    expect(top.spentOnEachFix).toEqual(
+      ALL.filter((f) => plan.bought[f as ScenarioComponentId].facilities).map((f) => ({
+        fix: expect.any(String),
+        facilities: plan.bought[f as ScenarioComponentId].facilities,
+        cost: naira(plan.bought[f as ScenarioComponentId].costNGN),
+      })),
     );
-    expect(order).toEqual([
-      ['Router', 190],
-      ['FibreX', 8],
-      ['Starlink', 5],
-      ['Network extension', 1],
-      ['Solar top-up + Router', 3],
-    ]);
-    expect(jigawa.budgetLeftOver).toBe('₦1.9m');
+    // The order: need groups, cheapest first, covering every facility unlocked.
+    const order = top.spendingOrder as { facilities: number; costEach: string }[];
+    expect(order.reduce((s, g) => s + g.facilities, 0)).toBe(top.unlocked);
+    const each = [...new Map(plan.funded.map((p) => [p.groupKey, p.costNGN])).values()];
+    expect(order.map((g) => g.costEach)).toEqual(each.map(naira));
+    expect(each).toEqual([...each].sort((a, b) => a - b));
     // The order is only spelled out for the top three.
     expect(r.states[3].spendingOrder).toBeUndefined();
     expect(r.states[3].spentOnEachFix).toBeDefined();

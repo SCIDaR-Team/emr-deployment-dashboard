@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseSnapshot } from '@/lib/explain/charts';
-import { facilityPaths } from '@/lib/scenarios';
+import { formatCount, formatShare } from '@/lib/format';
+import { facilityPaths, planScenario } from '@/lib/scenarios';
 import type { FacilitySummary } from '@/lib/types';
 import { scenarioExplainTables } from './explainTables';
 import { DEFAULT_COMPARE, DEFAULT_SINGLE, type ScenarioView } from './scenarioState';
@@ -10,7 +11,8 @@ import { DEFAULT_COMPARE, DEFAULT_SINGLE, type ScenarioView } from './scenarioSt
 const raw = JSON.parse(
   readFileSync(resolve(__dirname, '../../../../public/data/facilities-summary.json'), 'utf8'),
 ) as FacilitySummary[] | { facilities: FacilitySummary[] };
-const paths = facilityPaths(Array.isArray(raw) ? raw : raw.facilities);
+const facilities = Array.isArray(raw) ? raw : raw.facilities;
+const paths = facilityPaths(facilities);
 
 describe('scenarioExplainTables', () => {
   it.each<ScenarioView>(['single', 'compare', 'states'])(
@@ -29,14 +31,20 @@ describe('scenarioExplainTables', () => {
 
   it('reads Ready before + Unlocked = Total Ready as the section does', () => {
     const [, result] = scenarioExplainTables('single', paths, DEFAULT_SINGLE, [])!;
-    // Routers alone, no budget limit: 170 Ready before, 1,125 unlocked nationally.
-    expect(result!.rows[0]!.slice(1, 4)).toEqual(['170', '1,125', '1,295 (46%)']);
+    // The default is routers alone, with no budget limit, nationally.
+    const plan = planScenario(paths, new Set(['router'] as const), null);
+    const total = plan.readyBefore + plan.newlyReady;
+    expect(result!.rows[0]!.slice(1, 4)).toEqual([
+      formatCount(plan.readyBefore),
+      formatCount(plan.newlyReady),
+      `${formatCount(total)} (${formatShare(total, paths.length)})`,
+    ]);
   });
 
   it('lists the states A to Z in the by-state view', () => {
     const tables = scenarioExplainTables('states', paths, DEFAULT_SINGLE, [])!;
     const names = tables[2]!.rows.map((r) => r[0]!);
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
-    expect(names).toHaveLength(12);
+    expect(names).toHaveLength(new Set(facilities.map((f) => f.state)).size);
   });
 });

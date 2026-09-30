@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
@@ -47,6 +48,12 @@ export default defineConfig(({ mode }) => {
         },
       },
       chunkSizeWarningLimit: 900,
+    },
+    test: {
+      // Other tools' working copies of this repository (Kilo Code keeps them in
+      // .kilo/worktrees) hold their own, older tests; they are not this
+      // checkout's and must not fail its run.
+      exclude: [...configDefaults.exclude, '**/.kilo/**'],
     },
   };
 });

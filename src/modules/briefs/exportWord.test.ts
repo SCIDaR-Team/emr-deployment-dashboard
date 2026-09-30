@@ -31,15 +31,17 @@ describe('briefDocx', () => {
       drafted: '2026-09-24',
       model: 'test-model',
       reviewedBy: '',
-      body: '## Summary\n\nKano has **438** facilities.\n\n## Readiness\n\n- 72 are Ready',
+      body: '## Summary\n\nKano has **many** facilities.\n\n## Readiness\n\n- Some are Ready',
     });
+    const ready = kano.readiness.ready;
     for (const text of [
       'Kano State',
-      '72 (16%)',
-      '₦1.1bn',
+      `${ready.facilities} (${ready.share})`,
+      kano.plan.total,
+      `${kano.facilities} facilities assessed`,
       'Summary',
-      '438',
-      '72 are Ready',
+      'many',
+      'Some are Ready',
       'not yet reviewed',
       'Starlink',
       'All connectivity (Router + FibreX + Network extension + Starlink)',

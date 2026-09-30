@@ -8,8 +8,8 @@ Fund and Solina.
 > `npm run data:ingest` from `List of gaps and interventions per facility.csv`
 > — the "List of gaps and interventions" sheet of `ERA Dashboard dataset.xlsx`,
 > exported by `npm run data:gaps`; 2,806 facilities across 12 states — joined
-> with `ERA dataset_v4 (1).xlsx`, the raw ODK export, for each facility's
-> rural/urban setting and coordinate. See
+> with each facility's rural/urban setting and coordinate from the raw ODK
+> export (`scripts/source-data/facility-locations.json`). See
 > [`docs/ASSESSMENT_DATA.md`](docs/ASSESSMENT_DATA.md) for what the dataset
 > contains, and [`docs/data-queries/`](docs/data-queries/) for what the
 > assessment team still needs to settle.
@@ -43,9 +43,30 @@ npm install
 npm run dev
 ```
 
-`public/data/` is committed, so the app runs immediately after install. When
-the workbook changes, run `npm run data:gaps` to refresh the committed CSV from
-it, then `npm run data:ingest`.
+`public/data/` is committed, so the app runs immediately after install.
+
+### Keeping the data current
+
+The data comes from the ERA dashboard workbook, published to the web as .xlsx.
+The **Data sync** GitHub workflow (`.github/workflows/data-sync.yml`) refreshes
+it every morning at 06:00 (Nigeria time): it downloads the workbook, rebuilds
+`public/data/` with all the build's checks, compares the result with the
+workbook's own summary sheets, then runs the typecheck, the tests and the app
+build. If all pass and something changed, it commits to `main`, and Vercel
+deploys. If anything fails, it publishes nothing and opens a "Data sync failed"
+issue linking to the log.
+
+- **Sync now**, right after updating the workbook: Actions › Data sync › Run
+  workflow.
+- **Locally:** `npm run data:sync` (with `ERA_WORKBOOK_URL` in `.env.local`),
+  then review `git diff` and commit.
+- **Needs** the repository secret `ERA_WORKBOOK_URL`: the workbook's
+  publish-to-web .xlsx link.
+
+Values can change freely; the tests pin no figure from the data. A change of
+layout — a renamed sheet, a moved column, a new fix — stops the sync with a
+message naming it, and needs a code change. See
+[`docs/DATA_INVENTORY.md`](docs/DATA_INVENTORY.md).
 
 ### Scripts
 
@@ -54,9 +75,12 @@ it, then `npm run data:ingest`.
 | `npm run dev` | Vite dev server |
 | `npm run build` | Typecheck and production build |
 | `npm run geo:build` | Rebuild the per-state LGA boundary files |
+| `npm run data:sync` | Download the published workbook and rebuild everything from it, checked (`-- --no-download` reuses the last download) |
+| `npm run data:check` | Compare `public/data/` with the workbook's own summary sheets |
 | `npm run data:maturity` | Rebuild `scripts/source-data/state-maturity.json` from the State Maturity sheet |
 | `npm run data:gaps` | Export the facility gap sheet to the committed CSV |
 | `npm run data:ingest` | Rebuild `public/data/` from the assessment CSV |
+| `npm run data:locations` | Rebuild `scripts/source-data/facility-locations.json` from the raw ODK export — only when facilities are resurveyed |
 | `npm run briefs:draft` | Draft the state briefs with OpenAI, for review (`src/content/briefs/README.md`) |
 | `npm run notes:themes` | Tag the assessors' notes with themes, for review — personal details removed before anything is sent; `--dry-run` sends nothing (`scripts/note-themes.ts`) |
 | `npm run typecheck` | `tsc -b --noEmit` |
