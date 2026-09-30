@@ -10,7 +10,8 @@
  *
  * Each figure is the facility's own actions, in its own quantities, priced at
  * the catalogue's unit costs — the same arithmetic as every other total on the
- * page, and checked against the workbook's own table in `costByReadiness.test`.
+ * page, and checked against the workbook's own table by `npm run data:check`
+ * (scripts/check-workbook.ts) on every data sync.
  */
 
 import { ACTION_BY_ID } from './gapCatalogue';

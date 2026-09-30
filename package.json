@@ -23,6 +23,8 @@
     "data:gaps": "node scripts/build-gaps-csv.mjs",
     "data:ingest": "node scripts/ingest-assessment.mjs",
     "data:sync": "node scripts/sync-data.mjs",
+    "data:check": "vite-node scripts/check-workbook.ts",
+    "data:locations": "node scripts/build-locations.mjs",
     "data:taxonomy": "node scripts/gap-taxonomy.mjs"
   },
   "dependencies": {

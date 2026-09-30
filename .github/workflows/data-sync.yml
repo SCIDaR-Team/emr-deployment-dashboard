@@ -1,0 +1,108 @@
+# Refresh the dashboard's data from the published ERA dashboard workbook.
+#
+# Daily, and on demand: Actions › Data sync › Run workflow is "Sync now", for
+# right after the workbook has been updated.
+#
+# Downloads the workbook (ERA_WORKBOOK_URL, a repository secret), rebuilds
+# public/data with every check the build makes, compares the result with the
+# workbook's own summary sheets, then runs the typecheck, the tests and the app
+# build. Only if all of that passes, and something changed, does it commit to
+# main — which Vercel deploys.
+#
+# If anything fails, nothing is committed: the dashboard keeps the last good
+# data, and an issue titled "Data sync failed" says which step stopped it, with
+# a link to the run's log. The next successful run closes it.
+
+name: Data sync
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # 06:00 in Nigeria (UTC+1)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: data-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_TITLE: Data sync failed
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Download the workbook, rebuild the data and check it
+        run: npm run data:sync
+        env:
+          ERA_WORKBOOK_URL: ${{ secrets.ERA_WORKBOOK_URL }}
+
+      - name: See what changed
+        id: diff
+        run: |
+          git add -A -- public/data src/lib/gapCatalogue.ts src/lib/nationalSplit.ts \
+            scripts/source-data/state-maturity.json "List of gaps and interventions per facility.csv"
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The workbook has not changed since the last sync. Nothing to publish." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### New data from the workbook"
+              echo '```'
+              git diff --cached --stat
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Typecheck, test and build the app on the new data
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Publish
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Data: sync from the ERA workbook, $(date -u +%Y-%m-%d)" -m "Run: $RUN_URL"
+          git push
+
+      - name: Close the failure issue
+        if: success()
+        run: |
+          for n in $(gh issue list --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "The sync ran cleanly again: $RUN_URL"
+          done
+
+      - name: Report the failure
+        if: failure()
+        run: |
+          body="The data sync stopped, so nothing was published and the dashboard still shows the last good data.
+
+          Open the run and read the failed step's log — it says what in the workbook broke which check: $RUN_URL
+
+          Fix the workbook (or the code, if the workbook's layout changed on purpose), then run **Actions › Data sync › Run workflow**."
+          n=$(gh issue list --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body "$body"
+          fi

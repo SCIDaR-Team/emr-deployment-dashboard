@@ -14,17 +14,22 @@
  *
  *   data:gaps      "List of gaps and interventions" → the committed facility CSV
  *   data:maturity  "State Maturity"                 → scripts/source-data/state-maturity.json
- *   data:ingest    the CSV, the maturity JSON, the coverage JSON and the raw
- *                  survey workbook (positions)       → public/data/
+ *   data:ingest    the CSV, the maturity JSON, the coverage JSON and the
+ *                  facility locations JSON          → public/data/
+ *   data:check     the new public/data against the workbook's own summary
+ *                  sheets (readiness, costs, the fix packages)
  *
  * A failed check stops the run and changes nothing after it; the files it has
  * already rewritten are in the working tree, so `git diff` shows exactly where
  * the new data parted from the old. Nothing is committed here — review the
- * diff first. The scheduled job runs this same command.
+ * diff first. The scheduled job (.github/workflows/data-sync.yml) runs this same
+ * command, then the tests and the app build, and commits only if all pass.
  *
- * Not yet from the workbook: the coverage table (`data:coverage` still reads
- * `National Coverage.xlsx`) and facility positions (`ERA dataset_v4 (1).xlsx`).
- * See docs/DATA_INVENTORY.md.
+ * Everything else it needs is committed, so it runs on any clone with the link.
+ * Not from the workbook yet: the coverage table (`data:coverage`, from
+ * `National Coverage.xlsx`) and facility positions (`data:locations`, from the
+ * raw survey export) — both change rarely and are rebuilt by hand. See
+ * docs/DATA_INVENTORY.md.
  */
 import { spawnSync } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs';
@@ -99,6 +104,11 @@ async function main() {
   run('Facility gaps and interventions', 'scripts/build-gaps-csv.mjs', ['--local', WORKBOOK]);
   run('State Maturity', 'scripts/build-maturity.mjs', ['--local', WORKBOOK]);
   run('Dashboard data', 'scripts/ingest-assessment.mjs');
+  run('Checked against the workbook’s summaries', 'node_modules/vite-node/vite-node.mjs', [
+    'scripts/check-workbook.ts',
+    '--local',
+    WORKBOOK,
+  ]);
 
   process.stderr.write('\nDone. Review `git diff --stat`, then commit what changed.\n');
 }

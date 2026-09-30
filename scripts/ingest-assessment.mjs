@@ -64,7 +64,7 @@ import {
   slugify,
   titleCase,
 } from './assessment-source.mjs';
-import { lookupFor, nameKey, parseFacilityWorkbook } from './facility-workbook.mjs';
+import { lookupFor, nameKey } from './facility-workbook.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'public/data');
@@ -73,21 +73,19 @@ const CACHE = resolve(ROOT, 'scripts/source-data/assessment.csv');
  *  data:gaps` and committed. */
 const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv');
 /**
- * The raw ODK export, joined on top of the gaps CSV.
+ * Each facility's position and setting, from the raw ODK export, joined on top
+ * of the gaps CSV.
  *
- * Required whenever the ingest runs, and **not committed** — 37 MB against a
- * repo whose next largest file is 7.5 MB, changing rarely enough that carrying
- * every revision in the history is the wrong trade. `public/data/` is committed,
- * so a clone that only builds and runs the app never needs it; only regenerating
- * the data does.
+ * Extracted from the 37 MB export by `npm run data:locations` and committed, so
+ * any clone — and the scheduled sync — can rebuild `public/data/` without the
+ * export itself. The export's checks run in that extraction.
  *
- * Required rather than optional when it is needed, because it supplies
- * `geography` and every facility's coordinate. A build that quietly dropped
- * them because someone did not have the file would leave every facility reading
- * "Rural" by omission, and an empty map, across a committed dataset nobody
- * would think to re-check.
+ * Required rather than optional, because it supplies `geography` and every
+ * facility's coordinate. A build that quietly dropped them would leave every
+ * facility reading "Rural" by omission, and an empty map, across a committed
+ * dataset nobody would think to re-check.
  */
-const WORKBOOK = resolve(ROOT, 'ERA dataset_v4 (1).xlsx');
+const LOCATIONS = resolve(ROOT, 'scripts/source-data/facility-locations.json');
 
 const BANDS = ['not_ready', 'moderately_ready', 'ready'];
 
@@ -822,22 +820,19 @@ async function main() {
       `${actionTypes.length} action types\n`,
   );
 
-  // --- The raw workbook -----------------------------------------------------
+  // --- Positions and setting ----------------------------------------------
 
-  if (!existsSync(WORKBOOK)) {
+  if (!existsSync(LOCATIONS)) {
     throw new Error(
-      `Missing ${WORKBOOK}.\n\n` +
-        `It is deliberately not in the repository — 37 MB, and everything it ` +
-        `feeds is already committed under public/data. Put a copy at the path ` +
-        `above to regenerate that data; you do not need it to build or run the ` +
-        `app.\n\n` +
-        `It supplies each facility's rural/urban setting and coordinate. ` +
-        `Without it both would silently vanish from a committed dataset, so ` +
-        `the build stops instead.`,
+      `Missing ${LOCATIONS}.\n\n` +
+        `It supplies each facility's rural/urban setting and coordinate, and is ` +
+        `built from the raw survey export by \`npm run data:locations\`. Without ` +
+        `it both would silently vanish from a committed dataset, so the build stops ` +
+        `instead.`,
     );
   }
-  const workbook = lookupFor(parseFacilityWorkbook(readFileSync(WORKBOOK)));
-  process.stderr.write(`Read ${workbook.size} rows from the raw facility workbook\n`);
+  const workbook = lookupFor(readJSON('scripts/source-data/facility-locations.json').facilities);
+  process.stderr.write(`Read ${workbook.size} facility locations\n`);
 
   // --- Geography ------------------------------------------------------------
 

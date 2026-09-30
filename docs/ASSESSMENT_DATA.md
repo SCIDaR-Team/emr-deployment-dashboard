@@ -512,9 +512,10 @@ facility, 2,804 rows, the survey export the gaps CSV was summarised from, so it
 holds everything the instrument collected.
 
 **It is not committed.** 37 MB against a repo whose next largest file is 7.5 MB,
-and it changes rarely. `public/data/` *is* committed, so a clone that only
-builds and runs the app never needs it; only `npm run data:ingest` does, and it
-names the path when the file is absent.
+and it changes rarely. `npm run data:locations` extracts the fields the
+dashboard reads into `scripts/source-data/facility-locations.json`, which *is*
+committed and is what `npm run data:ingest` reads — so any clone, and the daily
+sync, can rebuild `public/data/` without the export.
 
 **Only `Geography` and the coordinate are read from it.** The workbook also
 carries service points, staff counts, devices, connectivity transport media and

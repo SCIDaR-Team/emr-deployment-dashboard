@@ -72,7 +72,7 @@ describe('runAssistant', () => {
     // Second request carries the call and its result.
     expect(sent).toHaveLength(2);
     const output = sent[1]!.input.find((i: any) => i.type === 'function_call_output');
-    expect(JSON.parse(output.output).facilities).toBe(438);
+    expect(JSON.parse(output.output).facilities).toBe(data.facilitiesByState.get('Kano')!.length);
     expect(sent[0]!.store).toBe(false);
     expect(sent[0]!.tools).toHaveLength(8);
   });

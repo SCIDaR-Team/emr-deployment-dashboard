@@ -2,35 +2,68 @@
 
 What powers the dashboard today, where each piece comes from, and what the
 code relies on in it — the blueprint for moving every source into **one
-published Google Sheets workbook**, synced hourly.
+published Google Sheets workbook**, synced daily.
 
-Checked against the repository on 25 September 2026.
+Checked against the repository on 30 September 2026.
 
 ## In one paragraph
 
-Every figure on the dashboard comes from **local Excel files**, turned into the
-JSON in `public/data/` by scripts run by hand. **None comes from the Google
-Sheets linked in `.env`**: the facility build read the local CSV (its recorded
-content hash, `f6d5629…`, is that file's), and the other two links are read by
-no script. Four files feed the build; a fifth, `National Coverage.xlsx`, is no
-longer in the repository, so its figures are frozen as built on 8 September —
-though the same table now sits in the dashboard workbook.
+The facility data and State Maturity come from the **published ERA dashboard
+workbook** (`ERA_WORKBOOK_URL`): the **Data sync** GitHub workflow downloads it
+every morning (or on demand), rebuilds `public/data/` with every check the
+build makes, compares the result with the workbook's own summary sheets, runs
+the tests and the app build, and commits only if all of that passes. Two
+sources are still extracts, rebuilt by hand because they rarely change: the
+national coverage table (`National Coverage.xlsx`, no longer in the
+repository, frozen as built on 8 September — though the same table now sits in
+the dashboard workbook) and facility positions (the raw survey export).
 
 ## The chain today
 
 ```
-ERA Dashboard dataset.xlsx (52 MB, 18 sheets, local)
+ERA Dashboard workbook (published .xlsx, 55 MB — downloaded by data:sync)
  ├─ "List of gaps and interventions" ─ data:gaps ─▶ List of gaps and interventions per facility.csv ─┐
- └─ "State Maturity" ────────────────── data:maturity ─▶ scripts/source-data/state-maturity.json ─────┤
+ ├─ "State Maturity" ────────────────── data:maturity ─▶ scripts/source-data/state-maturity.json ─────┤
+ └─ "Summary of gaps and readiness",                                                                │
+    "Cost summary" ──────────────────── data:check compares public/data with these                  │
                                                                                                     ├─ data:ingest ─▶ public/data/*.json
-ERA dataset_v4 (1).xlsx (37 MB, local)                                                              │                src/lib/gapCatalogue.ts
- └─ "Raw data with readiness level" ── (read inside data:ingest) ─ positions, setting ──────────────┤                src/lib/nationalSplit.ts
-                                    └─ notes:themes (AI, reviewed) ─▶ public/data/note-themes.json   │
+ERA dataset_v4 (1).xlsx (37 MB, local, by hand)                                                     │                src/lib/gapCatalogue.ts
+ ├─ "Raw data with readiness level" ── data:locations ─▶ scripts/source-data/facility-locations.json ┤                src/lib/nationalSplit.ts
+ └─ the same sheet's notes ─────────── notes:themes (AI, reviewed) ─▶ public/data/note-themes.json   │
 National Coverage.xlsx (gone)                                                                       │
  └─ first sheet ────────────────────── data:coverage ─▶ scripts/source-data/national-coverage.json ─┘
 ```
 
-`public/data/` is committed; Vercel does not run any of this.
+`public/data/` is committed; Vercel does not run any of this — it deploys the
+commit the sync makes.
+
+## The daily sync
+
+`.github/workflows/data-sync.yml`, at 06:00 Nigeria time and on demand
+(Actions › Data sync › Run workflow):
+
+1. `npm run data:sync` — download the workbook, then `data:gaps`,
+   `data:maturity`, `data:ingest` and `data:check`, each stopping the run on a
+   failed check.
+2. If nothing changed, stop there.
+3. `npm run typecheck`, `npm test`, `npm run build` on the new data.
+4. Commit the changed data to `main`; Vercel deploys it.
+
+A failure at any step publishes nothing, so the dashboard keeps the last good
+data, and opens (or comments on) a **Data sync failed** issue linking to the
+log. The next clean run closes it.
+
+**`data:check`** works out, from `public/data/` and with the dashboard's own
+code, the figures the workbook summarises itself — readiness by facility group,
+functionality, state and zone; cost by readiness and by category; what each of
+the fourteen fix packages makes Ready, nationally and by group and state — and
+compares all of them (about 1,200 figures). It reads the workbook's figures
+from the workbook, so a new revision needs no code change. These checks used to
+be tests with the workbook's figures written into them; now the tests pin no
+figure from the data (the calculation tests run on a fixed sample,
+`src/test/fixtures.ts`), and a data update never needs a test edited.
+
+The sync needs one repository secret, **`ERA_WORKBOOK_URL`**.
 
 ## The datasets
 
@@ -69,7 +102,7 @@ Values must be **raw numbers**, not formatted text: the tablet price is ₦700,0
 | | |
 |---|---|
 | **Source** | `ERA dataset_v4 (1).xlsx` › **Raw data with readiness level** — the only file with latitudes |
-| **Path in** | Read inside `npm run data:ingest`; joined to dataset 1 by UUID, falling back to state + LGA + name |
+| **Path in** | `npm run data:locations` extracts it to `scripts/source-data/facility-locations.json` (committed), which `npm run data:ingest` reads; joined to dataset 1 by UUID, falling back to state + LGA + name |
 | **Shape** | 2,804 facilities (2 of the 2,806 have no row), 363 columns; the header row is found, not assumed |
 | **Powers** | The facility points on the Assessed States maps; the Setting (rural/urban) filter |
 
@@ -168,7 +201,7 @@ Geometry changes rarely and does not belong in a spreadsheet. **Keep these in th
 
 Dataset 3 (the notes) stays **out of the published workbook**: publishing makes every tab readable by anyone with the link, and the notes hold names and phone numbers. It can live in a private sheet and be tagged on demand, as now.
 
-Layout rules that make the hourly sync safe:
+Layout rules that make the daily sync safe:
 
 1. Tab names and column headers are the contract. Rename or move one and the sync stops, says which, and the live data stays as it was.
 2. Values, not presentation: numbers as numbers, no currency symbols or thousands separators in number cells.
