@@ -149,10 +149,10 @@ export function FixActions({
 }
 
 /**
- * The six fixes as switches. Full size: a tile each, led by its live figure —
- * how many more facilities adding it would make Ready (or bring in reach), or
- * how many it is making Ready — with the unit price under it. Compact: an icon
- * each, for a comparison column.
+ * The six fixes as switches. Full size: a tile each — its name, the live line
+ * (what ticking it adds now, or what it is making Ready) and its price. Which
+ * facilities need which fixes is the queue's to show. Compact: an icon each,
+ * for a comparison column.
  */
 export function FixPicker({
   chosen,
@@ -160,7 +160,7 @@ export function FixPicker({
   gains,
   bought,
   limited,
-  gainCaption = 'more Ready if added',
+  gainCaption = 'if added',
   compact,
   className,
 }: {
@@ -173,8 +173,6 @@ export function FixPicker({
   bought?: Record<ScenarioComponentId, { facilities: number; costNGN: number }>;
   limited?: boolean;
   compact?: boolean;
-  /** For the full size: given a height (a flex-1 in a column), the three
-   *  rows of tiles share it, so the tiles grow to fill the panel. */
   className?: string;
 }) {
   const toggle = (id: ScenarioComponentId) =>
@@ -213,6 +211,8 @@ export function FixPicker({
 
   return (
     <div
+      // The tiles share the height the panel gives them, so the fixes fill it
+      // down to the target rather than leaving a gap under them.
       className={cn('grid grid-cols-2 grid-rows-[repeat(3,minmax(auto,1fr))] gap-1.5', className)}
     >
       {FIXES.map((fix) => (
@@ -250,22 +250,22 @@ function FixTile({
 }) {
   const Icon = fix.icon;
   /*
-   * The figure is the tile's point, so it is the biggest thing in it: the
-   * tiles share the panel's height, and the room that used to sit empty
-   * between the name and a line of small print now carries the number. The
-   * caption under it says what the number counts; the unit price follows.
+   * Three things: the fix, what it does now, and what one costs. The live line
+   * is the one that moves — unticked, what ticking it would add; ticked, what
+   * it is making Ready, or why nothing yet.
    */
-  const figure = on
+  const live = on
     ? bought?.facilities
-      ? { value: formatCount(bought.facilities), caption: 'made Ready with it', tone: 'ready' as const }
+      ? { value: formatCount(bought.facilities), text: 'Ready', tone: 'ready' as const, check: true }
       : {
-          value: '—',
-          caption: limited ? 'not reached by the target' : 'needs another fix too',
+          value: '',
+          text: limited ? 'not reached by the target' : 'needs another fix ticked too',
           tone: 'muted' as const,
+          check: false,
         }
     : gain
-      ? { value: `+${formatCount(gain)}`, caption: gainCaption, tone: 'ready' as const }
-      : { value: '—', caption: 'adds none', tone: 'muted' as const };
+      ? { value: `+${formatCount(gain)}`, text: gainCaption, tone: 'ready' as const, check: false }
+      : { value: '', text: 'adds none now', tone: 'muted' as const, check: false };
   return (
     <button
       type="button"
@@ -279,39 +279,45 @@ function FixTile({
           : 'border-border bg-surface hover:border-foreground/30',
       )}
     >
-      <span className="flex items-start gap-2">
+      <span className="flex items-center gap-2">
         <span
           className={cn(
-            'flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] transition-colors',
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] transition-colors',
             on
               ? 'bg-ready-ink text-surface'
               : 'bg-surface-sunk text-muted-foreground group-hover:text-foreground',
           )}
         >
-          <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+          <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
         </span>
-        <span className="min-w-0 flex-1 self-center truncate text-body font-semibold text-foreground">
+        <span className="min-w-0 flex-1 truncate text-body font-semibold text-foreground">
           {fix.short}
         </span>
       </span>
-      <span className="flex min-w-0 flex-col">
+      {/* The live figure, set large — it is the one thing on the tile that
+          answers the reader's choice — then the price. */}
+      <span className="flex flex-col gap-0.5">
         <span
           className={cn(
-            'mono flex items-center gap-1 text-[22px] font-semibold leading-none tracking-tight tabular-nums tall:text-[26px]',
-            figure.tone === 'ready' ? 'text-ready-ink' : 'text-muted-foreground',
+            'flex flex-wrap items-baseline gap-x-1',
+            live.tone === 'ready' ? 'text-ready-ink' : 'text-muted-foreground',
           )}
         >
-          {on && figure.tone === 'ready' && (
-            <Check className="h-4 w-4 shrink-0 tall:h-5 tall:w-5" strokeWidth={3} aria-hidden />
+          {live.check && (
+            <Check className="h-4 w-4 shrink-0 self-center" strokeWidth={3} aria-hidden />
           )}
-          <span className="truncate">{figure.value}</span>
+          {live.value && (
+            <span className="mono text-[17px] font-semibold leading-none tracking-tight tabular-nums tall:text-[20px]">
+              {live.value}
+            </span>
+          )}
+          <span className={cn('text-note leading-snug', live.value && 'font-semibold')}>
+            {live.text}
+          </span>
         </span>
-        <span className="mt-0.5 truncate text-note leading-snug text-muted-foreground">
-          {figure.caption}
-        </span>
-        <span className="mono mt-1.5 truncate text-body font-medium tabular-nums text-foreground">
-          {formatNaira(fix.unitCostNGN, true)}
-          <span className="ml-1 font-sans text-note font-normal text-muted-foreground">each</span>
+        <span className="mono truncate text-note tabular-nums text-muted-foreground">
+          <span className="font-bold text-foreground">{formatNaira(fix.unitCostNGN, true)}</span>
+          <span className="font-sans"> per facility</span>
         </span>
       </span>
     </button>

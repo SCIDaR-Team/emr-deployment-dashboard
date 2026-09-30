@@ -16,12 +16,15 @@ import type { ScenarioPlan } from '@/lib/scenarios';
  * - **The point sits at what the plan spends.** Dragging it sets a budget —
  *   whatever the target was, the reader is now choosing an amount of money.
  *
- * Drawn to fill the height it is given, so it can take whatever room the
- * panel has left on a laptop screen.
+ * Drawn at the pixel size it is given — one unit to a pixel, so its labels
+ * are the size of the text around it (11px) at any width. It used to be drawn at a fixed 420
+ * wide and stretched to its column, which on a wide screen set its axis
+ * labels and callout half again to twice the size of every other figure.
  */
 
-const W = 420;
-const PAD = { left: 40, right: 12, top: 30, bottom: 22 };
+/** The left pad leaves the y labels clear of the point, which sits on the
+ *  axis at ₦0 and would otherwise cover the "0". */
+const PAD = { left: 48, right: 12, top: 30, bottom: 22 };
 
 export function SpendCurve({
   plan,
@@ -30,7 +33,8 @@ export function SpendCurve({
   handleNGN,
   callout,
   onBudget,
-  height = 200,
+  width,
+  height,
 }: {
   plan: ScenarioPlan;
   ghost: ScenarioPlan;
@@ -39,8 +43,11 @@ export function SpendCurve({
   handleNGN: number;
   callout: string;
   onBudget: (budget: number | null) => void;
-  height?: number;
+  /** The drawing's size in pixels, as measured by the caller. */
+  width: number;
+  height: number;
 }) {
+  const W = width;
   const H = height;
   const svg = useRef<SVGSVGElement>(null);
   const id = useId().replace(/:/g, '');
@@ -98,7 +105,7 @@ export function SpendCurve({
   ].filter((t) => t.at === 0 || t.at === maxNGN || t.at < maxNGN * 0.7);
   const yTicks = [0, Math.round(maxReady / 2), maxReady];
 
-  const lw = callout.length * 6.2 + 16;
+  const lw = callout.length * 6.6 + 18;
   const lx = Math.min(Math.max(hx - lw / 2, PAD.left), W - PAD.right - lw);
   const ly = Math.max(2, hy - 30);
 
@@ -138,10 +145,10 @@ export function SpendCurve({
             strokeWidth={t ? 0.6 : 1}
           />
           <text
-            x={PAD.left - 6}
+            x={PAD.left - 12}
             y={y(t) + 3.5}
             textAnchor="end"
-            className="fill-muted-foreground text-[10px] tabular-nums"
+            className="fill-muted-foreground text-note font-semibold tabular-nums"
           >
             {formatCount(t)}
           </text>
@@ -150,7 +157,7 @@ export function SpendCurve({
       <text
         x={PAD.left - 6}
         y={11}
-        className="fill-muted-foreground text-[9px] uppercase tracking-[0.06em]"
+        className="mono fill-muted-foreground text-tick uppercase tracking-[0.07em]"
       >
         Facilities unlocked
       </text>
@@ -160,7 +167,7 @@ export function SpendCurve({
           x={x(t.at)}
           y={H - 6}
           textAnchor={t.at === 0 ? 'start' : t.at === maxNGN ? 'end' : 'middle'}
-          className="fill-muted-foreground text-[10px] tabular-nums"
+          className="fill-muted-foreground text-note font-semibold tabular-nums"
         >
           {t.label}
         </text>
@@ -186,12 +193,12 @@ export function SpendCurve({
 
       <line x1={hx} x2={hx} y1={hy} y2={y(0)} className="stroke-ready-ink/60" strokeWidth={1} />
       <circle cx={hx} cy={hy} r={6.5} className="fill-ready-ink stroke-surface" strokeWidth={3} />
-      <rect x={lx} y={ly} width={lw} height={20} rx={10} className="fill-foreground" />
+      <rect x={lx} y={ly} width={lw} height={22} rx={11} className="fill-foreground" />
       <text
         x={lx + lw / 2}
-        y={ly + 13.5}
+        y={ly + 15}
         textAnchor="middle"
-        className="fill-surface text-[10.5px] font-semibold tabular-nums"
+        className="fill-surface text-note font-semibold tabular-nums"
       >
         {callout}
       </text>

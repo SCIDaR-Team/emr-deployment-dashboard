@@ -121,7 +121,7 @@ export function StatesView({
             gains={gains}
             bought={national.bought}
             gainCaption={
-              t.kind === 'budget' ? 'more Ready if added' : 'more in reach if added'
+              t.kind === 'budget' ? 'if added' : 'in reach if added'
             }
             limited={t.kind !== 'budget' || t.ngn !== null}
             className="mt-2 flex-1"
@@ -209,7 +209,7 @@ export function StatesView({
                 <th className="py-1 text-right font-normal">Unlocked</th>
                 <th className="py-1 pl-3 text-right font-normal">Total Ready</th>
                 <th className="py-1 text-right font-normal">Spend</th>
-                <th className="py-1 text-right font-normal">Per facility</th>
+                <th className="py-1 text-right font-normal" title="Average: the spend divided by the facilities unlocked">Avg. per facility</th>
                 <th className="hidden py-1 text-right font-normal md:table-cell">% After</th>
                 <th className="w-7" />
               </tr>

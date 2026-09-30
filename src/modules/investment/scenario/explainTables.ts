@@ -33,7 +33,7 @@ function stateNames(spec: ScenarioSpec, paths: readonly FacilityPath[]): string 
   return spec.states.map((id) => names.get(id) ?? id).join(', ');
 }
 
-/** Ready before + Unlocked = Total Ready, spend and cost per facility unlocked. */
+/** Ready before + Unlocked = Total Ready, spend and the average per facility unlocked. */
 function outcome(plan: TargetPlan, total: number): string[] {
   const after = plan.readyBefore + plan.newlyReady;
   return [
@@ -51,7 +51,7 @@ const OUTCOME = [
   'Unlocked',
   'Total Ready',
   'Spend',
-  'Per facility unlocked',
+  'Average per facility unlocked',
 ];
 
 function single(paths: readonly FacilityPath[], spec: ScenarioSpec): ExplainTable[] {
@@ -143,7 +143,7 @@ function single(paths: readonly FacilityPath[], spec: ScenarioSpec): ExplainTabl
 function compare(paths: readonly FacilityPath[], specs: ScenarioSpec[]): ExplainTable[] {
   return [
     {
-      title: 'Scenarios side by side',
+      title: `${specs.length} ${specs.length === 1 ? 'scenario' : 'scenarios'} side by side`,
       columns: ['Scenario', 'Fixes funded', 'Target', 'States', ...OUTCOME.slice(1)],
       rows: specs.map((spec, i) => {
         const { plan, paths: scoped } = planSpec(paths, spec);
@@ -159,10 +159,55 @@ function compare(paths: readonly FacilityPath[], specs: ScenarioSpec[]): Explain
   ];
 }
 
+/**
+ * The highest and lowest state on each measure, worked out here rather than
+ * left to the model: picking extremes out of twelve rows, it named the wrong
+ * state — Lagos the fewest unlocked at 142 when Rivers is at 126. Ties go by
+ * the figure as the reader sees it (two states at ₦170.2m are tied, whatever
+ * the naira behind them), and a measure every state shares says so.
+ */
+function extremes(rows: { state: string; plan: TargetPlan; facilities: number }[]): ExplainTable {
+  const measures: [string, (r: (typeof rows)[number]) => number, (r: (typeof rows)[number]) => string][] = [
+    ['Unlocked', (r) => r.plan.newlyReady, (r) => formatCount(r.plan.newlyReady)],
+    ['Ready before', (r) => r.plan.readyBefore, (r) => formatCount(r.plan.readyBefore)],
+    [
+      'Share Ready after',
+      (r) => (r.plan.readyBefore + r.plan.newlyReady) / Math.max(1, r.facilities),
+      (r) => formatShare(r.plan.readyBefore + r.plan.newlyReady, r.facilities),
+    ],
+    ['Spend', (r) => r.plan.spendNGN, (r) => naira(r.plan.spendNGN)],
+    [
+      'Average per facility unlocked',
+      (r) => (r.plan.newlyReady ? r.plan.spendNGN / r.plan.newlyReady : NaN),
+      (r) => (r.plan.newlyReady ? naira(r.plan.spendNGN / r.plan.newlyReady) : '—'),
+    ],
+  ];
+  const pick = (value: (r: (typeof rows)[number]) => number, show: (r: (typeof rows)[number]) => string, dir: 1 | -1) => {
+    const valid = rows.filter((r) => Number.isFinite(value(r)));
+    if (!valid.length) return '—';
+    if (new Set(valid.map(show)).size === 1) return `All states (${show(valid[0]!)})`;
+    const best = valid.reduce((a, r) => (dir * value(r) > dir * value(a) ? r : a));
+    const at = valid.filter((r) => show(r) === show(best));
+    return `${at.map((r) => r.state).join(', ')} (${show(best)})`;
+  };
+  return {
+    title: 'Highest and lowest state on each measure (ties named together)',
+    columns: ['Measure', 'Highest', 'Lowest'],
+    rows: measures.map(([name, value, show]) => [name, pick(value, show, 1), pick(value, show, -1)]),
+  };
+}
+
 function byState(paths: readonly FacilityPath[], spec: ScenarioSpec): ExplainTable[] {
   const chosen = new Set(spec.fixes);
   const groups = new Map<string, FacilityPath[]>();
   for (const p of paths) groups.set(p.facility.state, [...(groups.get(p.facility.state) ?? []), p]);
+  const perState = [...groups]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([state, list]) => ({
+      state,
+      facilities: list.length,
+      plan: planForTarget(list, chosen, spec.target),
+    }));
   return [
     {
       title: 'Scenario',
@@ -180,13 +225,9 @@ function byState(paths: readonly FacilityPath[], spec: ScenarioSpec): ExplainTab
     {
       title: 'Each state on its own, A to Z',
       columns: ['State', ...OUTCOME],
-      rows: [...groups]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([state, list]) => [
-          state,
-          ...outcome(planForTarget(list, chosen, spec.target), list.length),
-        ]),
+      rows: perState.map((r) => [r.state, ...outcome(r.plan, r.facilities)]),
     },
+    extremes(perState),
   ];
 }
 

@@ -69,7 +69,8 @@ describe('explainChart', () => {
     const input = JSON.parse(sent[0]!.input);
     expect(input.how_to_read).toMatch(/Technical Infrastructure gaps alone/);
     expect(input.scope).toEqual(['Area: Kano State']);
-    expect(input.tables[0].rows[0]).toEqual(['Ready', '72', '16.4%']);
+    // Each row keyed by its headings, so no figure is read by position.
+    expect(input.tables[0].rows[0]).toEqual({ Readiness: 'Ready', Facilities: '72', Share: '16.4%' });
   });
 
   it('passes a failed response on as an error', async () => {

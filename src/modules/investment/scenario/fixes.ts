@@ -43,7 +43,7 @@ export const FIXES: FixDef[] = [
   {
     id: 'solar_topup',
     label: 'Solar top-up',
-    short: 'Top-up',
+    short: 'Solar top-up',
     blurb: 'More panels or batteries to reach nine hours',
     group: 'power',
     icon: BatteryCharging,

@@ -643,7 +643,7 @@ function summarisePlan(plan: ReturnType<typeof planForTarget>, total: number) {
     totalReady: plan.readyBefore + plan.newlyReady,
     totalReadyShare: formatShare(plan.readyBefore + plan.newlyReady, total),
     spend: naira(plan.spendNGN),
-    perFacilityUnlocked: plan.newlyReady ? naira(plan.spendNGN / plan.newlyReady) : null,
+    averagePerFacilityUnlocked: plan.newlyReady ? naira(plan.spendNGN / plan.newlyReady) : null,
     shortfall: plan.shortfall || undefined,
     reachableWithTheseFixes: plan.reachable.facilities,
   };

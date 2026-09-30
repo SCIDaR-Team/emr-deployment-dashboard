@@ -246,7 +246,7 @@ function Column({
       </div>
       <div className="border-t border-border px-3 py-2.5">
         <Row
-          label="Per facility"
+          label="Avg. per facility"
           value={per ? formatNaira(per, true) : '—'}
           share={per / scale.per}
           badge={bestValue ? <Badge>Best value</Badge> : undefined}
@@ -254,7 +254,7 @@ function Column({
         {per > 0 && best > 0 && (
           <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground 2xl:text-note">
             {bestValue
-              ? 'The lowest cost per facility made Ready here.'
+              ? 'The lowest average cost per facility made Ready here.'
               : `${timesOf(per, best)} the best value here (${formatNaira(best, true)}).`}
           </p>
         )}
