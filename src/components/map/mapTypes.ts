@@ -1,4 +1,3 @@
-import { useId } from 'react';
 import { BAND_MARKER } from '@/lib/bands';
 import type { Band, EvidenceGrade } from '@/lib/types';
 import type { BaseMapId } from '@/store/basemapStore';
@@ -60,56 +59,48 @@ export const UNIT_FOCUS_CLASS = 'outline-none';
 /**
  * How opaque a thematic fill is over the current base map.
  *
- * Down from a flat 0.8, and the change is the point of the base-map rework
- * rather than a tweak to it. 0.8 was chosen so a polygon would composite to the
- * same colour as the matching chip in the pane — which it did, at the cost of
- * burying whatever was underneath. That trade only looked acceptable because
- * the tiles had already been scrimmed to a sixth of their strength and there
- * was nothing left down there worth seeing. With Positron underneath there is:
- * a state's roads, its towns and its neighbours' names all read through.
+ * ## The bands are opaque, in the client's own colours
  *
- * ## Two values, because we have two scales and they fail differently
+ * A band polygon is painted solid in `--ready`, `--moderate` and `--not-ready`
+ * — the three fills the client supplied, and the ones every chip, bar and
+ * badge in the panes is painted with. The map and the pane beside it therefore
+ * show one green, one amber and one red, which is what the client asked for.
  *
- * The **bands** are categorical and separated by *hue* — red, amber, green. Cut
- * their opacity and they get paler together; which band a polygon is in is
- * still obvious, because nothing about hue is lost. That was the argument for
- * 0.38, which is what ecat's coverage map uses for this kind of scale.
+ * That cannot be had any other way. A translucent fill is not a colour, it is
+ * a mix with whatever is underneath: at 0.5 the bands came out as one colour
+ * over the grey canvas, another over Streets' beige land, a muddy brown over
+ * its forest reserves and parks, and not quite any of them the pane's. Brighter
+ * `--*-map` variants were tried to pull the composite back towards the pane
+ * (see globals.css); they got closer on one base map and further on the next,
+ * and were never the client's colours. Opaque is the only fill that arrives
+ * exactly as specified on every base map.
  *
- * It holds for the *hue* and it failed for everything else. At 0.38 over Esri's
- * grey canvas the three bands composited to #f7d3d2, #f7eed6 and #e5edde —
- * which are, in order, a pink, a cream and an off-white, and they are 1.03 and
- * 1.06 apart in contrast. Nothing about hue was lost and the map still read as
- * blank paper, because the reader is not comparing two polygons side by side;
- * they are looking at Kano and remembering Lagos. So the bands sit at 0.5, and
- * they are painted in the brighter `--*-map` variants — the two changes are one
- * change, and neither is sufficient alone (see globals.css).
+ * What it costs is the base map *inside* the country. The ground around it is
+ * untouched — neighbours, coastline, the Atlantic — so Nigeria still reads as a
+ * country on a map; and the reader who wants a state's roads and towns has the
+ * Indicator switch in the layer panel, which drops the fills and shows the
+ * base map at full strength. The facility layer draws no fill at all, so the
+ * base map is whole there whatever this says.
  *
- * The **ramp** is sequential and separated by *lightness alone* — one blue at
- * five steps from 73% down to 28%. Transparency compresses lightness directly:
- * over Positron's near-white land, 0.38 puts the five steps 4.2 points of
+ * ## The ramp stays translucent
+ *
+ * The sequential ramp is not a client colour — one blue at five steps from 73%
+ * down to 28% — so it keeps letting the base map through. Transparency
+ * compresses lightness directly: at 0.38 the five steps were 4.2 points of
  * lightness apart, which is not a difference a reader can hold across two
- * polygons on opposite sides of the map. At 0.6 the gaps are ~6.7 and the ramp
- * is legible again, and the tiles still come through at 40% — against the 17%
- * the old scrim-plus-0.8 stack left them.
- *
- * The two ended up close together — 0.5 and 0.6 — but they are still two
- * numbers, because they answer to different failures: the ramp is thin the
- * moment its lightness steps compress, and the bands are thin the moment the
- * whole scale drifts towards the paper. Keep them a parameter for that reason,
- * not because the gap between them is large.
- *
- * **Higher again in dark mode**, because a translucent fill over a dark ground
- * composites towards black and goes muddy rather than merely darker.
- *
- * `plain` stays fully opaque: there is nothing under it to see.
+ * polygons on opposite sides of the map; at 0.6 the gaps are ~6.7. Higher in
+ * dark mode, where a translucent fill composites towards black and goes muddy,
+ * and higher over Streets, the one base map drawn to be read on its own, whose
+ * parks otherwise show through as darker blotches. `plain` has nothing under
+ * it to see, so it is opaque.
  */
 export function fillOpacityFor(
   baseMap: BaseMapId,
   { isDark = false, sequential = false }: { isDark?: boolean; sequential?: boolean } = {},
 ): number {
-  if (baseMap === 'plain') return 1;
-  if (sequential) return isDark ? 0.68 : 0.6;
-  return isDark ? 0.6 : 0.5;
+  if (!sequential || baseMap === 'plain') return 1;
+  if (baseMap === 'osm') return 0.75;
+  return isDark ? 0.68 : 0.6;
 }
 
 export const CHOROPLETH_STROKE = 'rgb(255 255 255 / 0.85)';
@@ -194,38 +185,25 @@ export function stepFor(value: number | null, lo: number, hi: number): number | 
 }
 
 /**
- * `<pattern>` ids live in the whole document's id space, so every map that
- * renders the secondary-evidence hatch needs its own instance — `useId()`
- * keeps two maps on screen at once (unlikely today, but cheap to guarantee)
- * from colliding.
+ * The fill for a state known only from desk review — see
+ * `--secondary-evidence` in globals.css. Opaque, like the bands, so it is the
+ * same colour on the map as in the legend whatever base map is underneath.
  */
-export function useHatchPatternId(): string {
-  const id = useId();
-  return `map-hatch-${id.replace(/:/g, '')}`;
-}
-
-export function hatchFill(id: string): string {
-  return `url(#${id})`;
-}
+export const SECONDARY_FILL = 'hsl(var(--secondary-evidence))';
 
 // ---------------------------------------------------------------------------
 // Band fills for map polygons
 // ---------------------------------------------------------------------------
 
 /**
- * CSS custom property carrying each band's colour *on a map*.
- *
- * The `-map` variants, not the pastels the rest of the app fills with. A map
- * fill is composited at partial opacity over a base map and arrives as a tint
- * of the canvas; these are the same three hues taken bright enough to survive
- * that. The full argument, and the values, are in globals.css — the short
- * version is that a colour picked to be read flat and a colour picked to be
- * read through 50% of itself cannot be the same colour.
+ * CSS custom property carrying each band's colour on a map polygon: the
+ * client's own fills, the same ones the panes use, painted opaque — see
+ * `fillOpacityFor` for why opaque is the only way they arrive unchanged.
  */
 const BAND_VAR: Record<Band, string> = {
-  ready: 'ready-map',
-  moderately_ready: 'moderate-map',
-  not_ready: 'not-ready-map',
+  ready: 'ready',
+  moderately_ready: 'moderate',
+  not_ready: 'not-ready',
 };
 
 /**
@@ -252,10 +230,9 @@ const BAND_VAR: Record<Band, string> = {
  * the `fill` attribute, the same way `scoreStepFill` is — the two are
  * alternatives for the same slot and must be interchangeable.
  *
- * The colour is the band's map variant — see `BAND_VAR`. Callers painting a
- * swatch of this fill *off* the map (a legend key) must composite it the way
- * the polygons do, at `fillOpacityFor`, or the key will be a stronger colour
- * than anything it is explaining.
+ * The colour is the client's band fill — see `BAND_VAR`. Callers painting a
+ * swatch of this fill *off* the map (a legend key) take `fillOpacityFor` too,
+ * so the key and the polygons can never disagree.
  */
 export function bandFlatFill(band: Band | null | undefined): string | undefined {
   return band ? `hsl(var(--${BAND_VAR[band]}))` : undefined;

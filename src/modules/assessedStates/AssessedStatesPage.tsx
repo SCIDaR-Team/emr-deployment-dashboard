@@ -71,7 +71,7 @@ import {
  * and under the same `MATURITY_LABEL` names — so Kano is the same amber on both
  * maps and a reader crossing between them never has to work out
  * whether two pictures of the same country disagree. The other twenty-five
- * keep the desk-review hatch, because this page still has no facility survey
+ * keep the desk-review colour, because this page still has no facility survey
  * for them.
  *
  * That fill was a sequential ramp fitted to total intervention cost. The money
@@ -285,7 +285,7 @@ export default function AssessedStatesPage() {
    *
    * All 37 states are drawn, because the country is the shape of the country —
    * but only the 12 surveyed ones carry a fill and only they are clickable.
-   * The other 25 take the desk-review hatch, which is the honest reading: this
+   * The other 25 take the desk-review colour, which is the honest reading: this
    * page has no facility-level evidence for them.
    *
    * The fill is the state's maturity band and nothing else, resolved through
@@ -314,7 +314,7 @@ export default function AssessedStatesPage() {
       // Null off the survey, not "no reading": an unsurveyed state has a
       // maturity band, but painting it here would put a state this page
       // cannot speak for into the same key as the twelve it can. The layer
-      // hatches it on `evidenceGrade` in any case.
+      // colours it on `evidenceGrade` in any case.
       const band = surveyed ? bandOf(state) : null;
       data[state.id] = {
         band,
@@ -585,7 +585,7 @@ export default function AssessedStatesPage() {
    * painting one vocabulary now, and a second key describing it in other words
    * would be the place they drift apart.
    *
-   * The hatch swatch is on, because 25 of the 37 polygons carry it here. The
+   * The desk-review swatch is on, because 25 of the 37 polygons carry it here. The
    * no-data swatch is asked for rather than assumed: every surveyed state
    * carries a band today, so it stays off, and it turns itself on the day one
    * arrives unclassified — grey on a readiness map otherwise reads as the

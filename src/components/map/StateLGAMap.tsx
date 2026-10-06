@@ -183,6 +183,9 @@ const STATE_MARKER_R_PX = 4;
 /** What a hovered polygon's fill rises to — see the twin of this constant in
  *  `NigeriaChoropleth`, which carries the reasoning. */
 const HOVER_FILL_OPACITY = 0.7;
+/** And at least this far above the resting fill, for Streets, whose ramp rests
+ *  at 0.75 — `HOVER_FILL_OPACITY` alone lifted nothing there. */
+const HOVER_FILL_LIFT = 0.15;
 
 interface HoverInfo {
   lgaId: string;
@@ -540,7 +543,7 @@ export function StateLGAMap({
                   !paintFill
                     ? 0
                     : isHovered
-                      ? Math.max(HOVER_FILL_OPACITY, restOpacity)
+                      ? Math.min(1, Math.max(HOVER_FILL_OPACITY, restOpacity + HOVER_FILL_LIFT))
                       : restOpacity
                 }
                 className={cn(
@@ -682,6 +685,7 @@ export function StateLGAMap({
       <MapStatusBar
         rect={view.rect}
         renderPx={renderPx}
+        renderPxH={renderPxH}
         cursor={cursor}
         className="absolute bottom-2 left-3 z-[1]"
       />

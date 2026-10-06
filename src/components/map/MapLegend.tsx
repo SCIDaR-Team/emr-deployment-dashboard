@@ -1,6 +1,6 @@
-import { MapHatchDefs } from './MapHatch';
-import { bandMarkerPath, bandFlatFill, fillOpacityFor, useHatchPatternId } from './mapTypes';
+import { bandMarkerPath, bandFlatFill, fillOpacityFor, SECONDARY_FILL } from './mapTypes';
 import { BAND_LABEL } from '@/lib/bands';
+import { cn } from '@/lib/cn';
 import { useBaseMapStore } from '@/store/basemapStore';
 import { useIsDark } from '@/store/themeStore';
 import type { Band } from '@/lib/types';
@@ -50,6 +50,12 @@ interface MapLegendProps {
  * band's map opacity over the legend's own near-white (or near-black) ground,
  * which lands within a shade of what the polygons composite to. Point marks
  * stay opaque, because that is how `FacilityLayer` draws a lone facility.
+ *
+ * One entry per row, on every map. A single row ran the width of the bottom
+ * edge and, on any frame narrower than a desktop's, lay across Bayelsa,
+ * Rivers, Akwa Ibom and Cross River; stacked, it fits the corner the country
+ * leaves empty beside its south-east border. Every page gets the same shape so
+ * the key sits in the same place whichever map the reader is on.
  */
 export function MapLegend({
   showSecondary = false,
@@ -59,14 +65,16 @@ export function MapLegend({
   noDataLabel = 'No data',
   className,
 }: MapLegendProps) {
-  const hatchId = useHatchPatternId();
   const baseMap = useBaseMapStore((s) => s.baseMap);
   const isDark = useIsDark();
   const areaOpacity = fillOpacityFor(baseMap, { isDark });
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-5 gap-y-2 text-body text-muted-foreground ${className ?? ''}`}
+      className={cn(
+        'flex flex-col items-start gap-y-1 text-body text-muted-foreground',
+        className,
+      )}
     >
       {BAND_ORDER.map((band) => (
         <span key={band} className="flex items-center gap-1.5">
@@ -109,13 +117,15 @@ export function MapLegend({
       {showSecondary && (
         <span className="flex items-center gap-1.5">
           <svg width={14} height={14} aria-hidden>
-            <MapHatchDefs id={hatchId} />
             <rect
-              width={14}
-              height={14}
-              rx={3}
-              fill={`url(#${hatchId})`}
+              x={0.5}
+              y={0.5}
+              width={13}
+              height={13}
+              rx={2.5}
+              fill={SECONDARY_FILL}
               fillOpacity={areaOpacity}
+              stroke="rgb(0 0 0 / 0.12)"
             />
           </svg>
           Secondary evidence (desk review only)
