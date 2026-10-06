@@ -1259,11 +1259,14 @@ function AreaList({
           const selected = area.id === selectedId;
           return (
             <li key={area.id}>
+              {/* A state with no maturity band cannot be opened from here, as it
+                  cannot from the map — see `nationalMapData`. */}
               <button
                 type="button"
                 onClick={() => onSelect(area)}
+                disabled={!band}
                 className={cn(
-                  'flex w-full items-center gap-2.5 border-b border-border px-1 py-1.5 text-left transition-colors hover:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                  'flex w-full items-center gap-2.5 border-b border-border px-1 py-1.5 text-left transition-colors hover:bg-surface-sunk focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:cursor-default disabled:hover:bg-transparent',
                   selected && 'bg-surface-sunk',
                 )}
                 aria-current={selected ? 'true' : undefined}

@@ -219,7 +219,10 @@ export function NigeriaChoropleth({
     onDrillIn: useCallback(
       (point: { x: number; y: number }, svg: SVGSVGElement | null) => {
         const stateId = unitAtPoint(svg, point);
-        if (stateId && data[stateId]?.evidenceGrade !== 'secondary') onSelect?.(stateId);
+        const datum = stateId ? data[stateId] : undefined;
+        if (stateId && datum?.evidenceGrade !== 'secondary' && datum?.selectable !== false) {
+          onSelect?.(stateId);
+        }
       },
       [onSelect, data],
     ),
@@ -393,7 +396,7 @@ export function NigeriaChoropleth({
             const isSecondary = datum?.evidenceGrade === 'secondary';
             const isSelected = selectedId === shape.stateId;
             const isFocused = focused === shape.stateId;
-            const interactive = !isSecondary && !!onSelect;
+            const interactive = !isSecondary && datum?.selectable !== false && !!onSelect;
             const outlined = isSelected || isFocused;
 
             // A sequential step wins over the band when the caller supplied
@@ -641,7 +644,7 @@ export function NigeriaChoropleth({
               ) : (
                 <p className="mt-0.5 italic text-muted-foreground">No data for this selection</p>
               )}
-              {!isSecondary && onSelect && (
+              {!isSecondary && hoverDatum?.selectable !== false && onSelect && (
                 <p className="mt-1 text-note font-medium text-brand-600">
                   {selectedId === hover.stateId ? 'Click to clear' : 'Click to drill in'}
                 </p>
