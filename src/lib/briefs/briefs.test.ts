@@ -162,3 +162,25 @@ describe('approved briefs', () => {
     expect(Array.isArray(approved)).toBe(true);
   });
 });
+
+/**
+ * Drafts are on the live site too (see `content.ts`), so the figure check
+ * cannot wait for approval: every brief, while current, quotes only figures
+ * the data holds.
+ */
+describe('every brief', () => {
+  const files = existsSync(BRIEFS) ? readdirSync(BRIEFS).filter((f) => f.endsWith('.md')) : [];
+  // README.md sits in the same folder and parses to null.
+  const docs = files
+    .map((f) => parseBrief(readFileSync(resolve(BRIEFS, f), 'utf8')))
+    .filter((d) => d !== null);
+
+  it.each(docs.map((d) => [d.state, d] as const))(
+    '%s quotes only figures in the data while current',
+    (_name, doc) => {
+      const facts = briefFacts(stateNamed(doc.state), facilities)!;
+      if (doc.factsVersion !== facts.version) return;
+      expect(unverifiedFigures(doc.body, facts)).toEqual([]);
+    },
+  );
+});
