@@ -8,6 +8,8 @@ export interface ComboOption {
   label: string;
   /** Optional second line — LGA under a facility name, say. */
   hint?: string;
+  /** Listed but not pickable, greyed out — say why in `hint`. */
+  disabled?: boolean;
 }
 
 export interface ComboboxProps {
@@ -126,13 +128,18 @@ export function Combobox({
                       type="button"
                       role="option"
                       aria-selected={active}
+                      aria-disabled={o.disabled || undefined}
+                      disabled={o.disabled}
                       onClick={() => {
                         onChange(o.value);
                         setOpen(false);
                       }}
                       className={cn(
-                        'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-prose transition-colors hover:bg-muted',
-                        active ? 'font-semibold text-brand-600' : 'text-foreground',
+                        'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-prose transition-colors',
+                        o.disabled
+                          ? 'cursor-not-allowed text-muted-foreground opacity-60'
+                          : 'hover:bg-muted',
+                        !o.disabled && (active ? 'font-semibold text-brand-600' : 'text-foreground'),
                       )}
                     >
                       <span className="min-w-0">

@@ -123,6 +123,20 @@ export default function NationalCoveragePage() {
   }, [lgaId, stateId, navigate]);
 
   /**
+   * And a link to a state that has not been assessed lands on the country.
+   *
+   * Nothing on the page opens one — not the map, the list or the dropdown —
+   * so a `/states/yobe` in someone's history is the only way left in, and it
+   * would show readings that have not been checked yet. Replace, for the
+   * same reason as above.
+   */
+  useEffect(() => {
+    if (scope.level === 'state' && bandOf(scope.state) == null) {
+      navigate('/states', { replace: true });
+    }
+  }, [scope, navigate]);
+
+  /**
    * The national map's data.
    *
    * Every state is `primary` here, which switches off the desk-review colour and

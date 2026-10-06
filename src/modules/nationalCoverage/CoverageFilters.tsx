@@ -1,7 +1,9 @@
 import { RotateCcw } from 'lucide-react';
 import { Field } from '@/components/layout/PageHeader';
 import { Combobox } from '@/components/ui';
+import { MATURITY_NO_DATA } from '@/lib/bands';
 import type { AreaProfile } from '@/lib/types';
+import { bandOf } from './coverageScope';
 
 /**
  * The filter row: State, and a way back out of it.
@@ -50,7 +52,20 @@ export function CoverageFilters({
     { value: ALL, label: 'All 37 states' },
     ...[...states]
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((s) => ({ value: s.id, label: s.name, hint: s.zone ?? undefined })),
+      // A state with no maturity band is listed, greyed out, and cannot be
+      // picked — the map and the pane's list will not open it either. Named
+      // rather than dropped, so a reader looking for Yobe finds out why.
+      .map((s) => {
+        const assessed = bandOf(s) != null;
+        return {
+          value: s.id,
+          label: s.name,
+          hint: assessed
+            ? (s.zone ?? undefined)
+            : [s.zone, MATURITY_NO_DATA].filter(Boolean).join(' · '),
+          disabled: !assessed,
+        };
+      }),
   ];
 
   return (
