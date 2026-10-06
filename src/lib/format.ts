@@ -96,11 +96,17 @@ export function formatCount(n: number | null | undefined): string {
 }
 
 /**
- * A quantity with its unit — "5 tablets", "1 desk". Every unit the source uses
- * pluralises with an s.
+ * A quantity with its unit — "5 tablets", "1 desk", "571 facilities". The
+ * units the source uses take an s; the one the Investment Plan supplies when
+ * the source gives none, "facility", is the consonant + y that takes "ies"
+ * instead — it went out as "facilitys".
  */
 export function formatUnits(n: number, unit: string): string {
-  return `${formatCount(n)} ${n === 1 ? unit : `${unit}s`}`;
+  return `${formatCount(n)} ${n === 1 ? unit : pluralUnit(unit)}`;
+}
+
+function pluralUnit(unit: string): string {
+  return /[^aeiou]y$/i.test(unit) ? `${unit.slice(0, -1)}ies` : `${unit}s`;
 }
 
 export function formatPercent(
