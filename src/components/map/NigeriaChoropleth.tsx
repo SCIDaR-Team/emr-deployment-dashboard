@@ -124,6 +124,10 @@ const HOVER_FILL_OPACITY = 0.7;
  *  at 0.75 — `HOVER_FILL_OPACITY` alone lifted nothing there. */
 const HOVER_FILL_LIFT = 0.15;
 
+/** The national border's ink and on-screen width — see where it is drawn. */
+const COUNTRY_EDGE = 'hsl(var(--on-band) / 0.85)';
+const COUNTRY_EDGE_PX = 1.5;
+
 interface HoverInfo {
   stateId: string;
   x: number;
@@ -373,8 +377,8 @@ export function NigeriaChoropleth({
           <path
             d={outlinePath}
             fill="none"
-            stroke="hsl(var(--surface))"
-            strokeWidth={1.6 / view.scale}
+            stroke={COUNTRY_EDGE}
+            strokeWidth={COUNTRY_EDGE_PX / view.scale}
             strokeLinejoin="round"
             style={{ filter: 'drop-shadow(0 1px 4px rgb(0 0 0 / 0.18))' }}
           />
@@ -482,6 +486,24 @@ export function NigeriaChoropleth({
             );
           })}
         </g>
+
+        {/* The country's edge, dark, over the fills. The outline below the
+            states only casts the shadow: drawn first, the fills and their
+            white hairlines cover its inner half and the coast came out pale.
+            Drawn again here it is a whole line, so the border with Benin,
+            Niger, Chad and Cameroon and the coastline read at a glance. Fixed
+            ink rather than `--foreground`, which goes light in dark mode while
+            the fills beside it stay the same pale colours. */}
+        {layers.boundaries && (
+          <path
+            d={outlinePath}
+            fill="none"
+            stroke={COUNTRY_EDGE}
+            strokeWidth={COUNTRY_EDGE_PX / view.scale}
+            strokeLinejoin="round"
+            pointerEvents="none"
+          />
+        )}
 
         {/* Permanent state labels — on by default, per the FRS: a reader
             should never have to hover to know which state they're looking at.
