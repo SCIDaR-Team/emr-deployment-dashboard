@@ -135,6 +135,7 @@ export default function NationalCoveragePage() {
   const nationalMapData = useMemo(() => {
     const data: Record<string, GeoDatum> = {};
     for (const state of states.data) {
+      const assessed = bandOf(state) != null;
       data[state.id] = {
         band: bandOf(state),
         bandLabel: maturityLabel(state),
@@ -143,8 +144,16 @@ export default function NationalCoveragePage() {
         label: state.name,
         // The two access rates behind two of the six maturity items, or the
         // measure's own name where a state carries neither.
-        valueLabel: coverageRates(state) ?? MAP_MEASURE,
-        tooltipGroups: hoverGroups(state),
+        valueLabel: assessed ? (coverageRates(state) ?? MAP_MEASURE) : undefined,
+        // A state the State Maturity sheet has not assessed says only that, and
+        // cannot be opened. The workbook does carry electricity and internet
+        // rates for some of them — Yobe hovered as Not assessed over 44.4% and
+        // 46.0% — and until those have been checked against the source, a
+        // state with no maturity reading shows no readings at all rather than
+        // half of one. An empty group list keeps the card to its name and
+        // "Not assessed".
+        tooltipGroups: assessed ? hoverGroups(state) : [],
+        selectable: assessed,
       };
     }
     return data;

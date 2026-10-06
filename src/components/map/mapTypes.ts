@@ -163,6 +163,13 @@ export interface GeoDatum {
    * against.
    */
   rawValue?: number | null;
+  /**
+   * False keeps the shape out of the drill-down: no click, no keyboard
+   * select, no zoom-through, and no "Click to drill in" on its hover card.
+   * National Coverage sets it on the states the State Maturity sheet has not
+   * assessed. Defaults to true.
+   */
+  selectable?: boolean;
 }
 
 /** Fill for a sequential step, or undefined when the datum has no step. */
