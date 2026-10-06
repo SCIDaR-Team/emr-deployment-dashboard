@@ -50,6 +50,20 @@ describe('briefDocx', () => {
     }
   });
 
+  it('labels a draft as one, and an approved brief not', async () => {
+    const doc = {
+      state: 'Kano',
+      factsVersion: kano.version,
+      drafted: '2026-09-24',
+      model: 'test-model',
+      body: '## Summary\n\nText.',
+    };
+    const draft = await documentXml({ ...doc, status: 'draft', reviewedBy: '' });
+    const approved = await documentXml({ ...doc, status: 'approved', reviewedBy: 'A. Reviewer' });
+    expect(draft).toContain('DRAFT — UNDER REVIEW');
+    expect(approved).not.toContain('DRAFT — UNDER REVIEW');
+  });
+
   it('still makes a document of the figures alone', async () => {
     const xml = await documentXml(null);
     expect(xml).toContain('Most common gaps');

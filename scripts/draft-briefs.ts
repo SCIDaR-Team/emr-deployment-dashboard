@@ -76,7 +76,12 @@ async function draft(client: OpenAI, model: string, facts: BriefFacts): Promise<
     instructions: INSTRUCTIONS,
     input: [{ role: 'user', content: JSON.stringify(forModel, null, 2) }],
     store: false,
-    max_output_tokens: 2500,
+    // Room for the reasoning as well as the brief: a reasoning model spends
+    // part of this budget thinking, and at 2,500 Bauchi's answer was cut off
+    // mid-JSON every time, which the provider reports as a schema failure.
+    // Not more: Groq's on-demand tier caps a request at 8,000 tokens a minute,
+    // input and this budget together.
+    max_output_tokens: 6000,
     text: { format: { type: 'json_schema', name: 'state_brief', schema: SCHEMA, strict: true } },
     ...(process.env.OPENAI_REASONING_EFFORT
       ? { reasoning: { effort: process.env.OPENAI_REASONING_EFFORT as 'low' | 'medium' | 'high' } }
@@ -86,6 +91,27 @@ async function draft(client: OpenAI, model: string, facts: BriefFacts): Promise<
   return SECTIONS.map(([key, heading]) => `## ${heading}\n\n${(sections[key] ?? '').trim()}`).join(
     '\n\n',
   );
+}
+
+/**
+ * Retry what a second attempt can fix: a rate limit (wait it out) and a
+ * reply that failed the schema (models do, now and then). Anything else, and
+ * the third failure, stops the run — the states already drafted are kept,
+ * and a rerun picks up where this one stopped.
+ */
+async function withRetry<T>(run: () => Promise<T>, attempts = 3): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return await run();
+    } catch (e) {
+      const err = e as { status?: number; code?: string };
+      const retryable = err.status === 429 || err.code === 'json_validate_failed';
+      if (!retryable || i >= attempts) throw e;
+      const wait = err.status === 429 ? 30_000 : 2_000;
+      process.stdout.write(`retrying in ${wait / 1000}s… `);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
 }
 
 async function main() {
@@ -127,7 +153,7 @@ async function main() {
 
     const facts = briefFacts(state, data.facilities)!;
     process.stdout.write(`- ${state.name}: drafting… `);
-    const body = await draft(client, OPENAI_MODEL, facts);
+    const body = await withRetry(() => draft(client, OPENAI_MODEL, facts));
     writeFileSync(
       file,
       serializeBrief({
