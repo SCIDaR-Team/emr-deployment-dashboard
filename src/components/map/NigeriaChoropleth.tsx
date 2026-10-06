@@ -125,7 +125,7 @@ const HOVER_FILL_OPACITY = 0.7;
 const HOVER_FILL_LIFT = 0.15;
 
 /** The national border's ink and on-screen width — see where it is drawn. */
-const COUNTRY_EDGE = 'hsl(var(--on-band) / 0.85)';
+const COUNTRY_EDGE = 'hsl(var(--foreground) / 0.85)';
 const COUNTRY_EDGE_PX = 1.5;
 
 interface HoverInfo {
@@ -491,9 +491,9 @@ export function NigeriaChoropleth({
             states only casts the shadow: drawn first, the fills and their
             white hairlines cover its inner half and the coast came out pale.
             Drawn again here it is a whole line, so the border with Benin,
-            Niger, Chad and Cameroon and the coastline read at a glance. Fixed
-            ink rather than `--foreground`, which goes light in dark mode while
-            the fills beside it stay the same pale colours. */}
+            Niger, Chad and Cameroon and the coastline read at a glance. The
+            page's own ink, so it is dark on the light scheme and light on the
+            dark one — the edge of the subject against a dark base map. */}
         {layers.boundaries && (
           <path
             d={outlinePath}
