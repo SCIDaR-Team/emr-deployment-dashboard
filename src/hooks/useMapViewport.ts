@@ -35,6 +35,32 @@ export function parseRect(viewBox: string): ViewportRect {
   return { x, y, w, h };
 }
 
+/**
+ * Where the viewBox is actually drawn inside the SVG's box, in client pixels.
+ *
+ * The maps are drawn two ways. In a card (`h-auto w-full`) the box takes the
+ * viewBox's own aspect ratio and the two coincide. Filling the page (`h-full
+ * w-full`, National Coverage on a desktop) the box takes the frame's shape
+ * instead, and the default `preserveAspectRatio="xMidYMid meet"` fits the
+ * viewBox inside it with margins on the long sides. Converting a pointer
+ * against the whole box there stretched one axis: a wheel zoom drifted away
+ * from the cursor, a drag moved the map slower than the hand, and the
+ * coordinate readout named the wrong place.
+ *
+ * `scale` is client pixels per viewBox unit, the same on both axes.
+ */
+export function drawnBox(
+  box: { left: number; top: number; width: number; height: number },
+  r: ViewportRect,
+): { left: number; top: number; scale: number } {
+  const scale = Math.min(box.width / r.w, box.height / r.h) || 1;
+  return {
+    left: box.left + (box.width - r.w * scale) / 2,
+    top: box.top + (box.height - r.h * scale) / 2,
+    scale,
+  };
+}
+
 /** Span-aware, because a hundredth of a viewBox unit is thirteen metres — fine
  *  across a country and a visible jump across a compound. See
  *  `viewBoxString`. */
@@ -412,17 +438,16 @@ export function useMapViewport({
     [baseRect, drillAt],
   );
 
-  /** Client coordinates → viewBox units. Valid because the SVG is rendered at
-   *  `h-auto w-full`, so its box always has the viewBox's own aspect ratio and
-   *  `preserveAspectRatio` never letterboxes. */
+  /** Client coordinates → viewBox units, against where the viewBox is drawn
+   *  rather than the whole box — see `drawnBox`. */
   const toViewport = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
     const r = rectRef.current;
     if (!svg) return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
-    const box = svg.getBoundingClientRect();
+    const d = drawnBox(svg.getBoundingClientRect(), r);
     return {
-      x: r.x + ((clientX - box.left) / box.width) * r.w,
-      y: r.y + ((clientY - box.top) / box.height) * r.h,
+      x: r.x + (clientX - d.left) / d.scale,
+      y: r.y + (clientY - d.top) / d.scale,
     };
   }, []);
 
@@ -502,11 +527,11 @@ export function useMapViewport({
         if (cur.w >= baseRect.w - 1e-6 && cur.h >= baseRect.h - 1e-6) return;
         const svg = svgRef.current;
         if (!svg) return;
-        const box = svg.getBoundingClientRect();
+        const { scale } = drawnBox(svg.getBoundingClientRect(), cur);
         const next = clamp({
           ...cur,
-          x: cur.x + (e.deltaX / box.width) * cur.w,
-          y: cur.y + (e.deltaY / box.height) * cur.h,
+          x: cur.x + e.deltaX / scale,
+          y: cur.y + e.deltaY / scale,
         });
         if (Math.abs(next.x - cur.x) < 1e-6 && Math.abs(next.y - cur.y) < 1e-6) return;
         e.preventDefault();
@@ -581,10 +606,10 @@ export function useMapViewport({
 
       const svg = svgRef.current;
       if (!svg) return;
-      const box = svg.getBoundingClientRect();
       const cur = rectRef.current;
-      const dx = ((e.clientX - prev.x) / box.width) * cur.w;
-      const dy = ((e.clientY - prev.y) / box.height) * cur.h;
+      const { scale } = drawnBox(svg.getBoundingClientRect(), cur);
+      const dx = (e.clientX - prev.x) / scale;
+      const dy = (e.clientY - prev.y) / scale;
       dragDistance.current += Math.hypot(e.clientX - prev.x, e.clientY - prev.y);
       if (!captured.current && dragDistance.current > CLICK_SLOP_PX) {
         capture(e.currentTarget, e.pointerId);

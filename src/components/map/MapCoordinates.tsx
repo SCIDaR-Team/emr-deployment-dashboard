@@ -204,18 +204,28 @@ export function MapZoomLevel({
 export function MapStatusBar({
   rect,
   renderPx,
+  renderPxH,
   cursor,
   extra,
   className,
 }: {
   rect: ViewportRect;
   renderPx: number;
+  /**
+   * How tall the map is drawn. A map filling a frame of another shape is
+   * letterboxed, so the view is drawn narrower than the frame and the scale
+   * bar and zoom level have to be measured against that width, not the
+   * frame's — see `drawnBox`. Omit for a map boxed to its own aspect.
+   */
+  renderPxH?: number;
   /** Null whenever the pointer is off the map — see `PointerCoordinates`. */
   cursor: { lat: number; lon: number } | null;
   /** Anything the layer wants in the same strip, to its right. */
   extra?: ReactNode;
   className?: string;
 }) {
+  const drawnPx =
+    renderPxH && rect.h > 0 ? Math.min(renderPx, (renderPxH * rect.w) / rect.h) : renderPx;
   return (
     <div className={cn('pointer-events-none flex flex-col items-start gap-1', className)}>
       {/* The bar gets the same chip as everything else in the strip. It used to
@@ -224,10 +234,10 @@ export function MapStatusBar({
           rule on a dark roof. Every readout on a map has to survive whatever
           the base map happens to put behind it. */}
       <span className="rounded border border-border bg-surface/92 px-1.5 py-1 backdrop-blur">
-        <MapScaleBar rect={rect} renderPx={renderPx} />
+        <MapScaleBar rect={rect} renderPx={drawnPx} />
       </span>
       <div className="flex min-h-[22px] items-center gap-1">
-        <MapZoomLevel rect={rect} renderPx={renderPx} />
+        <MapZoomLevel rect={rect} renderPx={drawnPx} />
         <PointerCoordinates lat={cursor?.lat ?? null} lon={cursor?.lon ?? null} />
         {extra}
       </div>

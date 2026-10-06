@@ -175,11 +175,34 @@
     --not-ready: 0 100% 82%;
     --not-ready-ink: 0 72% 46%;
     --not-ready-wash: 0 90% 95%;
-    --no-data: 130 6% 74%;
+    /*
+     * The two greys a state can be on a map: `--no-data` for a state not yet
+     * assessed (National Coverage), `--secondary-evidence` for one known only
+     * from desk review (Assessed States). Both are RGB 223 223 222, a neutral
+     * grey picked by the client — clearly grey beside the three pale bands,
+     * and not one of them. Same hue-fraction caution as the bands: these
+     * values round-trip to that RGB exactly.
+     *
+     * Two tokens for one value because they mean different things and never
+     * share a map today — every surveyed state on Assessed States carries a
+     * band — so the day one arrives unclassified there, one of them has to
+     * move, and it should be a one-line change.
+     *
+     * Secondary evidence used to be a diagonal hatch; fine stripes across a
+     * third of the country shimmered and were tiring to look at.
+     */
+    --no-data: 60 1.5% 87.3%;
+    --secondary-evidence: 60 1.5% 87.3%;
 
     /*
-     * `--*-map`: the same three bands, brighter, for map polygons and facility
-     * points only.
+     * `--*-map`: the same three bands, brighter, for facility points only.
+     *
+     * Map *polygons* no longer use these. They are painted opaque in the
+     * client's own fills above, so a state on the map is exactly the colour of
+     * its chip in the pane — see `fillOpacityFor` in components/map/mapTypes.ts.
+     * What follows is why the brighter variants existed, and it still holds for
+     * a facility point: a few pixels across, drawn on top of the base map, a
+     * pastel there disappears.
      *
      * The client's fills are pale because they were chosen to be looked at
      * flat — a swatch, a bar segment, a badge ground, all of them sitting
@@ -403,6 +426,7 @@
     --not-ready-ink: 0 88% 71%;
     --not-ready-wash: 0 32% 16%;
     --no-data: 150 6% 28%;
+    --secondary-evidence: 150 6% 28%;
 
     /* Restated rather than inherited, and deliberately identical to the light
        scheme — see the note there. These carry more of their own weight in
@@ -561,11 +585,11 @@
     @apply px-3 py-2.5 align-middle text-muted-foreground;
   }
 
-  /* Secondary-evidence fill for the 25 desk-review states on the choropleth.
-     Colour alone would imply the same evidential grade as an assessed state.
-     Note the 45° angle: it is the *evidence* axis, and the readiness stripes
-     below deliberately run the other way at 135° so the two never read as the
-     same mark. Lines mean evidence grade; dots mean readiness band. */
+  /* The "no data" key on the pane's meters and scales. It used to be the
+     secondary-evidence fill on the choropleth as well; the map now paints
+     those states in `--secondary-evidence` instead (see the token block above). Note
+     the 45° angle: the readiness stripes below run the other way at 135° so
+     the two never read as the same mark. */
   .hatch-secondary {
     background-image: repeating-linear-gradient(
       45deg,
@@ -582,8 +606,7 @@
    * gets which.
    *
    * HTML only, now. There used to be an SVG counterpart painting the same
-   * textures into map polygons, the way MapHatch is the counterpart to
-   * .hatch-secondary above; the map's band fills are flat colour at the
+   * textures into map polygons; the map's band fills are flat colour at the
    * client's direction — see `bandFlatFill` in components/map/mapTypes.ts.
    * These classes are unaffected: a distribution segment is a 6px bar with no
    * room for a label, so its texture is still doing real work.

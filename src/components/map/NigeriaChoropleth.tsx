@@ -4,7 +4,6 @@ import { DATA_PATHS } from '@/lib/constants';
 import { slugify, formatCount } from '@/lib/format';
 import { BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
-import { MapHatchDefs } from './MapHatch';
 import { MapHoverCard } from './MapHoverCard';
 import { MapLabel } from './MapLabel';
 import {
@@ -17,8 +16,7 @@ import { MapNotice } from './MapNotice';
 import { useImageryDepth } from './imageryCoverage';
 import { useRenderSize } from '@/hooks/useRenderSize';
 import {
-  hatchFill,
-  useHatchPatternId,
+  SECONDARY_FILL,
   bandFlatFill,
   scoreStepFill,
   adminStrokeFor,
@@ -114,15 +112,17 @@ const NATIONAL_DRILL_SCALE = 5;
 const NATIONAL_MIN_VIEW_M = 2_000;
 
 /**
- * What a hovered polygon's fill rises to.
+ * What a hovered polygon's fill rises to, on the translucent ramp.
  *
- * Well above the resting 0.5/0.6 — a hover has to be unmistakable at a
- * glance, and the polygon is momentarily the subject rather than one of
- * thirty-seven. Deliberately short of 1: even hovered, the town under the
- * pointer should still be readable, which is half of why the reader is
- * hovering it.
+ * Well above the resting 0.6 — a hover has to be unmistakable at a glance,
+ * and the polygon is momentarily the subject rather than one of thirty-seven.
+ * The band fills are opaque already (see `fillOpacityFor`) and keep the
+ * client's colour exactly when hovered; the brand outline is their signal.
  */
 const HOVER_FILL_OPACITY = 0.7;
+/** And at least this far above the resting fill, for Streets, whose ramp rests
+ *  at 0.75 — `HOVER_FILL_OPACITY` alone lifted nothing there. */
+const HOVER_FILL_LIFT = 0.15;
 
 interface HoverInfo {
   stateId: string;
@@ -154,7 +154,6 @@ export function NigeriaChoropleth({
   const [focused, setFocused] = useState<string | null>(null);
   /** Live position under the pointer, for the coordinate readout. */
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
-  const hatchId = useHatchPatternId();
   const baseMap = useBaseMapStore((s) => s.baseMap);
   const isDark = useIsDark();
   const layers = useMapLayers();
@@ -319,7 +318,6 @@ export function NigeriaChoropleth({
         }}
         onPointerLeave={() => setCursor(null)}
       >
-        <MapHatchDefs id={hatchId} solid={baseMap === 'plain'} />
         {/* Plain: a wash behind the landmass so states read as sitting on a
             map rather than floating on the card's own background. Otherwise
             the reader's chosen base map, drawn across the whole frame with the
@@ -368,7 +366,8 @@ export function NigeriaChoropleth({
             and also paints over the base map inside the country, which is only
             invisible where a choropleth fill covers it again — so it read fine
             across the twelve surveyed states and quietly blanked the terrain
-            under the twenty-five hatched ones. `fill="none"` casts the shadow
+            under the twenty-five desk-review ones, back when those were a
+            see-through hatch. `fill="none"` casts the shadow
             from the border line alone and touches nothing inside it. */}
         {layers.boundaries && (
           <path
@@ -377,11 +376,14 @@ export function NigeriaChoropleth({
             stroke="hsl(var(--surface))"
             strokeWidth={1.6 / view.scale}
             strokeLinejoin="round"
-            style={{ filter: 'drop-shadow(0 1px 5px rgb(0 0 0 / 0.30))' }}
+            style={{ filter: 'drop-shadow(0 1px 4px rgb(0 0 0 / 0.18))' }}
           />
         )}
 
-        <g style={{ filter: 'drop-shadow(0 2px 5px rgb(0 0 0 / 0.16))' }}>
+        {/* No shadow of its own: the outline above already lifts the country,
+            and a second one cast from every state's edge darkened the ground
+            all round the coast — a grey halo next to the pale fills. */}
+        <g>
           {shapes.map((shape) => {
             const datum = data[shape.stateId];
             const isSecondary = datum?.evidenceGrade === 'secondary';
@@ -402,18 +404,20 @@ export function NigeriaChoropleth({
             const bandFill = !layers.indicator
               ? undefined
               : isSecondary
-                ? hatchFill(hatchId)
+                ? SECONDARY_FILL
                 : (scoreStepFill(datum?.step) ?? bandFlatFill(datum?.band));
             const fillClass = layers.indicator && !bandFill ? 'fill-nodata' : undefined;
-            // Hover lifts the fill rather than only opening a tooltip — the
+            // Hover marks the polygon rather than only opening a tooltip — the
             // polygon under the pointer is the one being asked about, and it
-            // should look like it. Same move on the LGA layer.
+            // should look like it. A brand outline on every fill, and a lift
+            // on the translucent ramp; the opaque bands keep their colour.
+            // Same move on the LGA layer.
             const isHovered = hover?.stateId === shape.stateId;
             const restOpacity = datum?.step != null ? rampOpacity : bandOpacity;
             const paintedFill = !layers.indicator
               ? 0
               : isHovered
-                ? Math.max(HOVER_FILL_OPACITY, restOpacity)
+                ? Math.min(1, Math.max(HOVER_FILL_OPACITY, restOpacity + HOVER_FILL_LIFT))
                 : restOpacity;
 
             return (
@@ -553,6 +557,7 @@ export function NigeriaChoropleth({
       <MapStatusBar
         rect={view.rect}
         renderPx={renderPx}
+        renderPxH={renderPxH}
         cursor={cursor}
         className="absolute bottom-2 left-3 z-[1]"
       />

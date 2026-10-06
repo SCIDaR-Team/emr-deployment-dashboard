@@ -354,6 +354,7 @@ export function StateOutlineMap({
       <MapStatusBar
         rect={view.rect}
         renderPx={renderPx}
+        renderPxH={renderPxH}
         cursor={cursor}
         className="absolute bottom-2 left-3 z-[1]"
       />

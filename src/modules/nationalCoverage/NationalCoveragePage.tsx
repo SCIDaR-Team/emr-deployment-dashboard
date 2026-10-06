@@ -125,7 +125,7 @@ export default function NationalCoveragePage() {
   /**
    * The national map's data.
    *
-   * Every state is `primary` here, which switches off the desk-review hatch and
+   * Every state is `primary` here, which switches off the desk-review colour and
    * makes all 37 clickable. On this page that is correct rather than a fudge:
    * the evidence-grade distinction exists because 12 states got a facility
    * survey, and no reading on this page comes from that survey. Network
