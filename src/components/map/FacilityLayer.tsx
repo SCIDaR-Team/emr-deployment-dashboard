@@ -5,6 +5,7 @@ import { boundsOfPoints, type Box } from '@/lib/mapProjection';
 import { bandMarkerPath, UNIT_FOCUS_CLASS } from './mapTypes';
 import { clusterPoints, cellForMarker } from './cluster';
 import { formatLatLon } from './coordinates';
+import { MapHoverCard } from './MapHoverCard';
 import type { FacilityPoint, PlottedFacility } from './facilityPoints';
 import type { Band } from '@/lib/types';
 
@@ -252,10 +253,7 @@ export function FacilityTooltip({
   const f = hover.members[0]!;
 
   return (
-    <div
-      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-body shadow-pop"
-      style={{ left: hover.x, top: hover.y - 10 }}
-    >
+    <MapHoverCard x={hover.x} y={hover.y}>
       {lone ? (
         <>
           <div className="max-w-[220px] font-semibold leading-snug text-foreground">{f.name}</div>
@@ -291,6 +289,6 @@ export function FacilityTooltip({
           <p className="mt-1 text-note font-medium text-brand-600">Click to zoom in</p>
         </>
       )}
-    </div>
+    </MapHoverCard>
   );
 }

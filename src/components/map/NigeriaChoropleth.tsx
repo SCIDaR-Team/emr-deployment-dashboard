@@ -5,6 +5,7 @@ import { slugify, formatCount } from '@/lib/format';
 import { BAND_LABEL } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { MapHatchDefs } from './MapHatch';
+import { MapHoverCard } from './MapHoverCard';
 import { MapLabel } from './MapLabel';
 import {
   TileLayer,
@@ -571,10 +572,7 @@ export function NigeriaChoropleth({
           if (!shape) return null;
           const isSecondary = hoverDatum?.evidenceGrade === 'secondary';
           return (
-            <div
-              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-3 py-2 text-body shadow-pop"
-              style={{ left: hover.x, top: hover.y - 10 }}
-            >
+            <MapHoverCard x={hover.x} y={hover.y}>
               <div className="font-semibold text-foreground">{shape.name}</div>
               {isSecondary ? (
                 <p className="mt-0.5 max-w-[200px] italic text-muted-foreground">
@@ -621,7 +619,7 @@ export function NigeriaChoropleth({
                   {selectedId === hover.stateId ? 'Click to clear' : 'Click to drill in'}
                 </p>
               )}
-            </div>
+            </MapHoverCard>
           );
         })()}
     </div>
