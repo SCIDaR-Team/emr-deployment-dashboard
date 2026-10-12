@@ -1,6 +1,7 @@
 import { formatCount, formatNaira } from '@/lib/format';
 import type { ScenarioTarget, TargetPlan } from '@/lib/scenarios';
 import type { ScenarioComponentId } from '@/lib/types';
+import { FIXES } from './fixes';
 
 /**
  * What a scenario is, and how it rides in the page's link.
@@ -21,12 +22,14 @@ import type { ScenarioComponentId } from '@/lib/types';
  *   target   b<naira> budget, b alone for no limit; f<count> facilities;
  *            p<percent> share Ready, whole per cent
  *   states   state ids joined by `-`; empty for every state
- *   name     last, so it may hold a `.` of its own; `*` is dropped from it
+ *   name     last, so it may hold a `.` of its own; `*` is dropped from it.
+ *            Empty when the scenario is named from its fixes (`scenarioNames`)
  */
 
 export type ScenarioView = 'single' | 'compare' | 'states';
 
 export interface ScenarioSpec {
+  /** What the reader called it; empty to name it from its fixes. */
   name: string;
   fixes: ScenarioComponentId[];
   target: ScenarioTarget;
@@ -50,7 +53,7 @@ const FROM_CODE = Object.fromEntries(
 );
 
 export const DEFAULT_SINGLE: ScenarioSpec = {
-  name: 'Scenario',
+  name: '',
   fixes: ['router'],
   target: { kind: 'budget', ngn: null },
   states: [],
@@ -59,19 +62,19 @@ export const DEFAULT_SINGLE: ScenarioSpec = {
 /** A fresh comparison: three different ways into the same question. */
 export const DEFAULT_COMPARE: ScenarioSpec[] = [
   {
-    name: 'Routers',
+    name: '',
     fixes: ['router'],
     target: { kind: 'budget', ngn: null },
     states: [],
   },
   {
-    name: 'Power + routers',
+    name: '',
     fixes: ['solar_topup', 'full_solar', 'router'],
     target: { kind: 'budget', ngn: 1_000_000_000 },
     states: [],
   },
   {
-    name: 'Half the facilities',
+    name: '',
     fixes: ['router', 'fibrex', 'solar_topup', 'full_solar', 'network_extension', 'satellite'],
     target: { kind: 'share', pct: 50 },
     states: [],
@@ -105,11 +108,56 @@ export function decodeSpec(raw: string, knownStates: ReadonlySet<string>): Scena
     else if (m[1] === 'p' && n !== null) t = { kind: 'share', pct: Math.min(100, n) };
   }
   return {
-    name: (name || 'Scenario').slice(0, 40),
+    name: name.slice(0, 40),
     fixes: ids as ScenarioComponentId[],
     target: t,
     states: states ? states.split('-').filter((s) => knownStates.has(s)) : [],
   };
+}
+
+/** A name nobody chose: blank, or a placeholder the builder used to hand out
+ *  ("Scenario", "Scenario B"), which old links still carry. */
+const PLACEHOLDER = /^scenario(\s+[a-d])?$/i;
+
+export function isAutoName(name: string): boolean {
+  return !name.trim() || PLACEHOLDER.test(name.trim());
+}
+
+/**
+ * A scenario's name from the fixes it funds, in the tiles' words: up to three
+ * named outright ("Solar top-up + Router"), more as what is left out ("All but
+ * Starlink"), and every one as "All six fixes".
+ */
+export function fixesName(fixes: readonly ScenarioComponentId[]): string {
+  const chosen = FIXES.filter((f) => fixes.includes(f.id));
+  if (!chosen.length) return 'No fixes';
+  if (chosen.length === FIXES.length) return 'All six fixes';
+  if (chosen.length <= 3) return chosen.map((f) => f.short).join(' + ');
+  return `All but ${FIXES.filter((f) => !fixes.includes(f.id))
+    .map((f) => f.short)
+    .join(' + ')}`;
+}
+
+/** The target, said in full where it has to tell two scenarios apart. */
+function targetPhrase(t: ScenarioTarget): string {
+  if (t.kind === 'budget') return t.ngn === null ? 'no limit' : formatNaira(t.ngn, true);
+  if (t.kind === 'facilities') return `${formatCount(t.n)} facilities`;
+  return `${t.pct}% Ready`;
+}
+
+/**
+ * What each scenario is called: the reader's own name where they typed one,
+ * else one made from its fixes. Two that fund the same fixes would share a
+ * name, so those carry their target too — "Router · ₦500m".
+ */
+export function scenarioNames(specs: readonly ScenarioSpec[]): string[] {
+  const auto = specs.map((s) => isAutoName(s.name));
+  const base = specs.map((s, i) => (auto[i] ? fixesName(s.fixes) : s.name.trim()));
+  return base.map((n, i) =>
+    auto[i] && base.filter((b) => b === n).length > 1
+      ? `${n} · ${targetPhrase(specs[i]!.target)}`
+      : n,
+  );
 }
 
 export function targetLabel(t: ScenarioTarget): string {

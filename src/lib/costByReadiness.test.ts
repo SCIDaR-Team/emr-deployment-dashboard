@@ -63,6 +63,6 @@ describe('readinessCostBy', () => {
       moderately_ready: 3 * price(ACTION.tablets),
       not_ready: 0,
     });
-    expect(rows.find((r) => r.id === 'data_backup')!.total).toBe(0);
+    expect(rows.find((r) => r.id === 'data_backup')).toBeUndefined();
   });
 });

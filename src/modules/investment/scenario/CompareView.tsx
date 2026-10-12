@@ -9,7 +9,13 @@ import { FixPicker, StatePicker, TargetControl } from './controls';
 import { FIXES } from './fixes';
 import { planSpec, useStateItems, type SpecPlan } from './planning';
 import { Readiness } from './results';
-import { LETTERS, MAX_COMPARE, type ScenarioSpec } from './scenarioState';
+import {
+  LETTERS,
+  MAX_COMPARE,
+  isAutoName,
+  scenarioNames,
+  type ScenarioSpec,
+} from './scenarioState';
 
 /**
  * Up to four scenarios side by side.
@@ -18,9 +24,10 @@ import { LETTERS, MAX_COMPARE, type ScenarioSpec } from './scenarioState';
  * target, then what it comes to. The result rows line up across the columns
  * and their bars share one scale per row, so the comparison is read straight
  * across — which unlocks the most facilities, which spends least, which
- * gets the most for each naira. Scenarios are named by letter, A to D, rather
+ * gets the most for each naira. Scenarios are marked by letter, A to D, rather
  * than by colour: the readiness and urgency colours are already spoken for on
- * this page.
+ * this page. Each is named from the fixes it funds until the reader types a
+ * name of their own (`scenarioNames`).
  */
 export function CompareView({
   paths,
@@ -35,6 +42,7 @@ export function CompareView({
   onOpen: (spec: ScenarioSpec) => void;
 }) {
   const plans = useMemo(() => specs.map((s) => planSpec(paths, s)), [paths, specs]);
+  const names = useMemo(() => scenarioNames(specs), [specs]);
 
   const stateItems = useStateItems(paths);
 
@@ -53,9 +61,9 @@ export function CompareView({
     onChange([
       ...specs,
       last
-        ? { ...last, name: `Scenario ${LETTERS[specs.length]}` }
+        ? { ...last, name: '' }
         : {
-            name: 'Scenario',
+            name: '',
             fixes: ['router'],
             target: { kind: 'budget', ngn: 20_000_000 },
             states: [],
@@ -83,6 +91,7 @@ export function CompareView({
           <Column
             key={i}
             letter={LETTERS[i]!}
+            name={names[i]!}
             spec={spec}
             planned={plans[i]!}
             stateItems={stateItems}
@@ -123,6 +132,7 @@ function perFacility({ plan }: SpecPlan) {
 
 function Column({
   letter,
+  name,
   spec,
   planned,
   stateItems,
@@ -135,6 +145,8 @@ function Column({
   onOpen,
 }: {
   letter: string;
+  /** What it is called, its own name or one made from its fixes. */
+  name: string;
   spec: ScenarioSpec;
   planned: SpecPlan;
   stateItems: { key: string; label: string; count: number }[];
@@ -163,15 +175,16 @@ function Column({
         >
           {letter}
         </span>
+        {/* The made-up name is the placeholder, so typing replaces it and
+            clearing the field goes back to it. */}
         <input
-          value={spec.name}
+          value={isAutoName(spec.name) ? '' : spec.name}
+          placeholder={name}
+          title={name}
           maxLength={40}
           onChange={(e) => onChange({ ...spec, name: e.target.value })}
-          onBlur={(e) =>
-            !e.target.value.trim() && onChange({ ...spec, name: `Scenario ${letter}` })
-          }
           aria-label={`Scenario ${letter} name`}
-          className="min-w-0 flex-1 rounded-[4px] bg-transparent px-1 py-0.5 text-body font-semibold text-foreground outline-none hover:bg-surface-sunk focus:bg-surface-sunk"
+          className="min-w-0 flex-1 truncate rounded-[4px] bg-transparent px-1 py-0.5 text-body font-semibold text-foreground outline-none placeholder:text-foreground hover:bg-surface-sunk focus:bg-surface-sunk focus:placeholder:text-muted-foreground"
         />
         <button
           type="button"

@@ -1,0 +1,156 @@
+[
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Power",
+    "costReference": "Solar PV battery systems",
+    "unitCostNGN": 3085000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Power",
+    "costReference": "Grid connection",
+    "unitCostNGN": 500000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Power",
+    "costReference": "Solar/battery top-up",
+    "unitCostNGN": 2100000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Wiring",
+    "costReference": "Basic wiring remediation",
+    "unitCostNGN": 272000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Connectivity",
+    "costReference": "Router",
+    "unitCostNGN": 40000,
+    "unit": "Per device"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Connectivity",
+    "costReference": "Facility-managed broadband connection — first year",
+    "unitCostNGN": 45000,
+    "unit": "Per facility/year"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Mobile-network feasibility",
+    "costReference": "Satellite broadband — equipment, installation and first-year service",
+    "unitCostNGN": 590000,
+    "unit": "Per facility, first year"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Mobile-network feasibility",
+    "costReference": "Network extension — facility connection contribution",
+    "unitCostNGN": 750000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Devices",
+    "costReference": "EMR-capable tablet",
+    "unitCostNGN": 233333.3333,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Power resilience",
+    "costReference": "Repair partially functional backup power source",
+    "unitCostNGN": 200000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Device maintenance",
+    "costReference": "Annual device maintenance and support SLA",
+    "unitCostNGN": 90000,
+    "unit": "Per facility/year"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Data protection and resilience",
+    "costReference": "EMR data backup and recovery package",
+    "unitCostNGN": 60000,
+    "unit": "Per facility/year"
+  },
+  {
+    "domain": "Workflow and Transition",
+    "subdomain": "Documentation workflow",
+    "costReference": "Service-point workflow configuration and transition SOP",
+    "unitCostNGN": 75000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Workflow and Transition",
+    "subdomain": "Workflow bottlenecks",
+    "costReference": "Workflow redesign and EMR configuration",
+    "unitCostNGN": 125000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Workflow and Transition",
+    "subdomain": "Physical service-point environment",
+    "costReference": "Desk",
+    "unitCostNGN": 35000,
+    "unit": "Per desk"
+  },
+  {
+    "domain": "Workflow and Transition",
+    "subdomain": "Physical service-point environment",
+    "costReference": "Patient chair",
+    "unitCostNGN": 25000,
+    "unit": "Per chair"
+  },
+  {
+    "domain": "Workflow and Transition",
+    "subdomain": "Physical service-point environment",
+    "costReference": "Staff chair",
+    "unitCostNGN": 25000,
+    "unit": "Per chair"
+  },
+  {
+    "domain": "Workflow and Transition",
+    "subdomain": "Physical service-point environment",
+    "costReference": "Electric fan",
+    "unitCostNGN": 60000,
+    "unit": "Per fan"
+  },
+  {
+    "domain": "Technical Infrastructure",
+    "subdomain": "Wiring",
+    "costReference": "Socket point",
+    "unitCostNGN": 3000,
+    "unit": "Per socket point"
+  },
+  {
+    "domain": "Data Use and Reporting",
+    "subdomain": "Routine data use",
+    "costReference": "Facility data-use and performance-review setup",
+    "unitCostNGN": 30000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Data Use and Reporting",
+    "subdomain": "Data validation",
+    "costReference": "Scheduled data-validation routine",
+    "unitCostNGN": 30000,
+    "unit": "Per facility"
+  },
+  {
+    "domain": "Data Use and Reporting",
+    "subdomain": "Report review",
+    "costReference": "Report-review and action-tracking routine",
+    "unitCostNGN": 20000,
+    "unit": "Per facility"
+  }
+]

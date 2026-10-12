@@ -316,27 +316,29 @@ facility count would go rather than a zero.
 
 ## What it costs, and what the total leaves out
 
-**₦7.26bn** across the 2,806 facilities, every figure the source's own and
-reconciled to the workbook's Cost summary to the naira. The Investment Plan
-itemises it; three properties of the source are worth knowing before reading
-that page.
+**₦7.22bn** across the 2,806 facilities. The Investment Plan itemises it;
+three properties of the source are worth knowing before reading that page.
 
-**All of it is Technical Infrastructure.** Every workforce, workflow and
-data-use action is priced ₦0 or left unpriced — recorded work, costed elsewhere
-or not at all. A real zero is not a blank, and the schedule says how many lines
-carry each.
+**Some prices come from the unit-cost table, not the facility sheet.** The
+facility sheet charges workflow configuration and the three data-use routines
+at ₦0, and leaves device maintenance blank; the workbook's
+"Unit_costs_and_assumptions" table documents a price for each, and the plan
+uses it (`TAB_PRICED` in `scripts/assessment-source.mjs`) — ₦0.5bn of the
+total. Every other figure is the facility sheet's own, and `data:check`
+reconciles the workbook's Cost summary to the naira at the sheet's prices.
+Training, technical assistance and change management remain ₦0: the table
+prices them per state, not per facility.
 
 | Urgency | Total |
 |---|---:|
-| Major | ₦2,334,535,000 |
-| Moderate | ₦2,321,235,000 |
-| Minor | ₦2,222,924,333 |
+| Major | ₦2,115,990,000 |
+| Moderate | ₦2,330,680,000 |
+| Minor | ₦2,400,520,333 |
 | Long-term | ₦376,500,000 |
 
-**4,654 actions carry no price at all** — routine device maintenance, naming an
-EMR focal person, and the lockable-door checks the sheet leaves "before
-costing". The total excludes them and says so. See
-[`docs/data-queries/`](docs/data-queries/).
+**2,380 actions carry no price at all** — naming an EMR focal person, and the
+lockable-door checks the sheet leaves "before costing". The total excludes
+them. See [`docs/data-queries/`](docs/data-queries/).
 
 **Some actions are bought by the unit.** One cell can buy five tablets, or two
 desks and a fan, for one cost. The ingest splits each into unit actions — a

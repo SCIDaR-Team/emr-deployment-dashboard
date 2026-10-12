@@ -307,7 +307,11 @@ same ₦1,263. `ingest-assessment.mjs` tolerates exactly ₦1 per facility and
 totals the drift in its build report, so a rounding artefact cannot quietly grow
 into something that is not rounding.
 
-**Two whole domains now cost nothing.** Every condition in Workforce Capacity
+**Two whole domains now cost nothing — in the facility sheet.** The dashboard
+prices workflow configuration, the three data-use routines and device
+maintenance from the workbook's unit-cost table instead (`TAB_PRICED` in
+`scripts/assessment-source.mjs`); what follows describes the sheet itself.
+Every condition in Workforce Capacity
 and Data Use & Reporting still fires an action, and every one of those actions
 is priced ₦0. This is the revised model's largest single move, and it is a real
 ₦0 rather than a blank — the work is recorded and not costed here. A further

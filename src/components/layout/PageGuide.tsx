@@ -45,7 +45,10 @@ export function GuideDrawer({
           ) : (
             <ul className="mt-2 list-disc space-y-1.5 pl-4 text-body leading-relaxed text-muted-foreground">
               {section.entries.map((e) => (
-                <li key={e.text}>{e.text}</li>
+                <li key={e.text}>
+                  {e.name && <strong className="font-semibold text-foreground">{e.name}: </strong>}
+                  {e.text}
+                </li>
               ))}
             </ul>
           )}

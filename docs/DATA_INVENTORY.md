@@ -23,6 +23,7 @@ the dashboard workbook) and facility positions (the raw survey export).
 ```
 ERA Dashboard workbook (published .xlsx, 55 MB — downloaded by data:sync)
  ├─ "List of gaps and interventions" ─ data:gaps ─▶ List of gaps and interventions per facility.csv ─┐
+ ├─ "Unit_costs_and_assumptions" ───── data:unit-costs ─▶ scripts/source-data/unit-costs.json ───────┤
  ├─ "State Maturity" ────────────────── data:maturity ─▶ scripts/source-data/state-maturity.json ─────┤
  └─ "Summary of gaps and readiness",                                                                │
     "Cost summary" ──────────────────── data:check compares public/data with these                  │
@@ -120,6 +121,16 @@ The dashboard workbook has a sheet of the same name, but **without a Latitude co
 | **Powers** | What assessors noted (Assessed States) |
 
 **Contains names and phone numbers** in the raw text. Should not go into a workbook published to the web — see the proposal below.
+
+### Unit costs
+
+| | |
+|---|---|
+| **Source** | `ERA Dashboard dataset.xlsx` › **Unit_costs_and_assumptions**, the first table (one row per cost item) |
+| **Path in** | `npm run data:unit-costs` → `scripts/source-data/unit-costs.json` → `data:ingest` |
+| **Powers** | The price of the actions the facility sheet charges at ₦0 or leaves blank but this table documents — workflow configuration, the three data-use routines, device maintenance (`TAB_PRICED` in `scripts/assessment-source.mjs`). Every other price is the facility sheet's own |
+
+Columns relied on — **found by header**: **Domain**, **Subdomain**, **Cost reference**, **Total**, **Unit**. `data:check` compares the workbook's Cost summary at the facility sheet's prices, so it takes this addition back off first (`sheetUnitCostNGN` on each such action).
 
 ### 4. State Maturity
 
