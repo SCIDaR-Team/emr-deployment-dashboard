@@ -79,6 +79,20 @@ export function briefDocx(facts: BriefFacts, brief: BriefDocument | null): Docum
       ],
     }),
     new Paragraph({ text: `${facts.state} State`, heading: HeadingLevel.TITLE }),
+    // As on the page and in print: a draft must not pass as the final brief.
+    ...(brief && brief.status !== 'approved'
+      ? [
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: 'DRAFT — UNDER REVIEW. Written with AI from the assessment data; not yet checked.',
+                bold: true,
+                color: '9A6700',
+              }),
+            ],
+          }),
+        ]
+      : []),
     new Paragraph({
       children: [
         new TextRun({

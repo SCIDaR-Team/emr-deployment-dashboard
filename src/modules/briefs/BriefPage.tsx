@@ -25,9 +25,10 @@ import type { BriefFacts, UnlockRow } from '@/lib/briefs/facts';
  *   with an AI model around those figures and approved by a person. Every
  *   figure in them is checked against the facts on this page.
  *
- * On a draft, the page says so, lists any figure that is not in the data, and
- * says when the data has moved since the draft was written. The live site
- * shows approved briefs only (see `content.ts`).
+ * On a draft, the page says so — on screen, in print and in the Word file —
+ * lists any figure that is not in the data, and says when the data has moved
+ * since the draft was written. Drafts are on the live site, for the team to
+ * review where the briefs will be read (see `content.ts`).
  *
  * Outside the app shell, like the landing page, so it prints as a page: the
  * toolbar and review notes are `print:hidden`, and "Save as PDF" is the
@@ -135,9 +136,9 @@ export default function BriefPage() {
             <div className="space-y-1">
               {brief.status !== 'approved' && (
                 <p>
-                  <strong>Draft — not on the live site.</strong> Review{' '}
-                  <code className="mono">src/content/briefs/{stateId}.md</code>, then set{' '}
-                  <code className="mono">status: approved</code> and your name.
+                  <strong>Draft — under review.</strong> The narrative was written with AI from
+                  the figures on this page and has not been checked yet. Every figure in it is
+                  checked against the data; the wording is not.
                 </p>
               )}
               {stale && (
@@ -163,6 +164,13 @@ export default function BriefPage() {
             <div className="min-w-0">
               <p className="text-note font-semibold uppercase tracking-[0.14em] text-emerald-300">
                 EMR readiness · State brief
+                {/* Printed, unlike the review notes above: a draft saved as
+                    PDF must not be passable as the final brief. */}
+                {brief && brief.status !== 'approved' && (
+                  <span className="ml-2 rounded-full bg-moderate px-2 py-0.5 text-tick tracking-[0.08em] text-onband print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
+                    Draft — under review
+                  </span>
+                )}
               </p>
               <h1 className="mt-1 text-[28px] font-extrabold leading-tight text-foreground">
                 {facts.state} State
