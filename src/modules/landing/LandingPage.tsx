@@ -183,7 +183,8 @@ function MaturitySplit() {
           State maturity
         </h2>
         <p className="mt-0.5 pl-[30px] text-note text-muted-foreground">
-          {formatCount(MATURITY_STATES)} states &amp; FCT
+          {/* The 37 count the FCT, so it is 36 states and the FCT. */}
+          {formatCount(MATURITY_STATES - 1)} states &amp; FCT
         </p>
       </div>
       <div className="min-w-0">
@@ -271,7 +272,8 @@ export default function LandingPage() {
   const stats: [LucideIcon, string, string, string][] = [
     // Widest scope first, narrowing left to right: the whole country, the part
     // of it visited, and then what that visit covered.
-    [Map, String(COVERAGE.statesTotal), 'States & FCT', 'Nationwide scope'],
+    // 37 is the 36 states and the FCT together, not 37 states and the FCT.
+    [Map, String(COVERAGE.statesTotal), 'States incl. FCT', 'Nationwide scope'],
     [MapPin, String(COVERAGE.statesPrimary), 'States visited', 'Primary facility survey'],
     [Landmark, formatCount(lgaCount), 'LGAs reached', 'Local government areas'],
     [
