@@ -1,32 +1,32 @@
 ---
 state: Rivers
 status: draft            # change to approved once reviewed
-factsVersion: daa7e8fe
-drafted: 2026-10-06
+factsVersion: 2838d0eb
+drafted: 2026-10-12
 model: openai/gpt-oss-120b
 reviewedBy: 
 ---
 
 ## Summary
 
-Rivers state has 144 primary health care facilities slated for EMR rollout. Only 18 facilities (13%) are classified as Ready, leaving the majority needing upgrades. The single most useful fact is that the current Ready share is far below the national Ready share of 6%.
+Rivers state has 144 primary health‑care facilities, with 18 classified as Ready (13%). It ranks 3 of 12 states for readiness, far above the national Ready share of 6%. The most useful insight is that the large majority of facilities remain not ready for an EMR rollout.
 
 ## Readiness
 
-The state reports 18 Ready facilities, 82 Moderately ready facilities, and 44 Not ready facilities. These correspond to shares of 13%, 57% and 31% respectively. Rivers ranks 3 of 12 states in Ready share, compared with a national Ready share of 6%.
+Ready facilities: 18 (13%). Moderately ready: 82 (57%). Not ready: 44 (31%). The state’s Ready share of 13% compares with the national Ready share of 6%, placing Rivers at rank 3 of 12 states for readiness. This indicates a significant gap that must be addressed before full EMR adoption.
 
 ## Main gaps
 
-Device‑maintenance gaps affect 139 facilities (97%) and are the most common, followed by Technical‑support gaps in 129 facilities (90%), Data‑backup gaps in 128 facilities (89%), Facility‑connectivity gaps in 125 facilities (87%) and Backup‑connectivity gaps in 124 facilities (86%). The domain with the highest count of Major gaps is Workforce Capacity, with 59 facilities (41%). The LGAs with the most Not ready facilities are Khana (8), Andoni (7) and Ahoada East (5).
+Most common gaps affect almost all facilities: Device‑maintenance gap (139 facilities, 97%); Technical‑support gap (129 facilities, 90%); Data‑backup gap (128 facilities, 89%); Facility‑connectivity gap (125 facilities, 87%); Backup‑connectivity gap (124 facilities, 86%). Major gaps by domain are highest in Workforce Capacity (59 facilities, 41%) and Technical Infrastructure (44 facilities, 31%). LGAs with the most Not ready facilities are Khana (8), Andoni (7) and Ahoada East (5).
 
 ## Investment
 
-Total plan cost is ₦292.2m, broken down into ₦258.1m before deployment, ₦15.6m during deployment and ₦18.5m after deployment. The average spend per facility is ₦2.0m, compared with the national average of ₦2.4m. For Ready facilities the cost is ₦3.8m (₦212.1k per facility); for Moderately ready facilities the cost is ₦124.6m (₦1.5m per facility); for Not ready facilities the cost is ₦163.8m (₦3.7m per facility).
+Plan total is ₦319.0m, allocated as ₦284.8m before deployment, ₦15.6m during deployment and ₦18.5m after deployment. Cost per facility is ₦2.2m versus the national per‑facility benchmark of ₦2.6m. By readiness tier, Ready facilities require ₦7.4m total (₦412.4k per facility), Moderately ready need ₦139.1m total (₦1.7m per facility) and Not ready need ₦172.5m total (₦3.9m per facility).
 
 ## What funding unlocks
 
-Individual fixes: Full solar – spend ₦0, unlocks 0, total Ready 18; Solar top‑up – spend ₦2.1m, unlocks 1, total Ready 19; Router – spend ₦2.0m, unlocks 49, total Ready 67; FibreX – spend ₦315.0k, unlocks 7, total Ready 25; Network extension – spend ₦7.5m, unlocks 10, total Ready 28; Starlink – spend ₦1.8m, unlocks 3, total Ready 21. Combinations: All power (Full solar + Solar top‑up) spend ₦2.1m, unlocks 1, total Ready 19; All connectivity (Router + FibreX + Network extension + Starlink) spend ₦11.5m, unlocks 69, total Ready 87; Full solar and routers spend ₦95.7m, unlocks 79, total Ready 97; All six fixes spend ₦185.2m, unlocks 126, total Ready 144. The Router fix unlocks the most facilities for its cost. Budgets of ₦20.0m unlock 72 facilities (total Ready 90) and ₦100.0m unlock 101 facilities (total Ready 119).
+From 18 already Ready facilities, single fixes add: Full solar (spend ₦0) unlocks 0 (total Ready 18); Solar top‑up (₦2.1m) unlocks 1 (19); Router (₦2.0m) unlocks 49 (67); FibreX (₦315.0k) unlocks 7 (25); Network extension (₦7.5m) unlocks 10 (28); Starlink (₦1.8m) unlocks 3 (21). The router provides the largest unlock for its spend. Combined packages: All power (₦2.1m) unlocks 1 (19); All connectivity (₦11.5m) unlocks 69 (87); Full solar and routers (₦95.7m) unlocks 79 (97); All six fixes (₦185.2m) unlocks 126 (144). Budgets: ₦20.0m unlocks 72 (Ready 90); ₦100.0m unlocks 101 (Ready 119).
 
 ## Leadership and maturity
 
-The state falls in the Mature band. Leadership scores are Mature for governance structure, digital health strategy and financial commitment, while data governance policy is Not mature. Electricity access is 87.3% and internet subscription is 51.5%.
+Maturity band is Mature. Leadership and governance scores show a Mature governance structure, a Not mature data governance policy, and Mature digital health strategy and financial commitment. Electricity access is 87.3% and internet subscription is 51.5%. overall indicating substantial infrastructure readiness.

@@ -1,32 +1,32 @@
 ---
 state: Bauchi
 status: draft            # change to approved once reviewed
-factsVersion: 2b862601
-drafted: 2026-10-06
+factsVersion: adbc7e75
+drafted: 2026-10-12
 model: openai/gpt-oss-120b
 reviewedBy: 
 ---
 
 ## Summary
 
-Bauchi ranks 7 of 12 states in EMR readiness, with only 3 of its 179 primary health‑care facilities classified as Ready. The most useful fact is that 98% of facilities have a Facility‑connectivity gap, indicating a major barrier to system rollout.
+Bauchi’s primary health‑care network includes 179 facilities, but only 3 are classified as Ready (2%). The state lags behind the national Ready share of 6% and ranks 7 of 12. The single most useful fact is that the Facility‑connectivity gap affects 175 facilities (98%).
 
 ## Readiness
 
-Bauchi reports 3 Ready, 127 Moderately ready and 49 Not ready facilities out of 179. The state’s Ready share of 2% is below the national Ready share of 6%, and its rank of 7 of 12 places it in the lower half of states.
+Ready facilities: 3 (2%). Moderately ready: 127 (71%). Not ready: 49 (27%). Compared with the national Ready share of 6%, Bauchi is below average and sits at rank 7 of 12.
 
 ## Main gaps
 
-The most common gaps affect connectivity: Facility‑connectivity gap (175 facilities, 98%), Backup‑connectivity gap (171 facilities, 96%) and Physical service‑point gap (167 facilities, 93%). The domain with the most Major gaps is Workforce Capacity (126 facilities, 70%). LGAs with the highest number of Not ready facilities are Shira (6), Zaki (6) and Toro (5).
+The most common gap is the Facility‑connectivity gap, present in 175 facilities (98%). The domain with the most Major gaps is Workforce Capacity, affecting 126 facilities (70%). LGAs with the highest numbers of Not ready facilities are Shira (6), Zaki (6) and Toro (5).
 
 ## Investment
 
-The EMR plan totals ₦350.1m, split into ₦285.6m before deployment, ₦49.5m during deployment and ₦15.0m after deployment. The average cost per facility is ₦2.0m, compared with the national average of ₦2.4m. Costs by readiness are: Ready facilities ₦2.6m (₦853.8k per facility), Moderately ready ₦144.0m (₦1.1m per facility) and Not ready ₦203.5m (₦4.2m per facility).
+The EMR plan totals ₦379.5m, allocated as ₦315.0m before deployment, ₦49.5m during, and ₦15.0m after. Cost per facility is ₦2.1m, compared with the national figure of ₦2.6m. Ready facilities cost ₦2.8m (₦925.4k per facility), Moderately ready ₦165.9m (₦1.3m per facility), Not ready ₦210.8m (₦4.3m per facility).
 
 ## What funding unlocks
 
-Each fix adds Ready facilities: Full solar (spend ₦3.1m) unlocks 1 (Ready 4); Solar top‑up (spend ₦0) none; Router (spend ₦4.8m) unlocks 119 (Ready 122); FibreX (spend ₦0) none; Network extension (spend ₦750.0k) unlocks 1 (Ready 4); Starlink (spend ₦3.0m) unlocks 5 (Ready 8). The Router provides the greatest unlocks for its spend. Combination packages give: All power (spend ₦3.1m) adds 1 (Ready 4); All connectivity (spend ₦8.5m) adds 125 (Ready 128); Full solar and routers (spend ₦111.0m) adds 153 (Ready 156); All six fixes (spend ₦170.2m) adds 176 (Ready 179). With a ₦20.0m budget unlocks 130 (Ready 133); a ₦100.0m budget unlocks 155 (Ready 158).
+Full solar (spend ₦3.1m) would unlock 1 facility, raising Ready from 3 to 4. Solar top‑up (spend ₦0) would unlock 0, keeping Ready at 3. Router (spend ₦4.8m) would unlock 119, raising Ready to 122. FibreX (spend ₦0) would unlock 0. Network extension (spend ₦750.0k) would unlock 1, raising Ready to 4. Starlink (spend ₦3.0m) would unlock 5, raising Ready to 8. The combination All connectivity (spend ₦8.5m) would unlock 125, total Ready 128. All six fixes (spend ₦170.2m) would unlock 176, achieving 179 Ready (100%). The Router fix unlocks the most facilities for its cost. A budget of ₦20.0m would unlock 130 facilities, giving 133 Ready; a ₦100.0m budget would unlock 155, giving 158 Ready.
 
 ## Leadership and maturity
 
-Maturity is Not mature. Leadership and governance items—governance structure, data governance policy, digital health strategy and financial commitment—are all rated Not mature. Electricity access is 35.9% and internet subscription is 36.9%. These figures indicate limited power and connectivity for health facilities.
+Bauchi is in the Not mature band. Leadership and governance items – governance structure, data governance policy, digital health strategy and financial commitment – are all rated Not mature. Electricity access is 35.9% and internet subscription is 36.9%.

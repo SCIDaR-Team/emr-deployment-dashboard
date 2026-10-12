@@ -1,32 +1,32 @@
 ---
 state: Niger
 status: draft            # change to approved once reviewed
-factsVersion: e5b7179c
-drafted: 2026-10-06
+factsVersion: cb0c26f1
+drafted: 2026-10-12
 model: openai/gpt-oss-120b
 reviewedBy: 
 ---
 
 ## Summary
 
-Niger’s primary health‑care network is largely unprepared for an EMR system, with only 1 of its 253 facilities ready (<1%). The most striking fact is that the Facility‑connectivity gap affects 249 facilities (98%). Addressing connectivity will be essential before wider rollout.
+Niger has 253 primary health‑care facilities, but only one is classified as Ready (<1%). The bulk of facilities are Moderately ready (153, 60%) or Not ready (99, 39%). The single most useful fact is the Facility‑connectivity gap, affecting 249 facilities (98%).
 
 ## Readiness
 
-Ready: 1 facility (<1%). Moderately ready: 153 facilities (60%). Not ready: 99 facilities (39%). Niger’s ready share is well below the national ready share of 6% and ranks 9 of 12 states. This indicates that most facilities will require significant upgrades to meet EMR standards.
+The state reports one Ready facility, 153 Moderately ready facilities and 99 Not ready facilities. Shares are <1% Ready, 60% Moderately ready and 39% Not ready. Compared with the national Ready share of 6%, Niger falls well below the average. Its rank is 9 of 12 states for Ready facilities, indicating a lower relative position nationally.
 
 ## Main gaps
 
-The most common gap is the Facility‑connectivity gap, affecting 249 facilities (98%). Backup‑connectivity and Data‑backup gaps each affect 229 facilities (91%). Among domains, Workforce Capacity shows the highest major‑gap share at 161 facilities (64%). The LGAs with the greatest number of not‑ready facilities are Agwara, Rijau and Shiroro, each reporting nine not‑ready facilities.
+The most common gap is the Facility‑connectivity gap, seen in 249 facilities (98%). Major gaps are concentrated in the Workforce Capacity domain, affecting 161 facilities (64%). Other major gap domains include Technical Infrastructure (99, 39%) and Workflow & Transition (114, 45%). LGAs with the highest number of Not ready facilities are Agwara, Rijau and Shiroro, each with nine Not ready facilities.
 
 ## Investment
 
-Total funding for Niger’s EMR rollout is ₦776.1m. Before deployment the budget is ₦642.7m, during deployment ₦90.5m, and after deployment ₦43.0m. The average cost per facility is ₦3.1m, compared with the national average of ₦2.4m. Costs differ by readiness: ready facilities cost ₦1.2m each, moderately ready ₦2.4m each, and not‑ready ₦4.2m each.
+The total plan cost is ₦824.6m, split into ₦691.1m before deployment, ₦90.5m during deployment and ₦43.0m after deployment. The average spend per facility is ₦3.3m, compared with the national average of ₦2.6m. By readiness category, Ready facilities require ₦1.4m total (₦1.4m per facility), Moderately ready facilities need ₦389.7m total (₦2.5m per facility) and Not ready facilities need ₦433.5m total (₦4.4m per facility).
 
 ## What funding unlocks
 
-Fixes: Full solar (spend ₦9.3m, unlocks 3, total ready 4); Solar top‑up (spend ₦0, unlocks 0, total ready 1); Router (spend ₦3.2m, unlocks 80, total ready 81); FibreX (spend ₦0, unlocks 0, total ready 1); Network extension (spend ₦3.0m, unlocks 4, total ready 5); Starlink (spend ₦8.8m, unlocks 15, total ready 16). Router unlocks the most. Combinations: All power (spend ₦9.3m, unlocks 3, total ready 4); All connectivity (spend ₦15.1m, unlocks 99, total ready 100); Full solar + Router (spend ₦290.6m, unlocks 172, total ready 173); All six fixes (spend ₦508.2m, unlocks 252, total ready 253). Budgets of ₦20.0m and ₦100.0m would raise total ready to 102 and 130.
+Each fix adds Ready facilities on its own: Full solar spends ₦9.3m, unlocks 3 and brings total Ready to 4; Solar top‑up spends ₦0, unlocks 0, total Ready 1; Router spends ₦3.2m, unlocks 80, total Ready 81; FibreX spends ₦0, unlocks 0, total Ready 1; Network extension spends ₦3.0m, unlocks 4, total Ready 5; Starlink spends ₦8.8m, unlocks 15, total Ready 16. The combination All power (Full solar + Solar top‑up) spends ₦9.3m, unlocks 3, total Ready 4. All connectivity (Router + FibreX + Network extension + Starlink) spends ₦15.1m, unlocks 99, total Ready 100. Full solar and routers spends ₦290.6m, unlocks 172, total Ready 173. All six fixes spends ₦508.2m, unlocks 252, total Ready 253. Router provides the most unlocks for its spend. A budget of ₦20.0m unlocks 101 facilities, reaching 102 Ready; a budget of ₦100.0m unlocks 129 facilities, reaching 130 Ready.
 
 ## Leadership and maturity
 
-Niger falls in the Not mature band. Leadership scores show a Mature governance structure but Not mature scores for data governance policy, digital health strategy and financial commitment. Electricity access is 38.6% and internet subscription is 50.5%. These figures highlight gaps in infrastructure and policy that limit EMR readiness.
+Niger falls in the Not mature band. Leadership scores show a Mature governance structure but Not mature levels for data governance policy, digital health strategy and financial commitment. Electricity access is 38.6% and internet subscription is 50.5%, indicating limited infrastructure for digital health implementation.
