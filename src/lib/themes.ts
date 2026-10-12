@@ -149,7 +149,9 @@ export const SUB_DOMAINS: readonly SubDomainDef[] = [
         label: 'Electricity',
         format: 'percent',
         icon: 'Zap',
-        caption: 'of population with access',
+        /* Sourced in brackets, as the subscriptions block names NBS 2025 for
+           its population. */
+        caption: 'of population with access (NDHS 2024)',
       },
       {
         key: 'internetSubscriptionPct',
