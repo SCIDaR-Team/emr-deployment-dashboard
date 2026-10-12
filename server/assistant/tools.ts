@@ -23,6 +23,8 @@ import type {
   Horizon,
   ScenarioComponentId,
 } from '../../src/lib/types';
+import { LEADERSHIP_LABEL } from '../../src/lib/themes';
+import type { LeadershipSubDomainId } from '../../src/lib/types';
 import { encodeSpec, stateId } from '../../src/modules/investment/scenario/scenarioState';
 import { findState, type DashboardData } from './data';
 
@@ -215,7 +217,7 @@ function maturityOf(area: AreaProfile) {
   const leadership = c?.leadership
     ? Object.fromEntries(
         Object.entries(c.leadership).map(([k, v]) => [
-          k.replace(/_/g, ' '),
+          LEADERSHIP_LABEL[k as LeadershipSubDomainId] ?? k.replace(/_/g, ' '),
           v ? MATURITY_LABEL[v as Band] : MATURITY_NO_DATA,
         ]),
       )

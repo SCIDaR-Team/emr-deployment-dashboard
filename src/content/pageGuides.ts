@@ -50,7 +50,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
       },
       {
         name: 'Leadership & Governance',
-        text: 'Assessing state-level EMR commitments across four areas: governance structure, data governance policy, digital health strategy, and financial commitment to EMR. Each commitment is rated Yes, Partial, or No. The dashboard shows the number of states in each response category for each commitment, with one square representing one state.',
+        text: 'Assessing state-level EMR commitments across four areas: digital health governance structure, digital health data governance policy, digital health strategy, and state commitment to EMR financing. Each commitment is rated Yes, Partial, or No. The dashboard shows the number of states in each response category for each commitment, with one square representing one state.',
       },
       {
         name: 'Technical Infrastructure',

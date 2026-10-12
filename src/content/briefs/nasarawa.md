@@ -1,7 +1,7 @@
 ---
 state: Nasarawa
 status: draft            # change to approved once reviewed
-factsVersion: f2fab72b
+factsVersion: f595f793
 drafted: 2026-10-12
 model: openai/gpt-oss-120b
 reviewedBy: 
@@ -9,24 +9,24 @@ reviewedBy:
 
 ## Summary
 
-Nasarawa has 152 primary health care facilities; only 1 facility (1%) is Ready for EMR, 121 (80%) are Moderately ready and 30 (20%) are Not ready. The single most useful fact is that 99% of facilities lack basic connectivity, creating a massive barrier to digital rollout.
+Nasarawa’s primary health‑care network has only 1 % of its 152 facilities classified as Ready for an EMR system, placing the state at rank 8 of 12 in readiness. The single most useful insight is that the Facility‑connectivity gap affects 151 facilities, or 99 % of the network.
 
 ## Readiness
 
-Ready: 1 facility (1%). Moderately ready: 121 facilities (80%). Not ready: 30 facilities (20%). Nasarawa’s Ready share of 1% is below the national Ready share of 6% and its rank is 8 of 12 states.
+Ready facilities: 1; Moderately ready: 121; Not ready: 30. Nasarawa’s Ready share of 1 % is below the national Ready share of 6 %, and the state ranks 8 of 12 states for readiness.
 
 ## Main gaps
 
-The most common gaps affect connectivity: Facility‑connectivity gap in 151 facilities (99%), Backup‑connectivity gap in 148 facilities (97%), Device‑maintenance gap in 144 facilities (95%), Data‑backup gap in 143 facilities (94%) and Technical‑support gap in 130 facilities (86%). The domain with the most major gaps is Workforce Capacity (83 facilities, 55%). LGAs with the highest numbers of Not ready facilities are Karu (6), Awe (5) and Nasarawa‑Eggon (4).
+The most common gaps are the Facility‑connectivity gap (151 facilities, 99 %), Backup‑connectivity gap (148 facilities, 97 %) and Device‑maintenance gap (144 facilities, 95 %). The domain with the most major gaps is Workforce Capacity (83 facilities, 55 %). LGAs with the most Not ready facilities are Karu (6), Awe (5) and Nasarawa‑Eggon (4).
 
 ## Investment
 
-The plan totals ₦339.8m, allocated as ₦281.7m before deployment, ₦39.7m during deployment and ₦18.5m after deployment. The average cost per facility is ₦2.2m, compared with the national average of ₦2.6m per facility.
+The EMR deployment plan totals ₦339.8m, with ₦281.7m needed before deployment, ₦39.7m during deployment and ₦18.5m after deployment. The average cost per facility is ₦2.2m, compared with the national average of ₦2.6m per facility. Costs by readiness category are ₦975.7k for the single Ready facility, ₦227.3m for the 121 Moderately ready facilities (₦1.9m each) and ₦111.5m for the 30 Not ready facilities (₦3.7m each).
 
 ## What funding unlocks
 
-Each fix alone yields: Full solar (spend ₦0) unlocks 0 (total Ready 1); Solar top‑up (₦0) unlocks 0 (total Ready 1); Router (₦3.3m) unlocks 83 (total Ready 84); FibreX (₦45.0k) unlocks 1 (total Ready 2); Network extension (₦750.0k) unlocks 1 (total Ready 2); Starlink (₦5.3m) unlocks 9 (total Ready 10). The Router fix provides the most unlocks for its cost, adding 83 ready facilities for ₦3.3m. Combination packages: All power (₦0, unlocks 0, total Ready 1); All connectivity (₦9.4m, unlocks 94, total Ready 95); Full solar and routers (₦118.9m, unlocks 120, total Ready 121); All six fixes (₦184.5m, unlocks 151, total Ready 152). With ₦20.0m the state can unlock 98 facilities (total Ready 99); with ₦100.0m it can unlock 125 (total Ready 126).
+Fixes applied to the single Ready facility are: Full solar (spend ₦0, unlocked 0, totalReady 1); Solar top‑up (spend ₦0, unlocked 0, totalReady 1); Router (spend ₦3.3m, unlocked 83, totalReady 84); FibreX (spend ₦45.0k, unlocked 1, totalReady 2); Network extension (spend ₦750.0k, unlocked 1, totalReady 2); Starlink (spend ₦5.3m, unlocked 9, totalReady 10). Combinations are: All power (spend ₦0, unlocked 0, totalReady 1); All connectivity (spend ₦9.4m, unlocked 94, totalReady 95); Full solar and routers (spend ₦118.9m, unlocked 120, totalReady 121); All six fixes (spend ₦184.5m, unlocked 151, totalReady 152). The Router fix unlocks the most facilities for its cost. Budgets of ₦20.0m and ₦100.0m would unlock 98 (totalReady 99) and 125 (totalReady 126) facilities respectively.
 
 ## Leadership and maturity
 
-The state is in the Not mature band. Leadership scores show a Mature governance structure, while data governance policy, digital health strategy and financial commitment are all Not mature. Electricity access is 64.3% and internet subscription is 87.7%.
+Nasarawa is in the Not mature band. Leadership and governance items include one Mature element (Digital health governance structure) and three Not mature elements (digital health data governance policy, state‑specific digital health strategy, state commitment to EMR financing). Electricity access is 64.3 % and internet subscription is 87.7 %.

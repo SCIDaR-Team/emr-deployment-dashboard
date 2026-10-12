@@ -17,7 +17,7 @@ export const CHARTS = {
   'coverage-domain': {
     page: 'National Coverage',
     howToRead:
-      'One domain of the State Maturity assessment and its figures. Technical infrastructure: electricity access and internet subscriptions, as rates per hundred people from national sources (internet subscriptions are counted per SIM, so they can pass 100%), and subscriptions by technology and operator. Leadership and governance: four commitments — governance structure, financial commitment, a digital health strategy, a data governance policy — answered Yes, Partial or No; nationally, how many states gave each answer. These figures carry no readiness band of their own.',
+      'One domain of the State Maturity assessment and its figures. Technical infrastructure: electricity access and internet subscriptions, as rates per hundred people from national sources (internet subscriptions are counted per SIM, so they can pass 100%), and subscriptions by technology and operator. Leadership and governance: four commitments — digital health governance structure, state commitment to EMR financing, a digital health strategy, a digital health data governance policy — answered Yes, Partial or No; nationally, how many states gave each answer. These figures carry no readiness band of their own.',
   },
   'assessment-facilities': {
     page: 'Assessed States',

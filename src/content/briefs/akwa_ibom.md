@@ -1,7 +1,7 @@
 ---
 state: Akwa Ibom
 status: draft            # change to approved once reviewed
-factsVersion: d46d0caa
+factsVersion: 295c1c9a
 drafted: 2026-10-12
 model: openai/gpt-oss-120b
 reviewedBy: 
@@ -9,24 +9,27 @@ reviewedBy:
 
 ## Summary
 
-Akwa Ibom has 255 primary health‑care facilities, but only one is classified as Ready (<1%). The state ranks 10 of 12 for Ready facilities, well below the national Ready share of 6%. Half of the facilities are Moderately ready and the other half Not ready, indicating a large scale need for EMR deployment.
+Akwa Ibom has 255 primary health‑care facilities, but only 1 is classified as Ready for an EMR system. The most useful single fact is that 99% of facilities lack a data‑backup capability, indicating a critical gap before digital roll‑out.
 
 ## Readiness
 
-Readiness profiling shows 1 facility (Ready) with <1% share, 127 facilities (Moderately ready) representing 50% of the total, and another 127 facilities (Not ready) also at 50%. Compared with the national Ready share of 6%, Akwa Ibom’s Ready proportion is far lower. The state’s rank of 10 of 12 places it near the bottom of the country in terms of EMR‑ready facilities.
+Ready facilities: 1 ("<1%" share). Moderately ready: 127 facilities (50%). Not ready: 127 facilities (50%). The state’s Ready share is far below the national Ready share of 6% and it ranks 10 of 12 states on the Ready metric.
 
 ## Main gaps
 
-The most common gaps affect almost every facility: Data‑backup gap (253 facilities, 99%), Facility‑connectivity gap (252 facilities, 99%), Device‑maintenance gap (243 facilities, 95%), Technical‑support gap (241 facilities, 95%) and Backup‑power gap (237 facilities, 93%). Major gaps by domain are highest in Workforce Capacity (226 facilities, 89%) followed by Technical Infrastructure (127 facilities, 50%). The LGAs with the greatest number of Not ready facilities are Obot Akara (9), Eastern Obolo (7) and Mbo (7).
+- Data‑backup gap affects 253 facilities (99%).
+- Facility‑connectivity gap affects 252 facilities (99%).
+- Device‑maintenance gap affects 243 facilities (95%).
+Major gaps by domain: Workforce Capacity (226 facilities, 89%). LGAs with the most Not ready facilities: Obot Akara (9), Eastern Obolo (7), Mbo (7).
 
 ## Investment
 
-The EMR deployment plan totals ₦962.8m, allocated as ₦793.7m before deployment, ₦103.1m during deployment and ₦66.0m after deployment. The average cost per facility is ₦3.8m, compared with the national average of ₦2.6m per facility. By readiness category, Ready facilities require ₦165.0k each, Moderately ready facilities cost ₦3.0m each, and Not ready facilities need ₦4.6m each.
+The EMR plan totals ₦962.8m, split into ₦793.7m before deployment, ₦103.1m during deployment, and ₦66.0m after deployment. Cost per facility is ₦3.8m, compared with the national per‑facility cost of ₦2.6m. By readiness category, Ready facilities cost ₦165.0k each, Moderately ready ₦3.0m each, and Not ready ₦4.6m each.
 
 ## What funding unlocks
 
-Six fixes can raise readiness: Full solar (₦6.2m) unlocks 2 facilities (Ready 3); Solar top‑up (no spend) unlocks 0 (Ready 1); Router (₦1.9m) unlocks 47 (Ready 48); FibreX (no spend) unlocks 0 (Ready 1); Network extension (₦11.3m) unlocks 15 (Ready 16); Starlink (₦590.0k) unlocks 1 (Ready 2). Router provides the most unlocks for its cost. Four combos: All power (Full solar+Solar top‑up) ₦6.2m unlocks 2 (Ready 3); All connectivity (Router+FibreX+Network extension+Starlink) ₦13.7m unlocks 63 (Ready 64); Full solar and routers ₦383.1m unlocks 169 (Ready 170); All six fixes ₦635.7m unlocks 254 (Ready 255). Budgets: ₦20.0m unlocks 65 (total Ready 66); ₦100.0m unlocks 94 (total Ready 95).
+Six fixes alone: Full solar (spend ₦6.2m) unlocks 2 facilities (total Ready 3); Solar top‑up (₦0) unlocks 0 (total Ready 1); Router (₦1.9m) unlocks 47 (total Ready 48); FibreX (₦0) unlocks 0 (total Ready 1); Network extension (₦11.3m) unlocks 15 (total Ready 16); Starlink (₦590.0k) unlocks 1 (total Ready 2). Four combinations: All power (₦6.2m) unlocks 2 (total Ready 3); All connectivity (₦13.7m) unlocks 63 (total Ready 64); Full solar and routers (₦383.1m) unlocks 169 (total Ready 170); All six fixes (₦635.7m) unlocks 254 (total Ready 255). The Router fix unlocks the most facilities for its spend. Budgets: ₦20.0m unlocks 65 facilities (total Ready 66); ₦100.0m unlocks 94 facilities (total Ready 95).
 
 ## Leadership and maturity
 
-Akwa Ibom is in the Not mature band. Leadership items score: governance structure – Mature; data governance policy – Moderately mature; digital health strategy – Not mature; financial commitment – Moderately mature. Electricity access stands at 61.2% and internet subscription at 32.3%.
+Band: Not mature. Leadership scores: Digital health governance structure – Mature; Digital health data governance policy – Moderately mature; State‑specific digital health strategy – Not mature; State commitment to EMR financing – Moderately mature. Electricity access is 61.2% and internet subscription is 32.3%.

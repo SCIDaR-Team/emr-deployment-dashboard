@@ -216,12 +216,17 @@ export function BandLegend({
  * `unit` is for counts of things the reader needs named — "6 states". Omit it
  * where the surrounding block has already said what is being counted, and pass
  * `showPercent` where the share matters as much as the count.
+ *
+ * `noData` adds a fourth, grey card for what carries no band — the states not
+ * yet assessed — and the shares are then of all four, so they add to 100% of
+ * everything counted rather than of the classified alone.
  */
 export function BandCards({
   counts,
   unit,
   showPercent = false,
   labels = BAND_LABEL,
+  noData,
   className,
 }: {
   counts: Record<Band, number>;
@@ -229,10 +234,13 @@ export function BandCards({
   showPercent?: boolean;
   /** The band names, where the band is not readiness (`MATURITY_LABEL`). */
   labels?: Record<Band, string>;
+  /** A fourth card for what has no band, and its name ("Not assessed"). */
+  noData?: { count: number; label: string };
   className?: string;
 }) {
   const order: Band[] = ['ready', 'moderately_ready', 'not_ready'];
-  const total = order.reduce((sum, band) => sum + (counts[band] ?? 0), 0);
+  const total =
+    order.reduce((sum, band) => sum + (counts[band] ?? 0), 0) + (noData?.count ?? 0);
 
   return (
     /* The rules are `--on-band` at 15%, not `--border`. A hairline in the
@@ -241,7 +249,11 @@ export function BandCards({
        darkens whatever it lies on, which is what a rule between filled cards
        has to do. */
     <div
-      className={cn('grid grid-cols-3 gap-px border border-onband/15 bg-onband/15', className)}
+      className={cn(
+        'grid gap-px border border-onband/15 bg-onband/15',
+        noData ? 'grid-cols-4' : 'grid-cols-3',
+        className,
+      )}
     >
       {order.map((band) => (
         <div key={band} className={cn('band-card px-2 py-2', BAND_CLASSES[band].bg)}>
@@ -269,6 +281,24 @@ export function BandCards({
           </p>
         </div>
       ))}
+      {noData && (
+        <div className="band-card bg-nodata px-2 py-2 text-foreground">
+          <div className="flex flex-wrap items-baseline gap-x-1.5">
+            <span className="mono text-lead font-semibold leading-none tracking-tight">
+              {formatCount(noData.count)}
+            </span>
+            {unit && <span className="text-note leading-none text-muted-foreground">{unit}</span>}
+            {showPercent && (
+              <span className="mono ml-auto text-note font-semibold leading-none text-muted-foreground">
+                {total ? percentOf(noData.count, total, 1) : '—'}
+              </span>
+            )}
+          </div>
+          <p className="mono mt-2 text-tick font-bold uppercase leading-tight tracking-[0.07em]">
+            {noData.label}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
