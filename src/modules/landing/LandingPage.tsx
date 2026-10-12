@@ -19,12 +19,17 @@ import {
 import { NAV_ITEMS } from '@/app/navigation';
 import { InstitutionMark } from '@/components/layout/InstitutionMark';
 import { useDataContext } from '@/state/dataContext';
-import { BAND_CLASSES, BAND_LABEL } from '@/lib/bands';
+import { BAND_CLASSES, BAND_LABEL, MATURITY_LABEL, MATURITY_NO_DATA } from '@/lib/bands';
 import { cn } from '@/lib/cn';
 import { useCountUp } from '@/hooks/useCountUp';
 import { COVERAGE, INSTITUTION } from '@/lib/constants';
-import { formatCount } from '@/lib/format';
-import { NATIONAL_DEPLOYMENT_SPLIT, NATIONAL_TOTAL } from '@/lib/nationalSplit';
+import { formatCount, percentOf } from '@/lib/format';
+import {
+  MATURITY_STATES,
+  NATIONAL_DEPLOYMENT_SPLIT,
+  NATIONAL_MATURITY_SPLIT,
+  NATIONAL_TOTAL,
+} from '@/lib/nationalSplit';
 import type { Band } from '@/lib/types';
 import { FacilityIllustration, GreenSweep } from './Illustration';
 
@@ -135,6 +140,88 @@ const READINESS_MEASURE: { band: Band; label: string; text: string }[] = [
   },
 ];
 
+/**
+ * State Maturity, as the first row of the findings card — the state-level
+ * reading before the facility-level one, as the dashboard reads top-down from
+ * the country to the clinic. The same counts as National Coverage's Maturity
+ * band block, and what "What is State Maturity?" below defines.
+ *
+ * One proportional bar of every state, best first, with the states not yet
+ * assessed as a fourth, grey segment rather than left out: a bar of the 31
+ * classified alone reads as a national finding over 37. Each segment carries
+ * its count; the legend under it names it with its share of all 37.
+ */
+function MaturitySplit() {
+  const segments = [
+    ...BAND_ORDER.map((b) => ({
+      key: b,
+      label: MATURITY_LABEL[b],
+      count: NATIONAL_MATURITY_SPLIT[b],
+      fill: BAND_CLASSES[b].bg,
+      ink: 'text-onband',
+    })),
+    {
+      key: 'unassessed',
+      label: MATURITY_NO_DATA,
+      count: MATURITY_STATES - BAND_ORDER.reduce((sum, b) => sum + NATIONAL_MATURITY_SPLIT[b], 0),
+      fill: 'bg-nodata',
+      ink: 'text-foreground',
+    },
+  ].filter((seg) => seg.count > 0);
+  const share = (count: number) => percentOf(count, MATURITY_STATES, 1);
+  return (
+    <section
+      aria-labelledby="state-maturity"
+      className="grid items-center gap-x-6 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)]"
+    >
+      <div>
+        <h2
+          id="state-maturity"
+          className="flex items-center gap-2.5 text-prose font-bold uppercase tracking-[0.07em] text-foreground"
+        >
+          <Landmark className="h-5 w-5 text-chrome-ink" aria-hidden />
+          State maturity
+        </h2>
+        <p className="mt-0.5 pl-[30px] text-note text-muted-foreground">
+          {formatCount(MATURITY_STATES)} states &amp; FCT
+        </p>
+      </div>
+      <div className="min-w-0">
+        <div
+          className="flex h-6 gap-[2px] overflow-hidden rounded-[4px]"
+          role="img"
+          aria-label={segments
+            .map((seg) => `${seg.label}: ${seg.count} states (${share(seg.count)})`)
+            .join(', ')}
+        >
+          {segments.map((seg) => (
+            <span
+              key={seg.key}
+              title={`${seg.label}: ${seg.count} states (${share(seg.count)})`}
+              className={cn(
+                'mono flex h-full min-w-[1.75rem] items-center justify-center text-body font-bold',
+                seg.fill,
+                seg.ink,
+              )}
+              style={{ flexGrow: seg.count, flexBasis: 0 }}
+            >
+              {seg.count}
+            </span>
+          ))}
+        </div>
+        <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-note text-muted-foreground">
+          {segments.map((seg) => (
+            <li key={seg.key} className="flex items-center gap-1">
+              <span aria-hidden className={cn('block h-2.5 w-2.5 rounded-[3px]', seg.fill)} />
+              {seg.label} <span className="mono text-foreground">{share(seg.count)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 const ARCHETYPES = NATIONAL_DEPLOYMENT_SPLIT;
 const SCORED_TOTAL = NATIONAL_TOTAL;
 
@@ -211,7 +298,7 @@ export default function LandingPage() {
         <div
           className={cn(
             SHELL,
-            'flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between md:gap-8',
+            'flex flex-col gap-3 py-2.5 md:flex-row md:items-center md:justify-between md:gap-8',
           )}
         >
           <Link
@@ -275,7 +362,7 @@ export default function LandingPage() {
           )}
         >
           {/* ── The finding, and the evidence for it ─────────────────────── */}
-          <div className="grid items-start gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-10">
+          <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-10">
             <div className="flex flex-col">
               <p className="flex items-center gap-3 text-note font-semibold uppercase tracking-[0.16em] text-chrome-ink">
                 National assessment
@@ -294,109 +381,114 @@ export default function LandingPage() {
               </h1>
             </div>
 
-            <section
-              aria-labelledby="facilities-assessed"
-              className="rounded-[14px] border border-border bg-surface p-5 shadow-[0_1px_2px_hsl(160_20%_20%/0.05),0_8px_24px_-12px_hsl(160_30%_20%/0.12)]"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-                <h2
-                  id="facilities-assessed"
-                  className="flex items-center gap-2.5 text-prose font-bold uppercase tracking-[0.07em] text-foreground"
-                >
-                  <Building2 className="h-5 w-5 text-chrome-ink" aria-hidden />
-                  {formatCount(SCORED_TOTAL)} facilities assessed
-                </h2>
-                <ul className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-1 text-note text-muted-foreground">
-                  {BAND_ORDER.map((band) => (
-                    <li key={band} className="flex items-center gap-1.5">
-                      <span
-                        aria-hidden
-                        className={cn('block h-3 w-3 rounded-[3px]', BAND_CLASSES[band].bg)}
-                      />
-                      {BAND_LABEL[band]}
-                    </li>
+            <div className="flex flex-col rounded-[14px] border border-border bg-surface p-4 shadow-[0_1px_2px_hsl(160_20%_20%/0.05),0_8px_24px_-12px_hsl(160_30%_20%/0.12)]">
+              <MaturitySplit />
+              <section
+                aria-labelledby="facilities-assessed"
+                className="mt-3 flex flex-1 flex-col border-t border-border pt-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                  <h2
+                    id="facilities-assessed"
+                    className="flex items-center gap-2.5 text-prose font-bold uppercase tracking-[0.07em] text-foreground"
+                  >
+                    <Building2 className="h-5 w-5 text-chrome-ink" aria-hidden />
+                    {formatCount(SCORED_TOTAL)} facilities assessed
+                  </h2>
+                  <ul className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-1 text-note text-muted-foreground">
+                    {BAND_ORDER.map((band) => (
+                      <li key={band} className="flex items-center gap-1.5">
+                        <span
+                          aria-hidden
+                          className={cn('block h-3 w-3 rounded-[3px]', BAND_CLASSES[band].bg)}
+                        />
+                        {BAND_LABEL[band]}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* A hundred tiles, one per cent each, in the order best to
+                    worst, twenty-five across. The card is as tall as the
+                    headline beside it, and the tiles take whatever height that
+                    leaves: never shorter than a low strip, so the card holds
+                    State Maturity above them and still fits one screen. */}
+                <div className="mt-3 grid min-h-0 flex-1 grid-cols-[repeat(25,minmax(0,1fr))] grid-rows-[repeat(4,minmax(0.8rem,1fr))] gap-[3px]">
+                  {tiles.map((band, i) => (
+                    <span
+                      key={i}
+                      title={BAND_LABEL[band]}
+                      className={cn('block h-full rounded-[2px]', BAND_CLASSES[band].bg)}
+                    />
                   ))}
-                </ul>
-              </div>
+                </div>
+                <p className="mt-2 text-note text-muted-foreground">
+                  Each tile is one per cent of the facilities assessed.
+                </p>
 
-              {/* A hundred squares, one per cent each, in the order best to
-                  worst. Twenty-five across rather than twenty: a wider, lower
-                  field that sits beside the headline without towering over it. */}
-              <div className="mt-4 grid grid-cols-[repeat(25,minmax(0,1fr))] gap-[3px]">
-                {tiles.map((band, i) => (
-                  <span
-                    key={i}
-                    title={BAND_LABEL[band]}
-                    className={cn('block aspect-square rounded-[2px]', BAND_CLASSES[band].bg)}
-                  />
-                ))}
-              </div>
-              <p className="mt-2 text-note text-muted-foreground">
-                Each square is one per cent of the facilities assessed.
-              </p>
-
-              {/* ── The three bands ────────────────────────────────────────
-                  Count first, then the band's name in its own ink, then the
-                  share: the word beside the figure carries the band, so the
-                  reading survives greyscale. Divided by rules rather than
-                  boxed — one sentence in three parts. */}
-              <div className="mt-4 grid gap-x-6 gap-y-5 sm:grid-cols-3">
-                {BAND_ORDER.map((band, i) => {
-                  const count = ARCHETYPES[band];
-                  const Icon = BAND_ICON[band];
-                  return (
-                    <div
-                      key={band}
-                      className={cn(
-                        // Badge beside the count where the column is wide enough for
-                        // "MODERATELY READY" beside it; above the count where not.
-                        'flex flex-col gap-2.5 wide:flex-row wide:gap-3',
-                        i > 0 && 'sm:border-l sm:border-border sm:pl-6',
-                      )}
-                    >
-                      <span
+                {/* ── The three bands ────────────────────────────────────────
+                    Count first, then the band's name in its own ink, then the
+                    share: the word beside the figure carries the band, so the
+                    reading survives greyscale. Divided by rules rather than
+                    boxed — one sentence in three parts. */}
+                <div className="mt-4 grid gap-x-6 gap-y-5 sm:grid-cols-3">
+                  {BAND_ORDER.map((band, i) => {
+                    const count = ARCHETYPES[band];
+                    const Icon = BAND_ICON[band];
+                    return (
+                      <div
+                        key={band}
                         className={cn(
-                          'grid h-10 w-10 shrink-0 place-items-center rounded-full',
-                          BAND_CLASSES[band].wash,
+                          // Badge beside the count where the column is wide enough for
+                          // "MODERATELY READY" beside it; above the count where not.
+                          'flex flex-col gap-2.5 wide:flex-row wide:gap-3',
+                          i > 0 && 'sm:border-l sm:border-border sm:pl-6',
                         )}
                       >
                         <span
                           className={cn(
-                            'grid h-7 w-7 place-items-center rounded-full',
-                            BAND_SOLID[band],
+                            'grid h-10 w-10 shrink-0 place-items-center rounded-full',
+                            BAND_CLASSES[band].wash,
                           )}
                         >
-                          <Icon className="h-4 w-4 text-white" strokeWidth={2.5} aria-hidden />
-                        </span>
-                      </span>
-                      <div className="min-w-0">
-                        <p className={cn('font-extrabold tracking-tight', BAND_CLASSES[band].text)}>
-                          <BandCount value={count} />
-                          <span className="mt-1.5 block whitespace-nowrap text-note font-bold uppercase leading-none tracking-[0.09em]">
-                            {BAND_LABEL[band]}
+                          <span
+                            className={cn(
+                              'grid h-7 w-7 place-items-center rounded-full',
+                              BAND_SOLID[band],
+                            )}
+                          >
+                            <Icon className="h-4 w-4 text-white" strokeWidth={2.5} aria-hidden />
                           </span>
-                        </p>
-                        <p
-                          className={cn(
-                            'mt-2 text-tick font-semibold uppercase tracking-[0.05em]',
-                            BAND_CLASSES[band].text,
-                          )}
-                        >
-                          <strong className="font-extrabold">
-                            {((count / SCORED_TOTAL) * 100).toFixed(1)}%
-                          </strong>{' '}
-                          of those assessed
-                        </p>
+                        </span>
+                        <div className="min-w-0">
+                          <p className={cn('font-extrabold tracking-tight', BAND_CLASSES[band].text)}>
+                            <BandCount value={count} />
+                            <span className="mt-1.5 block whitespace-nowrap text-note font-bold uppercase leading-none tracking-[0.09em]">
+                              {BAND_LABEL[band]}
+                            </span>
+                          </p>
+                          <p
+                            className={cn(
+                              'mt-2 text-tick font-semibold uppercase tracking-[0.05em]',
+                              BAND_CLASSES[band].text,
+                            )}
+                          >
+                            <strong className="font-extrabold">
+                              {((count / SCORED_TOTAL) * 100).toFixed(1)}%
+                            </strong>{' '}
+                            of those assessed
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
           </div>
 
           {/* ── Coverage ─────────────────────────────────────────────────── */}
-          <div className="rounded-[14px] border border-border bg-surface p-2.5">
+          <div className="rounded-[14px] border border-border bg-surface p-2">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.05fr)_repeat(4,minmax(0,1fr))] lg:items-center lg:gap-0">
               <div className="flex items-center gap-3 rounded-[10px] bg-chrome-active/50 px-4 py-3 sm:col-span-2 lg:col-span-1">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface text-chrome-ink">
@@ -441,7 +533,7 @@ export default function LandingPage() {
               colour, and the picture is small with the line under it, so the
               box stays short enough for the page to fit one screen. */}
           <div className="relative overflow-hidden rounded-[14px] border border-border bg-surface">
-            <div className="relative grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,2.05fr)_auto] lg:gap-0 lg:pr-16">
+            <div className="relative grid gap-4 px-5 py-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,2.05fr)_auto] lg:gap-0 lg:pr-16">
               <div className="flex items-start gap-4 lg:pr-6">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sidebar text-sidebar-foreground">
                   <Lightbulb className="h-5 w-5" aria-hidden />

@@ -18,12 +18,20 @@ export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = {"not_ready":744,
 export const NATIONAL_TOTAL = 2806;
 
 /**
- * Facility actions the source records and does not price — routine device
- * maintenance, naming an EMR focal person, and the lockable-door checks the
- * sheet leaves "before costing".
- *
- * Generated rather than written into the footer as an adjective: the front
- * door states that its costs are incomplete, and how incomplete they are must
- * not be able to drift from the dataset saying so.
+ * Facility actions the source records and neither it nor the unit-cost table
+ * prices — naming an EMR focal person, and the lockable-door checks the sheet
+ * leaves "before costing".
  */
 export const NATIONAL_UNPRICED_ACTIONS: number = 2380;
+
+/**
+ * States by State Maturity band, from the State Maturity sheet — Mature,
+ * Moderately mature and Not mature written on the band scale and labelled with
+ * `MATURITY_LABEL`. Counts only the states the sheet has scored; the rest
+ * are not yet assessed. The same figures as National Coverage's Maturity band.
+ */
+export const NATIONAL_MATURITY_SPLIT: Record<Band, number> = {"not_ready":23,"moderately_ready":6,"ready":2};
+
+/** Every state and the FCT, scored or not — what the maturity split is
+ *  counted out of. */
+export const MATURITY_STATES = 37;
