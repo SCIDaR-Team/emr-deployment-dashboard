@@ -286,6 +286,9 @@ function CountRows({
 }) {
   const total = totalOf(counts);
   const unclassified = of != null && of > total ? of - total : 0;
+  /** Every state, classified or not: what the shares are of, so the four
+   *  cards add to 100% of the country rather than of the 31 classified. */
+  const all = total + unclassified;
 
   const explaining = useExplaining();
   const tables = useMemo(
@@ -298,43 +301,37 @@ function CountRows({
                 ...(['ready', 'moderately_ready', 'not_ready'] as Band[]).map((b) => [
                   MATURITY_LABEL[b],
                   formatCount(counts[b]),
-                  total ? percentOf(counts[b], total, 1) : '—',
+                  all ? percentOf(counts[b], all, 1) : '—',
                 ]),
-                [`${unit[0]!.toUpperCase() + unit.slice(1)} classified`, formatCount(total), ''],
                 ...(unclassified
-                  ? [['Not yet assessed', formatCount(unclassified), '']]
+                  ? [[MATURITY_NO_DATA, formatCount(unclassified), percentOf(unclassified, all, 1)]]
                   : []),
+                [`All ${unit}`, formatCount(all), ''],
               ],
             },
           ]
         : null,
-    [explaining, counts, total, unclassified, unit],
+    [explaining, counts, all, unclassified, unit],
   );
   useExplainTables('bands', tables);
 
   return (
     <div>
-      <BandCards counts={counts} labels={MATURITY_LABEL} showPercent />
+      {/*
+        The states not yet assessed are a card of their own, grey as they are
+        on the map, and every share is of all the states. Maturity covers 31
+        of 37: three shares adding to 100% of the 31 is how a two-thirds
+        finding gets read as a national one.
+      */}
+      <BandCards
+        counts={counts}
+        labels={MATURITY_LABEL}
+        showPercent
+        noData={unclassified ? { count: unclassified, label: MATURITY_NO_DATA } : undefined}
+      />
       <p className="mono mt-2.5 text-note text-muted-foreground">
-        {formatCount(total)} {unit} classified
-        {/*
-          The remainder, named rather than left to subtraction.
-
-          Newly load-bearing. Every domain used to be classified on all 37
-          states or on none, so "37 states classified" was the only line this
-          ever printed and the shares beside it were shares of the country.
-          Maturity covers 31, and three shares adding to 100% of a figure the
-          reader has not been given the denominator for is precisely how a
-          two-thirds finding gets read as a national one. Six states are grey on
-          the map for the same reason, and this is the sentence that explains
-          them.
-        */}
-        {unclassified > 0 && (
-          <span className="text-muted-foreground">
-            {' · '}
-            {formatCount(unclassified)} not yet assessed
-          </span>
-        )}
+        Shares of all {formatCount(all)} {unit}
+        {unclassified > 0 && <> · {formatCount(total)} classified</>}
       </p>
     </div>
   );

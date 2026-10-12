@@ -417,10 +417,10 @@ function coverageRates(area: AreaProfile): string | null {
 
 /** The four commitments, named short enough for the hover card. */
 const COMMITMENT_SHORT: Record<LeadershipSubDomainId, string> = {
-  governance_structure: 'Governance structure',
-  data_governance_policy: 'Data governance policy',
+  governance_structure: 'Digital health governance structure',
+  data_governance_policy: 'Digital health data governance policy',
   digital_health_strategy: 'Digital health strategy',
-  financial_commitment: 'Financial commitment for EMR',
+  financial_commitment: 'State commitment to EMR financing',
 };
 
 /**

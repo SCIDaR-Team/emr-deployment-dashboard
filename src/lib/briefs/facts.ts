@@ -2,7 +2,14 @@ import { BAND_LABEL, MATURITY_LABEL, MATURITY_NO_DATA } from '../bands';
 import { formatCount, formatNaira, formatShare } from '../format';
 import { GAP_AREA_BY_ID, GAP_BY_ID, GAP_DOMAIN_LABEL } from '../gapCatalogue';
 import { facilityPaths, planComposition, planForTarget } from '../scenarios';
-import type { AreaProfile, Band, FacilitySummary, ScenarioComponentId } from '../types';
+import { LEADERSHIP_LABEL } from '../themes';
+import type {
+  AreaProfile,
+  Band,
+  FacilitySummary,
+  LeadershipSubDomainId,
+  ScenarioComponentId,
+} from '../types';
 
 /**
  * Everything a state brief may say in figures, computed from the dashboard's
@@ -243,7 +250,7 @@ export function briefFacts(state: AreaProfile, all: readonly FacilitySummary[]):
     maturity: {
       band: c?.band ? MATURITY_LABEL[c.band] : MATURITY_NO_DATA,
       leadership: Object.entries(c?.leadership ?? {}).map(([k, v]) => ({
-        item: k.replace(/_/g, ' '),
+        item: LEADERSHIP_LABEL[k as LeadershipSubDomainId] ?? k.replace(/_/g, ' '),
         level: v ? MATURITY_LABEL[v as Band] : MATURITY_NO_DATA,
       })),
       electricityAccessPct: pct(c?.measures?.electricityAccessPct),

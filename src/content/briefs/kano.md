@@ -1,7 +1,7 @@
 ---
 state: Kano
 status: draft            # change to approved once reviewed
-factsVersion: 7ce868e8
+factsVersion: 7afc7ad6
 drafted: 2026-10-12
 model: openai/gpt-oss-120b
 reviewedBy: 
@@ -9,24 +9,24 @@ reviewedBy:
 
 ## Summary
 
-Kano leads the North West zone and ranks 1 of 12 states for EMR readiness, with 72 primary health‑care facilities already classified as Ready (16% of its 438 facilities). The single most useful fact for planners is that a ready base of 72 facilities exists, providing a foundation for scaling the electronic medical record system across the state.
+Kano leads the north‑west zone with the highest proportion of EMR‑ready primary facilities. Only 16% of its 438 facilities are Ready, but the state ranks 1 of 12 in readiness share versus a national Ready share of 6%. This makes Kano the most prepared state for EMR rollout.
 
 ## Readiness
 
-Kano has 72 Ready facilities, 251 Moderately ready, and 115 Not ready, out of a total of 438 primary health‑care sites. The Ready share is 16%, Moderately ready 57% and Not ready 26%. Compared with the national Ready share of 6%, Kano is well above average and holds the rank 1 of 12 states for readiness.
+The state reports 72 Ready facilities (16% share), 251 Moderately ready facilities (57%) and 115 Not ready facilities (26%). Kano’s Ready share of 16% far exceeds the national Ready share of 6% and it holds the top rank of 1 of 12.
 
 ## Main gaps
 
-The most common gaps affect technical support (407 facilities, 93%), backup connectivity (388 facilities, 89%), data‑backup (381 facilities, 87%), device sufficiency (378 facilities, 86%) and device maintenance (367 facilities, 84%). Major gaps are concentrated in Workforce Capacity (252 facilities, 58%) and Workflow & Transition (284 facilities, 65%). The LGAs with the most Not ready facilities are Bichi (8), Gabasawa (6) and Kibiya (6).
+Technical‑support gap appears in 407 facilities (93%) and is the most common, followed by Backup‑connectivity (388, 89%) and Data‑backup (381, 87%). The domain with the most Major gaps is Workflow & Transition (284 facilities, 65%). The LGAs with the highest numbers of Not ready facilities are Bichi (8), Gabasawa (6) and Kibiya (6).
 
 ## Investment
 
-The EMR rollout plan totals ₦1.2bn, split into ₦1.0bn before deployment, ₦107.7m during deployment and ₦70.5m after deployment. The average cost per facility is ₦2.7m, slightly above the national per‑facility figure of ₦2.6m. By readiness category, Ready facilities require ₦68.3m total (₦948.4k each), Moderately ready need ₦581.4m total (₦2.3m each), and Not ready require ₦543.2m total (₦4.7m each).
+The EMR deployment plan totals ₦1.2bn, with ₦1.0bn allocated before deployment, ₦107.7m during, and ₦70.5m after. Cost per facility is ₦2.7m, slightly above the national per‑facility figure of ₦2.6m. By readiness tier, Ready facilities require ₦68.3m (₦948.4k each), Moderately ready need ₦581.4m (₦2.3m each) and Not ready need ₦543.2m (₦4.7m each).
 
 ## What funding unlocks
 
-Each fix adds Ready facilities on top of the existing 72. Full solar (₦182.0m) unlocks 59 (total 131); Solar top‑up (₦12.6m) unlocks 6 (total 78); Router (₦4.4m) unlocks 111 (total 183); FibreX (₦1.6m) unlocks 35 (total 107); Network extension (₦2.3m) unlocks 3 (total 75); Starlink (₦1.2m) unlocks 2 (total 74). Combinations: All power (Full solar + Solar top‑up) spends ₦194.6m, unlocks 65 (total 137); All connectivity (Router + FibreX + Network extension + Starlink) spends ₦9.4m, unlocks 151 (total 223); Full solar and routers spends ₦467.7m, unlocks 260 (total 332); All six fixes spends ₦667.3m, unlocks 366 (total 438, 100%). Router provides the highest unlock per cost. A ₦20.0m budget unlocks 156 (total 228); ₦100.0m unlocks 187 (total 259).
+Full solar (spend ₦182.0m) unlocks 59 facilities, total Ready 131. Solar top‑up (₦12.6m) unlocks 6, total Ready 78. Router (₦4.4m) unlocks 111, total Ready 183. FibreX (₦1.6m) unlocks 35, total Ready 107. Network extension (₦2.3m) unlocks 3, total Ready 75. Starlink (₦1.2m) unlocks 2, total Ready 74. Router gives the most unlocks per spend. All power (₦194.6m) adds 65, total Ready 137. All connectivity (₦9.4m) adds 151, total Ready 223. Full solar + Router (₦467.7m) adds 260, total Ready 332. All six fixes (₦667.3m) adds 366, total Ready 438. With ₦20.0m the state could unlock 156 (Ready 228) and with ₦100.0m unlock 187 (Ready 259).
 
 ## Leadership and maturity
 
-Kano is classified as Moderately mature. Leadership scores show a Mature governance structure, Mature data governance policy, Mature digital health strategy and Moderately mature financial commitment. Electricity access is 45% and internet subscription is 50.5%.
+Kano is classified as Moderately mature. Leadership and governance items are all Mature except State commitment to EMR financing, which is Moderately mature. Electricity access is 45% and internet subscription is 50.5%. These scores indicate solid policy foundations but limited power and connectivity for many facilities.

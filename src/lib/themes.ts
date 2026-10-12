@@ -226,13 +226,13 @@ export interface LeadershipSubDomainDef {
 export const LEADERSHIP_SUB_DOMAINS: readonly LeadershipSubDomainDef[] = [
   {
     id: 'governance_structure',
-    label: 'Governance structure',
+    label: 'Digital health governance structure',
     note: 'A body owns digital health in the state.',
     icon: 'Landmark',
   },
   {
     id: 'data_governance_policy',
-    label: 'State-specific data governance policy',
+    label: 'Digital health data governance policy',
     note: 'A state policy of its own covers health data.',
     icon: 'ShieldCheck',
   },
@@ -244,11 +244,17 @@ export const LEADERSHIP_SUB_DOMAINS: readonly LeadershipSubDomainDef[] = [
   },
   {
     id: 'financial_commitment',
-    label: 'Financial commitment for EMR',
+    label: 'State commitment to EMR financing',
     note: 'Budget is committed to EMR, not only to digital health.',
     icon: 'Wallet',
   },
 ];
+
+/** Each commitment's name, by id — for the places that list them by key (the
+ *  state briefs' facts, the assistant's answers) rather than in order. */
+export const LEADERSHIP_LABEL = Object.fromEntries(
+  LEADERSHIP_SUB_DOMAINS.map((sub) => [sub.id, sub.label]),
+) as Record<LeadershipSubDomainId, string>;
 
 /**
  * The three answers a leadership row carries, spoken as the source speaks them.
