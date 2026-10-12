@@ -18,12 +18,14 @@ import { ACTION_BY_ID } from './gapCatalogue';
 import type { Band, FacilitySummary } from './types';
 
 /**
- * The workbook's broad cost categories, as groups of gap areas.
+ * The workbook's broad cost categories, as groups of gap areas, named as its
+ * Cost summary names them.
  *
- * Only the Technical Infrastructure ones carry money; the categories under
- * the other three domains all total ₦0 and are left out rather than listed as
- * a column of zeroes. Data backup is kept because it is an infrastructure
- * category the workbook names — it totals ₦0 too, and says so.
+ * The workflow and data-use ones carry the actions priced from the unit-cost
+ * table (see `TAB_PRICED` in scripts/assessment-source.mjs). The categories
+ * that still cost nothing — training, the focal person and technical support,
+ * change management, and Data backup, which no action costs — are left out
+ * rather than listed as a column of zeroes.
  */
 export const COST_CATEGORIES = [
   {
@@ -46,13 +48,20 @@ export const COST_CATEGORIES = [
     label: 'Service-point furniture',
     areas: ['physical_service_point'],
   },
-  { id: 'data_backup', label: 'Data backup', areas: ['data_backup'] },
+  {
+    id: 'workflow',
+    label: 'Documentation flow and workflow bottlenecks',
+    areas: ['duplicate_entry', 'workflow_bottleneck'],
+  },
+  { id: 'routine_data_use', label: 'Routine data use', areas: ['routine_data_use'] },
+  { id: 'data_validation', label: 'Data validation', areas: ['data_validation'] },
+  { id: 'report_review', label: 'Report review', areas: ['report_review_support'] },
 ] as const;
 
 export type BreakdownId = 'category' | 'group' | 'functionality' | 'zone' | 'state';
 
 export const BREAKDOWNS: { id: BreakdownId; label: string }[] = [
-  { id: 'category', label: 'Category' },
+  { id: 'category', label: 'Sub-domains' },
   { id: 'group', label: 'Facility group' },
   { id: 'functionality', label: 'Functionality' },
   { id: 'zone', label: 'Zone' },

@@ -24,11 +24,7 @@ import { cn } from '@/lib/cn';
 import { useCountUp } from '@/hooks/useCountUp';
 import { COVERAGE, INSTITUTION } from '@/lib/constants';
 import { formatCount } from '@/lib/format';
-import {
-  NATIONAL_DEPLOYMENT_SPLIT,
-  NATIONAL_TOTAL,
-  NATIONAL_UNPRICED_ACTIONS,
-} from '@/lib/nationalSplit';
+import { NATIONAL_DEPLOYMENT_SPLIT, NATIONAL_TOTAL } from '@/lib/nationalSplit';
 import type { Band } from '@/lib/types';
 import { FacilityIllustration, GreenSweep } from './Illustration';
 
@@ -120,23 +116,27 @@ const BAND_SOLID: Record<Band, string> = {
   not_ready: 'bg-notready-ink',
 };
 
+/** "How Facility Readiness Is Measured", band by band, in the team's words. */
+const READINESS_MEASURE: { band: Band; label: string; text: string }[] = [
+  {
+    band: 'ready',
+    label: 'Ready PHCs:',
+    text: 'Require minor fixes, such as correcting unsafe wiring or providing missing or insufficient computing devices.',
+  },
+  {
+    band: 'moderately_ready',
+    label: 'Moderately Ready PHCs:',
+    text: 'Require moderate upgrades, such as router provision or solar power upgrades.',
+  },
+  {
+    band: 'not_ready',
+    label: 'Not Ready PHCs:',
+    text: 'Require major infrastructure investments, such as installing a complete solar power system, establishing satellite connectivity, or extending network infrastructure.',
+  },
+];
+
 const ARCHETYPES = NATIONAL_DEPLOYMENT_SPLIT;
 const SCORED_TOTAL = NATIONAL_TOTAL;
-
-/**
- * What each band means, in the terms the band is actually computed from.
- *
- * Kept here rather than taken from `BAND_DESCRIPTION` in `bands.ts`, which
- * names the band rather than explaining it. The banding is mechanical and worth
- * stating exactly: a Major infrastructure gap outstanding → Not ready, else a
- * Moderate one → Moderately ready, else Ready. Note Ready requires *both* to be
- * clear — "no major gap" describes the top two bands rather than the top one.
- */
-const BAND_RULE: Record<Band, string> = {
-  ready: 'No major or moderate infrastructure gap outstanding',
-  moderately_ready: 'Moderate infrastructure work to close, nothing major',
-  not_ready: 'At least one major infrastructure gap blocks deployment',
-};
 
 /**
  * Hundred tiles apportioned by largest remainder.
@@ -239,7 +239,7 @@ export default function LandingPage() {
                 <NavLink
                   key={mod.path}
                   to={mod.path}
-                  className="group flex min-w-0 items-center gap-3 rounded-[8px] border border-white/25 bg-white/[0.07] px-3 py-2.5 transition-colors hover:border-white/50 hover:bg-white/[0.14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="group flex min-w-0 items-center gap-3 rounded-[8px] border border-white/25 bg-white/[0.07] px-3 py-2 transition-colors hover:border-white/50 hover:bg-white/[0.14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.14] text-foreground ring-1 ring-white/20">
                     <Icon className="h-[18px] w-[18px]" aria-hidden />
@@ -271,12 +271,12 @@ export default function LandingPage() {
         <div
           className={cn(
             SHELL,
-            'flex flex-1 flex-col justify-center gap-[clamp(0.8rem,2.2vh,1.35rem)] py-[clamp(0.9rem,2.4vh,1.6rem)]',
+            'flex flex-1 flex-col justify-center gap-[clamp(0.8rem,1.6vh,1.35rem)] py-[clamp(0.9rem,1.8vh,1.6rem)]',
           )}
         >
           {/* ── The finding, and the evidence for it ─────────────────────── */}
           <div className="grid items-start gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-10">
-            <div className="flex flex-col lg:pt-4">
+            <div className="flex flex-col">
               <p className="flex items-center gap-3 text-note font-semibold uppercase tracking-[0.16em] text-chrome-ink">
                 National assessment
                 <span aria-hidden className="block h-[2px] w-9 rounded-full bg-chrome-ink" />
@@ -288,15 +288,10 @@ export default function LandingPage() {
                   second sentence, what blocks them. */}
               <h1 className="mt-4 text-display font-extrabold leading-[1.06] tracking-tight text-balance text-foreground">
                 Two in three facilities need only major work before an EMR.{' '}
-                <span className="text-notready-ink">One in four</span> is blocked on{' '}
+                <span className="text-notready-ink">One in four</span> facilities faces{' '}
                 <span className="text-notready-ink">power</span> or{' '}
-                <span className="text-notready-ink">connectivity.</span>
+                <span className="text-notready-ink">connectivity</span> barriers to EMR deployment.
               </h1>
-              <p className="mt-5 max-w-[54ch] text-prose leading-relaxed text-muted-foreground">
-                Readiness measures whether a facility can realistically begin an EMR deployment —
-                not whether it already owns the equipment. What separates the bands is the work
-                still outstanding.
-              </p>
             </div>
 
             <section
@@ -392,9 +387,6 @@ export default function LandingPage() {
                           </strong>{' '}
                           of those assessed
                         </p>
-                        <p className="mt-1.5 text-note leading-snug text-muted-foreground">
-                          {BAND_RULE[band]}
-                        </p>
                       </div>
                     </div>
                   );
@@ -421,7 +413,7 @@ export default function LandingPage() {
                 <div
                   key={label}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-2',
+                    'flex items-center gap-3 px-4 py-1',
                     i > 0 && 'lg:border-l lg:border-border',
                   )}
                 >
@@ -442,45 +434,66 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* ── How the band is arrived at ─────────────────────────────────
-              The rule, stated where the reader has just met the numbers,
-              beside a picture of what the readiness is for. */}
+          {/* ── What the two measures mean ─────────────────────────────────
+              State maturity and facility readiness, stated where the reader
+              has just met the numbers, beside a picture of what they are for.
+              The three readiness bands sit side by side, each keyed by its
+              colour, and the picture is small with the line under it, so the
+              box stays short enough for the page to fit one screen. */}
           <div className="relative overflow-hidden rounded-[14px] border border-border bg-surface">
-            <div className="relative grid items-center gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:gap-0 lg:pr-44">
+            <div className="relative grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,2.05fr)_auto] lg:gap-0 lg:pr-16">
               <div className="flex items-start gap-4 lg:pr-6">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sidebar text-sidebar-foreground">
                   <Lightbulb className="h-5 w-5" aria-hidden />
                 </span>
                 <div>
                   <p className="text-body font-bold uppercase tracking-[0.1em] text-foreground">
-                    How readiness is measured
+                    What is State Maturity?
                   </p>
-                  <p className="mt-1.5 max-w-[80ch] text-body leading-relaxed text-muted-foreground">
-                    A facility&rsquo;s band is a count of the work still outstanding, never a score.
-                    Major technical infrastructure gaps — no usable power or connection — put it in{' '}
-                    <strong className="text-foreground">Not ready</strong> on their own; moderate
-                    ones alone pull it to{' '}
-                    <strong className="text-foreground">Moderately ready</strong>. Gaps in
-                    workforce, workflow and data use are reported beside readiness, not inside it.
-                    The two lower bands are different problems, and each takes a different response.
+                  <p className="mt-1.5 text-body leading-normal text-muted-foreground">
+                    State maturity reflects the availability of key leadership, governance, and
+                    infrastructure required to support EMR implementation. It indicates a
+                    state&rsquo;s capacity and preparedness to sustainably manage and maintain EMR
+                    systems beyond initial deployment.
                   </p>
                 </div>
               </div>
-              <div className="hidden border-l border-border px-6 lg:block">
-                <FacilityIllustration className="h-24 w-auto" />
+              <div className="lg:border-l lg:border-border lg:pl-6">
+                <p className="text-body font-bold uppercase tracking-[0.1em] text-foreground">
+                  How Facility Readiness Is Measured
+                </p>
+                <p className="mt-1.5 text-body leading-normal text-muted-foreground">
+                  Readiness reflects a facility&rsquo;s ability to support EMR deployment based on
+                  its technical infrastructure and the level of remediation required.
+                </p>
+                <ul className="mt-2 grid gap-3 sm:grid-cols-3 sm:gap-4">
+                  {READINESS_MEASURE.map(({ band, label, text }) => (
+                    <li key={band} className="text-note leading-snug text-muted-foreground">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] align-[-1px]',
+                          BAND_CLASSES[band].bg,
+                        )}
+                      />
+                      <strong className="font-semibold text-foreground">{label}</strong> {text}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="hidden border-l border-border pl-6 lg:block">
-                <p className="text-body leading-relaxed text-foreground">
+              <div className="hidden self-center border-l border-border pl-6 lg:ml-6 lg:block">
+                <FacilityIllustration className="h-14 w-auto" />
+                <p className="mt-2 text-note leading-relaxed text-foreground">
                   Better infrastructure.
                   <br />
                   Stronger systems.
                   <br />
                   Healthier communities.
                 </p>
-                <span aria-hidden className="mt-2 block h-[2px] w-10 rounded-full bg-chrome-ink" />
+                <span aria-hidden className="mt-1.5 block h-[2px] w-10 rounded-full bg-chrome-ink" />
               </div>
             </div>
-            <GreenSweep className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-40 lg:block" />
+            <GreenSweep className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-14 lg:block" />
           </div>
         </div>
       </main>
@@ -491,14 +504,7 @@ export default function LandingPage() {
           <p className="text-tick leading-relaxed text-muted-foreground">
             NPHCDA, with NTBLCP, The Global Fund and Solina · {COVERAGE.statesPrimary} states by
             facility survey; {COVERAGE.statesSecondary} states and the FCT by desk review, which
-            yields state-level findings only ·{' '}
-            {/* The count is generated, not written: an adjective cannot be
-                kept in step with a dataset, a number read from the ingest can. */}
-            <strong className="font-semibold text-foreground">
-              Costs are indicative and exclude {formatCount(NATIONAL_UNPRICED_ACTIONS)}{' '}
-              {NATIONAL_UNPRICED_ACTIONS === 1 ? 'action' : 'actions'} the assessment does not
-              price.
-            </strong>
+            yields state-level findings only
           </p>
         </div>
       </footer>
