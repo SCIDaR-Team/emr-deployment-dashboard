@@ -205,7 +205,7 @@ function PaneHeader({
   // hint the State dropdown shows beside the name.
   const level =
     scope.level === 'national'
-      ? `${formatCount(37)} states & FCT`
+      ? '36 states & FCT'
       : `State · ${scope.state.zone ?? 'Nigeria'}`;
 
   return (
