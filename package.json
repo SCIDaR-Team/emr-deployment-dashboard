@@ -21,6 +21,7 @@
     "data:coverage": "node scripts/build-coverage.mjs",
     "data:maturity": "node scripts/build-maturity.mjs",
     "data:gaps": "node scripts/build-gaps-csv.mjs",
+    "data:unit-costs": "node scripts/build-unit-costs.mjs",
     "data:ingest": "node scripts/ingest-assessment.mjs",
     "data:sync": "node scripts/sync-data.mjs",
     "data:check": "vite-node scripts/check-workbook.ts",

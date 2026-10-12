@@ -12,22 +12,29 @@ export interface PageGuide {
   intro: string;
   /** The page's parts, top to bottom: what each shows or does. */
   parts: { name: string; text: string }[];
-  /** How to move around it, and where to go next. */
-  tips: string[];
+  /** How to move around it, and where to go next — named where the tip is
+   *  a feature. */
+  tips: { name?: string; text: string }[];
 }
 
 export type PageGuideId = 'coverage' | 'assessment' | 'investment';
 
 /** Said on every page, after its own tips. */
-const COMMON_TIPS = [
-  'Explain, under a chart, has AI describe what that chart shows and what stands out, from the figures on screen. Check it before quoting it.',
-  'Ask the data, at the top right (or press /), answers questions about any of the dashboard’s figures and links to where they are shown.',
+const COMMON_TIPS: PageGuide['tips'] = [
+  {
+    name: 'Explain this chart',
+    text: 'Use AI to generate an explanation of the selected chart, highlighting what the data shows and the key insights from the figures currently displayed. Review the explanation for accuracy before using or quoting it.',
+  },
+  {
+    name: 'Ask the Data',
+    text: 'Use the feature in the top-right corner of the dashboard, or press /, to ask questions about dashboard figures and receive answers with links to the relevant charts or sections.',
+  },
 ];
 
 export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
   coverage: {
     intro:
-      'How ready each of Nigeria’s 36 states and the FCT is to adopt an EMR, at state level — its State Maturity, from the state-level assessment. Start with the whole country, then open one state.',
+      'State maturity reflects how prepared each of Nigeria’s 36 states and the FCT is for EMR deployment, based on a state-level assessment of key leadership, governance, and infrastructure enablers.',
     parts: [
       {
         name: 'State filter',
@@ -43,19 +50,18 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
       },
       {
         name: 'Leadership & Governance',
-        text: 'Four commitments — a governance structure, a data governance policy, a digital health strategy and financial commitment for EMR — answered Yes, Partial or No. Nationally, how many states gave each answer, one square per state.',
+        text: 'Assessing state-level EMR commitments across four areas: governance structure, data governance policy, digital health strategy, and financial commitment to EMR. Each commitment is rated Yes, Partial, or No. The dashboard shows the number of states in each response category for each commitment, with one square representing one state.',
       },
       {
         name: 'Technical Infrastructure',
-        text: 'Electricity access and internet subscriptions per head, from national sources, then subscriptions by type (mobile, fixed broadband, enterprise wi-fi) and by operator.',
-      },
-      {
-        name: 'States',
-        text: 'With all states in view: every state and its band, least mature first. Pick one to open it.',
+        text: 'Electricity access data from Distribution Companies (DisCos) and internet subscription data from Mobile Network Operators (MNOs) and other relevant providers.',
       },
     ],
     tips: [
-      'This page is about states as a whole. For the facilities assessed inside them, go to Assessed States; for what fixing them costs, the Investment Plan.',
+      {
+        name: 'Navigate between pages',
+        text: 'This page provides a state-level overview. Visit Assessed States to explore readiness gaps at individual facilities, or Investment Plan to understand the estimated costs of addressing those gaps.',
+      },
     ],
   },
 
@@ -97,8 +103,8 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
       },
     ],
     tips: [
-      'The arrow before the page title, or the place names above the map, take you back up a level.',
-      'With a state open, State brief — where one is available — gives a one-page summary to save as PDF or Word.',
+      { text: 'The arrow before the page title, or the place names above the map, take you back up a level.' },
+      { text: 'With a state open, State brief — where one is available — gives a one-page summary to save as PDF or Word.' },
     ],
   },
 
@@ -128,7 +134,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
       },
     ],
     tips: [
-      'Totals leave out actions the source does not price. Lines at ₦0 are work recorded with no facility-level cost.',
+      { text: 'Totals leave out actions the source does not price. Lines at ₦0 are work recorded with no facility-level cost.' },
     ],
   },
 };
@@ -145,7 +151,7 @@ export function pageGuideContent(guide: PageGuide): GuideContent {
     intro: guide.intro,
     sections: [
       { heading: 'On this page', entries: guide.parts },
-      { heading: 'Getting around', entries: [...guide.tips, ...COMMON_TIPS].map((text) => ({ text })) },
+      { heading: 'Getting Around the Dashboard', entries: [...guide.tips, ...COMMON_TIPS] },
     ],
   };
 }
@@ -157,7 +163,7 @@ export function pageGuideContent(guide: PageGuide): GuideContent {
  */
 export const SCENARIO_GUIDE: GuideContent = {
   intro:
-    'Scenarios answers one question: if you fund some of the power and connectivity fixes, how many more facilities become Ready to deploy an EMR, and what does it cost? Every figure is worked out here, from each facility’s own assessment — none is estimated by AI.',
+    'Scenarios answers one question: if you fund some of the power and connectivity fixes, how many more facilities become Ready to deploy an EMR, and what does it cost?',
   sections: [
     {
       heading: 'Why these six fixes',

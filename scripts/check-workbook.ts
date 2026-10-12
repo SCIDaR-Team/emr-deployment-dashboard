@@ -12,6 +12,12 @@
  * — and compares them, so a figure the dashboard shows that the workbook does
  * not stops the sync.
  *
+ * The workbook's totals are compared at the facility sheet's own prices. The
+ * plan prices a few actions the sheet charges at ₦0 or leaves blank from the
+ * workbook's unit-cost table (`sheetUnitCostNGN` in the catalogue); that
+ * addition is taken back off before comparing, so a disagreement here is still
+ * a real one and not the documented difference.
+ *
  * These checks used to be tests with the workbook's figures written into them,
  * which every new revision of the workbook broke. Here the figures are read
  * from the workbook itself, so a revision needs no code change — only a
@@ -33,7 +39,7 @@ import {
   readinessTotals,
   type BreakdownId,
 } from '../src/lib/costByReadiness';
-import { SCENARIO_PACKAGES } from '../src/lib/gapCatalogue';
+import { ACTION_BY_ID, SCENARIO_PACKAGES } from '../src/lib/gapCatalogue';
 import { scenarioBand, scenarioFor } from '../src/lib/scenarios';
 import type { Band, FacilitySummary, ScenarioComponentId } from '../src/lib/types';
 
@@ -226,6 +232,28 @@ function checkCosts(costs: Grid, facilities: FacilitySummary[]): Check {
   return check;
 }
 
+// ---------------------------------------------------------------------------
+// The sheet's own prices
+// ---------------------------------------------------------------------------
+
+/** What the plan charges for one unit of an action over what the facility
+ *  sheet does: non-zero only for the actions priced from the unit-cost table. */
+function addedPerUnit(id: string): number {
+  const a = ACTION_BY_ID[id];
+  if (!a || a.sheetUnitCostNGN === undefined) return 0;
+  return (a.unitCostNGN ?? 0) - (a.sheetUnitCostNGN ?? 0);
+}
+
+/** The facilities as the workbook costs them: each one's total less what the
+ *  unit-cost table adds to it. */
+function atSheetPrices(facilities: FacilitySummary[]): FacilitySummary[] {
+  return facilities.map((f) => {
+    let added = 0;
+    for (const [id, qty] of Object.entries(f.actions)) added += addedPerUnit(id) * qty;
+    return added ? { ...f, costNGN: f.costNGN - added } : f;
+  });
+}
+
 /** The workbook's category names where they differ from the dashboard's. */
 const CATEGORY_ALIAS: Record<string, string> = {
   'physical infrastructure across service point': 'service_points',
@@ -239,6 +267,23 @@ function checkCategories(costs: Grid, facilities: FacilitySummary[]): Check {
   );
   if (!head) throw new Missing(`${COSTS}: no table headed "Domain | Broad category".`);
   const rows = readinessCostBy(facilities, 'category');
+  // The category split works from the catalogue's unit prices, not from the
+  // facility totals, so the unit-cost table's addition comes off here.
+  const added = new Map<string, Record<Band, number>>();
+  for (const f of facilities) {
+    if (!f.deploymentBand) continue;
+    for (const [id, qty] of Object.entries(f.actions)) {
+      const extra = addedPerUnit(id) * qty;
+      if (!extra) continue;
+      const c = COST_CATEGORIES.find((cat) =>
+        (cat.areas as readonly string[]).includes(ACTION_BY_ID[id]!.area),
+      );
+      if (!c) continue;
+      const byBand = added.get(c.id) ?? { ready: 0, moderately_ready: 0, not_ready: 0 };
+      byBand[f.deploymentBand] += extra;
+      added.set(c.id, byBand);
+    }
+  }
   const seen = new Set<string>();
   for (let i = head.r + 1; i < costs.length; i += 1) {
     const label = norm(at(costs, i, head.c));
@@ -256,7 +301,13 @@ function checkCategories(costs: Grid, facilities: FacilitySummary[]): Check {
       );
       continue;
     }
-    compare(check, `Category: ${at(costs, i, head.c)}`, values, BANDS.map((b) => row?.cost[b] ?? 0), NAIRA_TOLERANCE);
+    compare(
+      check,
+      `Category: ${at(costs, i, head.c)}`,
+      values,
+      BANDS.map((b) => (row?.cost[b] ?? 0) - (added.get(row?.id ?? '')?.[b] ?? 0)),
+      NAIRA_TOLERANCE,
+    );
   }
   for (const c of COST_CATEGORIES) {
     if (!seen.has(c.id)) check.mismatches.push(`The workbook has no category "${c.label}"`);
@@ -369,7 +420,7 @@ function main() {
 
   const checks = [
     checkCounts(summary, facilities),
-    checkCosts(costs, facilities),
+    checkCosts(costs, atSheetPrices(facilities)),
     checkCategories(costs, facilities),
     checkPackages(costs, facilities),
     checkPackageBlocks(costs, facilities),

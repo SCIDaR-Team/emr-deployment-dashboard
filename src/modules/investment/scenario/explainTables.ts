@@ -5,6 +5,7 @@ import { FIXES, groupLabel } from './fixes';
 import { planSpec } from './planning';
 import {
   LETTERS,
+  scenarioNames,
   stateId,
   targetLabel,
   type ScenarioSpec,
@@ -148,7 +149,7 @@ function compare(paths: readonly FacilityPath[], specs: ScenarioSpec[]): Explain
       rows: specs.map((spec, i) => {
         const { plan, paths: scoped } = planSpec(paths, spec);
         return [
-          `${LETTERS[i]} · ${spec.name || 'Scenario'}`,
+          `${LETTERS[i]} · ${scenarioNames(specs)[i]}`,
           groupLabel(spec.fixes),
           target(spec),
           stateNames(spec, paths),

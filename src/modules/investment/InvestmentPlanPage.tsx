@@ -58,7 +58,7 @@ import { ScenarioSection } from './scenario/ScenarioSection';
  * word for them.
  */
 const SECTIONS = [
-  { id: 'cost-by-readiness', label: 'By readiness' },
+  { id: 'cost-by-readiness', label: 'Cost Summary' },
   { id: 'interventions', label: 'Interventions' },
   { id: 'scenarios', label: 'Scenarios' },
   { id: 'waves', label: 'Rollout waves' },
@@ -77,9 +77,9 @@ const SECTIONS = [
  *
  * **Domain** is a genuinely different axis: not when the money is spent but
  * who spends it. It does not nest inside either of the others — nationally
- * every priced line is Technical Infrastructure, and the other three domains'
- * lines are all ₦0 or unpriced — so a two-level tree would spend most of its
- * depth on one branch whichever way it were built. Hence a switch.
+ * almost all of the money is Technical Infrastructure, with workflow and data
+ * use a small share and workforce ₦0 — so a two-level tree would spend most of
+ * its depth on one branch whichever way it were built. Hence a switch.
  */
 type GroupMode = 'phase' | 'urgency' | 'domain' | 'cost';
 
@@ -316,18 +316,18 @@ export default function InvestmentPlanPage() {
   /**
    * Facilities, not lines — because one line can be thousands of them.
    *
-   * Routine device maintenance alone is unpriced at over two thousand
-   * facilities, and every one of them rolls up into a single line. "One line
-   * carries no indicative price" is true and reads like a rounding note; the
-   * facilities behind it are what say how much of the plan the total is silent
-   * about.
+   * The lockable-door check alone is unpriced at over a thousand facilities,
+   * and every one of them rolls up into a single line. "One line carries no
+   * indicative price" is true and reads like a rounding note; the facilities
+   * behind it are what say how much the total is silent about.
    */
   const unpricedActions = unpriced.reduce((sum, i) => sum + i.facilityCount, 0);
   /**
    * Lines the source prices at a real ₦0, which is a different claim from an
-   * unpriced one and now a common one: workforce, workflow and data-use actions
-   * cost nothing at facility level in the revised model. Said out loud so a
-   * column of ₦0s reads as a decision rather than as missing data.
+   * unpriced one: training, technical assistance and change management cost
+   * nothing at facility level — the unit-cost table prices them per state. Kept
+   * for "Explain" so a column of ₦0s reads as a decision rather than as
+   * missing data.
    */
   const freeLines = scope.investments.filter((i) => i.totalCostNGN === 0).length;
 
@@ -525,30 +525,6 @@ export default function InvestmentPlanPage() {
                     </tfoot>
                   </table>
                 </div>
-                {unpricedLines > 0 && (
-                  /* The total is not the whole plan, and says so where the total
-                   is. `formatNaira` renders an unpriced line as an em dash in
-                   its own row, but a reader adding the column up has no way to
-                   know the sum is short without being told here. */
-                  <p className="border-t border-border px-3 py-2 text-note text-muted-foreground">
-                    {unpricedLines === 1 ? 'One line carries' : `${formatCount(unpricedLines)} lines carry`}{' '}
-                    no indicative price in the source, across {formatCount(unpricedActions)}{' '}
-                    {unpricedActions === 1 ? 'facility' : 'facilities'}. The totals above
-                    exclude {unpricedLines === 1 ? 'it' : 'them'}.
-                  </p>
-                )}
-                {freeLines > 0 && (
-                  /* Distinct from the note above it, and the distinction is the
-                   point: those lines have no price, these have a price of
-                   nothing. Under the revised costing model that is two whole
-                   domains, so a reader scanning a column of ₦0s needs to know
-                   the source put them there. */
-                  <p className="border-t border-border px-3 py-2 text-note text-muted-foreground">
-                    {formatCount(freeLines)} of {formatCount(scope.investments.length)} lines are
-                    costed at ₦0 in the source — recorded work that carries no facility-level
-                    cost, not missing data.
-                  </p>
-                )}
               </>
             ) : (
               <EmptyState

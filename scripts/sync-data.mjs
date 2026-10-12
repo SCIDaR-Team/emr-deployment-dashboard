@@ -13,9 +13,10 @@
  * its checks:
  *
  *   data:gaps      "List of gaps and interventions" → the committed facility CSV
+ *   data:unit-costs "Unit_costs_and_assumptions"   → scripts/source-data/unit-costs.json
  *   data:maturity  "State Maturity"                 → scripts/source-data/state-maturity.json
- *   data:ingest    the CSV, the maturity JSON, the coverage JSON and the
- *                  facility locations JSON          → public/data/
+ *   data:ingest    the CSV, the unit costs, the maturity JSON, the coverage
+ *                  JSON and the facility locations JSON → public/data/
  *   data:check     the new public/data against the workbook's own summary
  *                  sheets (readiness, costs, the fix packages)
  *
@@ -102,6 +103,7 @@ async function main() {
   }
 
   run('Facility gaps and interventions', 'scripts/build-gaps-csv.mjs', ['--local', WORKBOOK]);
+  run('Unit costs', 'scripts/build-unit-costs.mjs', ['--local', WORKBOOK]);
   run('State Maturity', 'scripts/build-maturity.mjs', ['--local', WORKBOOK]);
   run('Dashboard data', 'scripts/ingest-assessment.mjs');
   run('Checked against the workbook’s summaries', 'node_modules/vite-node/vite-node.mjs', [

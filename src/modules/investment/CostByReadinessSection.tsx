@@ -20,10 +20,7 @@ import type { Band, FacilitySummary } from '@/lib/types';
  *
  * - **Three cards first**, Ready → Moderately ready → Not ready, the same
  *   order and fills as the readiness cards across the app: what each group
- *   costs, its share of the plan, and what that comes to per facility. The
- *   per-facility figure is the finding — a Not ready facility costs several
- *   times what a Ready one does, and a reader weighing where to start needs to
- *   see that beside the counts.
+ *   costs, its share of the plan, and how many facilities it covers.
  * - **Then the breakdown**, one row per group, each a stacked bar of its own
  *   cost in the same three fills, with the three amounts and the total beside
  *   it. The bars are each row's own split, not a shared scale: the question is
@@ -71,7 +68,7 @@ export function CostByReadinessSection({ facilities }: { facilities: FacilitySum
             ? [
                 {
                   title: 'By readiness',
-                  columns: ['Readiness', 'Cost', 'Share of the plan', 'Facilities', 'Per facility'],
+                  columns: ['Readiness', 'Cost', 'Share of the plan', 'Facilities'],
                   rows: [
                     ...ORDER.map((band) => {
                       const cost = totals.cost[band];
@@ -81,10 +78,9 @@ export function CostByReadinessSection({ facilities }: { facilities: FacilitySum
                         formatNaira(cost, true),
                         formatShare(cost, totals.total),
                         formatCount(count),
-                        count ? formatNaira(Math.round(cost / count), true) : '—',
                       ];
                     }),
-                    ['Total', formatNaira(totals.total, true), '', '', ''],
+                    ['Total', formatNaira(totals.total, true), '', ''],
                   ],
                 },
                 {
@@ -129,14 +125,6 @@ export function CostByReadinessSection({ facilities }: { facilities: FacilitySum
                     </p>
                     <p className="mono mt-1 text-note leading-snug text-onband-muted">
                       {formatCount(count)} {count === 1 ? 'facility' : 'facilities'}
-                      {count ? (
-                        <>
-                          {' · '}
-                          <span className="whitespace-nowrap">
-                            {formatNaira(Math.round(cost / count), true)} each
-                          </span>
-                        </>
-                      ) : null}
                     </p>
                   </div>
                 );
@@ -164,13 +152,6 @@ export function CostByReadinessSection({ facilities }: { facilities: FacilitySum
               <BreakdownRow key={row.id} row={row} />
             ))}
           </ul>
-
-          {breakdown === 'category' && (
-            <p className="border-t border-border px-3 py-2 text-note text-muted-foreground">
-              Every cost in the plan is Technical Infrastructure. Workforce, workflow and
-              data-use actions are costed at ₦0 or left unpriced, so they have no category here.
-            </p>
-          )}
         </>
       )}
     </SectionCard>

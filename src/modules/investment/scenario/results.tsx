@@ -183,7 +183,11 @@ function Figure({
 // Before and after
 // ---------------------------------------------------------------------------
 
-/** Readiness before and after, as two bars on one scale. */
+/**
+ * Readiness before and after, as two bars on one scale. After is the
+ * distribution the funded fixes leave — one Ready band, the facilities Ready
+ * before and the ones unlocked together — not the old Ready kept apart.
+ */
 export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number }) {
   const fundedFrom = (band: 'moderately_ready' | 'not_ready') =>
     plan.funded.filter((p) => p.baseline === band).length;
@@ -209,8 +213,12 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
     {
       label: 'After',
       segs: [
-        { key: 'r', n: plan.readyBefore, cls: BAND_CLASSES.ready.bg, name: 'Ready before' },
-        { key: 'x', n: plan.newlyReady, cls: 'bg-ready-ink', name: 'Unlocked' },
+        {
+          key: 'r',
+          n: plan.readyBefore + plan.newlyReady,
+          cls: BAND_CLASSES.ready.bg,
+          name: 'Ready',
+        },
         {
           key: 'm',
           n: plan.after.moderately_ready,
@@ -238,7 +246,7 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
                   className={cn(
                     'mono flex h-full items-center justify-center overflow-hidden whitespace-nowrap text-[13px] font-bold tabular-nums transition-[width] duration-500 ease-out tall:text-[15px]',
                     s.cls,
-                    s.key === 'x' ? 'text-surface' : 'text-onband',
+                    'text-onband',
                   )}
                   style={{ width: `${(s.n / total) * 100}%` }}
                 >
@@ -251,8 +259,7 @@ export function BeforeAfter({ plan, total }: { plan: ScenarioPlan; total: number
       ))}
       <ul className="flex flex-wrap gap-x-3 gap-y-0.5 pl-[66px] text-note text-muted-foreground">
         {[
-          { cls: BAND_CLASSES.ready.bg, name: 'Ready before' },
-          { cls: 'bg-ready-ink', name: 'Unlocked' },
+          { cls: BAND_CLASSES.ready.bg, name: 'Ready' },
           { cls: BAND_CLASSES.moderately_ready.bg, name: 'Moderately' },
           { cls: BAND_CLASSES.not_ready.bg, name: 'Not ready' },
         ].map((l) => (

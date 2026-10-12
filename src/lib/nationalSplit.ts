@@ -26,4 +26,4 @@ export const NATIONAL_TOTAL = 2806;
  * door states that its costs are incomplete, and how incomplete they are must
  * not be able to drift from the dataset saying so.
  */
-export const NATIONAL_UNPRICED_ACTIONS: number = 4654;
+export const NATIONAL_UNPRICED_ACTIONS: number = 2380;
