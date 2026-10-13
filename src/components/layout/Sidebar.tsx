@@ -11,6 +11,7 @@ import {
   Map,
   Menu,
   PanelLeft,
+  SlidersHorizontal,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const ICONS: Record<string, LucideIcon> = {
   Coins,
   Compass,
   FileText,
+  SlidersHorizontal,
 };
 
 /**
@@ -46,9 +48,15 @@ const ICONS: Record<string, LucideIcon> = {
  */
 function BrandBlock({
   collapsed = false,
+  white = false,
   onNavigate,
 }: {
   collapsed?: boolean;
+  /** On the desktop rail the block is white rather than the rail's green: it
+   *  is the way back to the landing page, so it wears the landing page's
+   *  white top bar, and it sits level with the page header's white title row,
+   *  so the top of the screen reads as one white band. */
+  white?: boolean;
   onNavigate?: () => void;
 }) {
   return (
@@ -60,7 +68,8 @@ function BrandBlock({
         // 52px, the page header's title row, so the two hairlines under them
         // meet as one line across the screen.
         'flex h-[52px] shrink-0 items-center gap-2.5 border-b border-border px-4 transition-colors',
-        'hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+        white ? 'bg-chrome hover:bg-chrome-active/60' : 'hover:bg-surface',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
         collapsed && 'justify-center px-0',
       )}
     >
@@ -84,10 +93,10 @@ function BrandBlock({
 /**
  * The rail's contents, shared by the fixed desktop rail and the mobile panel.
  *
- * The active item is marked by a pale mint left edge and a lift onto
- * `bg-surface`, which `.rail` resolves to a lighter emerald than the rail. The mint is
- * the frame's cool green, not Ready's yellow-green, so a selected item does
- * not read as a Ready badge.
+ * The active item is marked by an emerald left edge and a lift onto
+ * `bg-surface`, which `.rail` resolves to white on the rail's dot green. The
+ * green is the frame's cool one, not Ready's yellow-green, so a selected item
+ * does not read as a Ready badge.
  */
 function NavContents({
   collapsed = false,
@@ -145,8 +154,8 @@ function NavContents({
 /**
  * The fixed navigation rail.
  *
- * Emerald in light mode and dark green in dark — the dashboard's colour, a cool
- * green kept apart from Ready's. The `rail` class re-points the ordinary
+ * Dot green in light mode — the colour of the landing page's dots — and dark
+ * green in dark: a cool green kept apart from Ready's. The `rail` class re-points the ordinary
  * tokens (text, muted text, surface, border, accent) at the rail's own values,
  * so everything inside is written with the same classes as the rest of the app.
  *
@@ -171,7 +180,7 @@ export function Sidebar() {
         collapsed ? 'w-[60px]' : 'w-[192px]',
       )}
     >
-      <BrandBlock collapsed={collapsed} />
+      <BrandBlock collapsed={collapsed} white />
       <NavContents
         collapsed={collapsed}
         footer={

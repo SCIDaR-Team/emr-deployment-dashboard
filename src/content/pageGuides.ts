@@ -17,7 +17,7 @@ export interface PageGuide {
   tips: { name?: string; text: string }[];
 }
 
-export type PageGuideId = 'coverage' | 'assessment' | 'investment';
+export type PageGuideId = 'coverage' | 'assessment' | 'investment' | 'scenarios';
 
 /** Said on every page, after its own tips. */
 const COMMON_TIPS: PageGuide['tips'] = [
@@ -110,7 +110,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
 
   investment: {
     intro:
-      'What it costs to close the gaps the assessment found in the 12 states visited, where that money goes, and what a given amount of funding would achieve. Use the State filter to cost one state or all 12; the tabs under the header jump to each section.',
+      'What it costs to close the gaps the assessment found in the 12 states visited, and where that money goes. Use the State filter to cost one state or all 12; the tabs under the header jump to each section.',
     parts: [
       {
         name: 'Total investment',
@@ -125,16 +125,41 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
         text: 'Every action the assessment prescribes: the facilities that need it, the quantity, the unit cost and the total. Group by phase, urgency or domain, or list by cost.',
       },
       {
-        name: 'Scenarios',
-        text: 'Choose the power and connectivity fixes to fund and a target — a budget, a number of facilities or a share Ready — and see how many facilities it makes Ready and what it spends. Money goes to the facilities cheapest to make Ready first. Single shows one scenario, Compare up to four side by side, and By state runs one in each state. Describe, where offered, sets a scenario from a sentence.',
-      },
-      {
         name: 'Rollout waves',
         text: 'Which states go first, and why: the states in each wave, with their facilities and cost.',
       },
     ],
     tips: [
       { text: 'Totals leave out actions the source does not price. Lines at ₦0 are work recorded with no facility-level cost.' },
+      { text: 'For what a given amount of funding would achieve, go to Scenarios in the sidebar.' },
+    ],
+  },
+
+  scenarios: {
+    intro:
+      'What a given amount of funding would achieve: choose the power and connectivity fixes to fund and a target, and see how many facilities it makes Ready and what it spends. Use the State filter to run it in one state or across all 12.',
+    parts: [
+      {
+        name: 'The builder',
+        text: 'Choose the fixes to fund and a target — a budget, a number of facilities or a share Ready. Money goes to the facilities cheapest to make Ready first. How it works sets out the rules the figures follow from.',
+      },
+      {
+        name: 'Single',
+        text: 'One scenario in full: how many it makes Ready and what it spends, how the money is spent per fix, the spending queue, where the newly Ready facilities are, and where the money sits in the whole plan.',
+      },
+      {
+        name: 'Compare',
+        text: 'Up to four scenarios side by side, each with its own fixes, states and target.',
+      },
+      {
+        name: 'By state',
+        text: 'One scenario run in each state on its own and ranked — for where the same money does the most.',
+      },
+    ],
+    tips: [
+      { text: 'The scenario is kept in the page link, so a copied link opens the same scenario.' },
+      { name: 'Describe', text: 'Where offered, sets up a scenario from a sentence, such as “₦20m on solar in Kano”.' },
+      { text: 'The full costed plan, of which these fixes are a part, is on the Investment Plan.' },
     ],
   },
 };
@@ -157,7 +182,7 @@ export function pageGuideContent(guide: PageGuide): GuideContent {
 }
 
 /**
- * "How it works" on the Scenarios section: the builder's rules, which the
+ * "How it works" on the Scenarios page: the builder's rules, which the
  * figures follow from. Kept to what `lib/scenarios.ts` does — update it with
  * the engine.
  */

@@ -25,7 +25,7 @@ import type {
 } from '../../src/lib/types';
 import { LEADERSHIP_LABEL } from '../../src/lib/themes';
 import type { LeadershipSubDomainId } from '../../src/lib/types';
-import { encodeSpec, stateId } from '../../src/modules/investment/scenario/scenarioState';
+import { encodeSpec, stateId } from '../../src/modules/scenarios/scenarioState';
 import { findState, type DashboardData } from './data';
 
 /**
@@ -656,7 +656,7 @@ function summarisePlan(plan: ReturnType<typeof planForTarget>, total: number) {
  * the facilities it goes to and its cost (these add up to the spend; a
  * facility needing two fixes counts under both), and the order the money
  * reaches facilities — grouped by the fixes they need, cheapest first, as the
- * Scenarios section's spending queue shows it.
+ * Scenarios page's spending queue shows it.
  */
 function spendBreakdown(plan: ReturnType<typeof planForTarget>) {
   const order = new Map<string, { fixes: string; facilities: number; eachNGN: number }>();
@@ -725,7 +725,7 @@ const runScenario: ToolDef = {
       links: [
         {
           label: 'Open this scenario',
-          href: href('/investment', { sv: 'single', ss: encodeSpec(spec) }, 'scenarios'),
+          href: href('/scenarios', { sv: 'single', ss: encodeSpec(spec) }),
         },
       ],
     };
@@ -766,7 +766,7 @@ const rankStates: ToolDef = {
       links: [
         {
           label: 'Open By state',
-          href: href('/investment', { sv: 'states', ss: encodeSpec(spec) }, 'scenarios'),
+          href: href('/scenarios', { sv: 'states', ss: encodeSpec(spec) }),
         },
       ],
     };

@@ -16,6 +16,7 @@ const AssessedStatesPage = lazy(
 const InvestmentPlanPage = lazy(
   () => import('@/modules/investment/InvestmentPlanPage'),
 );
+const ScenariosPage = lazy(() => import('@/modules/scenarios/ScenariosPage'));
 const BriefPage = lazy(() => import('@/modules/briefs/BriefPage'));
 
 function page(node: React.ReactNode) {
@@ -77,6 +78,7 @@ export default function App() {
                 element={page(<AssessedStatesPage />)}
               />
               <Route path="/investment" element={page(<InvestmentPlanPage />)} />
+              <Route path="/scenarios" element={page(<ScenariosPage />)} />
               {/* The sibling dashboard's routes, so a shared link from it lands
                   somewhere rather than nowhere. */}
               <Route path="/dashboard" element={<Navigate to="/states" replace />} />

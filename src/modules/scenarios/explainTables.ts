@@ -13,7 +13,7 @@ import {
 } from './scenarioState';
 
 /**
- * The Scenarios section's figures for "Explain this chart", per view — the
+ * The Scenarios page's figures for "Explain this chart", per view — the
  * same plans the views draw, from the same `planSpec` / `planForTarget`, as
  * the strings they print.
  */

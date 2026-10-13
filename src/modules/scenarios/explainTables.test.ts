@@ -9,7 +9,7 @@ import { scenarioExplainTables } from './explainTables';
 import { DEFAULT_COMPARE, DEFAULT_SINGLE, type ScenarioView } from './scenarioState';
 
 const raw = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../../public/data/facilities-summary.json'), 'utf8'),
+  readFileSync(resolve(__dirname, '../../../public/data/facilities-summary.json'), 'utf8'),
 ) as FacilitySummary[] | { facilities: FacilitySummary[] };
 const facilities = Array.isArray(raw) ? raw : raw.facilities;
 const paths = facilityPaths(facilities);

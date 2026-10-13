@@ -89,7 +89,7 @@ describe('find_facilities', () => {
 });
 
 /**
- * The scenario tools against the Scenarios section's own engine, run here on
+ * The scenario tools against the Scenarios page's own engine, run here on
  * the same data — so an answer and the page it links to agree, whatever the
  * figures are.
  */
@@ -112,7 +112,7 @@ describe('scenarios', () => {
     expect(r.unlocked).toBe(plan.newlyReady);
     expect(r.readyBefore).toBe(plan.readyBefore);
     expect(r.spend).toBe(naira(plan.spendNGN));
-    expect(r.links[0].href).toContain('#scenarios');
+    expect(r.links[0].href).toMatch(/^\/scenarios\?/);
   });
 
   it('ranks states by what the same budget unlocks in each', () => {
