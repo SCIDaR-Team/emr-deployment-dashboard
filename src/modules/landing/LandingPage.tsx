@@ -647,15 +647,22 @@ export default function LandingPage() {
                 How ready is Nigeria for electronic medical records?
                 <span aria-hidden className="hidden h-[2px] w-9 shrink-0 rounded-full bg-chrome-ink sm:block" />
               </p>
-              {/* The answer, in two findings: how many need work, and how many
-                  are blocked outright — and in the second sentence, what
-                  blocks them. A step under `text-display`, and sized off the
-                  viewport's height as well as its width: at the display size
-                  the two sentences ran to five lines and the page past one
-                  screen. */}
+              {/* The answer, in two findings: the two in three who are
+                  Moderately ready, and the one in four who are Not ready —
+                  and in the second sentence, what blocks them. The first is
+                  worded in the bands' own terms ("moderate upgrades" for
+                  Moderately ready, as the readiness card says under it). It
+                  used to read "need only major work", from when the urgency
+                  scale had a level above Major and that meant "nothing
+                  critical"; once the scale changed it said the opposite of
+                  the band it describes.
+
+                  A step under `text-display`, and sized off the viewport's
+                  height as well as its width: at the display size the two
+                  sentences ran to five lines and the page past one screen. */}
               <h1 className="mt-2 text-[clamp(1.5rem,min(2.15vw,4.2vh),2.4rem)] font-extrabold leading-[1.08] tracking-tight text-balance text-foreground">
-                Two in three facilities need only major work before an EMR.{' '}
-                <span className="text-notready-ink">One in four</span> facilities faces{' '}
+                Two in three facilities need only moderate upgrades before an EMR.{' '}
+                <span className="text-notready-ink">One in four</span> faces{' '}
                 <span className="text-notready-ink">power</span> or{' '}
                 <span className="text-notready-ink">connectivity</span> barriers to EMR deployment.
               </h1>
