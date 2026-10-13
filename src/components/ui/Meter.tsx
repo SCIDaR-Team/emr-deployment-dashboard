@@ -308,7 +308,9 @@ export function BandCards({
 // ---------------------------------------------------------------------------
 
 /** A row of hairline-separated figures. The grid is a 1px-gap sheet so the
- *  rules between tiles are the container's background showing through. */
+ *  rules between tiles are the container's background showing through. It
+ *  sits on the page, so its edge is a card's green outline; the rules between
+ *  tiles stay grey, like the rules inside a card. */
 export function TileRow({
   children,
   className,
@@ -317,7 +319,7 @@ export function TileRow({
   className?: string;
 }) {
   return (
-    <div className={cn('grid gap-px border border-border bg-border', className)}>
+    <div className={cn('grid gap-px border border-chrome-ink/25 bg-border', className)}>
       {children}
     </div>
   );

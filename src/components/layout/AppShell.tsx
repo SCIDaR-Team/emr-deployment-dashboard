@@ -8,7 +8,7 @@ import { ASSISTANT_ENABLED } from '@/store/assistantStore';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 /**
- * App shell: fixed dark-green sidebar, scrolling content.
+ * App shell: fixed navigation rail, scrolling content.
  *
  * Filters live inside each page under its title (as labelled dropdowns), not in
  * a shared side rail — that follows the ERA prototype and keeps the map as the

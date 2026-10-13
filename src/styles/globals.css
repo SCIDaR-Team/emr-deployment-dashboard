@@ -42,7 +42,7 @@
      *
      *   surface-sunk  90.0   a well *inside* a card — search fields, empty states
      *   sidebar       91.0   the rail, one step off the page
-     *   page          93.5   the ground everything sits on
+     *   page          96.0   the ground everything sits on — pale mint
      *   surface       99.0   cards, panels, anything that should read as an object
      *
      * The page used to be 96%, three points off a 99% surface, which is why a
@@ -55,6 +55,20 @@
      * from somewhere, and tone costs nothing, prints correctly and does not
      * blur at 200% zoom the way a soft shadow does.
      *
+     * The page is the one rung with colour in it: a pale mint (hue 146, the
+     * frame's green) rather than the warm grey it was. The landing page laid
+     * that mint across its whole ground, and stepping from it into a grey app
+     * read as leaving one product for another; one token now sets both. It is
+     * the colour of the landing page's top left as it lands on screen — the
+     * mint lit by the glow behind the headline, rgb(241, 249, 244) — and it is
+     * the same on every page, the working pages included, so moving between
+     * modules never changes the room.
+     *
+     * At 96 it sits only 3 points under the surface, the gap the paragraph
+     * above calls too small for tone alone. It is enough now because tone is
+     * not working alone: a card is drawn with an outline in the frame's green
+     * (`.card`), and the white card is greyer than the mint around it.
+     *
      * The whole ladder moved together, not just the page. A sunk well has to
      * stay below the page it is cut into, and the rail has to stay between the
      * two, so dropping the page alone would have collapsed both against it.
@@ -62,13 +76,13 @@
     /*
      * One strong green, everything else calm. The rail is a solid emerald —
      * the product's colour, and the only large green block — while the page
-     * stays near-neutral, the header rows white, and green elsewhere is an
+     * is a pale mint, the header rows white, and green elsewhere is an
      * accent: the active tab's underline, the module cards' hairline and
      * glyph. A cool green (hue ~150), kept apart from Ready's yellow-green
      * (96.7), and never on a card, so the band fills stay the most colourful
      * things in the content area.
      */
-    --page: 100 9% 93.5%;
+    --page: 146 37% 96%;
     --surface: 80 20% 99%;
     --surface-sunk: 90 8% 90%;
     --foreground: 160 12% 8%;
@@ -99,12 +113,10 @@
     --brand-900: 160 14% 5%;
 
     /*
-     * The navigation rail: solid emerald in light mode (white text 7.6:1),
-     * a dark green in dark mode.
-     * Its hue sits with the page's, not with Ready's, and it holds no data —
-     * only the modules — so it cannot be read as a band. Inside it, `.rail`
-     * swaps in the rail's own ladder (below) — its text, hairlines, hover lift
-     * and active edge — without the components knowing.
+     * The product's emerald: the landing page's main button, the "Ask the
+     * data" button, anything that wants the one strong green (white text
+     * 7.6:1). It used to be the navigation rail's colour too; the rail now has
+     * its own, `--rail-background` below.
      */
     --sidebar: 150 42% 26%;
     --sidebar-foreground: 0 0% 100%;
@@ -119,14 +131,26 @@
        white. */
     --chrome-ink: 150 55% 28%;
 
-    /* The rail's own ladder, which `.rail` puts in place of the page's inside
-       the rail — its text, hairlines, hover lift and active edge — so the rail
-       components keep their ordinary token classes on a dark ground. */
-    --rail-foreground: 0 0% 100%;
-    --rail-muted-foreground: 140 30% 93%;
-    --rail-surface: 150 36% 34%;
-    --rail-border: 150 34% 32%;
-    --rail-accent: 146 70% 78%;
+    /*
+     * The navigation rail, and its own ladder, which `.rail` puts in place of
+     * the page's inside it — its ground, text, hairlines, hover lift and
+     * active edge — so the rail components keep their ordinary token classes.
+     *
+     * The ground is "dot green": the exact colour the landing page's dots land
+     * on screen, the frame's green (`--chrome-ink`) at 22% over the mint page,
+     * rgb(189, 216, 202). It replaced a solid emerald rail, which was the one
+     * heavy dark block in an app whose front door is white and mint; this
+     * carries the landing page's texture down the left instead. Dark-green
+     * text (muted 5.9:1), and a white lift with an emerald edge on hover and
+     * on the current module. Its hue sits with the page's, not with Ready's,
+     * and it holds no data, so it cannot be read as a band.
+     */
+    --rail-background: 148.5 26.1% 79.5%;
+    --rail-foreground: 150 55% 16%;
+    --rail-muted-foreground: 150 32% 24%;
+    --rail-surface: 80 20% 99%;
+    --rail-border: 148 22% 70%;
+    --rail-accent: 150 55% 28%;
 
     /*
      * The band colours, supplied by the client as RGB:
@@ -404,6 +428,7 @@
     --chrome-active-foreground: 140 50% 86%;
     --chrome-ink: 146 50% 62%;
 
+    --rail-background: 150 32% 13%;
     --rail-foreground: 140 20% 94%;
     --rail-muted-foreground: 140 18% 86%;
     --rail-surface: 150 30% 20%;
@@ -515,8 +540,10 @@
 @layer components {
   /* The rail: its own ladder in place of the page's, so `text-foreground`,
      `text-muted-foreground`, `bg-surface`, `border-border` and the active
-     edge all resolve to light-on-deep-green inside it. */
+     edge all resolve to the rail's colours inside it — and `bg-sidebar`, the
+     rail's own ground, to `--rail-background` rather than the emerald. */
   .rail {
+    --sidebar: var(--rail-background);
     --foreground: var(--rail-foreground);
     --muted-foreground: var(--rail-muted-foreground);
     --surface: var(--rail-surface);
@@ -527,8 +554,12 @@
   /* Hierarchy comes from hairlines and vertical rhythm, not from shadow. The
      one exception is `.sheet` in the report preview, which is standing in for a
      printed page and is allowed to look like one. */
+  /* Outlined in the frame's green at a quarter strength, not the grey
+     hairline: on the mint page the grey line all but vanished. The rules
+     *inside* a card stay grey — the green is the card's edge, not its
+     furniture. Same outline as the landing page's cards. */
   .card {
-    @apply bg-surface rounded-card border border-border;
+    @apply bg-surface rounded-card border border-chrome-ink/25;
   }
 
   /* Every label, tick, figure column and code fragment. The family is now the
