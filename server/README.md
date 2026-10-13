@@ -19,7 +19,7 @@ browser ──POST /api/assistant──▶ Vercel function or Lambda ──▶ O
 | `assistant/data.ts` | Loads and indexes the dashboard data. Coordinates and free-text notes never reach the model. |
 | `assistant/tools.ts` | The eight lookup tools, reusing the dashboard's own calculations (scenario engine, cost split). |
 | `assistant/prompt.ts` | The model's standing instructions. |
-| `assistant/scenario.ts` | "Describe a scenario": words to the Scenarios section's settings, every value checked against the data. |
+| `assistant/scenario.ts` | "Describe a scenario": words to the Scenarios page's settings, every value checked against the data. |
 | `assistant/agent.ts` | One answer: stream, run the tools the model asks for, repeat. |
 | `assistant/http.ts` | The endpoint: input limits, rate limit, server-sent events, friendly errors. |
 | `assistant/node.ts` | The endpoint as a Node `(req, res)` handler, shared by dev and Vercel. |
@@ -27,7 +27,7 @@ browser ──POST /api/assistant──▶ Vercel function or Lambda ──▶ O
 | `assistant/vercel.ts` | Vercel function handler. |
 | `assistant/dev.ts` | The same endpoint inside `npm run dev`. |
 | `src/modules/assistant/` | The chat panel in the dashboard. |
-| `src/modules/investment/scenario/DescribeScenario.tsx` | The "Describe" box in the Scenarios section. |
+| `src/modules/scenarios/DescribeScenario.tsx` | The "Describe" box on the Scenarios page. |
 | `assistant/explain.ts` | "Explain this chart": one call, no tools, from the figures a section is showing. |
 | `src/lib/explain/charts.ts` | The charts that can be explained, how each is read, and the request's limits. |
 | `src/modules/explain/` | The Explain button and panel, and how sections hand over their figures. |

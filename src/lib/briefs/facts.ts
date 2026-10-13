@@ -25,7 +25,7 @@ import type {
  * the narrative quotes rather than computes.
  */
 
-/** The six fixes a scenario can fund, in the Scenarios section's order. */
+/** The six fixes a scenario can fund, in the Scenarios page's order. */
 const FIXES: { id: ScenarioComponentId; label: string }[] = [
   { id: 'full_solar', label: 'Full solar' },
   { id: 'solar_topup', label: 'Solar top-up' },

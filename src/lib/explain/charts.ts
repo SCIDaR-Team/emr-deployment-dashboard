@@ -55,17 +55,17 @@ export const CHARTS = {
       'Where the plan’s money goes, by the readiness of the facilities it is spent on. For Ready, Moderately ready and Not ready: the cost, its share of the plan, the facilities, and the cost per facility. Then one row per group of the chosen breakdown (category, facility group, functionality, zone or state), each group’s cost split across the three bands, with its total.',
   },
   'scenario-single': {
-    page: 'Investment Plan · Scenarios',
+    page: 'Scenarios',
     howToRead:
       'One funding scenario. The chosen power and connectivity fixes are funded facility by facility, cheapest to make Ready first, up to a target: a budget, a number of facilities, or a share Ready. A facility becomes Ready only when every fix it needs is funded. Read as Ready before + Unlocked = Total Ready. The average per facility is the spend divided by the facilities unlocked; the facilities themselves cost different amounts, by the fixes each needs. How the money is spent: per fix, the facilities it goes to and its cost; the costs add up to the spend, and a facility needing two fixes counts under both. The spending queue lists every facility not yet Ready, grouped by the fixes it needs, cheapest first, with what one facility in the group costs and how many of the group this scenario funds — groups it funds none of are waiting, not bought.',
   },
   'scenario-compare': {
-    page: 'Investment Plan · Scenarios',
+    page: 'Scenarios',
     howToRead:
       'The funding scenarios the reader has set up, side by side — as many as the table lists — each with its own fixes, states and target. For each: Ready before + Unlocked = Total Ready, what it spends, and the average cost per facility made Ready (the spend divided by the facilities unlocked — the facilities themselves cost different amounts, by the fixes each needs). Money goes to the facilities cheapest to make Ready first, and a facility becomes Ready only when every fix it needs is funded.',
   },
   'scenario-states': {
-    page: 'Investment Plan · Scenarios',
+    page: 'Scenarios',
     howToRead:
       'One funding scenario run in each state on its own, for where the same target does the most. Per state: Ready before + Unlocked = Total Ready, the spend, the average cost per facility made Ready (the spend divided by the facilities unlocked), and the share Ready after. A budget target is applied in full to each state separately; the first table runs it once across all the states together.',
   },

@@ -75,7 +75,7 @@ The sync needs one repository secret, **`ERA_WORKBOOK_URL`**.
 | **Source** | `ERA Dashboard dataset.xlsx` › **List of gaps and interventions** (the sheet name has a trailing space) |
 | **Path in** | `npm run data:gaps` exports it to `List of gaps and interventions per facility.csv` (committed); `npm run data:ingest` reads that CSV |
 | **Shape** | 2,806 facilities; 4 header rows (title, scope note, domain band row, column headers), 194 columns (A–GL) |
-| **Powers** | Assessed States (facility counts, readiness, gap severity, gaps and interventions, the facility view, the filters), Investment Plan (every section: totals, Where the money goes, Costed interventions, Scenarios), the state briefs' figures, Ask the data, Explain |
+| **Powers** | Assessed States (facility counts, readiness, gap severity, gaps and interventions, the facility view, the filters), Investment Plan (every section: totals, Where the money goes, Costed interventions), Scenarios, the state briefs' figures, Ask the data, Explain |
 | **Also generates code** | `src/lib/gapCatalogue.ts` (gap areas, gaps, interventions, unit prices, urgencies — extracted from this sheet) and `src/lib/nationalSplit.ts` |
 
 Columns the code relies on — **read by position, and each checked against its header**, so a moved column stops the build:

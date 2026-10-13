@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { ChevronRight, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PAGE_GUIDES } from '@/content/pageGuides';
@@ -28,7 +29,6 @@ import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/li
 import { ExplainScope } from '@/modules/explain/context';
 import { ExplainFigures } from '@/modules/explain/explain';
 import { CostByReadinessSection } from './CostByReadinessSection';
-import { ScenarioSection } from './scenario/ScenarioSection';
 
 /**
  * Investment Plan — what deploying will take, itemised.
@@ -60,9 +60,11 @@ import { ScenarioSection } from './scenario/ScenarioSection';
 const SECTIONS = [
   { id: 'cost-by-readiness', label: 'Cost Summary' },
   { id: 'interventions', label: 'Interventions' },
-  { id: 'scenarios', label: 'Scenarios' },
   { id: 'waves', label: 'Rollout waves' },
 ];
+
+/** The scenario builder's link parameters (see `useScenarioUrl`). */
+const SCENARIO_PARAMS = ['sv', 'ss', 'sc'];
 
 /**
  * The axes a costed plan is read along, plus the flat list.
@@ -255,6 +257,7 @@ function buildGroups(items: InvestmentItem[], mode: GroupMode, total: number): G
 }
 
 export default function InvestmentPlanPage() {
+  const location = useLocation();
   const { states, facilities, national } = useDataContext();
   const selectedStates = useFilterStore((s) => s.states);
   const [groupMode, setGroupMode] = useState<GroupMode>('phase');
@@ -301,7 +304,8 @@ export default function InvestmentPlanPage() {
   /** Where the reader is, for "Explain" on the sections. */
   const explainScope = useMemo(() => [`Area: ${scope.name}`], [scope.name]);
 
-  /** The facilities the scenarios re-run over: the selected states, or all. */
+  /** The facilities Where the money goes is split over: the selected states,
+   *  or all. */
   const scopedFacilities = useMemo(
     () =>
       selectedStates.length
@@ -355,6 +359,17 @@ export default function InvestmentPlanPage() {
       .map((w) => ({ wave: w as WaveId, states: byWave.get(w as WaveId) ?? [] }))
       .filter((entry) => entry.states.length);
   }, [states.data, selectedStates]);
+
+  /**
+   * Scenarios was a section of this page and is now a page of its own. A link
+   * from before the move — `/investment?sv=…&ss=…#scenarios`, which is in
+   * people's history, in sent links and in old Ask the data answers — goes on
+   * to it with its query intact, so the scenario it named is the one that opens.
+   */
+  const params = new URLSearchParams(location.search);
+  if (location.hash === '#scenarios' || SCENARIO_PARAMS.some((k) => params.has(k))) {
+    return <Navigate to={{ pathname: '/scenarios', search: location.search }} replace />;
+  }
 
   if (states.error) {
     return <LoadError what="the investment data" error={states.error} onRetry={states.refetch} />;
@@ -533,8 +548,6 @@ export default function InvestmentPlanPage() {
               />
             )}
           </SectionCard>
-
-          <ScenarioSection facilities={scopedFacilities} />
 
           <SectionCard
             id="waves"

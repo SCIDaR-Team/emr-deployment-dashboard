@@ -27,10 +27,13 @@ import { useScenarioUrl } from './useScenarioUrl';
  *   By state  one scenario run in each state on its own, ranked — "with
  *             ₦20m, where do I get the most Ready?"
  *
- * Sized to the screen on a laptop: the body takes the height left under the
- * page header, and each view scrolls inside its own panels, so the section is
- * read whole without scrolling the page. Kept in the link (see
- * `useScenarioUrl`). Follows the State filter.
+ * The whole of the Scenarios page. Sized to the screen on a laptop: the body
+ * takes the height left under the page header, and each view scrolls inside
+ * its own panels, so the builder is read whole without scrolling the page.
+ * Kept in the link (see `useScenarioUrl`). Follows the State filter.
+ *
+ * Titled "Scenario builder" rather than "Scenarios": the page header already
+ * says Scenarios one line above, and the card is the tool on the page.
  */
 
 const VIEWS: { id: ScenarioView; label: string; icon: React.ReactNode }[] = [
@@ -48,7 +51,7 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
   return (
     <SectionCard
       id="scenarios"
-      title="Scenarios"
+      title="Scenario builder"
       subtitle="Fund fixes toward a target and see who it makes Ready"
       bodyClassName="p-0"
       explain={`scenario-${s.view}`}
@@ -88,10 +91,12 @@ export function ScenarioSection({ facilities }: { facilities: FacilitySummary[] 
       {!facilities.length ? (
         <p className="px-4 py-6 text-prose italic text-muted-foreground">No facilities in scope.</p>
       ) : (
-        <div className="lg:h-[calc(100dvh-var(--page-header-h,52px)-124px)] lg:min-h-[380px] lg:max-h-[760px]">
+        <div className="lg:h-[calc(100dvh-var(--page-header-h,52px)-132px)] lg:min-h-[380px] lg:max-h-[860px]">
           {/* Sized to the screen less the page header and what the card puts
-              around this: the gap above it (12px), its title bar (52px), the
-              Explain strip under it (49px) and a little room below (11px). */}
+              around this: the page's padding above it (20px), its title bar
+              (52px), the Explain strip under it (49px) and a little room below
+              (11px). Capped taller than it was as an Investment Plan section,
+              now that it has the page to itself. */}
           {s.view === 'single' && (
             <SingleView paths={paths} spec={s.single} onChange={s.setSingle} />
           )}

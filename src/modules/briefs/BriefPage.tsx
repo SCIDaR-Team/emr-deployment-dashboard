@@ -300,7 +300,7 @@ function FigureTable({ title, rows }: { title: string; rows: string[][] }) {
 }
 
 /**
- * What funding unlocks, in the Scenarios section's terms: each fix alone, then
+ * What funding unlocks, in the Scenarios page's terms: each fix alone, then
  * four combinations, each with its cost, the facilities it makes Ready
  * (Unlocked) and where that leaves the state (Total Ready). No budget limit —
  * each row is the set of fixes funded as far as it goes.

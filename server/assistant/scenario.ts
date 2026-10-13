@@ -7,12 +7,12 @@ import {
   stateId,
   type ScenarioSpec,
   type ScenarioView,
-} from '../../src/modules/investment/scenario/scenarioState';
+} from '../../src/modules/scenarios/scenarioState';
 import type { AssistantConfig } from './agent';
 import { findState, type DashboardData } from './data';
 
 /**
- * A scenario described in words, turned into the Scenarios section's own
+ * A scenario described in words, turned into the Scenarios page's own
  * settings — "₦20m on routers in the North West", "compare solar with
  * connectivity at ₦500m", "which state gets most with ₦50m?".
  *

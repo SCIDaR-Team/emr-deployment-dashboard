@@ -6,7 +6,7 @@ import { pageGuideContent, type GuideContent, type PageGuide } from '@/content/p
 /**
  * Written guides, in a drawer from the right so the page stays in view behind
  * them: the "Page guide" in each page header (what is on the page and what
- * each part does), and "How it works" on the Scenarios section. Written
+ * each part does), and "How it works" on the Scenarios page. Written
  * content (see `content/pageGuides.ts`), not AI: they describe the page and
  * its rules, never its figures.
  */

@@ -42,7 +42,7 @@ export interface ExplainHost {
 
 /**
  * The section's host, for controls in its header rather than its body — the
- * Scenarios section's "Describe" narrates the view it has just set up with it.
+ * Scenarios page's "Describe" narrates the view it has just set up with it.
  */
 export const ExplainHostContext = createContext<ExplainHost | null>(null);
 export function useSectionExplainHost(): ExplainHost | null {

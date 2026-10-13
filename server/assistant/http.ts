@@ -141,7 +141,7 @@ export async function handleAssistantRequest(
 
 /**
  * `POST /api/assistant/scenario { text }` — a scenario described in words,
- * back as the Scenarios section's settings (see `scenario.ts`). JSON, not a
+ * back as the Scenarios page's settings (see `scenario.ts`). JSON, not a
  * stream: the answer is one small object. Shares the rate limit with the chat.
  */
 export async function handleScenarioRequest(
