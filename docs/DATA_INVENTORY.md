@@ -127,10 +127,10 @@ The dashboard workbook has a sheet of the same name, but **without a Latitude co
 | | |
 |---|---|
 | **Source** | `ERA Dashboard dataset.xlsx` › **Unit_costs_and_assumptions**, the first table (one row per cost item) |
-| **Path in** | `npm run data:unit-costs` → `scripts/source-data/unit-costs.json` → `data:ingest` |
-| **Powers** | The price of the actions the facility sheet charges at ₦0 or leaves blank but this table documents — workflow configuration, the three data-use routines, device maintenance (`TAB_PRICED` in `scripts/assessment-source.mjs`). Every other price is the facility sheet's own |
+| **Path in** | `npm run data:unit-costs` → `scripts/source-data/unit-costs.json` (committed; `data:ingest` does not read it yet) |
+| **Powers** | Nothing yet. Exported and committed so a price change shows up as a reviewable diff; the facility sheet's own prices are the plan's. The state-level training, deployment-validation, routine-operations and technical-assistance tables below the first one are not read yet |
 
-Columns relied on — **found by header**: **Domain**, **Subdomain**, **Cost reference**, **Total**, **Unit**. `data:check` compares the workbook's Cost summary at the facility sheet's prices, so it takes this addition back off first (`sheetUnitCostNGN` on each such action).
+Columns relied on — **found by header**: **Domain**, **Subdomain**, **Cost reference**, **Total**, **Unit**.
 
 ### 4. State Maturity
 

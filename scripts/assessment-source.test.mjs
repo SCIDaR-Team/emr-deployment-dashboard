@@ -355,12 +355,7 @@ describe('parseMoney', () => {
 describe('interventionsCost', () => {
   it('reports an unpriced intervention rather than counting it as zero', () => {
     const actions = [{ costNGN: 40_000 }, { costNGN: null }, { costNGN: 0 }];
-    expect(interventionsCost(actions)).toEqual({ costNGN: 40_000, sheetCostNGN: 40_000, unpriced: 1 });
-  });
-
-  it('keeps what the sheet charged beside a price from the unit-cost table', () => {
-    const actions = [{ costNGN: 40_000 }, { costNGN: 125_000, sheetCostNGN: 0 }, { costNGN: 90_000, sheetCostNGN: null }];
-    expect(interventionsCost(actions)).toEqual({ costNGN: 255_000, sheetCostNGN: 40_000, unpriced: 0 });
+    expect(interventionsCost(actions)).toEqual({ costNGN: 40_000, unpriced: 1 });
   });
 });
 

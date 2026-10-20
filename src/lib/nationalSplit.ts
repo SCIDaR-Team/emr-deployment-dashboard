@@ -18,9 +18,9 @@ export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = {"not_ready":744,
 export const NATIONAL_TOTAL = 2806;
 
 /**
- * Facility actions the source records and neither it nor the unit-cost table
- * prices — naming an EMR focal person, and the lockable-door checks the sheet
- * leaves "before costing".
+ * Facility actions on the plan that the source does not price — naming an
+ * EMR focal person, and the lockable-door checks the sheet leaves "before
+ * costing".
  */
 export const NATIONAL_UNPRICED_ACTIONS: number = 2380;
 

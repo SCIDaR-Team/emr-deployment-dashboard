@@ -15,8 +15,8 @@
  *   data:gaps      "List of gaps and interventions" → the committed facility CSV
  *   data:unit-costs "Unit_costs_and_assumptions"   → scripts/source-data/unit-costs.json
  *   data:maturity  "State Maturity"                 → scripts/source-data/state-maturity.json
- *   data:ingest    the CSV, the unit costs, the maturity JSON, the coverage
- *                  JSON and the facility locations JSON → public/data/
+ *   data:ingest    the CSV, the maturity JSON, the coverage JSON and the
+ *                  facility locations JSON          → public/data/
  *   data:check     the new public/data against the workbook's own summary
  *                  sheets (readiness, costs, the fix packages)
  *

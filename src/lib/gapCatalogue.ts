@@ -113,11 +113,6 @@ export interface ActionDef {
   unit: string | null;
   /** Null where the source carries no price. Not zero. */
   unitCostNGN: number | null;
-  /** What the facility sheet charges — ₦0, or null for blank — where
-   *  `unitCostNGN` comes from the workbook's unit-cost table instead.
-   *  Absent where the two agree. `data:check` compares the workbook's own
-   *  totals at these prices. */
-  sheetUnitCostNGN?: number | null;
   /** The scenario component this action is — router, full solar system and
    *  so on — for the six power and connectivity fixes; null for the rest. */
   scenario: ScenarioComponentId | null;
@@ -297,8 +292,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 90000,
-    "sheetUnitCostNGN": null,
+    "unitCostNGN": null,
     "scenario": null
   },
   {
@@ -430,8 +424,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 125000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -442,8 +435,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 75000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -465,8 +457,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 125000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -477,8 +468,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 75000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -500,8 +490,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 125000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -512,8 +501,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 75000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -524,8 +512,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 30000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -536,8 +523,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 30000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -548,8 +534,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "major",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 20000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -560,8 +545,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 30000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -572,8 +556,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "moderate",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 20000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   },
   {
@@ -584,8 +567,7 @@ export const ACTIONS: ActionDef[] = [
     "horizon": "minor",
     "phase": "before",
     "unit": null,
-    "unitCostNGN": 30000,
-    "sheetUnitCostNGN": 0,
+    "unitCostNGN": 0,
     "scenario": null
   }
 ];

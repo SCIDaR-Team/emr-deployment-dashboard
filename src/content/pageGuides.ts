@@ -110,19 +110,23 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
 
   investment: {
     intro:
-      'What it costs to close the gaps the assessment found in the 12 states visited, and where that money goes. Use the State filter to cost one state or all 12; the tabs under the header jump to each section.',
+      'What it costs to deploy the EMR in the 12 states assessed, in four parts: an overview of the whole cost, then fixing the gaps, training and deployment, and a year of operations and technical assistance. Use the State filter to cost one state or all 12; the tabs under the header jump to each part.',
     parts: [
       {
-        name: 'Total investment',
-        text: 'The whole plan’s cost for the states in view.',
+        name: 'Cost overview',
+        text: 'The whole cost in five components and its total. Training and operations are at 2027 prices, with inflation, as the five-year roadmap costs them; the rest are at base prices.',
       },
       {
-        name: 'Where the money goes',
-        text: 'The plan’s cost by the readiness of the facilities it is spent on — Ready, Moderately ready and Not ready — then split by category, facility group, functionality, zone or state.',
+        name: 'Fixes',
+        text: 'Fixing the readiness gaps the assessment found. Where the money goes splits it by the readiness of the facilities it is spent on; Costed interventions lists every action, with the facilities that need it, the quantity, the unit cost and the total.',
       },
       {
-        name: 'Costed interventions',
-        text: 'Every action the assessment prescribes: the facilities that need it, the quantity, the unit cost and the total. Group by phase, urgency or domain, or list by cost.',
+        name: 'Train and deploy',
+        text: 'One three-day training event per state for two staff from every facility, and the validation of each facility before go-live: each line with its unit cost, quantity, total and who pays.',
+      },
+      {
+        name: 'Operations and TA',
+        text: 'A year of internet subscription and device maintenance for every facility, and technical assistance and transition support for every state.',
       },
       {
         name: 'Rollout waves',
@@ -130,7 +134,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
       },
     ],
     tips: [
-      { text: 'Totals leave out actions the source does not price. Lines at ₦0 are work recorded with no facility-level cost.' },
+      { text: 'Fixes totals leave out actions the source does not price. Lines at ₦0 are work recorded with no facility-level cost.' },
       { text: 'For what a given amount of funding would achieve, go to Scenarios in the sidebar.' },
     ],
   },

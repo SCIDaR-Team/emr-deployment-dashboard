@@ -398,54 +398,27 @@ export const UNIT_ACTIONS = {
 };
 
 /**
- * Actions the facility sheet charges at ₦0 or leaves unpriced, that the
- * workbook's own unit-cost table prices: action label → that table's cost
- * reference.
+ * Actions the facility sheet prescribes that the costed plan leaves out.
  *
- * The sheet's gap rules name a cost reference for each of these but charge
- * nothing against it, and device maintenance it leaves blank as a routine
- * operating cost. The plan prices them from "Unit_costs_and_assumptions"
- * instead (exported by `npm run data:unit-costs`), so a figure the team has
- * documented is not shown as free. Only where the cell is ₦0 or blank: a price
- * the sheet does charge is never replaced. The actions the table has no
- * per-facility price for — training, technical assistance, change management,
- * the focal person, the lockable door — keep the sheet's ₦0 or blank.
+ * The workflow configuration and the three data-use routines are charged at ₦0
+ * by the sheet, and at the ERA team's direction they stay free: the
+ * Unit_costs_and_assumptions table still documents a price for each, but the
+ * team no longer costs those interventions that way. Device maintenance the
+ * sheet leaves blank; it is a routine operating cost, priced per live facility
+ * with the internet subscription rather than as a gap remediation.
+ *
+ * They are still actions — a facility's gaps call for them, and the gap tree
+ * lists them — so they are dropped from the Investment Plan's lines only. The
+ * plan then matches the workbook's Cost summary line for line.
  */
-export const TAB_PRICED = {
-  'Provide routine device maintenance and repair support.':
-    'Annual device maintenance and support SLA',
-  'Configure EMR workflows so information captured at one service point is available at subsequent points of care.':
-    'Service-point workflow configuration and transition SOP',
-  'Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.':
-    'Workflow redesign and EMR configuration',
-  'Use EMR dashboards and routine performance meetings to review data and track actions.':
-    'Facility data-use and performance-review setup',
-  'Use EMR data checks and routine performance meetings to validate data and track actions.':
-    'Scheduled data-validation routine',
-  'Use EMR reports in routine performance meetings to agree and track actions.':
-    'Report-review and action-tracking routine',
-};
-
-/**
- * `TAB_PRICED` resolved against the exported unit-cost table: action label →
- * unit price. Throws where the table no longer lists a reference, rather than
- * quietly letting the action fall back to free.
- */
-export function tabPrices(unitCosts) {
-  const byReference = new Map(unitCosts.map((u) => [u.costReference, u.unitCostNGN]));
-  const prices = new Map();
-  for (const [label, reference] of Object.entries(TAB_PRICED)) {
-    const price = byReference.get(reference);
-    if (typeof price !== 'number' || !(price > 0)) {
-      throw new Error(
-        `The unit-cost table has no price for "${reference}", which prices ` +
-          `"${label}". Re-run npm run data:unit-costs, or update TAB_PRICED.`,
-      );
-    }
-    prices.set(label, price);
-  }
-  return prices;
-}
+export const OFF_PLAN = new Set([
+  'Provide routine device maintenance and repair support.',
+  'Configure EMR workflows so information captured at one service point is available at subsequent points of care.',
+  'Configure EMR roles, queues and permissions to remove bottlenecks and repeated paper-based steps.',
+  'Use EMR dashboards and routine performance meetings to review data and track actions.',
+  'Use EMR data checks and routine performance meetings to validate data and track actions.',
+  'Use EMR reports in routine performance meetings to agree and track actions.',
+]);
 
 /**
  * The one whole-cell action priced per unit: tablets, at ₦700,000 for three.
@@ -764,17 +737,11 @@ function actionId({ label, horizon, phase, unitCostNGN }) {
  * condition *can* call for; this says what this facility's row asks for, and
  * how many.
  *
- * `prices` (from `tabPrices`) prices the actions the sheet charges at ₦0 or
- * leaves blank. Such an action keeps what the sheet charged as
- * `sheetUnitCostNGN` and `sheetCostNGN`, which the build checks the sheet's own
- * totals against. Its id is made from the sheet's price, so it stays the same
- * whatever the table says.
- *
  * An action cell that reads `No gap` holds no action. A gap with no action at
  * all is still a gap the sheet recorded, so the caller keeps it with an empty
  * list rather than dropping it.
  */
-export function interventionsInRow(row, block, prices = null) {
+export function interventionsInRow(row, block) {
   const out = [];
   for (const slot of block.slots) {
     const text = String(row[slot.label] ?? '').trim();
@@ -796,20 +763,11 @@ export function interventionsInRow(row, block, prices = null) {
         horizon: when.horizon,
         phase: when.phase,
       };
-      const sheetCostNGN = part.unitCostNGN === null ? null : part.unitCostNGN * part.quantity;
-      const tab =
-        part.key === null && !part.unitCostNGN ? prices?.get(part.label) : undefined;
       out.push({
         id: actionId(def),
         ...def,
         quantity: part.quantity,
-        costNGN: sheetCostNGN,
-        sheetCostNGN,
-        ...(tab !== undefined && {
-          unitCostNGN: tab,
-          sheetUnitCostNGN: part.unitCostNGN,
-          costNGN: tab * part.quantity,
-        }),
+        costNGN: part.unitCostNGN === null ? null : part.unitCostNGN * part.quantity,
       });
     }
   }
@@ -913,7 +871,7 @@ export function conditionInRow(row, block) {
  * so a condition that blocks deployment at one facility and not at another
  * would make the band unreadable rather than merely imprecise.
  */
-export function extractCatalogue(rows, blocks, prices = null) {
+export function extractCatalogue(rows, blocks) {
   const byId = new Map();
   const actions = new Map();
   /** gap id → the facility that first fixed each severity, for a legible message. */
@@ -924,7 +882,7 @@ export function extractCatalogue(rows, blocks, prices = null) {
       const condition = conditionInRow(row, block);
       if (!condition) continue;
 
-      const found = interventionsInRow(row, block, prices);
+      const found = interventionsInRow(row, block);
       const severity = worstSeverity(found);
       const area = gapAreaId(block.subDomain);
 
@@ -977,9 +935,6 @@ export function extractCatalogue(rows, blocks, prices = null) {
             /** What one unit is, or null where the action is one per facility. */
             unit: iv.unit,
             unitCostNGN: iv.unitCostNGN,
-            /** What the sheet charges, where the plan prices from the unit-cost
-             *  table instead — ₦0, or null for blank. Absent otherwise. */
-            ...('sheetUnitCostNGN' in iv && { sheetUnitCostNGN: iv.sheetUnitCostNGN }),
           });
         } else if (actions.get(iv.id).area !== area) {
           // A facility's actions are matched back to its gaps by area — it
@@ -1046,22 +1001,19 @@ function worstSeverity(interventions) {
 }
 
 /**
- * What a set of actions costs, and what the sheet itself charges for them.
+ * What a set of actions costs.
  *
  * Unpriced actions contribute nothing and are counted separately, so a total
- * never quietly absorbs a missing price as a zero. The two differ only by the
- * actions priced from the unit-cost table (`TAB_PRICED`).
+ * never quietly absorbs a missing price as a zero.
  */
 export function interventionsCost(interventions) {
   let costNGN = 0;
-  let sheetCostNGN = 0;
   let unpriced = 0;
   for (const iv of interventions) {
     if (iv.costNGN === null) unpriced += 1;
     else costNGN += iv.costNGN;
-    sheetCostNGN += ('sheetCostNGN' in iv ? iv.sheetCostNGN : iv.costNGN) ?? 0;
   }
-  return { costNGN, sheetCostNGN, unpriced };
+  return { costNGN, unpriced };
 }
 
 // ---------------------------------------------------------------------------
