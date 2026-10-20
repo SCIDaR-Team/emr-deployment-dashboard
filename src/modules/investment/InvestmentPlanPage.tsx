@@ -9,7 +9,6 @@ import {
   LoadError,
   SectionCard,
   Tile,
-  TileRow,
 } from '@/components/ui';
 import { useDataContext } from '@/state/dataContext';
 import { useFilterStore } from '@/store/filterStore';
@@ -28,10 +27,23 @@ import { THEME_BY_ID } from '@/lib/themes';
 import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/lib/types';
 import { ExplainScope } from '@/modules/explain/context';
 import { ExplainFigures } from '@/modules/explain/explain';
+import { operationsAndTA, overview, trainAndDeploy } from '@/lib/deploymentCost';
+import { DEPLOYMENT_COSTS } from '@/lib/deploymentCosts';
 import { CostByReadinessSection } from './CostByReadinessSection';
+import {
+  CostOverviewSection,
+  DeploymentCostSection,
+  PlanPart,
+} from './DeploymentSections';
 
 /**
  * Investment Plan — what deploying will take, itemised.
+ *
+ * Four parts, after the ERA team's costing slides: the Cost overview, then
+ * Fixes, Train and deploy, and Operations and TA, each with its own total —
+ * and Rollout waves after them. Fixes is the facility-level plan this comment
+ * goes on to describe; the other two parts are priced per state and per
+ * facility from the workbook's deployment-cost tables (`deploymentCost.ts`).
  *
  * Every line here is triggered by a *failed* reading, not by a wish list: an
  * item appears because some number of facilities were banded at or below its
@@ -58,8 +70,10 @@ import { CostByReadinessSection } from './CostByReadinessSection';
  * word for them.
  */
 const SECTIONS = [
-  { id: 'cost-by-readiness', label: 'Cost Summary' },
-  { id: 'interventions', label: 'Interventions' },
+  { id: 'overview', label: 'Overview' },
+  { id: 'fixes', label: 'Fixes' },
+  { id: 'train-deploy', label: 'Train and deploy' },
+  { id: 'operations', label: 'Operations and TA' },
   { id: 'waves', label: 'Rollout waves' },
 ];
 
@@ -79,9 +93,9 @@ const SCENARIO_PARAMS = ['sv', 'ss', 'sc'];
  *
  * **Domain** is a genuinely different axis: not when the money is spent but
  * who spends it. It does not nest inside either of the others — nationally
- * almost all of the money is Technical Infrastructure, with workflow and data
- * use a small share and workforce ₦0 — so a two-level tree would spend most of
- * its depth on one branch whichever way it were built. Hence a switch.
+ * all of the money is Technical Infrastructure, with workforce and workflow
+ * lines at ₦0 — so a two-level tree would spend most of its depth on one
+ * branch whichever way it were built. Hence a switch.
  */
 type GroupMode = 'phase' | 'urgency' | 'domain' | 'cost';
 
@@ -154,6 +168,11 @@ interface Group {
   /** Lines in this group the sheet does not price. The subtotal is silent
    *  about them, so the subtotal row says how many it is silent about. */
   unpriced: number;
+}
+
+/** "2,806 facilities in 12 states" — what a part's lines are counted over. */
+function scopeNote(states: number, facilities: number) {
+  return `${formatCount(facilities)} ${facilities === 1 ? 'facility' : 'facilities'} in ${states} ${states === 1 ? 'state' : 'states'}`;
 }
 
 /** Cost-descending, unpriced lines last, ties broken by label so the order is
@@ -283,6 +302,7 @@ export default function InvestmentPlanPage() {
       return {
         name: 'All 12 assessed states',
         facilityCount: national.data?.facilityCount ?? 0,
+        stateCount: states.data.filter((s) => s.facilityCount > 0).length,
         distribution: national.data?.deploymentDistribution ?? {
           not_ready: 0,
           moderately_ready: 0,
@@ -296,6 +316,7 @@ export default function InvestmentPlanPage() {
     return {
       name: picked.map((s) => s.name).join(', '),
       facilityCount: agg.facilityCount,
+      stateCount: picked.filter((s) => s.facilityCount > 0).length,
       distribution: agg.deploymentDistribution,
       investments: agg.investments,
     };
@@ -341,6 +362,35 @@ export default function InvestmentPlanPage() {
   );
 
   const columns = COLUMNS[groupMode];
+
+  /** What the per-state and per-facility parts are counted over: the assessed
+   *  states in view and their facilities — and the same for all twelve, which
+   *  the overview scales the roadmap's figures against. */
+  const { stateCount, facilityCount } = scope;
+  const trainDeploy = useMemo(
+    () => trainAndDeploy({ states: stateCount, facilities: facilityCount }),
+    [stateCount, facilityCount],
+  );
+  const operations = useMemo(
+    () => operationsAndTA({ states: stateCount, facilities: facilityCount }),
+    [stateCount, facilityCount],
+  );
+  const nationalStates = states.data.filter((s) => s.facilityCount > 0).length;
+  const nationalFacilities = national.data?.facilityCount ?? 0;
+  const overviewLines = useMemo(
+    () =>
+      overview(
+        totalCost,
+        { states: stateCount, facilities: facilityCount },
+        { states: nationalStates, facilities: nationalFacilities },
+      ),
+    [totalCost, stateCount, facilityCount, nationalStates, nationalFacilities],
+  );
+  const pricedLines = scope.investments.filter((i) => (i.totalCostNGN ?? 0) > 0).length;
+  const fixedFacilities = scopedFacilities.filter((f) => f.costNGN > 0).length;
+  const t = DEPLOYMENT_COSTS.training;
+  const o = DEPLOYMENT_COSTS.operations;
+  const ta = DEPLOYMENT_COSTS.ta;
 
   const waves = useMemo(() => {
     const byWave = new Map<WaveId, AreaProfile[]>();
@@ -388,166 +438,249 @@ export default function InvestmentPlanPage() {
 
       <ExplainScope value={explainScope}>
         <div className="space-y-4 p-4 sm:p-5">
-          {/* The page's answer, on its own: what deploying will cost. The
-            sections below divide it up — by readiness, by line, by what it
-            buys — so the header does not repeat them. Compact here, exact in
-            the schedule: nobody carries ₦9,442,810,000 out of the room, but
-            they carry ₦9.4bn. */}
-          <TileRow>
-            <Tile
-              lead
-              label="Total investment"
-              value={formatNaira(totalCost, true)}
-              count={{ to: totalCost, format: (n) => formatNaira(n, true) }}
-            />
-          </TileRow>
+          {/* The page's answer, on its own: what deploying will cost, in the
+            five lines of the costing slides' overview. The parts below
+            itemise it. Compact here, exact in the schedules: nobody carries
+            ₦8,533,787,383 out of the room, but they carry ₦8.5bn. */}
+          <CostOverviewSection lines={overviewLines} />
 
-          <CostByReadinessSection facilities={scopedFacilities} />
-
-          <SectionCard
-            id="interventions"
-            title="Costed interventions"
-            subtitle={INTERVENTIONS_SUBTITLE}
-            action={
-              <div className="flex items-center gap-2">
-                {/* Only where there are groups to fold: the flat Cost view is
-                    one list. */}
-                {groups.some((g) => g.heading) && (
-                  <FoldAll
-                    allFolded={groups.every((g) => !g.heading || folded.has(foldKey(g.key)))}
-                    onChange={(fold) =>
-                      setFolded(fold ? new Set(groups.map((g) => foldKey(g.key))) : new Set())
-                    }
-                  />
-                )}
-                <GroupSwitch value={groupMode} onChange={setGroupMode} />
-              </div>
-            }
-            bodyClassName="p-0"
-            explain="investment-interventions"
-          >
-            <ExplainFigures
-              id="interventions"
-              build={() =>
-                scope.investments.length
-                  ? [
-                      {
-                        title: `Lines grouped by ${GROUP_MODES.find((m) => m.id === groupMode)?.label.toLowerCase()}, costliest first in each group`,
-                        columns: ['Group', 'Item', 'Urgency', 'Facilities', 'Total cost'],
-                        rows: groups.flatMap((g) => [
-                          ...g.items.map((i) => [
-                            g.heading?.label ?? 'All lines',
-                            i.label,
-                            HORIZON_SHORT[i.horizon],
-                            formatCount(i.facilityCount),
-                            i.totalCostNGN == null ? 'unpriced' : formatNaira(i.totalCostNGN, true),
-                          ]),
-                          ...(g.heading
-                            ? [
-                                [
-                                  g.heading.label,
-                                  'Subtotal',
-                                  '',
-                                  '',
-                                  `${formatNaira(g.cost, true)} (${formatShare(g.cost, totalCost)} of the plan)`,
-                                ],
-                              ]
-                            : []),
-                        ]),
-                      },
-                      {
-                        title: 'Plan',
-                        columns: ['Measure', 'Value'],
-                        rows: [
-                          ['Total', formatNaira(totalCost, true)],
-                          ['Lines', formatCount(scope.investments.length)],
-                          ['Unpriced lines (left out of the total)', formatCount(unpricedLines)],
-                          ['Facilities on unpriced lines', formatCount(unpricedActions)],
-                          ['Lines costed at ₦0', formatCount(freeLines)],
-                        ],
-                      },
-                    ]
-                  : null
-              }
-            />
-            {scope.investments.length ? (
+          <PlanPart
+            id="fixes"
+            title="Fixes"
+            subtitle="One-time remediation of the readiness gaps the assessment found"
+            tiles={
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-prose">
-                    <thead>
-                      <tr className="border-b border-border text-left">
-                        {columns.map((c) => (
-                          <th key={c} className={cn('th', NUMERIC.has(c) && 'text-right')}>
-                            {COLUMN_LABEL[c]}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    {groups.map((group) => {
-                      const isFolded = Boolean(group.heading) && folded.has(foldKey(group.key));
-                      return (
-                        <tbody key={group.key}>
-                          {group.heading && (
-                            <GroupHeader
-                              heading={group.heading}
-                              span={columns.length}
-                              open={!isFolded}
-                              lines={group.items.length}
-                              onToggle={() => toggleFold(group.key)}
-                            />
-                          )}
-                          {!isFolded &&
-                            group.items.map((item) => (
-                              <InvestmentRow key={item.id} item={item} columns={columns} />
-                            ))}
-                          {group.heading && (
-                            <GroupSubtotal
-                              label={group.heading.label}
-                              cost={group.cost}
-                              unpriced={group.unpriced}
-                              span={columns.length - 1}
-                            />
-                          )}
-                        </tbody>
-                      );
-                    })}
-                    {/* The closing sum.
-                      Right-aligned against its figure, like every group
-                      subtotal above it — it used to sit flush left at the far
-                      edge of the table, which left the one row that sums all
-                      the others as the only one whose label was nowhere near
-                      its number.
-                      Ranked above the subtotals by a double rule and by the
-                      mono caps, which mirror the column heads: the foot reads
-                      as the head's counterpart rather than as one more
-                      subtotal in a longer stack. */}
-                    <tfoot>
-                      <tr className="border-t-2 border-border">
-                        <td
-                          className="mono td py-3 text-right text-note font-bold uppercase tracking-[0.09em] text-foreground"
-                          colSpan={columns.length - 1}
-                        >
-                          {/* "Grand total" only where there are subtotals for it
-                            to be grand *of*. The flat Cost view has none, and
-                            calling its single sum grand would imply a
-                            hierarchy the reader cannot see. */}
-                          {groupMode === 'cost' ? 'Total' : 'Grand total'}
-                        </td>
-                        <td className="mono td py-3 text-right font-bold text-foreground">
-                          {formatNaira(totalCost)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                <Tile
+                  label="Fixes total"
+                  value={formatNaira(totalCost, true)}
+                  note="Base prices, one-time"
+                />
+                <Tile
+                  label="Facilities with a fix"
+                  value={formatCount(fixedFacilities)}
+                  note={`of ${formatCount(facilityCount)} assessed`}
+                />
+                <Tile
+                  label="Costed lines"
+                  value={formatCount(pricedLines)}
+                  note="Interventions with a price"
+                />
               </>
-            ) : (
-              <EmptyState
-                title="Nothing to cost"
-                message="No facilities in this scope triggered an investment line."
+            }
+          >
+            <CostByReadinessSection facilities={scopedFacilities} />
+
+            <SectionCard
+              id="interventions"
+              title="Costed interventions"
+              subtitle={INTERVENTIONS_SUBTITLE}
+              action={
+                <div className="flex items-center gap-2">
+                  {/* Only where there are groups to fold: the flat Cost view is
+                      one list. */}
+                  {groups.some((g) => g.heading) && (
+                    <FoldAll
+                      allFolded={groups.every((g) => !g.heading || folded.has(foldKey(g.key)))}
+                      onChange={(fold) =>
+                        setFolded(fold ? new Set(groups.map((g) => foldKey(g.key))) : new Set())
+                      }
+                    />
+                  )}
+                  <GroupSwitch value={groupMode} onChange={setGroupMode} />
+                </div>
+              }
+              bodyClassName="p-0"
+              explain="investment-interventions"
+            >
+              <ExplainFigures
+                id="interventions"
+                build={() =>
+                  scope.investments.length
+                    ? [
+                        {
+                          title: `Lines grouped by ${GROUP_MODES.find((m) => m.id === groupMode)?.label.toLowerCase()}, costliest first in each group`,
+                          columns: ['Group', 'Item', 'Urgency', 'Facilities', 'Total cost'],
+                          rows: groups.flatMap((g) => [
+                            ...g.items.map((i) => [
+                              g.heading?.label ?? 'All lines',
+                              i.label,
+                              HORIZON_SHORT[i.horizon],
+                              formatCount(i.facilityCount),
+                              i.totalCostNGN == null ? 'unpriced' : formatNaira(i.totalCostNGN, true),
+                            ]),
+                            ...(g.heading
+                              ? [
+                                  [
+                                    g.heading.label,
+                                    'Subtotal',
+                                    '',
+                                    '',
+                                    `${formatNaira(g.cost, true)} (${formatShare(g.cost, totalCost)} of the plan)`,
+                                  ],
+                                ]
+                              : []),
+                          ]),
+                        },
+                        {
+                          title: 'Plan',
+                          columns: ['Measure', 'Value'],
+                          rows: [
+                            ['Total', formatNaira(totalCost, true)],
+                            ['Lines', formatCount(scope.investments.length)],
+                            ['Unpriced lines (left out of the total)', formatCount(unpricedLines)],
+                            ['Facilities on unpriced lines', formatCount(unpricedActions)],
+                            ['Lines costed at ₦0', formatCount(freeLines)],
+                          ],
+                        },
+                      ]
+                    : null
+                }
               />
-            )}
-          </SectionCard>
+              {scope.investments.length ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-prose">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          {columns.map((c) => (
+                            <th key={c} className={cn('th', NUMERIC.has(c) && 'text-right')}>
+                              {COLUMN_LABEL[c]}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      {groups.map((group) => {
+                        const isFolded = Boolean(group.heading) && folded.has(foldKey(group.key));
+                        return (
+                          <tbody key={group.key}>
+                            {group.heading && (
+                              <GroupHeader
+                                heading={group.heading}
+                                span={columns.length}
+                                open={!isFolded}
+                                lines={group.items.length}
+                                onToggle={() => toggleFold(group.key)}
+                              />
+                            )}
+                            {!isFolded &&
+                              group.items.map((item) => (
+                                <InvestmentRow key={item.id} item={item} columns={columns} />
+                              ))}
+                            {group.heading && (
+                              <GroupSubtotal
+                                label={group.heading.label}
+                                cost={group.cost}
+                                unpriced={group.unpriced}
+                                span={columns.length - 1}
+                              />
+                            )}
+                          </tbody>
+                        );
+                      })}
+                      {/* The closing sum.
+                        Right-aligned against its figure, like every group
+                        subtotal above it — it used to sit flush left at the far
+                        edge of the table, which left the one row that sums all
+                        the others as the only one whose label was nowhere near
+                        its number.
+                        Ranked above the subtotals by a double rule and by the
+                        mono caps, which mirror the column heads: the foot reads
+                        as the head's counterpart rather than as one more
+                        subtotal in a longer stack. */}
+                      <tfoot>
+                        <tr className="border-t-2 border-border">
+                          <td
+                            className="mono td py-3 text-right text-note font-bold uppercase tracking-[0.09em] text-foreground"
+                            colSpan={columns.length - 1}
+                          >
+                            {/* "Grand total" only where there are subtotals for it
+                              to be grand *of*. The flat Cost view has none, and
+                              calling its single sum grand would imply a
+                              hierarchy the reader cannot see. */}
+                            {groupMode === 'cost' ? 'Total' : 'Grand total'}
+                          </td>
+                          <td className="mono td py-3 text-right font-bold text-foreground">
+                            {formatNaira(totalCost)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <EmptyState
+                  title="Nothing to cost"
+                  message="No facilities in this scope triggered an investment line."
+                />
+              )}
+            </SectionCard>
+          </PlanPart>
+
+          <PlanPart
+            id="train-deploy"
+            title="Train and deploy"
+            subtitle="Training facility staff in each state, and validating each facility before go-live"
+            tiles={
+              <>
+                <Tile
+                  label="Train and deploy total"
+                  value={formatNaira(trainDeploy.totalNGN, true)}
+                  note="Base prices, one-time"
+                />
+                <Tile
+                  label="Trainees"
+                  value={formatCount(t.traineesPerFacility * facilityCount)}
+                  note={`${t.traineesPerFacility} per facility`}
+                />
+                <Tile
+                  label="Training events"
+                  value={formatCount(stateCount)}
+                  note={`${t.days} days each, ${t.facilitators} facilitators`}
+                />
+              </>
+            }
+          >
+            <DeploymentCostSection
+              id="train-deploy-costs"
+              title="Training and deployment validation"
+              subtitle={scopeNote(stateCount, facilityCount)}
+              explain="investment-train-deploy"
+              section={trainDeploy}
+            />
+          </PlanPart>
+
+          <PlanPart
+            id="operations"
+            title="Operations and TA"
+            subtitle="Running the EMR for a year: facility operations, and technical assistance for each state"
+            tiles={
+              <>
+                <Tile
+                  label="A year of operations and TA"
+                  value={formatNaira(operations.totalNGN, true)}
+                  note="Base prices, recurring"
+                />
+                <Tile
+                  label="Per facility a year"
+                  value={formatNaira(o.internetNGN + o.deviceMaintenanceNGN)}
+                  note="Internet and device maintenance"
+                />
+                <Tile
+                  label="Per state a year"
+                  value={formatNaira(ta.localFirmNGN * ta.localFirmVisits + ta.coordinationNGN)}
+                  note="Local firm and coordination"
+                />
+              </>
+            }
+          >
+            <DeploymentCostSection
+              id="operations-costs"
+              title="Routine operations and TA support"
+              subtitle={`A year, ${scopeNote(stateCount, facilityCount)}`}
+              explain="investment-operations-ta"
+              section={operations}
+            />
+          </PlanPart>
 
           <SectionCard
             id="waves"

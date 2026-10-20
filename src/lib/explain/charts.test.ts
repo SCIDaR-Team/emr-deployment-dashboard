@@ -31,7 +31,7 @@ describe('parseSnapshot', () => {
     expect(isChartId('scenario-states')).toBe(true);
     expect(isChartId('assessment-gap-domain')).toBe(true);
     expect(isChartId('toString')).toBe(false);
-    expect(Object.keys(CHARTS)).toHaveLength(12);
+    expect(Object.keys(CHARTS)).toHaveLength(15);
   });
 });
 

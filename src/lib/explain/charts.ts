@@ -44,6 +44,21 @@ export const CHARTS = {
     howToRead:
       'Themes raised in the free-text notes assessors wrote at each facility visit — access, security, the building, staffing, water, power and so on — as tagged by an AI model and checked by a person. For each theme, the facilities in scope whose note raises it as a problem or a need, and their share of the facilities with a note. A note can raise several themes, so the shares do not add up to 100%. These come from what assessors wrote, not from the structured survey questions.',
   },
+  'investment-overview': {
+    page: 'Investment Plan',
+    howToRead:
+      'The whole cost of the plan in five components, grouped as fixing the gaps, training and deployment, and routine operations and technical assistance (TA), with their total. Training and operations are at 2027 prices, with the workbook’s inflation applied, as the five-year roadmap costs them, so they are higher than the base-price totals the Train and deploy and Operations and TA parts show. Fixing the gaps, deployment validation and TA are at base prices. Each bar starts where the one before it ended, so together they build up to the total.',
+  },
+  'investment-train-deploy': {
+    page: 'Investment Plan',
+    howToRead:
+      'What it costs to train staff and validate facilities before go-live, at base prices. The state training package is one three-day event per state, run by two facilitators, for two trainees from every facility: facilitator costs and the venue scale with the states, refreshments, transport and materials with the trainees. Deployment validation is a fixed amount per facility. Each line shows its unit cost, quantity, total and who pays, with a subtotal per focus and the total.',
+  },
+  'investment-operations-ta': {
+    page: 'Investment Plan',
+    howToRead:
+      'What it costs to keep the EMR running for a year, at base prices. Routine operations — internet subscription and device maintenance — are a fixed amount per facility a year. State technical assistance and transition support — a local firm’s visits and a coordination allowance — are a fixed amount per state. Each line shows its unit cost, quantity, total and who pays, with a subtotal per focus and the total.',
+  },
   'investment-interventions': {
     page: 'Investment Plan',
     howToRead:

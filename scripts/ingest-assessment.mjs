@@ -61,8 +61,8 @@ import {
   scenarioBand,
   scenarioComponentsInRow,
   severityOfHorizons,
+  OFF_PLAN,
   slugify,
-  tabPrices,
   titleCase,
 } from './assessment-source.mjs';
 import { lookupFor, nameKey } from './facility-workbook.mjs';
@@ -87,12 +87,6 @@ const COMMITTED = resolve(ROOT, 'List of gaps and interventions per facility.csv
  * dataset nobody would think to re-check.
  */
 const LOCATIONS = resolve(ROOT, 'scripts/source-data/facility-locations.json');
-/**
- * The workbook's unit-cost table, exported by `npm run data:unit-costs` and
- * committed. Prices the actions the facility sheet charges at ₦0 or leaves
- * blank — see `TAB_PRICED`.
- */
-const UNIT_COSTS = resolve(ROOT, 'scripts/source-data/unit-costs.json');
 
 const BANDS = ['not_ready', 'moderately_ready', 'ready'];
 
@@ -233,7 +227,7 @@ function optionalText(raw) {
   return !s || s === 'Not available' ? null : s;
 }
 
-function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook, prices) {
+function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook) {
   const uuid = String(row[COL.uuid] ?? '').trim();
   if (!uuid) throw new Error('Row with no facility UUID');
 
@@ -282,11 +276,7 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
   /** Action id → quantity. The published form of the list above. */
   const actions = {};
   const costByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
-  /** The same, at the sheet's own prices — what `validateRow` checks the
-   *  sheet's totals against. Not published. */
-  const sheetCostByDomain = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
   let costNGN = 0;
-  let sheetCostNGN = 0;
   let unpricedInterventions = 0;
   let recordedGaps = 0;
 
@@ -298,17 +288,15 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
     gaps.push(gap.id);
     if (gap.recorded) recordedGaps += 1;
 
-    const found = interventionsInRow(row, block, prices);
+    const found = interventionsInRow(row, block);
     for (const iv of found) {
       interventions.push({ ...iv, domain: gap.domain, recorded: gap.recorded });
       actions[iv.id] = (actions[iv.id] ?? 0) + iv.quantity;
     }
 
-    const { costNGN: c, sheetCostNGN: sc, unpriced } = interventionsCost(found);
+    const { costNGN: c, unpriced } = interventionsCost(found);
     costByDomain[gap.domain] += c;
     costNGN += c;
-    sheetCostByDomain[gap.domain] += sc;
-    sheetCostNGN += sc;
     unpricedInterventions += unpriced;
   }
 
@@ -384,10 +372,8 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
     interventions,
     costNGN,
     costByDomain,
-    sheetCostNGN,
-    sheetCostByDomain,
-    /** Interventions this facility needs that carry no price, in the sheet or
-     *  the unit-cost table. Counted so a total can say what it excludes. */
+    /** Interventions this facility needs whose price the sheet does not carry.
+     *  Counted so a total can say what it excludes. */
     unpricedInterventions,
 
     dailyClientLoad: optionalText(row[COL.dailyClientLoad]),
@@ -442,22 +428,19 @@ function validateRow(row, facility, blocks, problems) {
   const uuid = facility.uuid;
   const fail = (msg) => problems.push(`${uuid}: ${msg}`);
 
-  // 1. Each domain subtotal = the sum of that facility's own actions, at the
-  //    sheet's own prices (the unit-cost table's are added on top of them).
+  // 1. Each domain subtotal = the sum of that facility's own actions.
   for (const d of DOMAINS) {
     const stated = parseMoney(row[d.costTotalCol]) ?? 0;
-    if (Math.abs(stated - facility.sheetCostByDomain[d.id]) > ROUNDING_TOLERANCE) {
-      fail(
-        `${d.label} cost: sheet ₦${stated}, actions sum to ₦${facility.sheetCostByDomain[d.id]}`,
-      );
+    if (Math.abs(stated - facility.costByDomain[d.id]) > ROUNDING_TOLERANCE) {
+      fail(`${d.label} cost: sheet ₦${stated}, actions sum to ₦${facility.costByDomain[d.id]}`);
     }
   }
 
   // 2. Facility total = the same actions, all domains. See ROUNDING_TOLERANCE.
   const statedTotal = parseMoney(row[COL.totalCost]) ?? 0;
-  const drift = statedTotal - facility.sheetCostNGN;
+  const drift = statedTotal - facility.costNGN;
   if (Math.abs(drift) > ROUNDING_TOLERANCE) {
-    fail(`total cost: sheet ₦${statedTotal}, actions sum to ₦${facility.sheetCostNGN}`);
+    fail(`total cost: sheet ₦${statedTotal}, actions sum to ₦${facility.costNGN}`);
   }
 
   // 3. The summary columns count Technical Infrastructure *action cells* —
@@ -556,8 +539,12 @@ function deploymentFor(facilities, catalogueById) {
      * rather than one line per way a facility happened to be costed. The
      * quantity is units; the facility count beside it is how many facilities
      * need any.
+     *
+     * The actions the team does not cost (`OFF_PLAN`) are not lines. They
+     * carry no money, so leaving them out moves no total.
      */
     for (const iv of f.interventions) {
+      if (OFF_PLAN.has(iv.label)) continue;
       const line = lines.get(iv.id) ?? {
         id: iv.id,
         label: iv.label,
@@ -815,15 +802,7 @@ async function main() {
   const gapAreas = extractGapAreas(blocks);
   for (const a of gapAreas) AREA_LABEL.set(a.id, a.label);
 
-  if (!existsSync(UNIT_COSTS)) {
-    throw new Error(
-      `Missing ${UNIT_COSTS}.\n\nIt prices the actions the facility sheet charges at ₦0 or ` +
-        `leaves blank, and is exported from the workbook by \`npm run data:unit-costs\`.`,
-    );
-  }
-  const prices = tabPrices(JSON.parse(readFileSync(UNIT_COSTS, 'utf8')));
-
-  const { gaps: catalogue, actions: actionTypes } = extractCatalogue(rows, blocks, prices);
+  const { gaps: catalogue, actions: actionTypes } = extractCatalogue(rows, blocks);
   const catalogueById = new Map(catalogue.map((g) => [g.id, g]));
 
   // Which scenario component each power and connectivity action is, from the
@@ -946,15 +925,7 @@ async function main() {
   let roundingDrift = 0;
   let roundedRows = 0;
   for (const row of rows) {
-    const facility = buildFacility(
-      row,
-      blocks,
-      catalogueById,
-      lgaIndex,
-      stateMeta,
-      workbook,
-      prices,
-    );
+    const facility = buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook);
     const drift = validateRow(row, facility, blocks, problems);
 
     // The scenarios, row by row against the sheet's own readiness columns.
@@ -1117,14 +1088,7 @@ async function main() {
    *  file for nothing the app reads. */
   write(
     'facilities-summary.json',
-    facilities.map(
-      ({
-        interventions: _actions,
-        sheetCostNGN: _sheet,
-        sheetCostByDomain: _sheetByDomain,
-        ...published
-      }) => published,
-    ),
+    facilities.map(({ interventions: _actions, ...published }) => published),
   );
   write('states.json', stateProfiles);
   write('lgas.json', lgaProfiles);
@@ -1248,11 +1212,6 @@ export interface ActionDef {
   unit: string | null;
   /** Null where the source carries no price. Not zero. */
   unitCostNGN: number | null;
-  /** What the facility sheet charges — ₦0, or null for blank — where
-   *  \`unitCostNGN\` comes from the workbook's unit-cost table instead.
-   *  Absent where the two agree. \`data:check\` compares the workbook's own
-   *  totals at these prices. */
-  sheetUnitCostNGN?: number | null;
   /** The scenario component this action is — router, full solar system and
    *  so on — for the six power and connectivity fixes; null for the rest. */
   scenario: ScenarioComponentId | null;
@@ -1521,9 +1480,9 @@ export const NATIONAL_DEPLOYMENT_SPLIT: Record<Band, number> = ${JSON.stringify(
 export const NATIONAL_TOTAL = ${total};
 
 /**
- * Facility actions the source records and neither it nor the unit-cost table
- * prices — naming an EMR focal person, and the lockable-door checks the sheet
- * leaves "before costing".
+ * Facility actions on the plan that the source does not price — naming an
+ * EMR focal person, and the lockable-door checks the sheet leaves "before
+ * costing".
  */
 export const NATIONAL_UNPRICED_ACTIONS: number = ${unpricedActions};
 

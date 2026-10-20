@@ -21,11 +21,10 @@ import type { Band, FacilitySummary } from './types';
  * The workbook's broad cost categories, as groups of gap areas, named as its
  * Cost summary names them.
  *
- * The workflow and data-use ones carry the actions priced from the unit-cost
- * table (see `TAB_PRICED` in scripts/assessment-source.mjs). The categories
- * that still cost nothing — training, the focal person and technical support,
- * change management, and Data backup, which no action costs — are left out
- * rather than listed as a column of zeroes.
+ * Only the Technical Infrastructure ones carry money. The categories that cost
+ * nothing at facility level — Data backup, training, the focal person and
+ * technical support, workflow, change management and the three data-use
+ * routines — are left out rather than listed as a column of zeroes.
  */
 export const COST_CATEGORIES = [
   {
@@ -48,14 +47,6 @@ export const COST_CATEGORIES = [
     label: 'Service-point furniture',
     areas: ['physical_service_point'],
   },
-  {
-    id: 'workflow',
-    label: 'Documentation flow and workflow bottlenecks',
-    areas: ['duplicate_entry', 'workflow_bottleneck'],
-  },
-  { id: 'routine_data_use', label: 'Routine data use', areas: ['routine_data_use'] },
-  { id: 'data_validation', label: 'Data validation', areas: ['data_validation'] },
-  { id: 'report_review', label: 'Report review', areas: ['report_review_support'] },
 ] as const;
 
 export type BreakdownId = 'category' | 'group' | 'functionality' | 'zone' | 'state';

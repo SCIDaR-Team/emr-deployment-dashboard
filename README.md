@@ -290,8 +290,7 @@ costs counted; it never re-reads readiness.
 Every action carries one of four urgencies, worst first — **Major**,
 **Moderate**, **Minor**, **Long-term** — and a **phase**: before, during or
 after deployment. They are separate because Minor spans two phases: the sheet
-has minor gaps to fix before go-live (tablets, device maintenance, most
-workforce work) and minor actions to complete during it (wiring, sockets,
+has minor gaps to fix before go-live (tablets, most workforce work) and minor actions to complete during it (wiring, sockets,
 furniture). The Investment Plan groups by either.
 
 Two rules do all the rolling up, both in `src/lib/bands.ts`:
@@ -317,24 +316,26 @@ facility count would go rather than a zero.
 
 ## What it costs, and what the total leaves out
 
-**₦7.22bn** across the 2,806 facilities. The Investment Plan itemises it;
-three properties of the source are worth knowing before reading that page.
+**₦6.72bn** across the 2,806 facilities — the workbook's Cost summary to the
+naira, which `data:check` reconciles on every sync. The Investment Plan
+itemises it; three properties of the source are worth knowing before reading
+that page.
 
-**Some prices come from the unit-cost table, not the facility sheet.** The
-facility sheet charges workflow configuration and the three data-use routines
-at ₦0, and leaves device maintenance blank; the workbook's
-"Unit_costs_and_assumptions" table documents a price for each, and the plan
-uses it (`TAB_PRICED` in `scripts/assessment-source.mjs`) — ₦0.5bn of the
-total. Every other figure is the facility sheet's own, and `data:check`
-reconciles the workbook's Cost summary to the naira at the sheet's prices.
-Training, technical assistance and change management remain ₦0: the table
-prices them per state, not per facility.
+**Some prescribed actions are not on the plan.** The facility sheet charges
+workflow configuration and the three data-use routines at ₦0, and leaves device
+maintenance blank. The workbook's "Unit_costs_and_assumptions" table still
+documents a price for each, but the ERA team does not cost them: workflow and
+data use stay free, and device maintenance is a routine operating cost, not a
+gap remediation. They are left off the plan's lines (`OFF_PLAN` in
+`scripts/assessment-source.mjs`) and stay on the facilities' gap trees.
+Training, technical assistance and change management remain ₦0 lines: the
+table prices them per state, not per facility.
 
 | Urgency | Total |
 |---|---:|
-| Major | ₦2,115,990,000 |
-| Moderate | ₦2,330,680,000 |
-| Minor | ₦2,400,520,333 |
+| Major | ₦1,968,215,000 |
+| Moderate | ₦2,276,820,000 |
+| Minor | ₦2,102,980,333 |
 | Long-term | ₦376,500,000 |
 
 **2,380 actions carry no price at all** — naming an EMR focal person, and the
