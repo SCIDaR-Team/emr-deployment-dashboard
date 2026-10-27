@@ -100,6 +100,7 @@ export function facility(
     isBHCPF: extra.isBHCPF ?? true,
     geography: 'rural',
     deploymentBand: bandOf(byId),
+    emr: { availability: 'unavailable', usage: null },
     domainSeverity: {
       technical_infrastructure: 'none',
       workforce_capacity: 'none',

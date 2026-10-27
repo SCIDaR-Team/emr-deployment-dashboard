@@ -33,7 +33,7 @@ import {
   readinessTotals,
   type BreakdownId,
 } from '../src/lib/costByReadiness';
-import { SCENARIO_PACKAGES } from '../src/lib/gapCatalogue';
+import { ACTION_BY_ID, SCENARIO_PACKAGES } from '../src/lib/gapCatalogue';
 import { scenarioBand, scenarioFor } from '../src/lib/scenarios';
 import type { Band, FacilitySummary, ScenarioComponentId } from '../src/lib/types';
 
@@ -89,6 +89,8 @@ const BREAKDOWN_ID: Record<string, BreakdownId | null> = {
 };
 
 interface Row {
+  /** Its row in the grid, for a table with more columns than the three bands. */
+  r: number;
   breakdown: string;
   group: string;
   /** As the workbook writes it, for the report: "State: Kano". */
@@ -118,6 +120,7 @@ function breakdownRows(grid: Grid, r: number, c: number, where: string): Row[] {
     const breakdown = norm(at(grid, i, c));
     if (!(breakdown in BREAKDOWN_KEY)) break;
     rows.push({
+      r: i,
       breakdown,
       group: norm(at(grid, i, c + 1)),
       label: `${String(at(grid, i, c)).trim()}: ${String(at(grid, i, c + 1)).trim()}`,
@@ -143,6 +146,30 @@ function fixesNamed(text: string): Set<ScenarioComponentId> {
 
 const sameFixes = (a: Set<string>, b: readonly string[]) =>
   a.size === b.length && b.every((x) => a.has(x));
+
+/**
+ * The facilities as the workbook costs them: without the actions whose price
+ * the dashboard holds because the workbook leaves it blank (`HELD_PRICES`).
+ * The workbook counts those as nothing, so its cost tables are compared with
+ * them taken out. Counts and packages are unaffected and use the facilities
+ * as they are.
+ */
+function withoutHeldPrices(facilities: FacilitySummary[]) {
+  let heldNGN = 0;
+  const out = facilities.map((f) => {
+    const actions: Record<string, number> = {};
+    let costNGN = f.costNGN;
+    for (const [id, qty] of Object.entries(f.actions)) {
+      const a = ACTION_BY_ID[id];
+      if (a?.priceHeld && a.unitCostNGN !== null) {
+        costNGN -= a.unitCostNGN * qty;
+        heldNGN += a.unitCostNGN * qty;
+      } else actions[id] = qty;
+    }
+    return { ...f, actions, costNGN };
+  });
+  return { facilities: out, heldNGN };
+}
 
 // ---------------------------------------------------------------------------
 // Comparing
@@ -352,6 +379,44 @@ function checkPackageBlocks(costs: Grid, facilities: FacilitySummary[]): Check {
   return check;
 }
 
+/**
+ * Facilities that already have an EMR, and those whose EMR is not in use, by
+ * readiness band — the table beside "Ready | Moderately Ready | Not Ready"
+ * whose next columns are "# of Ready PHCs with EMR" and so on.
+ *
+ * The Zone rows of "# of Ready, EMR present PHCs not using it" are skipped:
+ * that one column's Zone formula counts "EMR not in use" in the availability
+ * column, where it never appears, so it reads 0 for every zone. Its other rows,
+ * and every other column's Zone rows, are compared.
+ */
+function checkEmr(costs: Grid, facilities: FacilitySummary[]): Check {
+  const check: Check = { name: `Facilities with an EMR (${COSTS})`, compared: 0, mismatches: [] };
+  const head = findCell(
+    costs,
+    (v, r, c) => v === 'breakdown' && norm(at(costs, r, c + 5)).startsWith('# of ready phcs with emr'),
+  );
+  if (!head) throw new Missing(`${COSTS}: no table with a "# of Ready PHCs with EMR" column.`);
+  const heads = [5, 8].map((k) => norm(at(costs, head.r, head.c + k)));
+  if (!heads[1]!.includes('not using it')) {
+    throw new Missing(`${COSTS}: expected the "not using it" columns three after "with EMR", found ${JSON.stringify(heads[1])}.`);
+  }
+  const rows = breakdownRows(costs, head.r, head.c, `${COSTS}, "# of Ready PHCs with EMR"`);
+  for (const row of rows) {
+    const fs = groupsOf(facilities, row.breakdown).get(row.group) ?? [];
+    const read = (k: number) => [0, 1, 2].map((i) => Number(at(costs, row.r, head.c + k + i)));
+    const withEmr = fs.filter((f) => f.emr.availability === 'available');
+    compare(check, `${row.label}, with an EMR`, read(5), countBands(withEmr, (f) => f.deploymentBand));
+    const unused = countBands(
+      fs.filter((f) => f.emr.usage === 'not_in_use'),
+      (f) => f.deploymentBand,
+    );
+    const workbook = read(8);
+    if (row.breakdown === 'zone') workbook[0] = unused[0]!;
+    compare(check, `${row.label}, EMR not in use`, workbook, unused);
+  }
+  return check;
+}
+
 // ---------------------------------------------------------------------------
 
 function main() {
@@ -373,12 +438,20 @@ function main() {
   const raw = JSON.parse(readFileSync(resolve(ROOT, 'public/data/facilities-summary.json'), 'utf8'));
   const facilities: FacilitySummary[] = Array.isArray(raw) ? raw : raw.facilities;
 
+  const costed = withoutHeldPrices(facilities);
+  if (costed.heldNGN) {
+    process.stderr.write(
+      `  Held prices (HELD_PRICES) taken out of the cost comparisons: ₦${Math.round(costed.heldNGN).toLocaleString('en-GB')}\n`,
+    );
+  }
+
   const checks = [
     checkCounts(summary, facilities),
-    checkCosts(costs, facilities),
-    checkCategories(costs, facilities),
+    checkCosts(costs, costed.facilities),
+    checkCategories(costs, costed.facilities),
     checkPackages(costs, facilities),
     checkPackageBlocks(costs, facilities),
+    checkEmr(costs, facilities),
   ];
 
   let failed = 0;

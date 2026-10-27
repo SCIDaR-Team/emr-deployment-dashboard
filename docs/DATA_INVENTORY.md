@@ -57,8 +57,12 @@ log. The next clean run closes it.
 **`data:check`** works out, from `public/data/` and with the dashboard's own
 code, the figures the workbook summarises itself — readiness by facility group,
 functionality, state and zone; cost by readiness and by category; what each of
-the fourteen fix packages makes Ready, nationally and by group and state — and
-compares all of them (about 1,200 figures). It reads the workbook's figures
+the fourteen fix packages makes Ready, nationally and by group and state; and
+the facilities with an EMR, and with one not in use, by readiness band — and
+compares all of them (about 1,350 figures). The zone rows of the Cost summary's
+"# of Ready, EMR present PHCs not using it" are skipped: that column's Zone
+formula reads the availability column instead of the usage one, so it shows 0
+for every zone. It reads the workbook's figures
 from the workbook, so a new revision needs no code change. These checks used to
 be tests with the workbook's figures written into them; now the tests pin no
 figure from the data (the calculation tests run on a fixed sample,
@@ -74,7 +78,7 @@ The sync needs one repository secret, **`ERA_WORKBOOK_URL`**.
 |---|---|
 | **Source** | `ERA Dashboard dataset.xlsx` › **List of gaps and interventions** (the sheet name has a trailing space) |
 | **Path in** | `npm run data:gaps` exports it to `List of gaps and interventions per facility.csv` (committed); `npm run data:ingest` reads that CSV |
-| **Shape** | 2,806 facilities; 4 header rows (title, scope note, domain band row, column headers), 194 columns (A–GL) |
+| **Shape** | 2,806 facilities; 4 header rows (title, scope note, domain band row, column headers), 208 columns (A–GZ) since the October 2026 revision |
 | **Powers** | Assessed States (facility counts, readiness, gap severity, gaps and interventions, the facility view, the filters), Investment Plan (every section: totals, Where the money goes, Costed interventions), Scenarios, the state briefs' figures, Ask the data, Explain |
 | **Also generates code** | `src/lib/gapCatalogue.ts` (gap areas, gaps, interventions, unit prices, urgencies — extracted from this sheet) and `src/lib/nationalSplit.ts` |
 
@@ -83,20 +87,23 @@ Columns the code relies on — **read by position, and each checked against its 
 | Column(s) | Header | Used for |
 |---|---|---|
 | A | Facility UUID | The facility's identity; the join to every other dataset |
-| B–D | State · LGA · Facility name | Place and name (fallback join) |
-| E | Facility group | BHCPF or not (Funding filter) |
-| F | Functionality | Functionality filter |
-| G | Zone | Zone breakdowns |
-| H | Overall readiness for EMR deployment | The readiness band (checked against the Technical Infrastructure gaps) |
-| I–L | Highest {domain} gap severity | Gap severity by domain |
+| B–C · E | State · LGA · Facility name | Place and name (fallback join). D (Ward) and I (Ward population) read "not found" in every row and are not used |
+| F | Facility group | BHCPF or not (Funding filter) |
+| G | Functionality | Functionality filter |
+| H | Zone | Zone breakdowns |
+| L | Overall readiness for EMR deployment — the **Baseline** one | The readiness band (checked against the Technical Infrastructure gaps). J and K carry the same header: readiness re-read with an internet gap counted as Minor, sensitivity runs the dashboard does not show |
+| M–P | Highest {domain} gap severity | Gap severity by domain |
 | gap blocks | per gap area: the condition, the intervention(s), when, the cost | Gaps, interventions, urgency, costs. **Found by header wording** (" gap", "intervention cost (₦)"), not position |
-| CI · CZ · DM · DZ | each domain's cost total | Checked against the gap blocks |
-| BX–CB | MTN base station · distance · serviceability · 4G signal · Airtel distance | The facility view's Mobile network block |
-| EC–EE | Moderate · Major · Long-term gaps | Checked against the gap blocks |
-| EF | Typical daily client load | Facility view |
-| EH | Total facility intervention cost (₦) | Checked against the gap blocks |
+| DO · DP | EMR availability gap · EMR usage gap | Whether an EMR is already in place and how it is used: "Facilities with an EMR" on Assessed States and the facility view's EMR line. Headed "… gap" but status columns, not gap blocks — no intervention follows them |
+| CO · DF · DU · EH | each domain's cost total | Checked against the gap blocks |
+| CD–CH | MTN base station · distance · serviceability · 4G signal · Airtel distance | The facility view's Mobile network block |
+| EK–EM | Moderate · Major · Long-term gaps | Checked against the gap blocks |
+| EN | Typical daily client load | Facility view |
+| EP | Total facility intervention cost (₦) | Checked against the gap blocks |
 
 Values must be **raw numbers**, not formatted text: the tablet price is ₦700,000 ÷ 3, and the ingest works out quantities from the exact cost.
+
+**Held prices.** The October 2026 revision leaves the unit cost blank for Starlink (₦590,000) and the FibreX 5 Mbps upgrade (₦45,000) — 293 actions, ₦96m. Read as written they would be unpriced and the Scenarios page would fund those fixes for nothing, so the ingest keeps the September prices for an empty cell holding exactly those actions (`HELD_PRICES` in `scripts/assessment-source.mjs`). A price in the sheet always wins. Held actions carry `priceHeld` in the catalogue, the ingest reports their count and total, and `data:check` takes them out before comparing with the workbook's cost tables, which count them as nothing.
 
 ### 2. Facility positions and setting
 

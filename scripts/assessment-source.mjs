@@ -123,6 +123,30 @@ export const BAND_BY_LABEL = {
 };
 
 /**
+ * Whether a facility already has an EMR: the sheet's phrasing → our id.
+ * Exhaustive; an unknown value throws.
+ */
+export const EMR_AVAILABILITY_BY_LABEL = {
+  'EMR available': 'available',
+  'EMR unavailable': 'unavailable',
+  'No digital system reported': 'none_reported',
+};
+
+/**
+ * How an EMR that is there is being used. Filled exactly where the
+ * availability reads "EMR available", blank everywhere else — the ingest
+ * checks both directions.
+ */
+export const EMR_USAGE_BY_LABEL = {
+  fully_functional: 'fully_functional',
+  'EMR needs upgrade': 'needs_upgrade',
+  'EMR not in use': 'not_in_use',
+};
+
+/** The status columns that end in " gap" and are not gap blocks. */
+const EMR_STATUS_HEADERS = new Set(['EMR availability gap', 'EMR usage gap']);
+
+/**
  * The four domains, in the file's own order, with their fixed columns.
  *
  * `severityCol` is the domain's highest gap severity; `costTotalCol` is the
@@ -138,29 +162,29 @@ export const DOMAINS = [
     id: 'technical_infrastructure',
     label: 'Technical Infrastructure',
     sheetBand: 'Technical Infrastructure',
-    severityCol: 8,
-    costTotalCol: 86,
+    severityCol: 12,
+    costTotalCol: 92,
   },
   {
     id: 'workforce_capacity',
     label: 'Workforce Capacity',
     sheetBand: 'Workforce Capacity',
-    severityCol: 9,
-    costTotalCol: 103,
+    severityCol: 13,
+    costTotalCol: 109,
   },
   {
     id: 'workflow_transition',
     label: 'Workflow & Transition',
     sheetBand: 'Workflow and Transition',
-    severityCol: 10,
-    costTotalCol: 116,
+    severityCol: 14,
+    costTotalCol: 124,
   },
   {
     id: 'data_use_reporting',
     label: 'Data Use & Reporting',
     sheetBand: 'Data Use and Reporting',
-    severityCol: 11,
-    costTotalCol: 129,
+    severityCol: 15,
+    costTotalCol: 137,
   },
 ];
 
@@ -171,19 +195,33 @@ export const COL = {
   uuid: 0,
   state: 1,
   lga: 2,
-  name: 3,
-  facilityGroup: 4,
-  functionality: 5,
-  zone: 6,
-  /** The one overall reading. */
-  deploymentBand: 7,
-  mtnBaseStation: 75,
-  mtnDistanceKm: 76,
-  mtnServiceability: 77,
-  mtn4gSignal: 78,
-  airtelDistanceM: 79,
-  dailyClientLoad: 135,
-  totalCost: 137,
+  name: 4,
+  facilityGroup: 5,
+  functionality: 6,
+  zone: 7,
+  /**
+   * The one overall reading: the Baseline column of the three the sheet heads
+   * "Overall readiness for EMR deployment". The two before it re-read
+   * readiness with an internet gap counted as Minor — sensitivity runs the
+   * workbook adds, not the assessment's own reading — and the Cost summary
+   * counts this one.
+   */
+  deploymentBand: 11,
+  mtnBaseStation: 81,
+  mtnDistanceKm: 82,
+  mtnServiceability: 83,
+  mtn4gSignal: 84,
+  airtelDistanceM: 85,
+  /**
+   * Whether the facility already has an EMR, and whether it is used. Headed
+   * "… gap" like the gap columns, but they are status columns: no
+   * intervention follows them, and the parser reads them by position instead
+   * of as blocks. See `EMR_STATUS_HEADERS`.
+   */
+  emrAvailability: 118,
+  emrUsage: 119,
+  dailyClientLoad: 143,
+  totalCost: 145,
 };
 
 /**
@@ -196,9 +234,9 @@ export const COL = {
  * reproduces it across the dataset, and the dashboard does not read it.
  */
 export const SUMMARY_COL = {
-  moderate: 132,
-  major: 133,
-  long_term: 134,
+  moderate: 140,
+  major: 141,
+  long_term: 142,
 };
 
 /** The header text each fixed column must carry. A column that has moved is a
@@ -211,6 +249,8 @@ const EXPECTED_HEADER = {
   [COL.mtnServiceability]: 'MTN serviceability',
   [COL.mtn4gSignal]: 'MTN 4G signal',
   [COL.airtelDistanceM]: 'Average Airtel site distance (m)',
+  [COL.emrAvailability]: 'EMR availability gap',
+  [COL.emrUsage]: 'EMR usage gap',
   [COL.dailyClientLoad]: 'Typical daily client load',
   [COL.totalCost]: 'Total facility intervention cost (₦)',
   [SUMMARY_COL.moderate]: 'Moderate gaps (e.g. power or connectivity work)',
@@ -427,6 +467,27 @@ export const OFF_PLAN = new Set([
  * of tablets, so the quantity is read off the cost. It must come out a whole
  * number in every row.
  */
+/**
+ * Prices the dashboard holds where the workbook has stopped giving one.
+ *
+ * The October 2026 revision of the workbook left the unit cost blank for
+ * Starlink and for the FibreX 5 Mbps upgrade (Gap_to_intervention_rules,
+ * column H), so every facility's cell for them is empty. Read as written they
+ * would be unpriced, and the Scenarios page would fund those fixes for nothing.
+ * At the ERA team's direction they keep the prices the September revision
+ * carried until the workbook has them again.
+ *
+ * Applied only to an empty cell holding exactly this action: a price in the
+ * sheet always wins, so when the workbook fills them back in this goes quiet.
+ * Every action priced here carries `priceHeld`, the ingest reports how many,
+ * and `data:check` takes them out before comparing with the workbook's own
+ * cost totals, which count them as nothing.
+ */
+export const HELD_PRICES = {
+  'Install satellite internet at the facility.': 590000,
+  'Upgrade the facility-managed connection to at least 5 Mbps.': 45000,
+};
+
 export const TABLET_ACTION = {
   label: 'Procure EMR-capable tablets to close the immediate device gap.',
   unit: 'tablet',
@@ -544,7 +605,7 @@ export function parseAssessmentCsv(text) {
   const blocks = [];
   for (let i = 0; i < header.length; i += 1) {
     const label = header[i];
-    if (!label.endsWith(' gap')) continue;
+    if (!label.endsWith(' gap') || EMR_STATUS_HEADERS.has(label)) continue;
 
     const domain = sheetBandToDomain.get(columnDomain[i]);
     if (!domain) {
@@ -755,7 +816,9 @@ export function interventionsInRow(row, block) {
       );
     }
     const where = `${block.subDomain} at facility ${row[0]}`;
-    for (const part of splitAction(text, parseMoney(row[slot.cost]), where)) {
+    const sheetCost = parseMoney(row[slot.cost]);
+    const held = sheetCost === null ? HELD_PRICES[text] : undefined;
+    for (const part of splitAction(text, held ?? sheetCost, where)) {
       const def = {
         label: part.label,
         unit: part.unit,
@@ -766,6 +829,7 @@ export function interventionsInRow(row, block) {
       out.push({
         id: actionId(def),
         ...def,
+        ...(held !== undefined && { priceHeld: true }),
         quantity: part.quantity,
         costNGN: part.unitCostNGN === null ? null : part.unitCostNGN * part.quantity,
       });
@@ -935,8 +999,12 @@ export function extractCatalogue(rows, blocks) {
             /** What one unit is, or null where the action is one per facility. */
             unit: iv.unit,
             unitCostNGN: iv.unitCostNGN,
+            ...(iv.priceHeld && { priceHeld: true }),
           });
-        } else if (actions.get(iv.id).area !== area) {
+        } else if (iv.priceHeld) {
+          actions.get(iv.id).priceHeld = true;
+        }
+        if (actions.get(iv.id).area !== area) {
           // A facility's actions are matched back to its gaps by area — it
           // holds one condition per area — so an action type must live in one.
           throw new Error(

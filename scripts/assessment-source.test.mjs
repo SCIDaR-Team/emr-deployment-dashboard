@@ -29,6 +29,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  COL,
+  HELD_PRICES,
   UNRECORDED_LABEL,
   extractCatalogue,
   extractGapAreas,
@@ -41,36 +43,44 @@ import {
 } from './assessment-source.mjs';
 
 /** As wide as the real sheet's fixed columns reach. */
-const WIDTH = 138;
+const WIDTH = 146;
 
 /** The columns the parser asserts, at their real positions. */
 const FIXED = {
   0: 'Facility UUID',
   1: 'State',
   2: 'LGA',
-  3: 'Facility name',
-  4: 'Facility group',
-  5: 'Functionality',
-  6: 'Zone',
-  7: 'Overall readiness for EMR deployment',
-  8: 'Highest Technical Infrastructure gap severity',
-  9: 'Highest Workforce Capacity gap severity',
-  10: 'Highest Workflow and Transition gap severity',
-  11: 'Highest Data Use and Reporting gap severity',
-  75: 'MTN base station',
-  76: 'MTN base-station distance (km)',
-  77: 'MTN serviceability',
-  78: 'MTN 4G signal',
-  79: 'Average Airtel site distance (m)',
-  86: 'Technical intervention cost (₦)',
-  103: 'Workforce intervention cost (₦)',
-  116: 'Workflow intervention cost (₦)',
-  129: 'Data-use intervention cost (₦)',
-  132: 'Moderate gaps (e.g. power or connectivity work)',
-  133: 'Major gaps (e.g. no power or usable connection)',
-  134: 'Long-term gaps (e.g. optional maintenance or improvement)',
-  135: 'Typical daily client load',
-  137: 'Total facility intervention cost (₦)',
+  3: 'Ward',
+  4: 'Facility name',
+  5: 'Facility group',
+  6: 'Functionality',
+  7: 'Zone',
+  8: 'Ward population',
+  // Two sensitivity readings, then the Baseline one the parser reads — the
+  // same header three times, as in the real sheet.
+  9: 'Overall readiness for EMR deployment',
+  10: 'Overall readiness for EMR deployment',
+  11: 'Overall readiness for EMR deployment',
+  12: 'Highest Technical Infrastructure gap severity',
+  13: 'Highest Workforce Capacity gap severity',
+  14: 'Highest Workflow and Transition gap severity',
+  15: 'Highest Data Use and Reporting gap severity',
+  81: 'MTN base station',
+  82: 'MTN base-station distance (km)',
+  83: 'MTN serviceability',
+  84: 'MTN 4G signal',
+  85: 'Average Airtel site distance (m)',
+  92: 'Technical intervention cost (₦)',
+  109: 'Workforce intervention cost (₦)',
+  118: 'EMR availability gap',
+  119: 'EMR usage gap',
+  124: 'Workflow intervention cost (₦)',
+  137: 'Data-use intervention cost (₦)',
+  140: 'Moderate gaps (e.g. power or connectivity work)',
+  141: 'Major gaps (e.g. no power or usable connection)',
+  142: 'Long-term gaps (e.g. optional maintenance or improvement)',
+  143: 'Typical daily client load',
+  145: 'Total facility intervention cost (₦)',
 };
 
 /**
@@ -78,35 +88,36 @@ const FIXED = {
  * scenario column between its slot columns, the way the real sheet does.
  */
 const BLOCKS = {
-  12: 'Power gap',
-  13: 'Intervention 1',
-  14: 'Power intervention helper column',
-  15: 'When action is needed',
-  16: 'Solar top-up  only scenario',
-  17: 'Cost 1 (₦)',
-  18: 'Intervention 2',
+  16: 'Power gap',
+  17: 'Intervention 1',
+  18: 'Power intervention helper column',
   19: 'When action is needed',
-  20: 'Cost 2 (₦)',
-  21: 'Physical service-point gap',
-  22: 'Intervention 1',
+  20: 'Solar top-up  only scenario',
+  21: 'Cost 1 (₦)',
+  22: 'Intervention 2',
   23: 'When action is needed',
-  24: 'Cost 1 (₦)',
-  25: 'Device-sufficiency gap',
+  24: 'Cost 2 (₦)',
+  25: 'Physical service-point gap',
   26: 'Intervention 1',
   27: 'When action is needed',
   28: 'Cost 1 (₦)',
-  87: 'Training gap',
-  88: 'Intervention 1',
-  89: 'When action is needed',
-  90: 'Cost 1 (₦)',
+  29: 'Device-sufficiency gap',
+  30: 'Intervention 1',
+  31: 'When action is needed',
+  32: 'Cost 1 (₦)',
+  93: 'Training gap',
+  94: 'Intervention 1',
+  95: 'When action is needed',
+  96: 'Cost 1 (₦)',
 };
 
 const DOMAIN_ROW = {
-  12: 'Technical Infrastructure',
-  87: 'Workforce Capacity',
-  104: 'Workflow and Transition',
-  117: 'Data Use and Reporting',
-  130: 'Baseline Summary',
+  11: 'Baseline',
+  16: 'Technical Infrastructure',
+  93: 'Workforce Capacity',
+  110: 'Workflow and Transition',
+  125: 'Data Use and Reporting',
+  138: 'Baseline Summary',
 };
 
 const csvCell = (c) => {
@@ -134,28 +145,29 @@ const row = (cells = {}) =>
     0: 'u1',
     1: 'kano',
     2: 'dala',
-    3: 'some_health_post',
-    4: 'BHCPF',
-    5: 'Functional L1',
-    6: 'north_west',
-    7: 'Not Ready for EMR deployment',
-    12: 'No gap',
-    21: 'No gap',
+    4: 'some_health_post',
+    5: 'BHCPF',
+    6: 'Functional L1',
+    7: 'north_west',
+    11: 'Not Ready for EMR deployment',
+    118: 'EMR unavailable',
+    16: 'No gap',
     25: 'No gap',
-    87: 'No gap',
+    29: 'No gap',
+    93: 'No gap',
     ...cells,
   });
 
 const POWER_NONE = {
-  12: 'No functional electricity source or 0 hours/day',
-  13: 'Install solar panels and batteries.',
-  14: 'Full solar system',
-  15: MAJOR,
-  16: MAJOR,
-  17: '3085000',
-  18: 'Connect the facility to the electricity grid.',
-  19: LONG_TERM,
-  20: '500000',
+  16: 'No functional electricity source or 0 hours/day',
+  17: 'Install solar panels and batteries.',
+  18: 'Full solar system',
+  19: MAJOR,
+  20: MAJOR,
+  21: '3085000',
+  22: 'Connect the facility to the electricity grid.',
+  23: LONG_TERM,
+  24: '500000',
 };
 
 const parse = (...rows) => parseAssessmentCsv(fixture(rows));
@@ -170,14 +182,24 @@ describe('parseAssessmentCsv', () => {
       'Device-sufficiency',
       'Training',
     ]);
-    expect(blocks[0]).toMatchObject({ col: 12, domain: 'technical_infrastructure' });
-    // The helper at 14 and the scenario at 16 are skipped: a fixed stride of
+    expect(blocks[0]).toMatchObject({ col: 16, domain: 'technical_infrastructure' });
+    // The helper at 18 and the scenario at 20 are skipped: a fixed stride of
     // three would read the helper as the urgency and the scenario as the cost.
     expect(blocks[0].slots).toEqual([
-      { label: 13, when: 15, cost: 17 },
-      { label: 18, when: 19, cost: 20 },
+      { label: 17, when: 19, cost: 21 },
+      { label: 22, when: 23, cost: 24 },
     ]);
-    expect(blocks[3].slots).toEqual([{ label: 88, when: 89, cost: 90 }]);
+    expect(blocks[3].slots).toEqual([{ label: 94, when: 95, cost: 96 }]);
+  });
+
+  it('reads the EMR status columns as status, not as gap blocks', () => {
+    // Both are headed "… gap" and have no intervention after them; read as
+    // blocks they would stop the parse.
+    const { blocks, rows } = parse(row({ 118: 'EMR available', 119: 'EMR not in use' }));
+    expect(blocks.map((b) => b.subDomain)).not.toContain('EMR availability');
+    expect(blocks.map((b) => b.subDomain)).not.toContain('EMR usage');
+    expect(rows[0][COL.emrAvailability]).toBe('EMR available');
+    expect(rows[0][COL.emrUsage]).toBe('EMR not in use');
   });
 
   it('forward-fills the sparse domain row', () => {
@@ -186,7 +208,7 @@ describe('parseAssessmentCsv', () => {
   });
 
   it('refuses a sheet whose fixed columns have moved', () => {
-    const moved = { ...FIXED, ...BLOCKS, 137: 'Something else' };
+    const moved = { ...FIXED, ...BLOCKS, 145: 'Something else' };
     expect(() => parseAssessmentCsv(fixture([row()], moved))).toThrow(/layout has changed/);
   });
 });
@@ -207,14 +229,14 @@ describe('urgency', () => {
   it('reads the two Minor wordings as one urgency, keeping their phases apart', () => {
     const { blocks, rows } = parse(
       row({
-        25: 'No supported computing devices are available',
-        26: 'Procure EMR-capable tablets to close the immediate device gap.',
-        27: MINOR_BEFORE,
-        28: '466666.6667',
-        21: '0% of applicable service points meet all minimum conditions',
-        22: 'Procure 1 desk',
-        23: MINOR_DURING,
-        24: '35000',
+        29: 'No supported computing devices are available',
+        30: 'Procure EMR-capable tablets to close the immediate device gap.',
+        31: MINOR_BEFORE,
+        32: '466666.6667',
+        25: '0% of applicable service points meet all minimum conditions',
+        26: 'Procure 1 desk',
+        27: MINOR_DURING,
+        28: '35000',
       }),
     );
     const tablets = interventionsInRow(rows[0], blocks[2]);
@@ -224,8 +246,33 @@ describe('urgency', () => {
   });
 
   it('rejects an unrecognised urgency rather than guessing', () => {
-    const { blocks, rows } = parse(row({ ...POWER_NONE, 15: 'Sometime soon' }));
+    const { blocks, rows } = parse(row({ ...POWER_NONE, 19: 'Sometime soon' }));
     expect(() => extractCatalogue(rows, blocks)).toThrow(/Sometime soon/);
+  });
+});
+
+describe('held prices', () => {
+  const SATELLITE = 'Install satellite internet at the facility.';
+  // The device block stands in for connectivity: the rule keys on the action,
+  // not on where it sits.
+  const cells = (cost) => ({
+    29: 'Confirmed satellite-only route',
+    30: SATELLITE,
+    31: MAJOR,
+    32: cost,
+  });
+
+  it('prices a blank cell from HELD_PRICES, and says so', () => {
+    const { blocks, rows } = parse(row(cells('')));
+    const [iv] = interventionsInRow(rows[0], blocks[2]);
+    expect(iv).toMatchObject({ unitCostNGN: HELD_PRICES[SATELLITE], costNGN: 590000, priceHeld: true });
+  });
+
+  it('leaves a price in the sheet alone', () => {
+    const { blocks, rows } = parse(row(cells('600000')));
+    const [iv] = interventionsInRow(rows[0], blocks[2]);
+    expect(iv).toMatchObject({ unitCostNGN: 600000 });
+    expect(iv.priceHeld).toBeUndefined();
   });
 });
 
@@ -297,7 +344,7 @@ describe('extractCatalogue', () => {
   it('throws when one condition is blocking at one facility and not at another', () => {
     const { blocks, rows } = parse(
       row({ ...POWER_NONE, 0: 'u1' }),
-      row({ ...POWER_NONE, 0: 'u2', 15: LONG_TERM }),
+      row({ ...POWER_NONE, 0: 'u2', 19: LONG_TERM }),
     );
     expect(() => extractCatalogue(rows, blocks)).toThrow(/blocking at facility/);
     // The message has to name both rows, or nobody can find the disagreement
@@ -306,14 +353,14 @@ describe('extractCatalogue', () => {
   });
 
   it('keeps a gap that has no action at all, as one that cannot block', () => {
-    const { blocks, rows } = parse(row({ 87: 'Training over 1 year ago' }));
+    const { blocks, rows } = parse(row({ 93: 'Training over 1 year ago' }));
     const { gaps } = extractCatalogue(rows, blocks);
     expect(gaps[0]).toMatchObject({ severity: 'partial', actions: [], recorded: true });
   });
 
   it('files work costed under "No gap" as the area\u2019s unrecorded condition', () => {
     const { blocks, rows } = parse(
-      row({ 21: 'No gap', 22: 'Procure 1 electric fan', 23: MINOR_DURING, 24: '60000' }),
+      row({ 25: 'No gap', 26: 'Procure 1 electric fan', 27: MINOR_DURING, 28: '60000' }),
     );
     const { gaps } = extractCatalogue(rows, blocks);
     expect(gaps).toHaveLength(1);
@@ -322,7 +369,7 @@ describe('extractCatalogue', () => {
 
   it('reads an action cell of "No gap" as no action', () => {
     const { blocks, rows } = parse(
-      row({ 21: '0% of applicable service points meet all minimum conditions', 22: 'No gap' }),
+      row({ 25: '0% of applicable service points meet all minimum conditions', 26: 'No gap' }),
     );
     expect(interventionsInRow(rows[0], blocks[1])).toEqual([]);
   });
@@ -330,7 +377,7 @@ describe('extractCatalogue', () => {
 
 describe('the source repair', () => {
   it('holds the `0` repair to its own column', () => {
-    expect(() => parse(row({ 87: '0' }))).toThrow(/appears as a Training gap value/);
+    expect(() => parse(row({ 93: '0' }))).toThrow(/appears as a Training gap value/);
   });
 });
 
