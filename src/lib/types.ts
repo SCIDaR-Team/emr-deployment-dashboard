@@ -464,6 +464,20 @@ export type FunctionalityLevel =
  * no facility scorecard page exists, so nothing needs service points,
  * indicators or per-question responses.
  */
+/** Whether the facility already has an EMR. `none_reported`: no digital
+ *  system of any kind was reported, which is not the same answer as an EMR
+ *  being unavailable. */
+export type EmrAvailability = 'available' | 'unavailable' | 'none_reported';
+
+/** How an EMR that is there is being used. */
+export type EmrUsage = 'fully_functional' | 'needs_upgrade' | 'not_in_use';
+
+export interface FacilityEmr {
+  availability: EmrAvailability;
+  /** Set exactly where `availability` is `available`; null everywhere else. */
+  usage: EmrUsage | null;
+}
+
 export interface FacilitySummary {
   uuid: string;
   name: string;
@@ -515,6 +529,12 @@ export interface FacilitySummary {
    * the sheet in all 2,806 rows.
    */
   deploymentBand: Band | null;
+  /**
+   * The EMR already at the facility, if any, as the survey recorded it. A
+   * status, not a gap: nothing is costed against it, and it does not enter the
+   * band above — a Not ready facility can already be running one.
+   */
+  emr: FacilityEmr;
   /** Each domain's highest gap severity. Not a band — see `DomainSeverity`. */
   domainSeverity: Record<FacilityThemeId, DomainSeverity>;
 

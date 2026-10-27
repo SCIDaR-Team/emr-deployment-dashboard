@@ -113,6 +113,12 @@ export interface ActionDef {
   unit: string | null;
   /** Null where the source carries no price. Not zero. */
   unitCostNGN: number | null;
+  /**
+   * The price is the dashboard's, held from an earlier revision of the
+   * workbook, which now leaves it blank — see `HELD_PRICES` in
+   * scripts/assessment-source.mjs. Absent where the price is the workbook's.
+   */
+  priceHeld?: true;
   /** The scenario component this action is — router, full solar system and
    *  so on — for the six power and connectivity fixes; null for the rest. */
   scenario: ScenarioComponentId | null;
@@ -139,6 +145,7 @@ export const ACTIONS: ActionDef[] = [
     "phase": "before",
     "unit": null,
     "unitCostNGN": 590000,
+    "priceHeld": true,
     "scenario": "satellite"
   },
   {
@@ -194,6 +201,7 @@ export const ACTIONS: ActionDef[] = [
     "phase": "before",
     "unit": null,
     "unitCostNGN": 45000,
+    "priceHeld": true,
     "scenario": "fibrex"
   },
   {

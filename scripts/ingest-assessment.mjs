@@ -43,6 +43,8 @@ import {
   DOMAINS,
   DOMAIN_IDS,
   DOMAIN_SEVERITY_BY_LABEL,
+  EMR_AVAILABILITY_BY_LABEL,
+  EMR_USAGE_BY_LABEL,
   HORIZONS,
   PHASES,
   SCENARIO_COMPONENTS,
@@ -214,6 +216,33 @@ const band = (raw, what, uuid) => {
   return v;
 };
 
+/**
+ * The EMR a facility already has, if any, and whether it is used.
+ *
+ * Usage is filled exactly where an EMR is available. A usage reading without
+ * an EMR, or an EMR with no usage reading, is a sheet that has stopped meaning
+ * what these two columns say, and stops the build.
+ */
+function emrStatus(row, uuid) {
+  const rawAvailability = String(row[COL.emrAvailability] ?? '').trim();
+  const availability = EMR_AVAILABILITY_BY_LABEL[rawAvailability];
+  if (!availability) {
+    throw new Error(`Unknown EMR availability ${JSON.stringify(rawAvailability)} for facility ${uuid}`);
+  }
+  const rawUsage = String(row[COL.emrUsage] ?? '').trim();
+  const usage = rawUsage ? EMR_USAGE_BY_LABEL[rawUsage] : null;
+  if (rawUsage && !usage) {
+    throw new Error(`Unknown EMR usage ${JSON.stringify(rawUsage)} for facility ${uuid}`);
+  }
+  if ((availability === 'available') !== (usage !== null)) {
+    throw new Error(
+      `Facility ${uuid} reads EMR availability ${JSON.stringify(rawAvailability)} ` +
+        `with usage ${JSON.stringify(rawUsage)}; usage is expected exactly where an EMR is available.`,
+    );
+  }
+  return { availability, usage };
+}
+
 /** `Not available`, blanks and other non-numeric placeholders → null. */
 function optionalNumber(raw) {
   const s = String(raw ?? '').replace(/,/g, '').trim();
@@ -345,6 +374,9 @@ function buildFacility(row, blocks, catalogueById, lgaIndex, stateMeta, workbook
      * now and showing it twice would say nothing.
      */
     deploymentBand: band(row[COL.deploymentBand], 'EMR-deployment', uuid),
+    /** Whether an EMR is already in place, and how it is used. A status the
+     *  survey recorded, not a gap: nothing is costed against it. */
+    emr: emrStatus(row, uuid),
     /**
      * Each domain's highest gap severity, from the sheet's own four columns.
      * Not a readiness band — the source classifies readiness once, overall.
@@ -428,16 +460,22 @@ function validateRow(row, facility, blocks, problems) {
   const uuid = facility.uuid;
   const fail = (msg) => problems.push(`${uuid}: ${msg}`);
 
+  // What `HELD_PRICES` added, per domain. The sheet counts those actions as
+  // nothing, so its totals are compared with them added back.
+  const held = Object.fromEntries(DOMAIN_IDS.map((d) => [d, 0]));
+  for (const iv of facility.interventions) if (iv.priceHeld) held[iv.domain] += iv.costNGN;
+  const heldTotal = Object.values(held).reduce((sum, v) => sum + v, 0);
+
   // 1. Each domain subtotal = the sum of that facility's own actions.
   for (const d of DOMAINS) {
-    const stated = parseMoney(row[d.costTotalCol]) ?? 0;
+    const stated = (parseMoney(row[d.costTotalCol]) ?? 0) + held[d.id];
     if (Math.abs(stated - facility.costByDomain[d.id]) > ROUNDING_TOLERANCE) {
       fail(`${d.label} cost: sheet ₦${stated}, actions sum to ₦${facility.costByDomain[d.id]}`);
     }
   }
 
   // 2. Facility total = the same actions, all domains. See ROUNDING_TOLERANCE.
-  const statedTotal = parseMoney(row[COL.totalCost]) ?? 0;
+  const statedTotal = (parseMoney(row[COL.totalCost]) ?? 0) + heldTotal;
   const drift = statedTotal - facility.costNGN;
   if (Math.abs(drift) > ROUNDING_TOLERANCE) {
     fail(`total cost: sheet ₦${statedTotal}, actions sum to ₦${facility.costNGN}`);
@@ -1212,6 +1250,12 @@ export interface ActionDef {
   unit: string | null;
   /** Null where the source carries no price. Not zero. */
   unitCostNGN: number | null;
+  /**
+   * The price is the dashboard's, held from an earlier revision of the
+   * workbook, which now leaves it blank — see \`HELD_PRICES\` in
+   * scripts/assessment-source.mjs. Absent where the price is the workbook's.
+   */
+  priceHeld?: true;
   /** The scenario component this action is — router, full solar system and
    *  so on — for the six power and connectivity fixes; null for the rest. */
   scenario: ScenarioComponentId | null;
@@ -1518,6 +1562,12 @@ function report(facilities, catalogue, national, stateProfiles, rounding) {
   out.push(`  gap instances     ${national.deployment.gapCount.toLocaleString()}`);
   out.push(`  total investment  ${naira(national.deployment.costNGN)}`);
   out.push(`  unpriced actions  ${national.deployment.unpricedInterventions}`);
+  const held = facilities.flatMap((f) => f.interventions.filter((iv) => iv.priceHeld));
+  out.push(
+    `  held prices       ${held.length.toLocaleString()} actions, ${naira(
+      held.reduce((sum, iv) => sum + iv.costNGN, 0),
+    )} (blank in the workbook, see HELD_PRICES)`,
+  );
   out.push(`  severity queries  ${severityExceptions.length} (the sheet's own, see SEVERITY_EXCEPTIONS)`);
   out.push(
     `  sheet rounding    ${naira(rounding.roundingDrift)} over ` +

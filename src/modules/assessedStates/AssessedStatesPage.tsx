@@ -124,6 +124,7 @@ export default function AssessedStatesPage() {
   // the store, so going back to that page finds it still set.
   const domains = useMemo(() => facilityLens(storeDomains), [storeDomains]);
   const gapAreas = useFilterStore((s) => s.gapAreas);
+  const readiness = useFilterStore((s) => s.archetypes);
 
   const surveyed = useMemo(() => assessedStates(states.data), [states.data]);
 
@@ -786,6 +787,7 @@ export default function AssessedStatesPage() {
               facilities={scoped}
               domains={domains}
               gapAreas={gapAreas}
+              readiness={readiness}
               list={list}
             />
           </ExplainScope>

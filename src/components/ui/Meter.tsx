@@ -225,6 +225,7 @@ export function BandCards({
   counts,
   unit,
   showPercent = false,
+  shares,
   labels = BAND_LABEL,
   noData,
   className,
@@ -232,6 +233,12 @@ export function BandCards({
   counts: Record<Band, number>;
   unit?: string;
   showPercent?: boolean;
+  /**
+   * The share each card prints, where it is not of the cards' own total — the
+   * EMR cards give each band's share of *that band's* facilities. Implies
+   * `showPercent`.
+   */
+  shares?: Record<Band, string>;
   /** The band names, where the band is not readiness (`MATURITY_LABEL`). */
   labels?: Record<Band, string>;
   /** A fourth card for what has no band, and its name ("Not assessed"). */
@@ -269,9 +276,9 @@ export function BandCards({
               {formatCount(counts[band] ?? 0)}
             </span>
             {unit && <span className="text-note leading-none text-onband-muted">{unit}</span>}
-            {showPercent && (
+            {(showPercent || shares) && (
               <span className="mono ml-auto text-note font-semibold leading-none text-onband-muted">
-                {total ? percentOf(counts[band] ?? 0, total, 1) : '—'}
+                {shares ? shares[band] : total ? percentOf(counts[band] ?? 0, total, 1) : '—'}
               </span>
             )}
           </div>

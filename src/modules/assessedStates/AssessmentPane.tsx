@@ -40,6 +40,7 @@ import type {
   Band,
   BandDistribution,
   DomainSeverity,
+  EmrUsage,
   FacilitySummary,
   FacilityThemeId,
   GapDomainId,
@@ -102,6 +103,11 @@ interface AssessmentPaneProps {
    * block splitting it by band.
    */
   gapAreas: string[];
+  /**
+   * The bands the Readiness filter has ticked. Empty is no filter. Opens the
+   * EMR block's status breakdown — see `EmrByBand`.
+   */
+  readiness: Band[];
   /** The rows for the list at the bottom, and what one click does. */
   list: PaneList;
 }
@@ -146,6 +152,7 @@ export function AssessmentPane({
   facilities,
   domains,
   gapAreas,
+  readiness,
   list,
 }: AssessmentPaneProps) {
   const distribution = useMemo(
@@ -209,7 +216,22 @@ export function AssessmentPane({
                 note="Readiness to deploy an EMR"
                 explain="assessment-facilities"
               >
-                <BandCounts facilities={facilities} distribution={distribution} />
+                <BandCounts
+                  facilities={facilities}
+                  distribution={distribution}
+                  readiness={readiness}
+                />
+              </Block>
+            )}
+
+            {/* Beside the band split, and gone with it when a gap area is
+                ticked, for the same reason: it counts by readiness band. */}
+            {!gapAreas.length && (
+              <Block
+                title="Facilities with an EMR"
+                note="Already in place, by readiness band — recorded at the visit, not a gap"
+              >
+                <EmrByBand facilities={facilities} readiness={readiness} />
               </Block>
             )}
 
@@ -426,6 +448,15 @@ function FacilityBlocks({
           {/* The one readiness reading, whatever domains are ticked — the
               source classifies readiness once. */}
           <BandLine label="EMR deployment" band={facility.deploymentBand} />
+          {/* What is already there, beside the reading of what blocks putting
+              one in — the facility's own row in the area-level "Facilities
+              with an EMR" block. A status, so neutral ink, not a band. */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="min-w-0 truncate text-prose text-foreground">EMR available</span>
+            <span className="mono shrink-0 text-note font-semibold uppercase tracking-[0.06em] text-foreground">
+              {emrStatusText(facility)}
+            </span>
+          </div>
           <div className="my-2.5 border-t border-border" />
           {/* Beneath it, each domain's worst gap: a severity, in the urgency
               inks, never a band. Narrowed to the ticked domains, like the gap
@@ -698,9 +729,13 @@ function SelectionBlock({
 function BandCounts({
   facilities,
   distribution,
+  readiness,
 }: {
   facilities: FacilitySummary[];
   distribution: BandDistribution;
+  /** The Readiness filter's bands. Set, the cards go: the filter has already
+   *  picked the bands, and the unpicked ones would only print zeros. */
+  readiness: Band[];
 }) {
   const total = facilities.length;
   const scored = distributionTotal(distribution);
@@ -741,8 +776,199 @@ function BandCounts({
           None of them carries a readiness band.
         </p>
       ) : (
-        <BandCards counts={distribution} showPercent className="mt-5" />
+        !readiness.length && <BandCards counts={distribution} showPercent className="mt-5" />
       )}
+    </div>
+  );
+}
+
+const BANDS_BEST_FIRST: Band[] = ['ready', 'moderately_ready', 'not_ready'];
+
+const EMR_USAGE_LABEL: Record<EmrUsage, string> = {
+  fully_functional: 'fully functional',
+  needs_upgrade: 'needs upgrade',
+  not_in_use: 'not in use',
+};
+
+/** Working first, the same best-to-worst flow as the band cards. */
+const EMR_USAGES: EmrUsage[] = ['fully_functional', 'needs_upgrade', 'not_in_use'];
+
+/** One facility's EMR, in words: "Yes · not in use", "No". */
+function emrStatusText({ emr }: FacilitySummary): string {
+  if (emr.availability === 'available') {
+    return emr.usage ? `Yes · ${EMR_USAGE_LABEL[emr.usage]}` : 'Yes';
+  }
+  return emr.availability === 'unavailable' ? 'No' : 'No digital system';
+}
+
+/**
+ * The facilities in scope that already run an EMR, split by readiness band —
+ * the workbook's Cost summary, "# of Ready PHCs with EMR" and the two columns
+ * after it.
+ *
+ * The cards are the band split's own, so the two blocks line up column for
+ * column. Each card's share is of *that band's* facilities: 24 Ready
+ * facilities with an EMR is a different finding out of 170 than out of 1,892,
+ * and the counts alone hide it.
+ *
+ * With the Readiness filter set, the cards give way to the state of the EMRs
+ * in each ticked band — fully functional, needs upgrade, not in use: the
+ * workbook's columns Q–Y, adding up to the band's EMR count. Only under the
+ * filter, because that is the reader asking about a band; unfiltered, nine
+ * more figures would bury the three that answer "how many have one".
+ */
+function EmrByBand({
+  facilities,
+  readiness,
+}: {
+  facilities: FacilitySummary[];
+  readiness: Band[];
+}) {
+  const { total, withEmr, inBand, usage } = useMemo(() => {
+    const zero = (): BandDistribution => ({ ready: 0, moderately_ready: 0, not_ready: 0 });
+    const withEmr = zero();
+    const inBand = zero();
+    const usage = Object.fromEntries(
+      EMR_USAGES.map((u) => [u, zero()]),
+    ) as Record<EmrUsage, BandDistribution>;
+    let total = 0;
+    for (const f of facilities) {
+      const has = f.emr.availability === 'available';
+      if (has) total += 1;
+      const band = f.deploymentBand;
+      if (!band) continue;
+      inBand[band] += 1;
+      if (has) withEmr[band] += 1;
+      if (f.emr.usage) usage[f.emr.usage][band] += 1;
+    }
+    return { total, withEmr, inBand, usage };
+  }, [facilities]);
+  const picked = BANDS_BEST_FIRST.filter((b) => readiness.includes(b));
+
+  return (
+    <div>
+      <p className="mono text-figure font-semibold leading-none tracking-tight text-foreground">
+        {formatCount(total)}
+      </p>
+      <p className="mono mt-1 text-note uppercase tracking-[0.09em] text-muted-foreground">
+        {total === 1 ? 'facility has an EMR' : 'facilities have an EMR'}
+        {facilities.length > 0 && ` · ${formatShare(total, facilities.length)} of those in scope`}
+      </p>
+
+      {total === 0 ? (
+        <p className="mt-3 text-prose italic text-muted-foreground">
+          None of the facilities in scope reports an EMR.
+        </p>
+      ) : (
+        <>
+          {/* Unfiltered, a card per band with its share of that band's
+              facilities. Under the Readiness filter the cards go, as they do
+              from the band split above, and the ticked bands' status takes
+              their place. */}
+          {!picked.length && (
+            <BandCards
+              counts={withEmr}
+              shares={Object.fromEntries(
+                BANDS_BEST_FIRST.map((b) => [b, formatShare(withEmr[b], inBand[b])]),
+              ) as Record<Band, string>}
+              className="mt-5"
+            />
+          )}
+
+          {picked.length > 0 && (
+            <div className="mt-4">
+              <p className="eyebrow">EMR status · readiness in view</p>
+              <ul className="mt-2.5 space-y-4">
+                {picked.map((band) => (
+                  <li key={band}>
+                    <div className="flex items-center justify-between gap-3">
+                      <BandBadge band={band} size="sm" />
+                      <span className="mono text-note text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                          {formatCount(withEmr[band])}
+                        </span>{' '}
+                        with an EMR · {formatShare(withEmr[band], inBand[band])} of{' '}
+                        {formatCount(inBand[band])}
+                      </span>
+                    </div>
+                    {withEmr[band] === 0 ? (
+                      <p className="mt-1.5 text-prose italic text-muted-foreground">
+                        None of these facilities has an EMR.
+                      </p>
+                    ) : (
+                      <EmrStatusCells counts={usage} band={band} total={withEmr[band]} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Cell fill per EMR status, in the readiness fills on the same reading as the
+ * severity split: working is the good end, unused the bad, an EMR that needs
+ * upgrading between. Ink on them is `--on-band`, as on every band fill.
+ */
+const EMR_USAGE_FILL: Record<EmrUsage, string> = {
+  fully_functional: cn(BAND_CLASSES.ready.bg, 'text-onband'),
+  needs_upgrade: cn(BAND_CLASSES.moderately_ready.bg, 'text-onband'),
+  not_in_use: cn(BAND_CLASSES.not_ready.bg, 'text-onband'),
+};
+
+/**
+ * One band's EMRs by status: three equal cells, each with its count, its share
+ * of the band's EMRs and a bar along the foot filled to that share — the form
+ * the severity split and the band cards already use, so it reads as theirs.
+ * Equal widths rather than a proportional bar, so "1 · 4%" has room to be read.
+ */
+function EmrStatusCells({
+  counts,
+  band,
+  total,
+}: {
+  counts: Record<EmrUsage, BandDistribution>;
+  band: Band;
+  total: number;
+}) {
+  return (
+    <div
+      className="mt-2 grid grid-cols-3 gap-px overflow-hidden rounded-[4px] border border-onband/15 bg-onband/15"
+      role="img"
+      aria-label={`${BAND_LABEL[band]} facilities with an EMR: ${EMR_USAGES.map(
+        (u) => `${EMR_USAGE_LABEL[u]} ${formatCount(counts[u][band])} (${formatShare(counts[u][band], total)})`,
+      ).join(', ')}`}
+    >
+      {EMR_USAGES.map((u) => {
+        const count = counts[u][band];
+        return (
+          <div
+            key={u}
+            className={cn('band-card min-w-0 px-2 pb-1.5 pt-2', EMR_USAGE_FILL[u])}
+            title={`${EMR_USAGE_LABEL[u]}: ${formatCount(count)} of ${formatCount(total)} (${percentOf(count, total, 1)})`}
+          >
+            <div className="mono flex items-baseline justify-between gap-1 whitespace-nowrap leading-none tabular-nums">
+              <span className="text-lead font-semibold tracking-tight">{formatCount(count)}</span>
+              <span className="text-note font-semibold text-onband-muted">
+                {formatShare(count, total)}
+              </span>
+            </div>
+            <div aria-hidden className="mt-1.5 h-[3px] rounded-full bg-onband/15">
+              <div
+                className="h-full rounded-full bg-onband/70"
+                style={{ width: `${(count / total) * 100}%` }}
+              />
+            </div>
+            <p className="mono mt-1.5 truncate text-tick font-bold uppercase leading-tight tracking-[0.07em]">
+              {EMR_USAGE_LABEL[u]}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
