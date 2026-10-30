@@ -49,7 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/investment',
-    label: 'Investments overview',
+    label: 'Investment Overview',
     icon: 'Coins',
     description: 'What deployment will cost',
     showOnHome: true,

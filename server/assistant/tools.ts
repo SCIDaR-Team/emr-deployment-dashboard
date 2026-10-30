@@ -206,7 +206,7 @@ const getOverview: ToolDef = {
       maturity: scope.filter ? maturityOf(scope.area) : undefined,
       links: [
         { label: 'Assessed States', href: href('/assessment', { state: scope.filter }) },
-        { label: 'Investments overview', href: href('/investment', { state: scope.filter }) },
+        { label: 'Investment Overview', href: href('/investment', { state: scope.filter }) },
       ] satisfies ToolLink[],
     };
   },
@@ -532,7 +532,7 @@ const costBreakdown: ToolDef = {
           .map(([k, r]) => fmtRow(k, r.cost, r.total)),
         links: [
           {
-            label: 'Investments overview',
+            label: 'Investment Overview',
             href: href('/investment', { state: scope.filter }, 'interventions'),
           },
         ],

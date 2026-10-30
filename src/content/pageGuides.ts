@@ -60,7 +60,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
     tips: [
       {
         name: 'Navigate between pages',
-        text: 'This page provides a state-level overview. Visit Assessed States to explore readiness gaps at individual facilities, or Investments overview to understand the estimated costs of addressing those gaps.',
+        text: 'This page provides a state-level overview. Visit Assessed States to explore readiness gaps at individual facilities, or Investment Overview to understand the estimated costs of addressing those gaps.',
       },
     ],
   },
@@ -159,7 +159,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
     tips: [
       { text: 'The scenario is kept in the page link, so a copied link opens the same scenario.' },
       { name: 'Describe', text: 'Where offered, sets up a scenario from a sentence, such as “₦20m on solar in Kano”.' },
-      { text: 'The full costed plan, of which these fixes are a part, is on the Investments overview.' },
+      { text: 'The full costed plan, of which these fixes are a part, is on Investment Overview.' },
     ],
   },
 };

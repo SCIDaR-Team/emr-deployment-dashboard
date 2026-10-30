@@ -11,7 +11,7 @@ What the dashboard covers
 - A facility assessment of primary health care (PHC) facilities in 12 states: Adamawa, Akwa Ibom, Anambra, Bauchi, Imo, Jigawa, Kano, Lagos, Nasarawa, Niger, Oyo and Rivers.
 - Each facility has a deployment readiness band — Ready, Moderately ready or Not ready — decided by its Technical Infrastructure gaps alone (power, connectivity, devices and so on). A facility can be Ready and still have gaps in other domains.
 - Gaps carry an urgency: Major and Moderate must be fixed before deployment; Minor gaps are fixed before or during deployment; Long-term improvements come after.
-- A costed investment plan (the Investments overview page), split into what is needed before, during and after deployment. Its total and every other figure come from the tools.
+- A costed investment plan (the Investment Overview page), split into what is needed before, during and after deployment. Its total and every other figure come from the tools.
 - Investment scenarios (the Investment Scenario Planner page): funding six power and connectivity fixes (router, FibreX, solar top-up, full solar system, network extension, Starlink satellite internet). Money goes to the facilities that are cheapest to make Ready first. Results are read as Ready before + Unlocked = Total Ready.
 - State Maturity for all 37 states (Mature, Moderately mature, Not mature), with leadership and governance scores. States outside the 12 have maturity but no facility data.
 

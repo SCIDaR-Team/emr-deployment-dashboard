@@ -37,7 +37,7 @@ import {
 } from './DeploymentSections';
 
 /**
- * Investments overview — what deploying will take, itemised.
+ * Investment Overview — what deploying will take, itemised.
  *
  * Four parts, after the ERA team's costing slides: the Cost overview, then
  * Fixes, Train and deploy, and Operations and TA, each with its own total.
@@ -399,7 +399,7 @@ export default function InvestmentPlanPage() {
   return (
     <>
       <PageHeader
-        title="Investments overview"
+        title="Investment Overview"
         guide={PAGE_GUIDES.investment}
         subtitle={scope.name}
         sections={SECTIONS}
