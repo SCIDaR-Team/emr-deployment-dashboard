@@ -139,7 +139,11 @@ function NavContents({
                 }
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-                <span className={cn('truncate', collapsed && 'sr-only')}>{item.label}</span>
+                {/* Wraps rather than truncates: the rail is a fixed width, and
+                  a module name cut to "Investment Scenar…" names nothing. */}
+                <span className={cn('min-w-0 leading-snug', collapsed && 'sr-only')}>
+                  {item.label}
+                </span>
               </NavLink>
             </li>
           );
@@ -173,34 +177,40 @@ export function Sidebar() {
     <nav
       aria-label="Main"
       className={cn(
-        'rail hidden shrink-0 flex-col border-r border-border bg-sidebar lg:flex',
+        'rail hidden shrink-0 flex-col overflow-hidden border-r border-border bg-sidebar lg:flex',
         // Width only — animating anything else here would drag the map and the
         // charts through a resize on every frame of the transition.
         'transition-[width] duration-200 ease-out',
         collapsed ? 'w-[60px]' : 'w-[192px]',
       )}
     >
-      <BrandBlock collapsed={collapsed} white />
-      <NavContents
-        collapsed={collapsed}
-        footer={
-          <button
-            type="button"
-            onClick={toggle}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            className={cn(
-              'mono flex w-full items-center gap-2.5 px-1 py-1.5 text-tick uppercase tracking-[0.1em] text-muted-foreground transition-colors',
-              'hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-              collapsed && 'justify-center',
-            )}
-          >
-            <PanelLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            {!collapsed && <span>Collapse</span>}
-          </button>
-        }
-      />
+      {/* The contents take their final width at once (the rail's, less its
+        1px border) and the rail clips them as it animates. Otherwise the
+        labels, which wrap, would reflow through every narrower width on the
+        way out, and the rows would jump to three lines and back. */}
+      <div className={cn('flex flex-1 flex-col', collapsed ? 'w-[59px]' : 'w-[191px]')}>
+        <BrandBlock collapsed={collapsed} white />
+        <NavContents
+          collapsed={collapsed}
+          footer={
+            <button
+              type="button"
+              onClick={toggle}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+              title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+              className={cn(
+                'mono flex w-full items-center gap-2.5 px-1 py-1.5 text-tick uppercase tracking-[0.1em] text-muted-foreground transition-colors',
+                'hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                collapsed && 'justify-center',
+              )}
+            >
+              <PanelLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {!collapsed && <span>Collapse</span>}
+            </button>
+          }
+        />
+      </div>
     </nav>
   );
 }

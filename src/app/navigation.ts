@@ -49,14 +49,14 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/investment',
-    label: 'Investment Plan',
+    label: 'Investments overview',
     icon: 'Coins',
     description: 'What deployment will cost',
     showOnHome: true,
   },
   {
     path: '/scenarios',
-    label: 'Scenarios',
+    label: 'Investment Scenario Planner',
     icon: 'SlidersHorizontal',
     description: 'What funding makes Ready',
     showOnHome: true,

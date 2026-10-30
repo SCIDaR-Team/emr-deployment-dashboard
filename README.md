@@ -94,8 +94,8 @@ message naming it, and needs a code change. See
 | `/` | Landing page — the front door, outside the app shell |
 | `/states` | National Coverage — all 37 states and how each was evidenced |
 | `/assessment` | Assessed States — the 12 states visited, down to LGA |
-| `/investment` | Investment Plan — what deployment will take, itemised and costed |
-| `/scenarios` | Scenarios — what a given amount of funding would make Ready |
+| `/investment` | Investments overview — what deployment will take, itemised and costed |
+| `/scenarios` | Investment Scenario Planner — what a given amount of funding would make Ready |
 
 Filters are shared across modules and live in the URL, so any scoped view is a
 link: `/assessment?state=Kano&archetype=not_ready`.

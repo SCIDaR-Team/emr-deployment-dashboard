@@ -24,7 +24,7 @@ import { cn } from '@/lib/cn';
 import { formatCount, formatNaira, formatShare, formatUnits } from '@/lib/format';
 import { HORIZONS, HORIZON_SHORT } from '@/lib/gapCatalogue';
 import { THEME_BY_ID } from '@/lib/themes';
-import type { AreaProfile, Horizon, InvestmentItem, ThemeId, WaveId } from '@/lib/types';
+import type { Horizon, InvestmentItem, ThemeId } from '@/lib/types';
 import { ExplainScope } from '@/modules/explain/context';
 import { ExplainFigures } from '@/modules/explain/explain';
 import { operationsAndTA, overview, trainAndDeploy } from '@/lib/deploymentCost';
@@ -37,12 +37,11 @@ import {
 } from './DeploymentSections';
 
 /**
- * Investment Plan — what deploying will take, itemised.
+ * Investments overview — what deploying will take, itemised.
  *
  * Four parts, after the ERA team's costing slides: the Cost overview, then
- * Fixes, Train and deploy, and Operations and TA, each with its own total —
- * and Rollout waves after them. Fixes is the facility-level plan this comment
- * goes on to describe; the other two parts are priced per state and per
+ * Fixes, Train and deploy, and Operations and TA, each with its own total.
+ * Fixes is the facility-level plan this comment goes on to describe; the other two parts are priced per state and per
  * facility from the workbook's deployment-cost tables (`deploymentCost.ts`).
  *
  * Every line here is triggered by a *failed* reading, not by a wish list: an
@@ -54,16 +53,12 @@ import {
  * Costs come from the assessment's own indicative pricing. They are plain
  * naira rather than the sibling dashboard's deliberate blanks, because a page
  * about money with no money on it demonstrates nothing.
- *
- * NOTE: the editorial direction for this page is still open — in particular
- * whether it leads with the costed interventions or with the rollout waves. Both
- * are here; the ordering is the open question.
  */
 
 /**
  * "Schedule" is gone from both of these on purpose. In cost practice it does
  * mean an itemised priced list — a schedule of rates, a schedule of quantities
- * — but this section sits directly above Rollout waves, which is a real
+ * — but this section once sat directly above Rollout waves, a real
  * calendar with real quarters in it. Two neighbours, one called Schedule and
  * one made of dates, and the reader guesses wrong every time. So the section
  * is named for its unit instead: interventions, which is also the source's own
@@ -74,7 +69,6 @@ const SECTIONS = [
   { id: 'fixes', label: 'Fixes' },
   { id: 'train-deploy', label: 'Train and deploy' },
   { id: 'operations', label: 'Operations and TA' },
-  { id: 'waves', label: 'Rollout waves' },
 ];
 
 /** The scenario builder's link parameters (see `useScenarioUrl`). */
@@ -148,12 +142,6 @@ const NUMERIC: ReadonlySet<ColumnId> = new Set<ColumnId>([
   'unit',
   'total',
 ]);
-
-const WAVE_NOTE: Record<WaveId, string> = {
-  1: 'States with the readiest facilities. Deploy while the plan is still being written for the rest.',
-  2: 'Targeted intervention first — the gaps are real but not foundational.',
-  3: 'Foundational investment before any deployment date is meaningful.',
-};
 
 interface Group {
   key: string;
@@ -392,23 +380,6 @@ export default function InvestmentPlanPage() {
   const o = DEPLOYMENT_COSTS.operations;
   const ta = DEPLOYMENT_COSTS.ta;
 
-  const waves = useMemo(() => {
-    const byWave = new Map<WaveId, AreaProfile[]>();
-    for (const s of states.data) {
-      // A wave is a state's alone. Every area now carries a deployment plan —
-      // LGAs and the nation included — so the plan being present no longer
-      // implies a wave to file it under.
-      const wave = s.deployment?.wave;
-      if (!wave) continue;
-      if (selectedStates.length && !selectedStates.includes(s.name)) continue;
-      const list = byWave.get(wave) ?? [];
-      list.push(s);
-      byWave.set(wave, list);
-    }
-    return [1, 2, 3]
-      .map((w) => ({ wave: w as WaveId, states: byWave.get(w as WaveId) ?? [] }))
-      .filter((entry) => entry.states.length);
-  }, [states.data, selectedStates]);
 
   /**
    * Scenarios was a section of this page and is now a page of its own. A link
@@ -428,7 +399,7 @@ export default function InvestmentPlanPage() {
   return (
     <>
       <PageHeader
-        title="Investment Plan"
+        title="Investments overview"
         guide={PAGE_GUIDES.investment}
         subtitle={scope.name}
         sections={SECTIONS}
@@ -682,47 +653,6 @@ export default function InvestmentPlanPage() {
             />
           </PlanPart>
 
-          <SectionCard
-            id="waves"
-            title="Rollout waves"
-            subtitle="Which states go first, and why"
-          >
-            <div className="grid gap-px border border-border bg-border md:grid-cols-3">
-              {waves.map(({ wave, states: waveStates }) => {
-                const facilityCount = waveStates.reduce((sum, s) => sum + s.facilityCount, 0);
-                const cost = waveStates.reduce((sum, s) => sum + (s.deployment?.costNGN ?? 0), 0);
-                return (
-                  <div key={wave} className="bg-surface p-4">
-                    <p className="eyebrow">
-                      Wave {wave} · {waveStates[0]?.deployment?.startQuarter}
-                    </p>
-                    <p className="mono mt-2 text-figure-sm font-semibold leading-none tracking-tight text-foreground">
-                      {formatCount(facilityCount)}
-                      <span className="ml-1.5 text-body font-medium tracking-normal text-muted-foreground">
-                        facilities
-                      </span>
-                    </p>
-                    <p className="mono mt-1.5 text-note text-muted-foreground">
-                      {formatNaira(cost, true)}
-                    </p>
-                    <p className="mt-3 text-body leading-relaxed text-muted-foreground">
-                      {WAVE_NOTE[wave]}
-                    </p>
-                    <ul className="mt-3 flex flex-wrap gap-1.5">
-                      {waveStates.map((s) => (
-                        <li
-                          key={s.id}
-                          className="mono rounded-[2px] border border-border px-1.5 py-0.5 text-note text-foreground"
-                        >
-                          {s.name}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </SectionCard>
         </div>
       </ExplainScope>
     </>
