@@ -60,7 +60,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
     tips: [
       {
         name: 'Navigate between pages',
-        text: 'This page provides a state-level overview. Visit Assessed States to explore readiness gaps at individual facilities, or Investment Plan to understand the estimated costs of addressing those gaps.',
+        text: 'This page provides a state-level overview. Visit Assessed States to explore readiness gaps at individual facilities, or Investments overview to understand the estimated costs of addressing those gaps.',
       },
     ],
   },
@@ -128,14 +128,10 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
         name: 'Operations and TA',
         text: 'A year of internet subscription and device maintenance for every facility, and technical assistance and transition support for every state.',
       },
-      {
-        name: 'Rollout waves',
-        text: 'Which states go first, and why: the states in each wave, with their facilities and cost.',
-      },
     ],
     tips: [
       { text: 'Fixes totals leave out actions the source does not price. Lines at ₦0 are work recorded with no facility-level cost.' },
-      { text: 'For what a given amount of funding would achieve, go to Scenarios in the sidebar.' },
+      { text: 'For what a given amount of funding would achieve, go to Investment Scenario Planner in the sidebar.' },
     ],
   },
 
@@ -163,7 +159,7 @@ export const PAGE_GUIDES: Record<PageGuideId, PageGuide> = {
     tips: [
       { text: 'The scenario is kept in the page link, so a copied link opens the same scenario.' },
       { name: 'Describe', text: 'Where offered, sets up a scenario from a sentence, such as “₦20m on solar in Kano”.' },
-      { text: 'The full costed plan, of which these fixes are a part, is on the Investment Plan.' },
+      { text: 'The full costed plan, of which these fixes are a part, is on the Investments overview.' },
     ],
   },
 };

@@ -45,42 +45,42 @@ export const CHARTS = {
       'Themes raised in the free-text notes assessors wrote at each facility visit — access, security, the building, staffing, water, power and so on — as tagged by an AI model and checked by a person. For each theme, the facilities in scope whose note raises it as a problem or a need, and their share of the facilities with a note. A note can raise several themes, so the shares do not add up to 100%. These come from what assessors wrote, not from the structured survey questions.',
   },
   'investment-overview': {
-    page: 'Investment Plan',
+    page: 'Investments overview',
     howToRead:
       'The whole cost of the plan in five components, grouped as fixing the gaps, training and deployment, and routine operations and technical assistance (TA), with their total. Training and operations are at 2027 prices, with the workbook’s inflation applied, as the five-year roadmap costs them, so they are higher than the base-price totals the Train and deploy and Operations and TA parts show. Fixing the gaps, deployment validation and TA are at base prices. Each bar starts where the one before it ended, so together they build up to the total.',
   },
   'investment-train-deploy': {
-    page: 'Investment Plan',
+    page: 'Investments overview',
     howToRead:
       'What it costs to train staff and validate facilities before go-live, at base prices. The state training package is one three-day event per state, run by two facilitators, for two trainees from every facility: facilitator costs and the venue scale with the states, refreshments, transport and materials with the trainees. Deployment validation is a fixed amount per facility. Each line shows its unit cost, quantity, total and who pays, with a subtotal per focus and the total.',
   },
   'investment-operations-ta': {
-    page: 'Investment Plan',
+    page: 'Investments overview',
     howToRead:
       'What it costs to keep the EMR running for a year, at base prices. Routine operations — internet subscription and device maintenance — are a fixed amount per facility a year. State technical assistance and transition support — a local firm’s visits and a coordination allowance — are a fixed amount per state. Each line shows its unit cost, quantity, total and who pays, with a subtotal per focus and the total.',
   },
   'investment-interventions': {
-    page: 'Investment Plan',
+    page: 'Investments overview',
     howToRead:
       'The costed plan, one line per action the assessment prescribes: the facilities that need it, and its total cost. Grouped by phase (before, during or after deployment), by urgency, or by domain, with each group’s subtotal and share of the plan — or as one list by cost. Unpriced lines are left out of the totals; lines costed at ₦0 are recorded work with no facility-level cost.',
   },
   'investment-cost-by-readiness': {
-    page: 'Investment Plan',
+    page: 'Investments overview',
     howToRead:
       'Where the plan’s money goes, by the readiness of the facilities it is spent on. For Ready, Moderately ready and Not ready: the cost, its share of the plan, the facilities, and the cost per facility. Then one row per group of the chosen breakdown (category, facility group, functionality, zone or state), each group’s cost split across the three bands, with its total.',
   },
   'scenario-single': {
-    page: 'Scenarios',
+    page: 'Investment Scenario Planner',
     howToRead:
       'One funding scenario. The chosen power and connectivity fixes are funded facility by facility, cheapest to make Ready first, up to a target: a budget, a number of facilities, or a share Ready. A facility becomes Ready only when every fix it needs is funded. Read as Ready before + Unlocked = Total Ready. The average per facility is the spend divided by the facilities unlocked; the facilities themselves cost different amounts, by the fixes each needs. How the money is spent: per fix, the facilities it goes to and its cost; the costs add up to the spend, and a facility needing two fixes counts under both. The spending queue lists every facility not yet Ready, grouped by the fixes it needs, cheapest first, with what one facility in the group costs and how many of the group this scenario funds — groups it funds none of are waiting, not bought.',
   },
   'scenario-compare': {
-    page: 'Scenarios',
+    page: 'Investment Scenario Planner',
     howToRead:
       'The funding scenarios the reader has set up, side by side — as many as the table lists — each with its own fixes, states and target. For each: Ready before + Unlocked = Total Ready, what it spends, and the average cost per facility made Ready (the spend divided by the facilities unlocked — the facilities themselves cost different amounts, by the fixes each needs). Money goes to the facilities cheapest to make Ready first, and a facility becomes Ready only when every fix it needs is funded.',
   },
   'scenario-states': {
-    page: 'Scenarios',
+    page: 'Investment Scenario Planner',
     howToRead:
       'One funding scenario run in each state on its own, for where the same target does the most. Per state: Ready before + Unlocked = Total Ready, the spend, the average cost per facility made Ready (the spend divided by the facilities unlocked), and the share Ready after. A budget target is applied in full to each state separately; the first table runs it once across all the states together.',
   },

@@ -49,7 +49,7 @@ export default function ScenariosPage() {
 
   return (
     <>
-      <PageHeader title="Scenarios" guide={PAGE_GUIDES.scenarios} subtitle={scopeName}>
+      <PageHeader title="Investment Scenario Planner" guide={PAGE_GUIDES.scenarios} subtitle={scopeName}>
         <FilterBar facilities={facilities.data} show={['state']} />
       </PageHeader>
 
